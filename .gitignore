@@ -1,0 +1,6 @@
+# General
+bin
+obj
+
+# C
+*.out

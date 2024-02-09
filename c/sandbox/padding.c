@@ -12,10 +12,11 @@
  *  * https://stackoverflow.com/questions/4306186/structure-padding-and-packing
  *  * http://www.catb.org/esr/structure-packing/
  * 
+ * TODO: look into c11 stdalign.h
  */
 
-#include "stdint.h"
-#include "stdio.h"
+#include <stdint.h>
+#include <stdio.h>
 
 // Disables padding, reducing the number of bytes in a struct, but requires additional
 // instructions to access. It might be advantageous to disable padding to keep data.

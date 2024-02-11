@@ -1,0 +1,8 @@
+
+set(CMAKE_SYSTEM_NAME LynxOS)
+set(CMAKE_SYSTEM_PROCESSOR powerpc)
+
+set(arch todo)
+
+set(CMAKE_C_COMPILER qcc)
+set(CMAKE_C_COMPILER_TARGET arch)

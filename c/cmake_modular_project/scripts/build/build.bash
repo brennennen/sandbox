@@ -1,0 +1,15 @@
+
+
+BUILD_SCRIPTS_DIR=$(dirname "$BASH_SOURCE")
+SCRIPTS_DIR="$BUILD_SCRIPTS_DIR/.."
+PROJECT_DIR="$SCRIPTS_DIR/.."
+BUILD_DIR="$PROJECT_DIR/.build"
+CALLED_FROM_DIR=$pwd
+
+#rm -rf $BUILD_DIR
+mkdir -p $BUILD_DIR
+cd $BUILD_DIR
+cmake .. -DCMAKE_BUILD_TYPE=debug
+make
+#ctest --verbose
+cd $CALLED_FROM_DIR

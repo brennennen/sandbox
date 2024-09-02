@@ -11,7 +11,7 @@
  *  * "%b" printf/scanf format family of functions for binary values
  *  * 'true' and 'false' - new boolean keywords (true = 1, false = 0)
  *  * constexpr - compile time constant expressions
- *  * [[attributes]] - flags to be use during pre-processing/compile time.
+ *  * [[attributes]] - flags to be used during pre-processing/compile time.
  *  * char8_t and u8 constants - utf8 byte type and constant definition ex: u8'ö'
  */
 // ISO: https://open-std.org/JTC1/SC22/WG14/www/docs/n3096.pdf

@@ -1,5 +1,5 @@
 /*
-Early iteration on concurrent programming. You fork (creat a clone of) your 
+Fork is an early iteration on concurrent programming. You fork (creat a clone of) your 
 current running process to create a second clone of that process (data is cloned to). 
 There are a lot of caveats and cleanup with this model and the general advice 
 is that folks should use `thread` or other more modern solutions. It's a fun call

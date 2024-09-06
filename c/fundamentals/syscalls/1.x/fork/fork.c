@@ -1,4 +1,6 @@
 /*
+gcc ./fork.c && ./a.out
+
 Fork is an early iteration on concurrent programming. You fork (creat a clone of) your 
 current running process to create a second clone of that process (data is cloned to). 
 There are a lot of caveats and cleanup with this model and the general advice 
@@ -11,7 +13,7 @@ debugger relying on fork.
 #include <unistd.h> // getpid()
 #include <sys/wait.h> // wait()
 
-int main(void) {
+int main(int argc, char* argv[]) {
     printf("Entering fork main (pid: %d)...\n", getpid());
     // child is spawned and starts executing from this point onward.
     pid_t child_pid = fork();

@@ -63,10 +63,6 @@ void setup_sigusr1_handler() {
     new_sigint_action.sa_flags = SA_NODEFER;
     new_sigint_action.sa_handler = my_sigusr1_handler;
     sigaction(SIGUSR1, &new_sigint_action, &old_sigint_action);
-    sigset_t sigset;
-    sigemptyset(&sigset);
-    sigaddset(&sigset, SIGUSR1);
-    sigprocmask(SIG_SETMASK, &sigset, NULL);
 }
 
 void block_sigusr1(sigset_t* old_sigset) {

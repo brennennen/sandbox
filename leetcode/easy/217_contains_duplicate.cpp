@@ -1,17 +1,19 @@
-/**
- * https://leetcode.com/problems/contains-duplicate/
- * Given an integer array nums, return true if any value appears more than once in the array, otherwise return false.
- * 
- * Example 1: 
- *      input: [1, 2, 3, 3]
- *      output: true
- * 
- * Example 2:
- *      input: [1, 2, 3, 4]
- *      output: false
- */
+/*
+g++ ./217_contains_duplicate.cpp && ./a.out
 
-// g++ ./217_contains_duplicate.cpp && ./a.out
+https://leetcode.com/problems/contains-duplicate/
+
+Given an integer array nums, return true if any value appears more than once in 
+the array, otherwise return false.
+
+Example 1: 
+     input: [1, 2, 3, 3]
+     output: true
+
+Example 2:
+     input: [1, 2, 3, 4]
+     output: false
+*/
 
 #include <cstdio>
 #include <vector>

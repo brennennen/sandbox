@@ -1,4 +1,8 @@
 /*
+g++ ./374_guess_number_higher_or_lower.cpp && ./a.out
+
+https://leetcode.com/problems/guess-number-higher-or-lower/
+
 We are playing the "Guess Game". The game is as follows:
 * I Pick a number from 1 to 'n'. You have to guess which number I picked.
 * Every time you guess wrong, I will tellyou whether the number I picked is higher

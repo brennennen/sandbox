@@ -34,6 +34,10 @@
   * https://www.youtube.com/c/andreaskling
 * Computerphile - High level overview of various topics.
   * https://www.youtube.com/@Computerphile
+* The Cherno
+  * C++ dev writing a game engine, the code review series is a great resource for understanding c++ code.
+* Writing an interpreter in go
+  * Covers writing an interpreter in an approachable way. I do wish it wasn't in go though, the evaluation aspect was maybe too simplified from going this route.
 
 ## Resources I've yet to dive into but plan to
 * Game Networking Library

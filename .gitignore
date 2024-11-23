@@ -12,3 +12,7 @@ obj
 zig-cache
 .zig-cache
 zig-out
+
+# Godot
+.godot
+/android/

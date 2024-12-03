@@ -23,10 +23,10 @@ pub fn read_input(
         std.log.err("Failed to read line: {s}", .{@errorName(err)});
         return;
     }) |line| {
+        defer allocator.free(line);
         if (line.len == 0) {
             break; // skip empty lines
         }
-        defer allocator.free(line);
         const left_num: u32 = try std.fmt.parseInt(u32, line[0..5], 10);
         try left_list.append(left_num);
         const right_num: u32 = try std.fmt.parseInt(u32, line[8..13], 10);

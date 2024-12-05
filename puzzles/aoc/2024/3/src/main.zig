@@ -15,6 +15,7 @@ pub fn read_char(readable: anytype) !?u8 {
     return char;
 }
 
+// I've written proper interpretters before with proper tokenizer/lexer/parser/evaluators/etc. just doin it the sloppy way to go fast
 pub fn read_valid_mul_start(readable: anytype, char: *?u8) !bool {
     if (char.* != null and char.*.? == 'm') {
         char.* = try read_char(readable);
@@ -31,6 +32,7 @@ pub fn read_valid_mul_start(readable: anytype, char: *?u8) !bool {
     return false;
 }
 
+// I've written proper interpreters before with proper tokenizer/lexer/parser/evaluators/etc. just doin it the sloppy way to go fast
 pub fn read_do_or_dont(readable: anytype, char: *?u8) !?bool {
     if (char.* != null and char.*.? == 'd') {
         char.* = try read_char(readable);

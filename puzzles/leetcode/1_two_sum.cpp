@@ -36,6 +36,7 @@ Constraints:
     Only one valid answer exists.
 */
 
+
 #include <vector>
 #include <cassert>
 #include <cstdio>

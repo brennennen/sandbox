@@ -1,0 +1,9 @@
+
+#ifndef SHARED_COMMON_H
+#define SHARED_COMMON_H
+
+#define SPECIAL_SHARED_CONST (6.2831853071)
+
+
+
+#endif

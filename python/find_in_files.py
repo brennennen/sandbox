@@ -156,7 +156,7 @@ def main():
         print(f"token: {match.value}   file:{match.file}   start: {match.start}   end: {match.end}   line: {match.line}   column: {match.column}")
 
 
-    if __name__ == "__main__":
+if __name__ == "__main__":
     logging.basicConfig(format="%(asctime)s | %(name)s | %(levelname)s | %(message)s", stream=sys.stdout, level=logging.DEBUG)
     logging.info("Starting find in files...")
     main()

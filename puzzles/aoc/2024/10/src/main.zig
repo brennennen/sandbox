@@ -1,4 +1,4 @@
-//! AOC day 9 solutions.
+//! AOC day 10 solutions.
 //! Run with the input file as the first parameter (relative path to where you run from).
 //! Ex: `zig build run ./input`
 //! Compiled on 0.14.0-dev

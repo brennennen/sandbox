@@ -74,38 +74,6 @@ const Map = struct {
     }
 };
 
-pub fn read_input(
-    allocator: std.mem.Allocator,
-    input_path: [:0]const u8,
-    map: *std.ArrayList(std.ArrayList(u8)),
-) !void {
-    const file = std.fs.cwd().openFile(input_path, .{}) catch |err| {
-        std.log.err("Failed to open file: {s}", .{@errorName(err)});
-        return;
-    };
-    defer file.close();
-
-    const delimiter = '\n';
-    const max_size = std.math.maxInt(usize);
-
-    while (file.reader().readUntilDelimiterOrEofAlloc(allocator, delimiter, max_size) catch |err| {
-        std.log.err("Failed to read line: {s}", .{@errorName(err)});
-        return;
-    }) |line| {
-        defer allocator.free(line);
-        if (line.len == 0) {
-            break; // skip empty lines
-        }
-        var row = std.ArrayList(u8).init(allocator);
-        var i: u32 = 0;
-        while (i < line.len) {
-            try row.append(line[i] - '0');
-            i += 1;
-        }
-        try map.append(row);
-    }
-}
-
 pub fn find_trail_heads(
     map: std.ArrayList(std.ArrayList(u8)),
     heads: std.ArrayList(Coord),
@@ -126,7 +94,6 @@ pub fn find_trail_head_score(
 ) !u32 {
     var trail_summits_reached = std.AutoHashMap(Coord, u8).init(allocator);
     defer trail_summits_reached.deinit();
-    //var trail_score = 0;
 
     var stack = std.ArrayList(Coord).init(allocator);
     defer stack.deinit();

@@ -1,4 +1,8 @@
 /**
+ * gcc ./padding.c && ./a.out
+ * 
+ * Small exploration around struct padding in c. 
+ * 
  * 4 Rules to struct padding:
  * 
  * 1. Pad primitives to addresses relative to their size, that is: short to 2, int to 4,

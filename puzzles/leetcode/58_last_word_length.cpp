@@ -1,7 +1,7 @@
 /*
 g++ ./58_last_word_length.cpp && ./a.out
 
-https://leetcode.com/problems/length-of-last-word/description/
+https://leetcode.com/problems/length-of-last-word
 
 58. Length of Last Word
 
@@ -32,6 +32,7 @@ Constraints:
 #include <string>
 
 #include <cassert>
+#include <cstdio>
 
 using namespace std;
 

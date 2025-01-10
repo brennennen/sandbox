@@ -16,3 +16,6 @@ zig-out
 # Godot
 .godot
 /android/
+
+# Puzzles (AOC/Leetcode/etc.)
+.input

@@ -18,6 +18,7 @@ pub const Operator = enum {
     subtract,
     multiply,
     divide,
+    divide_floor,
     exponent,
     // Bitwise
     // bitwise_and,
@@ -44,6 +45,7 @@ pub const Operator = enum {
             .subtract => "-",
             .multiply => "*",
             .divide => "/",
+            .divide_floor => "//",
             .exponent => "^",
             // Bitwise
             // .bitwise_and => "&",
@@ -72,6 +74,7 @@ pub const Operator = enum {
             Token.Tag.dash => .subtract,
             Token.Tag.asterisk => .multiply,
             Token.Tag.slash => .divide,
+            Token.Tag.slash_slash => .divide_floor,
             Token.Tag.caret => .exponent,
             // bitwise
             // Token.Tag.?? => .bitwise_and,
@@ -126,7 +129,9 @@ pub const Program = struct {
 
     // De-initializes any memory allocated by the Program.
     pub fn deinit(self: *Program) void {
-        // TODO: deinit any statements that allocated.
+        for (self.statements.items) |*statement| {
+            statement.*.deinit();
+        }
         self.statements.deinit();
     }
 };
@@ -146,6 +151,12 @@ pub const Statement = union(enum) {
             .block => try writer.print("{}", .{self.block}),
         };
     }
+
+    pub fn deinit(self: *Statement) void {
+        switch (self.*) {
+            inline else => |*case| case.*.deinit(),
+        }
+    }
 };
 
 pub const Local = struct {
@@ -155,6 +166,10 @@ pub const Local = struct {
     pub fn format(self: Local, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
         try writer.print("local {} = {}", .{ self.name, self.value });
     }
+
+    pub fn deinit(self: *Local) void {
+        self.value.deinit();
+    }
 };
 
 pub const Return = struct {
@@ -163,6 +178,10 @@ pub const Return = struct {
     pub fn format(self: Return, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
         try writer.print("return {}", .{self.value});
     }
+
+    pub fn deinit(self: *Return) void {
+        self.value.deinit();
+    }
 };
 
 pub const ExpressionStatement = struct {
@@ -170,6 +189,10 @@ pub const ExpressionStatement = struct {
 
     pub fn format(self: Local, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
         try writer.print("{}", .{self.expression});
+    }
+
+    pub fn deinit(self: *ExpressionStatement) void {
+        self.expression.deinit();
     }
 };
 
@@ -181,6 +204,13 @@ pub const Block = struct {
             try writer.print("[{d}] {}\n", .{ i, statement });
         }
         //try writer.print("", .{});
+    }
+
+    pub fn deinit(self: *Block) void {
+        for (self.statements.items) |*statement| {
+            statement.*.deinit();
+        }
+        self.statements.deinit();
     }
 };
 
@@ -205,6 +235,13 @@ pub const Expression = union(enum) {
             .ifExpression => try writer.print("{}", .{self.ifExpression}),
         };
     }
+
+    pub fn deinit(self: *Expression) void {
+        switch (self.*) {
+            .identifier, .integer, .boolean, .stringLiteral => {},
+            inline else => |*case| case.*.deinit(),
+        }
+    }
 };
 
 pub const PrefixExpression = struct {
@@ -213,6 +250,10 @@ pub const PrefixExpression = struct {
 
     pub fn format(self: PrefixExpression, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
         try writer.print("{} {}", .{ self.operator, self.right });
+    }
+
+    pub fn deinit(self: *PrefixExpression) void {
+        self.right.deinit();
     }
 };
 
@@ -223,6 +264,11 @@ pub const InfixExpression = struct {
 
     pub fn format(self: InfixExpression, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
         try writer.print("({} {} {})", .{ self.left, self.operator, self.right });
+    }
+
+    pub fn deinit(self: *InfixExpression) void {
+        self.left.deinit();
+        self.right.deinit();
     }
 };
 
@@ -239,6 +285,15 @@ pub const IfExpression = struct {
             try writer.print(" else {}", .{self.alternative.?});
         }
         try writer.print(" end", .{});
+    }
+
+    pub fn deinit(self: *IfExpression) void {
+        self.condition.deinit();
+        self.consequence.deinit();
+        // TODO: else ifs
+        if (self.alternative != null) {
+            self.alternative.?.deinit();
+        }
     }
 };
 

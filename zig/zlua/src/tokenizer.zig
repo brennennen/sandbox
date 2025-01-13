@@ -77,6 +77,7 @@ pub const Token = struct {
         dash_dash, // --
         asterisk, // *
         slash, // /
+        slash_slash, // //
         modulo, // %
         caret, // ^
         bang, // !
@@ -179,9 +180,6 @@ pub const Tokenizer = struct {
 
     /// Reads the next token from the source text file.
     pub fn next(self: *Tokenizer) TokenizerError!Token {
-        // if (self.new_lines.items.len == 0) {
-        //     try self.new_lines.append(1);
-        // }
         try self.readWhitespace();
         var token: Token = .{
             .tag = undefined,
@@ -236,8 +234,17 @@ pub const Tokenizer = struct {
             },
             '/' => {
                 // TODO: double slash for floor division?
+                // slash_slash
                 self.index += 1;
-                token.tag = .slash;
+                switch (self.buffer[self.index]) {
+                    '/' => {
+                        token.tag = .slash_slash;
+                        self.index += 1;
+                    },
+                    else => {
+                        token.tag = .slash;
+                    },
+                }
             },
             '%' => {
                 self.index += 1;
@@ -347,7 +354,6 @@ pub const Tokenizer = struct {
                 self.index += 1;
                 while (true) {
                     if (self.index >= self.buffer.len) {
-                        // TODO: RAISE ERROR!
                         token.tag = .invalid;
                         return TokenizerError.UnfinishedString;
                     }
@@ -361,6 +367,7 @@ pub const Tokenizer = struct {
                 }
             },
             '0'...'9' => {
+                // TODO: check for invalid token "123my_thing"
                 self.index += 1;
                 while (isDigit(self.buffer[self.index])) {
                     self.index += 1;
@@ -378,6 +385,8 @@ pub const Tokenizer = struct {
                     } else {
                         token.tag = .identifier;
                     }
+                } else {
+                    // TODO: invalid token?
                 }
             },
         }
@@ -495,6 +504,7 @@ test "next individual_tokens" {
         Test{ .input = "--", .expected = .dash_dash },
         Test{ .input = "*", .expected = .asterisk },
         Test{ .input = "/", .expected = .slash },
+        Test{ .input = "//", .expected = .slash_slash },
         Test{ .input = "%", .expected = .modulo },
         Test{ .input = "^", .expected = .caret },
         Test{ .input = "!", .expected = .bang },
@@ -674,6 +684,7 @@ test "next simple_snippets" {
 test "next unfinished string" {
     const input = "print 'hello world;"; // no closing '
     var tokenizer = Tokenizer.init(std.testing.allocator, input);
+    defer tokenizer.deinit();
     _ = try tokenizer.next(); // skip "print"
     try std.testing.expectError(TokenizerError.UnfinishedString, tokenizer.next());
 }

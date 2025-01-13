@@ -51,6 +51,7 @@ const Precedence = enum(u8) {
             Token.Tag.dash => return Precedence.sum,
             Token.Tag.asterisk => return Precedence.product,
             Token.Tag.slash => return Precedence.product,
+            Token.Tag.slash_slash => return Precedence.product,
             Token.Tag.caret => return Precedence.exponentiation,
             else => return .lowest,
         }
@@ -70,6 +71,8 @@ const Precedence = enum(u8) {
             ast.Operator.subtract => return Precedence.sum,
             ast.Operator.multiply => return Precedence.product,
             ast.Operator.divide => return Precedence.product,
+            ast.Operator.divide_floor => return Precedence.product,
+            ast.Operator.exponent => return Precedence.exponentiation,
             else => return .lowest,
         }
     }
@@ -85,6 +88,7 @@ pub const Parser = struct {
     token: Token,
     next_token: Token,
     allocator: std.mem.Allocator,
+    // TODO: keep track of current expression depth and exit out if too deep?
 
     pub fn init(tokenizer: *Tokenizer, allocator: std.mem.Allocator) ParserError!Parser {
         //var errors = std.ArrayList([]const u8).init(allocator);
@@ -210,40 +214,47 @@ pub const Parser = struct {
         if (self.token.tag == .keyword_then) {
             try self.next();
         } else {
-            // TODO: throw error!
+            return ParserError.InvalidProgram; // TODO: throw better error
         }
 
         const consequence = try self.allocator.create(ast.Block);
         consequence.* = try self.parseBlockStatement();
-
-        if (self.token.tag == .keyword_end) {
-            try self.next();
-            return ast.IfExpression{
-                .condition = condition,
-                .consequence = consequence,
-                .alternative = null,
-            };
-        }
-
-        // TODO: elseif
-
-        // TODO: else
-        //const alternative = try self.allocator.create(ast.Block);
-        //alternative.* = try self.parseBlockStatement();
-
-        // end
-        return ast.IfExpression{
+        var ifExpression = ast.IfExpression{
             .condition = condition,
             .consequence = consequence,
             .alternative = null,
         };
-        //return ParserError.InvalidProgram;
+
+        if (self.token.tag == .keyword_end) {
+            try self.next();
+            return ifExpression;
+        }
+
+        // TODO: elseif
+
+        if (self.token.tag == .keyword_else) {
+            try self.next();
+            const alternative = try self.allocator.create(ast.Block);
+            alternative.* = try self.parseBlockStatement();
+            ifExpression.alternative = alternative;
+        }
+
+        // end
+        if (self.token.tag == .keyword_end) {
+            std.debug.print("ifExpression if then else end\n", .{});
+            try self.next();
+            return ifExpression;
+        }
+
+        std.debug.print("malformed ifExpression. last tok: {}, expr: {}\n", .{ self.token.tag, ifExpression });
+        return ParserError.InvalidProgram; // TODO: throw better error
     }
 
     //
     // MARK: Statement Parsing
     //
     pub fn parseStatement(self: *Parser) ParserError!ast.Statement {
+        std.debug.print("parseStatement: tok: {}\n", .{self.token.tag});
         switch (self.token.tag) {
             .keyword_local => {
                 return ast.Statement{ .local = try self.parseLocalStatement() };
@@ -303,7 +314,6 @@ pub const Parser = struct {
         if (self.token.tag == .semicolon) {
             try self.next();
         }
-
         return ast.Return{ .value = expression };
     }
 
@@ -315,20 +325,24 @@ pub const Parser = struct {
         return expression;
     }
 
+    pub fn isTokenBlockEnd(token: Token) bool {
+        if (token.tag == .keyword_end or
+            token.tag == .keyword_elseif or
+            token.tag == .keyword_else)
+        {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     pub fn parseBlockStatement(self: *Parser) ParserError!ast.Block {
         std.debug.print("parseBlockStatement: tok: {}\n", .{self.token.tag});
         var statements = std.ArrayList(ast.Statement).init(self.allocator);
 
-        while (self.token.tag != .keyword_end) {
+        while (!isTokenBlockEnd(self.token)) {
             try statements.append(try parseStatement(self));
-            //const statement = try statements.addOne();
-            //statement.* = parseStatement(self);
         }
-
-        try self.next();
-        //while ()
-        // parse until we reach "end"
-
         return ast.Block{ .statements = statements };
     }
 
@@ -441,6 +455,7 @@ pub const Parser = struct {
             .dash,
             .asterisk,
             .slash,
+            .slash_slash,
             .caret,
             // Logical
             .equal_equal,
@@ -498,7 +513,6 @@ pub const Parser = struct {
     ) ParserError!ast.Expression {
         var leftExpression = try self.parsePrefixTokenExpression(self.token.tag);
         // This while loop is the meat and potatos of the Pratt parsing and creating the AST
-        //std.debug.print("   first ast, tok: {} (prec: {d})\n", .{ self.next_token.tag, @intFromEnum(Precedence.fromTag(self.next_token.tag)) });
         while (self.next_token.tag != .semicolon and
             @intFromEnum(precedence) < @intFromEnum(Precedence.fromTag(self.next_token.tag)))
         {
@@ -702,9 +716,13 @@ test "parse single statement arithmetic expression tests" {
             .expected = ast.Statement{
                 .expression = ast.Expression{
                     .infixExpression = ast.InfixExpression{
-                        .left = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 1 } }),
+                        .left = @constCast(&ast.Expression{
+                            .integer = ast.Integer{ .value = 1 },
+                        }),
                         .operator = ast.Operator.add,
-                        .right = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 2 } }),
+                        .right = @constCast(&ast.Expression{
+                            .integer = ast.Integer{ .value = 2 },
+                        }),
                     },
                 },
             },
@@ -714,9 +732,13 @@ test "parse single statement arithmetic expression tests" {
             .expected = ast.Statement{
                 .expression = ast.Expression{
                     .infixExpression = ast.InfixExpression{
-                        .left = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 34 } }),
+                        .left = @constCast(&ast.Expression{
+                            .integer = ast.Integer{ .value = 34 },
+                        }),
                         .operator = ast.Operator.subtract,
-                        .right = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 567 } }),
+                        .right = @constCast(&ast.Expression{
+                            .integer = ast.Integer{ .value = 567 },
+                        }),
                     },
                 },
             },
@@ -726,9 +748,13 @@ test "parse single statement arithmetic expression tests" {
             .expected = ast.Statement{
                 .expression = ast.Expression{
                     .infixExpression = ast.InfixExpression{
-                        .left = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 89 } }),
+                        .left = @constCast(&ast.Expression{
+                            .integer = ast.Integer{ .value = 89 },
+                        }),
                         .operator = ast.Operator.multiply,
-                        .right = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 0 } }),
+                        .right = @constCast(&ast.Expression{
+                            .integer = ast.Integer{ .value = 0 },
+                        }),
                     },
                 },
             },
@@ -738,9 +764,29 @@ test "parse single statement arithmetic expression tests" {
             .expected = ast.Statement{
                 .expression = ast.Expression{
                     .infixExpression = ast.InfixExpression{
-                        .left = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 12 } }),
+                        .left = @constCast(&ast.Expression{
+                            .integer = ast.Integer{ .value = 12 },
+                        }),
                         .operator = ast.Operator.divide,
-                        .right = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 3 } }),
+                        .right = @constCast(&ast.Expression{
+                            .integer = ast.Integer{ .value = 3 },
+                        }),
+                    },
+                },
+            },
+        },
+        .{
+            .input = "140 // 20",
+            .expected = ast.Statement{
+                .expression = ast.Expression{
+                    .infixExpression = ast.InfixExpression{
+                        .left = @constCast(&ast.Expression{
+                            .integer = ast.Integer{ .value = 140 },
+                        }),
+                        .operator = ast.Operator.divide_floor,
+                        .right = @constCast(&ast.Expression{
+                            .integer = ast.Integer{ .value = 20 },
+                        }),
                     },
                 },
             },
@@ -752,13 +798,19 @@ test "parse single statement arithmetic expression tests" {
                     .infixExpression = ast.InfixExpression{
                         .left = @constCast(&ast.Expression{
                             .infixExpression = ast.InfixExpression{
-                                .left = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 5 } }),
+                                .left = @constCast(&ast.Expression{
+                                    .integer = ast.Integer{ .value = 5 },
+                                }),
                                 .operator = ast.Operator.add,
-                                .right = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 6 } }),
+                                .right = @constCast(&ast.Expression{
+                                    .integer = ast.Integer{ .value = 6 },
+                                }),
                             },
                         }),
                         .operator = ast.Operator.subtract,
-                        .right = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 7 } }),
+                        .right = @constCast(&ast.Expression{
+                            .integer = ast.Integer{ .value = 7 },
+                        }),
                     },
                 },
             },
@@ -771,11 +823,15 @@ test "parse single statement arithmetic expression tests" {
                         .left = @constCast(&ast.Expression{
                             .prefixExpression = ast.PrefixExpression{
                                 .operator = .subtract,
-                                .right = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 1 } }),
+                                .right = @constCast(&ast.Expression{
+                                    .integer = ast.Integer{ .value = 1 },
+                                }),
                             },
                         }),
                         .operator = ast.Operator.add,
-                        .right = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 2 } }),
+                        .right = @constCast(&ast.Expression{
+                            .integer = ast.Integer{ .value = 2 },
+                        }),
                     },
                 },
             },
@@ -901,37 +957,53 @@ test "parse single statement equality expression string tests" {
 //
 // MARK: IfExpression Tests
 //
-
 test "adhoc if test 1" {
     const input = "if 1 == 1 then return 1 end";
 
-    //var allocator = std.heap.ArenaAllocator.init(std.testing.allocator);
-    //defer allocator.deinit();
+    var allocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer allocator.deinit();
 
-    var tokenizer = Tokenizer.init(std.testing.allocator, input);
+    var tokenizer = Tokenizer.init(allocator.allocator(), input);
     defer tokenizer.deinit();
-    var parser = try Parser.init(&tokenizer, std.testing.allocator);
-    const program = try parser.parseProgram();
+    var parser = try Parser.init(&tokenizer, allocator.allocator());
+    var program = try parser.parseProgram();
+    defer program.deinit();
     std.debug.print("{}\n", .{program});
     try std.testing.expectEqual(1, program.statements.items.len);
     // TODO: check condition
     // TODO: check consequence
 }
 
-// test "adhoc if test 2" {
-//     const input = "if (1 == 1) then return 1 else return 2 end";
+test "adhoc if test 2" {
+    const input = "if 1 == 2 then return 1 else return 5 end";
 
-//     var allocator = std.heap.ArenaAllocator.init(std.testing.allocator);
-//     defer allocator.deinit();
+    var allocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer allocator.deinit();
 
-//     var tokenizer = Tokenizer.init(std.testing.allocator, input);
-//     var parser = try Parser.init(&tokenizer, allocator.allocator());
-//     const program = try parser.parseProgram();
-//     std.debug.print("{}\n", .{program});
-//     //_ = program;
-// }
+    var tokenizer = Tokenizer.init(allocator.allocator(), input);
+    defer tokenizer.deinit();
+    var parser = try Parser.init(&tokenizer, allocator.allocator());
+    var program = try parser.parseProgram();
+    defer program.deinit();
+    std.debug.print("{}\n", .{program});
+    try std.testing.expectEqual(1, program.statements.items.len);
+    // expectExpression(
+    //     @constCast(&ast.Expression{
+    //         .infixExpression = ast.InfixExpression{
+    //             .left = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 1 } }),
+    //             .operator = ast.Operator.equal,
+    //             .right = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 2 } }),
+    //         }
+    //     }), program.statments.items[0].
+
+    // TODO: check condition
+    // TODO: check consequence
+}
 
 // test "parse IfExpression tests" {
+//     var expected_allocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+//     defer expected_allocator.deinit();
+
 //     const TestCase = struct {
 //         input: [:0]const u8,
 //         statement: ast.Statement,
@@ -939,7 +1011,7 @@ test "adhoc if test 1" {
 
 //     const tests = [_]TestCase{
 //         .{
-//             .input = "if (1 == 1) then return 1 end",
+//             .input = "if (1 == 2) then return 1 end",
 //             .statement = ast.Statement{
 //                 .expression = ast.Expression{
 //                     .ifExpression = ast.IfExpression{
@@ -950,13 +1022,13 @@ test "adhoc if test 1" {
 //                                 .right = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 1 } }),
 //                             },
 //                         }),
-//                         .consequence = @constCast(&ast.Statement{
-//                             .block = ast.Block{
-//                                 .statements =
-//                             }
+//                         .consequence = @constCast(&ast.Block{
+//                             .statements = std.ArrayList(ast.Statement).init(expected_allocator.allocator()),
+//                         }),
+//                         .alternative = @constCast(&ast.Block{
+//                             .statements = std.ArrayList(ast.Statement).init(expected_allocator.allocator()),
 //                         }),
 //                     },
-//                     .value = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 42 } }),
 //                 },
 //             },
 //         },

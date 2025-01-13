@@ -40,7 +40,7 @@ pub fn start_debug_parser_repl(allocator: std.mem.Allocator, reader: anytype, wr
         writer.print("{s}", .{PROMPT}) catch unreachable;
 
         var line = (reader.readUntilDelimiterOrEof(&line_buf, '\n') catch unreachable) orelse break;
-        line = line[0 .. line.len - 1]; // remove "\r\n"
+        line = line[0..line.len]; // remove "\r\n"
         const line_null_terminated: [:0]u8 = try std.fmt.allocPrintZ(allocator, "{s}", .{line});
         var tokenizer = Tokenizer.init(allocator, line_null_terminated);
         defer tokenizer.deinit();

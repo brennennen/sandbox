@@ -118,18 +118,22 @@ pub const Node = union(enum) {
 
 // MARK: AST Root Node
 pub const Program = struct {
-    statements: std.ArrayList(Statement),
+    // TODO: have a "Chunk" instead of a statement list?
+    //statements: []Statement,
+    chunk: Chunk,
 
     pub fn format(self: Program, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
-        try writer.print("Program: (statements: {d})\n", .{self.statements.items.len});
-        for (self.statements.items, 0..) |statement, i| {
-            try writer.print("[{d}]   {}\n", .{ i, statement });
-        }
+        try writer.print("Program: \n", .{});
+        try writer.print("{}\n", .{self.chunk});
+
+        // for (self.chunk.statements.items, 0..) |statement, i| {
+        //     try writer.print("[{d}]   {}\n", .{ i, statement });
+        // }
     }
 
     // De-initializes any memory allocated by the Program.
     pub fn deinit(self: *Program) void {
-        for (self.statements.items) |*statement| {
+        for (self.chunk.statements.items) |*statement| {
             statement.*.deinit();
         }
         self.statements.deinit();
@@ -141,14 +145,14 @@ pub const Statement = union(enum) {
     local: Local,
     _return: Return,
     expression: Expression,
-    block: Block,
+    chunk: Chunk,
 
     pub fn format(self: Statement, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
         return switch (self) {
             .local => try writer.print("{}", .{self.local}),
             ._return => try writer.print("{}", .{self._return}),
             .expression => try writer.print("{}", .{self.expression}),
-            .block => try writer.print("{}", .{self.block}),
+            .chunk => try writer.print("{}", .{self.chunk}),
         };
     }
 
@@ -196,18 +200,18 @@ pub const ExpressionStatement = struct {
     }
 };
 
-pub const Block = struct {
-    statements: std.ArrayList(Statement),
+pub const Chunk = struct {
+    statements: []const Statement,
 
-    pub fn format(self: Block, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
-        for (self.statements.items, 0..) |statement, i| {
+    pub fn format(self: Chunk, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
+        for (self.statements, 0..) |statement, i| {
             try writer.print("[{d}] {}\n", .{ i, statement });
         }
         //try writer.print("", .{});
     }
 
-    pub fn deinit(self: *Block) void {
-        for (self.statements.items) |*statement| {
+    pub fn deinit(self: *Chunk) void {
+        for (self.statements) |*statement| {
             statement.*.deinit();
         }
         self.statements.deinit();
@@ -221,8 +225,9 @@ pub const Expression = union(enum) {
     infixExpression: InfixExpression,
     integer: Integer,
     boolean: Boolean,
-    stringLiteral: StringLiteral,
+    string: String,
     ifExpression: IfExpression,
+    function: Function,
 
     pub fn format(self: Expression, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
         return switch (self) {
@@ -231,14 +236,15 @@ pub const Expression = union(enum) {
             .infixExpression => try writer.print("{}", .{self.infixExpression}),
             .integer => try writer.print("{}", .{self.integer}),
             .boolean => try writer.print("{}", .{self.boolean}),
-            .stringLiteral => try writer.print("{}", .{self.stringLiteral}),
+            .string => try writer.print("{}", .{self.string}),
             .ifExpression => try writer.print("{}", .{self.ifExpression}),
+            .function => try writer.print("{}", .{self.function}),
         };
     }
 
     pub fn deinit(self: *Expression) void {
         switch (self.*) {
-            .identifier, .integer, .boolean, .stringLiteral => {},
+            .identifier, .integer, .boolean, .string => {},
             inline else => |*case| case.*.deinit(),
         }
     }
@@ -274,9 +280,10 @@ pub const InfixExpression = struct {
 
 pub const IfExpression = struct {
     condition: *Expression,
-    consequence: *Block,
+    consequence: *Chunk,
     //elseIfs: std.ArrayList(IfExpression),
-    alternative: ?*Block,
+    // TODO: should elseIfs just be if expressions in the alternative? should alternative be a statement?
+    alternative: ?*Chunk,
 
     pub fn format(self: IfExpression, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
         try writer.print("if {} then {}", .{ self.condition, self.consequence });
@@ -326,12 +333,25 @@ pub const Boolean = struct {
     }
 };
 
-pub const StringLiteral = struct {
+pub const String = struct {
     value: []const u8,
 
-    pub fn format(self: StringLiteral, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
+    pub fn format(self: String, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
         try writer.print("{s}", .{self.value});
     }
 };
+
+pub const Function = struct {
+    name: Identifier,
+    body: *Chunk,
+    //arguments: std.ArrayList(Identifier),
+    arguments: []Identifier,
+
+    // pub fn format(self: FunctionLiteral, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
+    //     try writer.print("{s}", .{self.value});
+    // }
+};
+
+pub const CallExpression = struct {};
 
 // MARK: Tests

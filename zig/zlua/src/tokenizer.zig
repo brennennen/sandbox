@@ -234,8 +234,6 @@ pub const Tokenizer = struct {
                 token.tag = .asterisk;
             },
             '/' => {
-                // TODO: double slash for floor division?
-                // slash_slash
                 self.index += 1;
                 switch (self.buffer[self.index]) {
                     '/' => {

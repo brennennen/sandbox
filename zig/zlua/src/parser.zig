@@ -120,16 +120,23 @@ pub const Parser = struct {
 
     pub fn parseProgram(self: *Parser) ParserError!ast.Program {
         std.debug.print("parseProgram: '{s}'\n", .{self.tokenizer.buffer});
-        var statements = std.ArrayList(ast.Statement).init(self.allocator);
+        var _statements = std.ArrayList(ast.Statement).init(self.allocator);
+        var sentinal: i32 = 0;
         while (self.token.tag != .eof) {
-            std.debug.print("   parsing stmt: {d}\n", .{statements.items.len});
+            sentinal += 1;
+            if (sentinal >= 10) {
+                std.debug.print("ERROR! hit sentinal max statements in program.\n", .{});
+                break;
+            }
+            std.debug.print("   parsing stmt: {d}\n", .{_statements.items.len});
             const statement = try self.parseStatement();
             //statements.append(statement) catch return ParserError.InvalidProgram;
-            try statements.append(statement);
-            try self.next();
+            try _statements.append(statement);
+            //try self.next();
         }
 
-        return ast.Program{ .statements = statements };
+        //return ast.Program{ .statements = try _statements.toOwnedSlice() };
+        return ast.Program{ .chunk = ast.Chunk{ .statements = try _statements.toOwnedSlice() } };
     }
 
     //
@@ -153,7 +160,9 @@ pub const Parser = struct {
         switch (self.token.tag) {
             .number_literal => {
                 const token = self.token.getValue(self.tokenizer.buffer);
+                // TODO: check for hex string literals "0x" and handle accordingly
                 if (std.fmt.parseInt(i64, token, 10)) |number| {
+                    //try self.next();
                     return ast.Integer{ .value = number };
                 } else |err| {
                     std.debug.print("parseInteger error: {s}\n", .{@errorName(err)});
@@ -176,17 +185,17 @@ pub const Parser = struct {
         }
     }
 
-    fn parseStringLiteral(self: *Parser) ParserError!ast.StringLiteral {
+    fn parseString(self: *Parser) ParserError!ast.String {
         if (self.token.tag == .string_literal) {
             const stringToken = self.token.getValue(self.tokenizer.buffer);
             // Strip off the quotation marks.
-            return ast.StringLiteral{ .value = stringToken[1 .. stringToken.len - 1] };
+            return ast.String{ .value = stringToken[1 .. stringToken.len - 1] };
         } else {
             return ParserError.UnexpectedToken;
         }
     }
 
-    // TODO: parse grouped expression? block expression?
+    // TODO: parse grouped expression? Chunk expression?
     ///
     ///
     ///
@@ -217,8 +226,8 @@ pub const Parser = struct {
             return ParserError.InvalidProgram; // TODO: throw better error
         }
 
-        const consequence = try self.allocator.create(ast.Block);
-        consequence.* = try self.parseBlockStatement();
+        const consequence = try self.allocator.create(ast.Chunk);
+        consequence.* = try self.parseChunkStatement();
         var ifExpression = ast.IfExpression{
             .condition = condition,
             .consequence = consequence,
@@ -234,8 +243,8 @@ pub const Parser = struct {
 
         if (self.token.tag == .keyword_else) {
             try self.next();
-            const alternative = try self.allocator.create(ast.Block);
-            alternative.* = try self.parseBlockStatement();
+            const alternative = try self.allocator.create(ast.Chunk);
+            alternative.* = try self.parseChunkStatement();
             ifExpression.alternative = alternative;
         }
 
@@ -254,7 +263,7 @@ pub const Parser = struct {
     // MARK: Statement Parsing
     //
     pub fn parseStatement(self: *Parser) ParserError!ast.Statement {
-        std.debug.print("parseStatement: tok: {}\n", .{self.token.tag});
+        std.debug.print("parseStatement: tok: {} {s}\n", .{ self.token.tag, self.token.getValue(self.tokenizer.buffer) });
         switch (self.token.tag) {
             .keyword_local => {
                 return ast.Statement{ .local = try self.parseLocalStatement() };
@@ -319,13 +328,14 @@ pub const Parser = struct {
 
     pub fn parseExpressionStatement(self: *Parser) ParserError!ast.Expression {
         const expression = try self.parseExpression(.lowest);
+        try self.next();
         if (self.token.tag == .semicolon) {
             try self.next();
         }
         return expression;
     }
 
-    pub fn isTokenBlockEnd(token: Token) bool {
+    pub fn isTokenChunkEnd(token: Token) bool {
         if (token.tag == .keyword_end or
             token.tag == .keyword_elseif or
             token.tag == .keyword_else)
@@ -336,14 +346,14 @@ pub const Parser = struct {
         }
     }
 
-    pub fn parseBlockStatement(self: *Parser) ParserError!ast.Block {
-        std.debug.print("parseBlockStatement: tok: {}\n", .{self.token.tag});
-        var statements = std.ArrayList(ast.Statement).init(self.allocator);
+    pub fn parseChunkStatement(self: *Parser) ParserError!ast.Chunk {
+        std.debug.print("parseChunkStatement: tok: {}\n", .{self.token.tag});
+        var _statements = std.ArrayList(ast.Statement).init(self.allocator);
 
-        while (!isTokenBlockEnd(self.token)) {
-            try statements.append(try parseStatement(self));
+        while (!isTokenChunkEnd(self.token)) {
+            try _statements.append(try parseStatement(self));
         }
-        return ast.Block{ .statements = statements };
+        return ast.Chunk{ .statements = try _statements.toOwnedSlice() };
     }
 
     //
@@ -406,7 +416,7 @@ pub const Parser = struct {
                 return try self.parseGroupedExpression();
             },
             .string_literal => {
-                return ast.Expression{ .stringLiteral = try self.parseStringLiteral() };
+                return ast.Expression{ .string = try self.parseString() };
             },
             .keyword_if => {
                 return ast.Expression{ .ifExpression = try self.parseIfExpression() };
@@ -548,11 +558,10 @@ pub const ParserTestError = ParserError || error{
 
 fn expectStatement(expected: *const ast.Statement, actual: *const ast.Statement) ParserTestError!void {
     switch (expected.*) {
-        //.local => |local| try expectLocalStatement(&local, actual),
         .local => |expectedLocal| {
             switch (actual.*) {
                 .local => |actualLocal| {
-                    try expectLocalStatement(&expectedLocal, &actualLocal);
+                    try expectLocal(&expectedLocal, &actualLocal);
                 },
                 else => {
                     std.debug.print("expectStatement: unknown actual statement type: {}\n", .{actual});
@@ -582,10 +591,10 @@ fn expectStatement(expected: *const ast.Statement, actual: *const ast.Statement)
                 },
             }
         },
-        .block => |expectedBlock| {
+        .chunk => |expectedChunk| {
             switch (actual.*) {
-                .block => |actualBlock| {
-                    try expectBlock(&expectedBlock, &actualBlock);
+                .chunk => |actualChunk| {
+                    try expectChunk(&expectedChunk, &actualChunk);
                 },
                 else => {
                     std.debug.print("\n", .{});
@@ -599,7 +608,7 @@ fn expectStatement(expected: *const ast.Statement, actual: *const ast.Statement)
     }
 }
 
-fn expectLocalStatement(expected: *const ast.Local, actual: *const ast.Local) ParserTestError!void {
+fn expectLocal(expected: *const ast.Local, actual: *const ast.Local) ParserTestError!void {
     try expectIdentifier(&expected.*.name, &actual.*.name);
     try expectExpression(expected.*.value, actual.*.value);
 }
@@ -634,10 +643,10 @@ fn expectExpression(expected: *const ast.Expression, actual: *const ast.Expressi
                 },
             }
         },
-        .stringLiteral => |expectedString| {
+        .string => |expectedString| {
             switch (actual.*) {
-                .stringLiteral => |actualString| {
-                    try expectStringLiteral(&expectedString, &actualString);
+                .string => |actualString| {
+                    try expectString(&expectedString, &actualString);
                 },
                 else => {
                     return error.UnexpectedExpression;
@@ -680,15 +689,26 @@ fn expectExpression(expected: *const ast.Expression, actual: *const ast.Expressi
     }
 }
 
-fn expectBlock(expected: *const ast.Block, actual: *const ast.Block) ParserTestError!void {
+fn expectChunk(expected: *const ast.Chunk, actual: *const ast.Chunk) ParserTestError!void {
     try std.testing.expectEqual(
-        expected.statements.items.len,
-        actual.statements.items.len,
+        expected.statements.len,
+        actual.statements.len,
     );
 
-    // for (expected.statements.items, actual.statements.items) |expStmt, actStmt| {
-    //     try expectStatement(expStmt, actStmt);
-    // }
+    for (expected.statements, actual.statements) |expStmt, actStmt| {
+        try expectStatement(&expStmt, &actStmt);
+    }
+}
+
+fn expectIfExpression(expected: *const ast.IfExpression, actual: *const ast.IfExpression) ParserTestError!void {
+    try expectExpression(expected.condition, actual.condition);
+    try expectChunk(expected.consequence, actual.consequence);
+
+    // TODO: expect elseifs!
+
+    if (expected.alternative != null) {
+        try expectChunk(expected.alternative.?, actual.alternative.?);
+    }
 }
 
 fn expectPrefixExpression(expected: *const ast.PrefixExpression, actual: *const ast.PrefixExpression) ParserTestError!void {
@@ -706,7 +726,7 @@ fn expectInteger(expected: *const ast.Integer, actual: *const ast.Integer) Parse
     try std.testing.expectEqual(expected.*.value, actual.*.value);
 }
 
-fn expectStringLiteral(expected: *const ast.StringLiteral, actual: *const ast.StringLiteral) ParserTestError!void {
+fn expectString(expected: *const ast.String, actual: *const ast.String) ParserTestError!void {
     try std.testing.expectEqualStrings(expected.value, actual.value);
 }
 
@@ -725,136 +745,108 @@ fn expectBoolean(expected: *const ast.Boolean, actual: *const ast.Boolean) Parse
 // this string version instead, these are the "string tests".
 
 // Test the expression pratt parsing and generation of the AST.
-test "parse single statement arithmetic expression tests" {
+test "parse arithmetic infix expression tests" {
     const TestCase = struct {
         input: [:0]const u8,
-        expected: ast.Statement,
+        expected: ast.InfixExpression,
     };
 
     const tests = [_]TestCase{
         .{
             .input = "1 + 2",
-            .expected = ast.Statement{
-                .expression = ast.Expression{
-                    .infixExpression = ast.InfixExpression{
-                        .left = @constCast(&ast.Expression{
-                            .integer = ast.Integer{ .value = 1 },
-                        }),
-                        .operator = ast.Operator.add,
-                        .right = @constCast(&ast.Expression{
-                            .integer = ast.Integer{ .value = 2 },
-                        }),
-                    },
-                },
+            .expected = ast.InfixExpression{
+                .left = @constCast(&ast.Expression{
+                    .integer = ast.Integer{ .value = 1 },
+                }),
+                .operator = ast.Operator.add,
+                .right = @constCast(&ast.Expression{
+                    .integer = ast.Integer{ .value = 2 },
+                }),
             },
         },
         .{
             .input = "34 - 567",
-            .expected = ast.Statement{
-                .expression = ast.Expression{
-                    .infixExpression = ast.InfixExpression{
-                        .left = @constCast(&ast.Expression{
-                            .integer = ast.Integer{ .value = 34 },
-                        }),
-                        .operator = ast.Operator.subtract,
-                        .right = @constCast(&ast.Expression{
-                            .integer = ast.Integer{ .value = 567 },
-                        }),
-                    },
-                },
+            .expected = ast.InfixExpression{
+                .left = @constCast(&ast.Expression{
+                    .integer = ast.Integer{ .value = 34 },
+                }),
+                .operator = ast.Operator.subtract,
+                .right = @constCast(&ast.Expression{
+                    .integer = ast.Integer{ .value = 567 },
+                }),
             },
         },
         .{
             .input = "89 * 0",
-            .expected = ast.Statement{
-                .expression = ast.Expression{
-                    .infixExpression = ast.InfixExpression{
-                        .left = @constCast(&ast.Expression{
-                            .integer = ast.Integer{ .value = 89 },
-                        }),
-                        .operator = ast.Operator.multiply,
-                        .right = @constCast(&ast.Expression{
-                            .integer = ast.Integer{ .value = 0 },
-                        }),
-                    },
-                },
+            .expected = ast.InfixExpression{
+                .left = @constCast(&ast.Expression{
+                    .integer = ast.Integer{ .value = 89 },
+                }),
+                .operator = ast.Operator.multiply,
+                .right = @constCast(&ast.Expression{
+                    .integer = ast.Integer{ .value = 0 },
+                }),
             },
         },
         .{
             .input = "12 / 3",
-            .expected = ast.Statement{
-                .expression = ast.Expression{
-                    .infixExpression = ast.InfixExpression{
-                        .left = @constCast(&ast.Expression{
-                            .integer = ast.Integer{ .value = 12 },
-                        }),
-                        .operator = ast.Operator.divide,
-                        .right = @constCast(&ast.Expression{
-                            .integer = ast.Integer{ .value = 3 },
-                        }),
-                    },
-                },
+            .expected = ast.InfixExpression{
+                .left = @constCast(&ast.Expression{
+                    .integer = ast.Integer{ .value = 12 },
+                }),
+                .operator = ast.Operator.divide,
+                .right = @constCast(&ast.Expression{
+                    .integer = ast.Integer{ .value = 3 },
+                }),
             },
         },
         .{
             .input = "140 // 20",
-            .expected = ast.Statement{
-                .expression = ast.Expression{
-                    .infixExpression = ast.InfixExpression{
-                        .left = @constCast(&ast.Expression{
-                            .integer = ast.Integer{ .value = 140 },
-                        }),
-                        .operator = ast.Operator.divide_floor,
-                        .right = @constCast(&ast.Expression{
-                            .integer = ast.Integer{ .value = 20 },
-                        }),
-                    },
-                },
+            .expected = ast.InfixExpression{
+                .left = @constCast(&ast.Expression{
+                    .integer = ast.Integer{ .value = 140 },
+                }),
+                .operator = ast.Operator.divide_floor,
+                .right = @constCast(&ast.Expression{
+                    .integer = ast.Integer{ .value = 20 },
+                }),
             },
         },
         .{
             .input = "5 + 6 - 7",
-            .expected = ast.Statement{
-                .expression = ast.Expression{
+            .expected = ast.InfixExpression{
+                .left = @constCast(&ast.Expression{
                     .infixExpression = ast.InfixExpression{
                         .left = @constCast(&ast.Expression{
-                            .infixExpression = ast.InfixExpression{
-                                .left = @constCast(&ast.Expression{
-                                    .integer = ast.Integer{ .value = 5 },
-                                }),
-                                .operator = ast.Operator.add,
-                                .right = @constCast(&ast.Expression{
-                                    .integer = ast.Integer{ .value = 6 },
-                                }),
-                            },
+                            .integer = ast.Integer{ .value = 5 },
                         }),
-                        .operator = ast.Operator.subtract,
+                        .operator = ast.Operator.add,
                         .right = @constCast(&ast.Expression{
-                            .integer = ast.Integer{ .value = 7 },
+                            .integer = ast.Integer{ .value = 6 },
                         }),
                     },
-                },
+                }),
+                .operator = ast.Operator.subtract,
+                .right = @constCast(&ast.Expression{
+                    .integer = ast.Integer{ .value = 7 },
+                }),
             },
         },
         .{
             .input = "-1 + 2",
-            .expected = ast.Statement{
-                .expression = ast.Expression{
-                    .infixExpression = ast.InfixExpression{
-                        .left = @constCast(&ast.Expression{
-                            .prefixExpression = ast.PrefixExpression{
-                                .operator = .subtract,
-                                .right = @constCast(&ast.Expression{
-                                    .integer = ast.Integer{ .value = 1 },
-                                }),
-                            },
-                        }),
-                        .operator = ast.Operator.add,
+            .expected = ast.InfixExpression{
+                .left = @constCast(&ast.Expression{
+                    .prefixExpression = ast.PrefixExpression{
+                        .operator = .subtract,
                         .right = @constCast(&ast.Expression{
-                            .integer = ast.Integer{ .value = 2 },
+                            .integer = ast.Integer{ .value = 1 },
                         }),
                     },
-                },
+                }),
+                .operator = ast.Operator.add,
+                .right = @constCast(&ast.Expression{
+                    .integer = ast.Integer{ .value = 2 },
+                }),
             },
         },
     };
@@ -869,8 +861,8 @@ test "parse single statement arithmetic expression tests" {
         var parser = try Parser.init(&tokenizer, allocator.allocator());
         const program = try parser.parseProgram();
 
-        try std.testing.expectEqual(1, program.statements.items.len);
-        try expectStatement(&testCase.expected, &program.statements.items[0]);
+        try std.testing.expectEqual(1, program.chunk.statements.len);
+        try expectInfixExpression(&testCase.expected, &program.chunk.statements[0].expression.infixExpression);
     }
 }
 
@@ -908,9 +900,9 @@ test "parse single statement arithmetic expression string tests" {
         var parser = try Parser.init(&tokenizer, allocator.allocator());
         const program = try parser.parseProgram();
 
-        try std.testing.expectEqual(1, program.statements.items.len);
+        try std.testing.expectEqual(1, program.chunk.statements.len);
         const actual = try std.fmt.allocPrint(allocator.allocator(), "{}", .{
-            program.statements.items[0],
+            program.chunk.statements[0],
         });
         try std.testing.expectEqualStrings(testCase.expected, actual);
     }
@@ -967,9 +959,9 @@ test "parse single statement equality expression string tests" {
         var parser = try Parser.init(&tokenizer, allocator.allocator());
         const program = try parser.parseProgram();
 
-        try std.testing.expectEqual(1, program.statements.items.len);
+        try std.testing.expectEqual(1, program.chunk.statements.len);
         const actual = try std.fmt.allocPrint(allocator.allocator(), "{}", .{
-            program.statements.items[0],
+            program.chunk.statements[0],
         });
         try std.testing.expectEqualStrings(testCase.expected, actual);
     }
@@ -985,7 +977,7 @@ test "parse IfExpression if else tests" {
     const TestCase = struct {
         input: [:0]const u8,
         condition: ast.Expression,
-        consequence: ast.Statement, // instead of a block, only allowing a single statement to make testing logic simpler.
+        consequence: ast.Statement, // instead of a Chunk, only allowing a single statement to make testing logic simpler.
         alternative: ?ast.Statement, // same as above.
     };
 
@@ -1025,14 +1017,14 @@ test "parse IfExpression if else tests" {
             },
             .consequence = ast.Statement{
                 ._return = ast.Return{ .value = @constCast(
-                    &ast.Expression{ .stringLiteral = ast.StringLiteral{
+                    &ast.Expression{ .string = ast.String{
                         .value = "alice",
                     } },
                 ) },
             },
             .alternative = ast.Statement{
                 ._return = ast.Return{ .value = @constCast(
-                    &ast.Expression{ .stringLiteral = ast.StringLiteral{
+                    &ast.Expression{ .string = ast.String{
                         .value = "bob",
                     } },
                 ) },
@@ -1049,26 +1041,26 @@ test "parse IfExpression if else tests" {
         var parser = try Parser.init(&tokenizer, allocator.allocator());
         const program = try parser.parseProgram();
 
-        try std.testing.expectEqual(1, program.statements.items.len);
+        try std.testing.expectEqual(1, program.chunk.statements.len);
         // Assert condition
         try expectExpression(
             &testCase.condition,
-            program.statements.items[0].expression.ifExpression.condition,
+            program.chunk.statements[0].expression.ifExpression.condition,
         );
 
         // Assert consequence "if" branch
-        // For these test cases, the consequence and alternative block only allow 1 statement to make testing easier.
-        try std.testing.expectEqual(1, program.statements.items[0].expression.ifExpression.consequence.statements.items.len);
+        // For these test cases, the consequence and alternative Chunk only allow 1 statement to make testing easier.
+        try std.testing.expectEqual(1, program.chunk.statements[0].expression.ifExpression.consequence.statements.len);
         try expectStatement(
             &testCase.consequence,
-            &program.statements.items[0].expression.ifExpression.consequence.statements.items[0],
+            &program.chunk.statements[0].expression.ifExpression.consequence.statements[0],
         );
         // Assert alternative "else" branch
         if (testCase.alternative != null) {
-            try std.testing.expectEqual(1, program.statements.items[0].expression.ifExpression.alternative.?.statements.items.len);
+            try std.testing.expectEqual(1, program.chunk.statements[0].expression.ifExpression.alternative.?.statements.len);
             try expectStatement(
                 &(testCase.alternative.?),
-                &program.statements.items[0].expression.ifExpression.alternative.?.statements.items[0],
+                &program.chunk.statements[0].expression.ifExpression.alternative.?.statements[0],
             );
         }
     }
@@ -1077,53 +1069,45 @@ test "parse IfExpression if else tests" {
 //
 // MARK: Local Statement Tests
 //
-test "parse single statement local tests" {
+test "parse local tests" {
     const TestCase = struct {
         input: [:0]const u8,
-        expected: ast.Statement,
+        expected: ast.Local,
     };
 
     const tests = [_]TestCase{
         .{
             .input = "local foo = 42",
-            .expected = ast.Statement{
-                .local = ast.Local{
-                    .name = ast.Identifier{ .value = "foo" },
-                    .value = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 42 } }),
-                },
+            .expected = ast.Local{
+                .name = ast.Identifier{ .value = "foo" },
+                .value = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 42 } }),
             },
         },
         .{
             .input = "local x = 1 + 2;",
-            .expected = ast.Statement{
-                .local = ast.Local{
-                    .name = ast.Identifier{ .value = "x" },
-                    .value = @constCast(&ast.Expression{
-                        .infixExpression = ast.InfixExpression{
-                            .left = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 1 } }),
-                            .operator = ast.Operator.add,
-                            .right = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 2 } }),
-                        },
-                    }),
-                },
+            .expected = ast.Local{
+                .name = ast.Identifier{ .value = "x" },
+                .value = @constCast(&ast.Expression{
+                    .infixExpression = ast.InfixExpression{
+                        .left = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 1 } }),
+                        .operator = ast.Operator.add,
+                        .right = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 2 } }),
+                    },
+                }),
             },
         },
         .{
             .input = "local bar = 'baz';",
-            .expected = ast.Statement{
-                .local = ast.Local{
-                    .name = ast.Identifier{ .value = "bar" },
-                    .value = @constCast(&ast.Expression{ .stringLiteral = ast.StringLiteral{ .value = "baz" } }),
-                },
+            .expected = ast.Local{
+                .name = ast.Identifier{ .value = "bar" },
+                .value = @constCast(&ast.Expression{ .string = ast.String{ .value = "baz" } }),
             },
         },
         .{
             .input = "local baz = true;",
-            .expected = ast.Statement{
-                .local = ast.Local{
-                    .name = ast.Identifier{ .value = "baz" },
-                    .value = @constCast(&ast.Expression{ .boolean = ast.Boolean{ .value = true } }),
-                },
+            .expected = ast.Local{
+                .name = ast.Identifier{ .value = "baz" },
+                .value = @constCast(&ast.Expression{ .boolean = ast.Boolean{ .value = true } }),
             },
         },
     };
@@ -1138,8 +1122,9 @@ test "parse single statement local tests" {
         var parser = try Parser.init(&tokenizer, allocator.allocator());
         const program = try parser.parseProgram();
 
-        try std.testing.expectEqual(1, program.statements.items.len);
-        try expectStatement(&testCase.expected, &program.statements.items[0]);
+        try std.testing.expectEqual(1, program.chunk.statements.len);
+        //try expectStatement(&testCase.expected, &program.statements[0]);
+        try expectLocal(&testCase.expected, &program.chunk.statements[0].local);
     }
 }
 
@@ -1173,7 +1158,7 @@ test "parse single statement return tests" {
             .input = "return 'alice';",
             .expected = ast.Statement{
                 ._return = ast.Return{
-                    .value = @constCast(&ast.Expression{ .stringLiteral = ast.StringLiteral{ .value = "alice" } }),
+                    .value = @constCast(&ast.Expression{ .string = ast.String{ .value = "alice" } }),
                 },
             },
         },
@@ -1188,7 +1173,145 @@ test "parse single statement return tests" {
         var parser = try Parser.init(&tokenizer, allocator.allocator());
         const program = try parser.parseProgram();
 
-        try std.testing.expectEqual(1, program.statements.items.len);
-        try expectStatement(&testCase.expected, &program.statements.items[0]);
+        try std.testing.expectEqual(1, program.chunk.statements.len);
+        try expectStatement(&testCase.expected, &program.chunk.statements[0]);
+    }
+}
+
+test "parse chunk tests" {
+    const TestCase = struct {
+        input: [:0]const u8,
+        expected: ast.Chunk,
+    };
+
+    const tests = [_]TestCase{
+        .{
+            .input = "local x = 5;local y = 10;return x + y;",
+            .expected = ast.Chunk{
+                .statements = &.{
+                    ast.Statement{
+                        .local = ast.Local{
+                            .name = ast.Identifier{ .value = "x" },
+                            .value = @constCast(&ast.Expression{
+                                .integer = ast.Integer{ .value = 5 },
+                            }),
+                        },
+                    },
+                    ast.Statement{
+                        .local = ast.Local{
+                            .name = ast.Identifier{ .value = "y" },
+                            .value = @constCast(&ast.Expression{
+                                .integer = ast.Integer{ .value = 10 },
+                            }),
+                        },
+                    },
+                    ast.Statement{
+                        ._return = ast.Return{
+                            .value = @constCast(&ast.Expression{
+                                .infixExpression = ast.InfixExpression{
+                                    .left = @constCast(&ast.Expression{ .identifier = ast.Identifier{ .value = "x" } }),
+                                    .operator = ast.Operator.add,
+                                    .right = @constCast(&ast.Expression{ .identifier = ast.Identifier{ .value = "y" } }),
+                                },
+                            }),
+                        },
+                    },
+                },
+            },
+        },
+    };
+
+    for (tests) |testCase| {
+        var allocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+        defer allocator.deinit();
+
+        var tokenizer = Tokenizer.init(std.testing.allocator, testCase.input);
+        defer tokenizer.deinit();
+        var parser = try Parser.init(&tokenizer, allocator.allocator());
+        const program = try parser.parseProgram();
+
+        try std.testing.expectEqual(testCase.expected.statements.len, program.chunk.statements.len);
+        try expectChunk(&testCase.expected, &program.chunk);
+    }
+}
+
+// function foo() return 5 end
+// function bar(x, y) return x + y end
+//
+// MARK: Function Literal Tests
+//
+test "parse function tests" {
+    var expected_allocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer expected_allocator.deinit();
+
+    const TestCase = struct {
+        input: [:0]const u8,
+        name: ast.Identifier,
+        arguments: []const ast.Identifier,
+        body: []const ast.Statement,
+    };
+
+    const tests = [_]TestCase{
+        .{
+            .input = "function foo() return 5 end",
+            .name = ast.Identifier{ .value = "foo" },
+            .arguments = &.{
+                ast.Identifier{ .value = "foo" },
+                ast.Identifier{ .value = "foo" },
+            },
+            .body = &.{
+                ast.Statement{
+                    ._return = ast.Return{
+                        .value = @constCast(&ast.Expression{
+                            .integer = ast.Integer{ .value = 5 },
+                        }),
+                    },
+                },
+            },
+            // .body = [1]ast.Statement{
+            //     ast.Statement{
+            //         ._return = ast.Return{
+            //             .value = @constCast(&ast.Expression{
+            //                 .integer = ast.Integer{ .value = 5 },
+            //             }),
+            //         },
+            //     },
+            // },
+        },
+    };
+
+    for (tests) |testCase| {
+        _ = testCase;
+        // var allocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+        // defer allocator.deinit();
+
+        // var tokenizer = Tokenizer.init(std.testing.allocator, testCase.input);
+        // defer tokenizer.deinit();
+        // var parser = try Parser.init(&tokenizer, allocator.allocator());
+        // const program = try parser.parseProgram();
+
+        // try std.testing.expectEqual(1, program.statements.items.len);
+
+        // Assert condition
+        // try expectExpression(
+        //     &testCase.condition,
+        //     program.statements.items[0].expression.ifExpression.condition,
+        // );
+
+        // // Assert consequence "if" branch
+        // // For these test cases, the consequence and alternative Chunk only allow 1 statement to make testing easier.
+        // try std.testing.expectEqual(1, program.statements.items[0].expression.ifExpression.consequence.statements.items.len);
+        // try expectStatement(
+        //     &testCase.consequence,
+        //     &program.statements.items[0].expression.ifExpression.consequence.statements.items[0],
+        // );
+        // // Assert alternative "else" branch
+        // if (testCase.alternative != null) {
+        //     try std.testing.expectEqual(1, program.statements.items[0].expression.ifExpression.alternative.?.statements.items.len);
+        //     try expectStatement(
+        //         &(testCase.alternative.?),
+        //         &program.statements.items[0].expression.ifExpression.alternative.?.statements.items[0],
+        //     );
+        // }
     }
 }

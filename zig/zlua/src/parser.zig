@@ -536,8 +536,9 @@ pub const Parser = struct {
 };
 
 //
-// MARK: TESTS
+// MARK: Test Helpers
 //
+// All code below this point is only used for testing.
 
 pub const ParserTestError = ParserError || error{
     TestExpectedEqual,
@@ -623,6 +624,16 @@ fn expectExpression(expected: *const ast.Expression, actual: *const ast.Expressi
                 },
             }
         },
+        .identifier => |expectedIdentifier| {
+            switch (actual.*) {
+                .identifier => |actualIdentifier| {
+                    try expectIdentifier(&expectedIdentifier, &actualIdentifier);
+                },
+                else => {
+                    return error.UnexpectedExpression;
+                },
+            }
+        },
         .stringLiteral => |expectedString| {
             switch (actual.*) {
                 .stringLiteral => |actualString| {
@@ -702,6 +713,16 @@ fn expectStringLiteral(expected: *const ast.StringLiteral, actual: *const ast.St
 fn expectBoolean(expected: *const ast.Boolean, actual: *const ast.Boolean) ParserTestError!void {
     try std.testing.expectEqual(expected.value, actual.value);
 }
+
+//
+// MARK: Tests Start
+//
+
+// Their are 2 main types of tests below: "ast tests" and "string tests".
+// "ast tests" are tests that parse a string and assert that the parsed program matches
+// the provided ast. It is very inconvient to have to write out ASTs though, so for some
+// more adhoc/lazy tests, I "stringify" the ast and check the parsed programs ast against
+// this string version instead, these are the "string tests".
 
 // Test the expression pratt parsing and generation of the AST.
 test "parse single statement arithmetic expression tests" {
@@ -957,99 +978,101 @@ test "parse single statement equality expression string tests" {
 //
 // MARK: IfExpression Tests
 //
-test "adhoc if test 1" {
-    const input = "if 1 == 1 then return 1 end";
+test "parse IfExpression if else tests" {
+    var expected_allocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer expected_allocator.deinit();
 
-    var allocator = std.heap.ArenaAllocator.init(std.testing.allocator);
-    defer allocator.deinit();
+    const TestCase = struct {
+        input: [:0]const u8,
+        condition: ast.Expression,
+        consequence: ast.Statement, // instead of a block, only allowing a single statement to make testing logic simpler.
+        alternative: ?ast.Statement, // same as above.
+    };
 
-    var tokenizer = Tokenizer.init(allocator.allocator(), input);
-    defer tokenizer.deinit();
-    var parser = try Parser.init(&tokenizer, allocator.allocator());
-    var program = try parser.parseProgram();
-    defer program.deinit();
-    std.debug.print("{}\n", .{program});
-    try std.testing.expectEqual(1, program.statements.items.len);
-    // TODO: check condition
-    // TODO: check consequence
+    const tests = [_]TestCase{
+        .{
+            .input = "if (1 == 2) then return 3 end",
+            .condition = ast.Expression{
+                .infixExpression = ast.InfixExpression{
+                    .left = @constCast(&ast.Expression{
+                        .integer = ast.Integer{ .value = 1 },
+                    }),
+                    .operator = ast.Operator.equal,
+                    .right = @constCast(&ast.Expression{
+                        .integer = ast.Integer{ .value = 2 },
+                    }),
+                },
+            },
+            .consequence = ast.Statement{ ._return = ast.Return{
+                .value = @constCast(&ast.Expression{
+                    .integer = ast.Integer{ .value = 3 },
+                }),
+            } },
+            .alternative = null,
+        },
+        .{
+            .input = "if (x == true) then return 'alice' else return 'bob' end",
+            .condition = ast.Expression{
+                .infixExpression = ast.InfixExpression{
+                    .left = @constCast(&ast.Expression{
+                        .identifier = ast.Identifier{ .value = "x" },
+                    }),
+                    .operator = ast.Operator.equal,
+                    .right = @constCast(&ast.Expression{
+                        .boolean = ast.Boolean{ .value = true },
+                    }),
+                },
+            },
+            .consequence = ast.Statement{
+                ._return = ast.Return{ .value = @constCast(
+                    &ast.Expression{ .stringLiteral = ast.StringLiteral{
+                        .value = "alice",
+                    } },
+                ) },
+            },
+            .alternative = ast.Statement{
+                ._return = ast.Return{ .value = @constCast(
+                    &ast.Expression{ .stringLiteral = ast.StringLiteral{
+                        .value = "bob",
+                    } },
+                ) },
+            },
+        },
+    };
+
+    for (tests) |testCase| {
+        var allocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+        defer allocator.deinit();
+
+        var tokenizer = Tokenizer.init(std.testing.allocator, testCase.input);
+        defer tokenizer.deinit();
+        var parser = try Parser.init(&tokenizer, allocator.allocator());
+        const program = try parser.parseProgram();
+
+        try std.testing.expectEqual(1, program.statements.items.len);
+        // Assert condition
+        try expectExpression(
+            &testCase.condition,
+            program.statements.items[0].expression.ifExpression.condition,
+        );
+
+        // Assert consequence "if" branch
+        // For these test cases, the consequence and alternative block only allow 1 statement to make testing easier.
+        try std.testing.expectEqual(1, program.statements.items[0].expression.ifExpression.consequence.statements.items.len);
+        try expectStatement(
+            &testCase.consequence,
+            &program.statements.items[0].expression.ifExpression.consequence.statements.items[0],
+        );
+        // Assert alternative "else" branch
+        if (testCase.alternative != null) {
+            try std.testing.expectEqual(1, program.statements.items[0].expression.ifExpression.alternative.?.statements.items.len);
+            try expectStatement(
+                &(testCase.alternative.?),
+                &program.statements.items[0].expression.ifExpression.alternative.?.statements.items[0],
+            );
+        }
+    }
 }
-
-test "adhoc if test 2" {
-    const input = "if 1 == 2 then return 1 else return 5 end";
-
-    var allocator = std.heap.ArenaAllocator.init(std.testing.allocator);
-    defer allocator.deinit();
-
-    var tokenizer = Tokenizer.init(allocator.allocator(), input);
-    defer tokenizer.deinit();
-    var parser = try Parser.init(&tokenizer, allocator.allocator());
-    var program = try parser.parseProgram();
-    defer program.deinit();
-    std.debug.print("{}\n", .{program});
-    try std.testing.expectEqual(1, program.statements.items.len);
-    // expectExpression(
-    //     @constCast(&ast.Expression{
-    //         .infixExpression = ast.InfixExpression{
-    //             .left = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 1 } }),
-    //             .operator = ast.Operator.equal,
-    //             .right = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 2 } }),
-    //         }
-    //     }), program.statments.items[0].
-
-    // TODO: check condition
-    // TODO: check consequence
-}
-
-// test "parse IfExpression tests" {
-//     var expected_allocator = std.heap.ArenaAllocator.init(std.testing.allocator);
-//     defer expected_allocator.deinit();
-
-//     const TestCase = struct {
-//         input: [:0]const u8,
-//         statement: ast.Statement,
-//     };
-
-//     const tests = [_]TestCase{
-//         .{
-//             .input = "if (1 == 2) then return 1 end",
-//             .statement = ast.Statement{
-//                 .expression = ast.Expression{
-//                     .ifExpression = ast.IfExpression{
-//                         .condition = @constCast(&ast.Expression{
-//                             .infixExpression = ast.InfixExpression{
-//                                 .left = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 1 } }),
-//                                 .operator = ast.Operator.equal,
-//                                 .right = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 1 } }),
-//                             },
-//                         }),
-//                         .consequence = @constCast(&ast.Block{
-//                             .statements = std.ArrayList(ast.Statement).init(expected_allocator.allocator()),
-//                         }),
-//                         .alternative = @constCast(&ast.Block{
-//                             .statements = std.ArrayList(ast.Statement).init(expected_allocator.allocator()),
-//                         }),
-//                     },
-//                 },
-//             },
-//         },
-//     };
-
-//     for (tests) |testCase| {
-//         var allocator = std.heap.ArenaAllocator.init(std.testing.allocator);
-//         defer allocator.deinit();
-
-//         var tokenizer = Tokenizer.init(std.testing.allocator, testCase.input);
-//         defer tokenizer.deinit();
-//         var parser = try Parser.init(&tokenizer, allocator.allocator());
-//         const program = try parser.parseProgram();
-
-//         try std.testing.expectEqual(1, program.statements.items.len);
-//         const actual = try std.fmt.allocPrint(allocator.allocator(), "{}", .{
-//             program.statements.items[0],
-//         });
-//         try std.testing.expectEqualStrings(testCase.expected, actual);
-//     }
-// }
 
 //
 // MARK: Local Statement Tests
@@ -1057,13 +1080,13 @@ test "adhoc if test 2" {
 test "parse single statement local tests" {
     const TestCase = struct {
         input: [:0]const u8,
-        statement: ast.Statement,
+        expected: ast.Statement,
     };
 
     const tests = [_]TestCase{
         .{
             .input = "local foo = 42",
-            .statement = ast.Statement{
+            .expected = ast.Statement{
                 .local = ast.Local{
                     .name = ast.Identifier{ .value = "foo" },
                     .value = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 42 } }),
@@ -1072,7 +1095,7 @@ test "parse single statement local tests" {
         },
         .{
             .input = "local x = 1 + 2;",
-            .statement = ast.Statement{
+            .expected = ast.Statement{
                 .local = ast.Local{
                     .name = ast.Identifier{ .value = "x" },
                     .value = @constCast(&ast.Expression{
@@ -1087,7 +1110,7 @@ test "parse single statement local tests" {
         },
         .{
             .input = "local bar = 'baz';",
-            .statement = ast.Statement{
+            .expected = ast.Statement{
                 .local = ast.Local{
                     .name = ast.Identifier{ .value = "bar" },
                     .value = @constCast(&ast.Expression{ .stringLiteral = ast.StringLiteral{ .value = "baz" } }),
@@ -1096,7 +1119,7 @@ test "parse single statement local tests" {
         },
         .{
             .input = "local baz = true;",
-            .statement = ast.Statement{
+            .expected = ast.Statement{
                 .local = ast.Local{
                     .name = ast.Identifier{ .value = "baz" },
                     .value = @constCast(&ast.Expression{ .boolean = ast.Boolean{ .value = true } }),
@@ -1116,7 +1139,7 @@ test "parse single statement local tests" {
         const program = try parser.parseProgram();
 
         try std.testing.expectEqual(1, program.statements.items.len);
-        try expectStatement(&testCase.statement, &program.statements.items[0]);
+        try expectStatement(&testCase.expected, &program.statements.items[0]);
     }
 }
 
@@ -1135,6 +1158,22 @@ test "parse single statement return tests" {
             .expected = ast.Statement{
                 ._return = ast.Return{
                     .value = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 42 } }),
+                },
+            },
+        },
+        .{
+            .input = "return false;",
+            .expected = ast.Statement{
+                ._return = ast.Return{
+                    .value = @constCast(&ast.Expression{ .boolean = ast.Boolean{ .value = false } }),
+                },
+            },
+        },
+        .{
+            .input = "return 'alice';",
+            .expected = ast.Statement{
+                ._return = ast.Return{
+                    .value = @constCast(&ast.Expression{ .stringLiteral = ast.StringLiteral{ .value = "alice" } }),
                 },
             },
         },

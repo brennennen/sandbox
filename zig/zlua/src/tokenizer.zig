@@ -137,6 +137,7 @@ pub const Token = struct {
 
 pub const TokenizerError = error{OutOfMemory} || error{
     UnfinishedString,
+    MalformedNumberLiteral,
 };
 
 // Creates tokens from raw source code file character data.
@@ -367,11 +368,31 @@ pub const Tokenizer = struct {
                 }
             },
             '0'...'9' => {
-                // TODO: check for invalid token "123my_thing"
-                self.index += 1;
-                while (isDigit(self.buffer[self.index])) {
+                if (self.buffer[self.index] == '0' and
+                    self.index + 1 < self.buffer.len and
+                    self.buffer[self.index + 1] == 'x')
+                {
+                    // TODO: parse hexadecimal
+                    self.index += 2;
+                    while (isHexDigit(self.buffer[self.index])) {
+                        self.index += 1;
+                    }
+                } else { // normal integer "12314"
+                    // TODO: check for invalid token "123my_thing"
+                    // TODO: check for floats/decimals 12.34
                     self.index += 1;
+                    while (isDigit(self.buffer[self.index])) {
+                        self.index += 1;
+                    }
                 }
+                // We need a space or close paren, or something between numbers and other tokens.
+                // ex: handle `1234my_number` which should be `1234 my_number`.
+                if (isStartingIdentifierCharacter(self.buffer[self.index])) {
+                    return TokenizerError.MalformedNumberLiteral;
+                }
+                // if (self.index < self.buffer.len - 1 and !isWhitespace(self.buffer[self.index])) {
+                //     return TokenizerError.MalformedNumberLiteral;
+                // }
                 token.tag = .number_literal;
             },
             else => {
@@ -395,28 +416,32 @@ pub const Tokenizer = struct {
     }
 
     /// Reads any whitespace characters, keeping track of newlines for diagnostic purposes.
-    ///
-    /// https://www.lua.org/manual/5.4/manual.html#3.1
-    /// Lua recognizes whitespace as "standard ASCII whitespace characters":
-    /// * space (' ')
-    /// * form feed ('\f')
-    /// * new line ('\n')
-    /// * carriage return ('\r')
-    /// * horizontal tab ('\t')
-    /// * vertical tab ('\v')
     pub fn readWhitespace(self: *Tokenizer) TokenizerError!void {
-        while (self.buffer[self.index] == ' ' or
-            self.buffer[self.index] == '\t' or
-            self.buffer[self.index] == '\r' or
-            self.buffer[self.index] == '\n' or
-            self.buffer[self.index] == 0x0b or // '\v' - not in zig, low priority bug? - https://github.com/ziglang/zig/issues/21564)
-            self.buffer[self.index] == 0x0c) // '\f' - not in zig, same as above
+        while (isWhitespace(self.buffer[self.index]) == true) // '\f' - not in zig, same as above
         {
             if (self.buffer[self.index] == '\n') {
                 try self.new_lines.append(self.index);
             }
             self.index += 1;
         }
+    }
+
+    /// Determines if the character is a "white space" character or not (most white
+    /// space is not significant, but you need at least 1 between most tokens).
+    ///
+    /// https://www.lua.org/manual/5.4/manual.html#3.1
+    /// Lua recognizes whitespace as "standard ASCII whitespace characters":
+    /// * space (' ')
+    /// * form feed ('\f') - (0x0c) not in zig, low priority bug - https://github.com/ziglang/zig/issues/21564)
+    /// * new line ('\n')
+    /// * carriage return ('\r')
+    /// * horizontal tab ('\t')
+    /// * vertical tab ('\v') - (0x0b) not in zig, same as above
+    pub fn isWhitespace(char: u8) bool {
+        return switch (char) {
+            ' ', '\t', '\r', '\n', 0x0b, 0x0c => true,
+            else => false,
+        };
     }
 
     /// Determines if the character is valid to start a new name/identifier.
@@ -450,6 +475,20 @@ pub const Tokenizer = struct {
         };
     }
 
+    pub fn isHexDigit(char: u8) bool {
+        return switch (char) {
+            '0'...'9', 'a'...'f', 'A'...'F' => true,
+            else => false,
+        };
+    }
+
+    pub fn isValidPostDigitCharacter(char: u8) bool {
+        return switch (char) {
+            'a'...'z', 'A'...'Z' => false,
+            else => true,
+        };
+    }
+
     /// Retrieves the line number the token is on.
     pub fn getLine(self: Tokenizer, token: Token) usize {
         if (self.new_lines.items.len == 0) {
@@ -475,10 +514,11 @@ pub const Tokenizer = struct {
     }
 };
 
-//
-// MARK: TESTS
-//
+// All code below this point is only used for testing.
 
+//
+// MARK: Test Helpers
+//
 fn expectToken(expected: Token, actual: Token) !void {
     try std.testing.expectEqual(@intFromEnum(expected), @intFromEnum(actual));
     if (@intFromEnum(expected) == @intFromEnum(actual)) {
@@ -492,40 +532,43 @@ fn expectToken(expected: Token, actual: Token) !void {
     }
 }
 
+//
+// MARK: TESTS
+//
 test "next individual_tokens" {
-    const Test = struct { input: [:0]const u8, expected: Token.Tag };
-    const tests = [_]Test{
+    const TestCase = struct { input: [:0]const u8, expected: Token.Tag };
+    const tests = [_]TestCase{
         //Test{ .input = "", .expected = .invalid }, TODO: what should this return? error?
-        Test{ .input = "\x04", .expected = .eof },
-        Test{ .input = "=", .expected = .equal },
-        Test{ .input = "==", .expected = .equal_equal },
-        Test{ .input = "+", .expected = .plus },
-        Test{ .input = "-", .expected = .dash },
-        Test{ .input = "--", .expected = .dash_dash },
-        Test{ .input = "*", .expected = .asterisk },
-        Test{ .input = "/", .expected = .slash },
-        Test{ .input = "//", .expected = .slash_slash },
-        Test{ .input = "%", .expected = .modulo },
-        Test{ .input = "^", .expected = .caret },
-        Test{ .input = "!", .expected = .bang },
-        Test{ .input = "!=", .expected = .not_equal },
-        Test{ .input = "~=", .expected = .not_equal },
-        Test{ .input = "<", .expected = .angle_bracket_left },
-        Test{ .input = ">", .expected = .angle_bracket_right },
-        Test{ .input = "<=", .expected = .angle_bracket_left_equal },
-        Test{ .input = ">=", .expected = .angle_bracket_right_equal },
-        Test{ .input = "(", .expected = .parentheses_left },
-        Test{ .input = ")", .expected = .parentheses_right },
-        Test{ .input = "[", .expected = .square_bracket_left },
-        Test{ .input = "]", .expected = .square_bracket_right },
-        Test{ .input = "{", .expected = .curly_bracket_left },
-        Test{ .input = "}", .expected = .curly_bracket_right },
-        Test{ .input = ".", .expected = .dot },
-        Test{ .input = "..", .expected = .dot_dot },
-        Test{ .input = "...", .expected = .dot_dot_dot },
-        Test{ .input = ",", .expected = .comma },
-        Test{ .input = ":", .expected = .colon },
-        Test{ .input = ";", .expected = .semicolon },
+        .{ .input = "\x04", .expected = .eof },
+        .{ .input = "=", .expected = .equal },
+        .{ .input = "==", .expected = .equal_equal },
+        .{ .input = "+", .expected = .plus },
+        .{ .input = "-", .expected = .dash },
+        .{ .input = "--", .expected = .dash_dash },
+        .{ .input = "*", .expected = .asterisk },
+        .{ .input = "/", .expected = .slash },
+        .{ .input = "//", .expected = .slash_slash },
+        .{ .input = "%", .expected = .modulo },
+        .{ .input = "^", .expected = .caret },
+        .{ .input = "!", .expected = .bang },
+        .{ .input = "!=", .expected = .not_equal },
+        .{ .input = "~=", .expected = .not_equal },
+        .{ .input = "<", .expected = .angle_bracket_left },
+        .{ .input = ">", .expected = .angle_bracket_right },
+        .{ .input = "<=", .expected = .angle_bracket_left_equal },
+        .{ .input = ">=", .expected = .angle_bracket_right_equal },
+        .{ .input = "(", .expected = .parentheses_left },
+        .{ .input = ")", .expected = .parentheses_right },
+        .{ .input = "[", .expected = .square_bracket_left },
+        .{ .input = "]", .expected = .square_bracket_right },
+        .{ .input = "{", .expected = .curly_bracket_left },
+        .{ .input = "}", .expected = .curly_bracket_right },
+        .{ .input = ".", .expected = .dot },
+        .{ .input = "..", .expected = .dot_dot },
+        .{ .input = "...", .expected = .dot_dot_dot },
+        .{ .input = ",", .expected = .comma },
+        .{ .input = ":", .expected = .colon },
+        .{ .input = ";", .expected = .semicolon },
     };
 
     for (tests) |testCase| {
@@ -538,29 +581,29 @@ test "next individual_tokens" {
 }
 
 test "next keywords" {
-    const Test = struct { input: [:0]const u8, expected: Token.Tag };
-    const tests = [_]Test{
-        Test{ .input = "and", .expected = .keyword_and },
-        Test{ .input = "break", .expected = .keyword_break },
-        Test{ .input = "do", .expected = .keyword_do },
-        Test{ .input = "else", .expected = .keyword_else },
-        Test{ .input = "elseif", .expected = .keyword_elseif },
-        Test{ .input = "end", .expected = .keyword_end },
-        Test{ .input = "false", .expected = .keyword_false },
-        Test{ .input = "for", .expected = .keyword_for },
-        Test{ .input = "function", .expected = .keyword_function },
-        Test{ .input = "if", .expected = .keyword_if },
-        Test{ .input = "in", .expected = .keyword_in },
-        Test{ .input = "local", .expected = .keyword_local },
-        Test{ .input = "nil", .expected = .keyword_nil },
-        Test{ .input = "not", .expected = .keyword_not },
-        Test{ .input = "or", .expected = .keyword_or },
-        Test{ .input = "repeat", .expected = .keyword_repeat },
-        Test{ .input = "return", .expected = .keyword_return },
-        Test{ .input = "then", .expected = .keyword_then },
-        Test{ .input = "true", .expected = .keyword_true },
-        Test{ .input = "until", .expected = .keyword_until },
-        Test{ .input = "while", .expected = .keyword_while },
+    const TestCase = struct { input: [:0]const u8, expected: Token.Tag };
+    const tests = [_]TestCase{
+        .{ .input = "and", .expected = .keyword_and },
+        .{ .input = "break", .expected = .keyword_break },
+        .{ .input = "do", .expected = .keyword_do },
+        .{ .input = "else", .expected = .keyword_else },
+        .{ .input = "elseif", .expected = .keyword_elseif },
+        .{ .input = "end", .expected = .keyword_end },
+        .{ .input = "false", .expected = .keyword_false },
+        .{ .input = "for", .expected = .keyword_for },
+        .{ .input = "function", .expected = .keyword_function },
+        .{ .input = "if", .expected = .keyword_if },
+        .{ .input = "in", .expected = .keyword_in },
+        .{ .input = "local", .expected = .keyword_local },
+        .{ .input = "nil", .expected = .keyword_nil },
+        .{ .input = "not", .expected = .keyword_not },
+        .{ .input = "or", .expected = .keyword_or },
+        .{ .input = "repeat", .expected = .keyword_repeat },
+        .{ .input = "return", .expected = .keyword_return },
+        .{ .input = "then", .expected = .keyword_then },
+        .{ .input = "true", .expected = .keyword_true },
+        .{ .input = "until", .expected = .keyword_until },
+        .{ .input = "while", .expected = .keyword_while },
     };
 
     for (tests) |t| {
@@ -615,60 +658,60 @@ test "next simple_snippets" {
         line: usize,
     };
     const expected_tokens = [_]TestCase{
-        TestCase{ .tag = .identifier, .text = "print", .line = 1 },
-        TestCase{ .tag = .string_literal, .text = "\"Hello World\"", .line = 1 },
+        .{ .tag = .identifier, .text = "print", .line = 1 },
+        .{ .tag = .string_literal, .text = "\"Hello World\"", .line = 1 },
 
-        TestCase{ .tag = .identifier, .text = "print", .line = 3 },
-        TestCase{ .tag = .parentheses_left, .text = "(", .line = 3 },
-        TestCase{ .tag = .number_literal, .text = "8", .line = 3 },
-        TestCase{ .tag = .asterisk, .text = "*", .line = 3 },
-        TestCase{ .tag = .number_literal, .text = "9", .line = 3 },
-        TestCase{ .tag = .parentheses_right, .text = ")", .line = 3 },
+        .{ .tag = .identifier, .text = "print", .line = 3 },
+        .{ .tag = .parentheses_left, .text = "(", .line = 3 },
+        .{ .tag = .number_literal, .text = "8", .line = 3 },
+        .{ .tag = .asterisk, .text = "*", .line = 3 },
+        .{ .tag = .number_literal, .text = "9", .line = 3 },
+        .{ .tag = .parentheses_right, .text = ")", .line = 3 },
 
-        TestCase{ .tag = .keyword_function, .text = "function", .line = 5 },
-        TestCase{ .tag = .identifier, .text = "add", .line = 5 },
-        TestCase{ .tag = .parentheses_left, .text = "(", .line = 5 },
-        TestCase{ .tag = .identifier, .text = "a", .line = 5 },
-        TestCase{ .tag = .parentheses_right, .text = ")", .line = 5 },
+        .{ .tag = .keyword_function, .text = "function", .line = 5 },
+        .{ .tag = .identifier, .text = "add", .line = 5 },
+        .{ .tag = .parentheses_left, .text = "(", .line = 5 },
+        .{ .tag = .identifier, .text = "a", .line = 5 },
+        .{ .tag = .parentheses_right, .text = ")", .line = 5 },
 
-        TestCase{ .tag = .keyword_local, .text = "local", .line = 6 },
-        TestCase{ .tag = .identifier, .text = "sum", .line = 6 },
-        TestCase{ .tag = .equal, .text = "=", .line = 6 },
-        TestCase{ .tag = .number_literal, .text = "0", .line = 6 },
+        .{ .tag = .keyword_local, .text = "local", .line = 6 },
+        .{ .tag = .identifier, .text = "sum", .line = 6 },
+        .{ .tag = .equal, .text = "=", .line = 6 },
+        .{ .tag = .number_literal, .text = "0", .line = 6 },
 
-        TestCase{ .tag = .keyword_for, .text = "for", .line = 7 },
-        TestCase{ .tag = .identifier, .text = "i", .line = 7 },
-        TestCase{ .tag = .comma, .text = ",", .line = 7 },
-        TestCase{ .tag = .identifier, .text = "v", .line = 7 },
-        TestCase{ .tag = .keyword_in, .text = "in", .line = 7 },
-        TestCase{ .tag = .identifier, .text = "ipairs", .line = 7 },
-        TestCase{ .tag = .parentheses_left, .text = "(", .line = 7 },
-        TestCase{ .tag = .identifier, .text = "a", .line = 7 },
-        TestCase{ .tag = .parentheses_right, .text = ")", .line = 7 },
-        TestCase{ .tag = .keyword_do, .text = "do", .line = 7 },
+        .{ .tag = .keyword_for, .text = "for", .line = 7 },
+        .{ .tag = .identifier, .text = "i", .line = 7 },
+        .{ .tag = .comma, .text = ",", .line = 7 },
+        .{ .tag = .identifier, .text = "v", .line = 7 },
+        .{ .tag = .keyword_in, .text = "in", .line = 7 },
+        .{ .tag = .identifier, .text = "ipairs", .line = 7 },
+        .{ .tag = .parentheses_left, .text = "(", .line = 7 },
+        .{ .tag = .identifier, .text = "a", .line = 7 },
+        .{ .tag = .parentheses_right, .text = ")", .line = 7 },
+        .{ .tag = .keyword_do, .text = "do", .line = 7 },
 
-        TestCase{ .tag = .identifier, .text = "sum", .line = 8 },
-        TestCase{ .tag = .equal, .text = "=", .line = 8 },
-        TestCase{ .tag = .identifier, .text = "sum", .line = 8 },
-        TestCase{ .tag = .plus, .text = "+", .line = 8 },
-        TestCase{ .tag = .identifier, .text = "v", .line = 8 },
+        .{ .tag = .identifier, .text = "sum", .line = 8 },
+        .{ .tag = .equal, .text = "=", .line = 8 },
+        .{ .tag = .identifier, .text = "sum", .line = 8 },
+        .{ .tag = .plus, .text = "+", .line = 8 },
+        .{ .tag = .identifier, .text = "v", .line = 8 },
 
-        TestCase{ .tag = .keyword_end, .text = "end", .line = 9 },
-        TestCase{ .tag = .keyword_return, .text = "return", .line = 10 },
-        TestCase{ .tag = .identifier, .text = "sum", .line = 10 },
-        TestCase{ .tag = .keyword_end, .text = "end", .line = 11 },
+        .{ .tag = .keyword_end, .text = "end", .line = 9 },
+        .{ .tag = .keyword_return, .text = "return", .line = 10 },
+        .{ .tag = .identifier, .text = "sum", .line = 10 },
+        .{ .tag = .keyword_end, .text = "end", .line = 11 },
 
-        TestCase{ .tag = .keyword_if, .text = "if", .line = 13 },
-        TestCase{ .tag = .identifier, .text = "x", .line = 13 },
-        TestCase{ .tag = .equal_equal, .text = "==", .line = 13 },
-        TestCase{ .tag = .number_literal, .text = "1", .line = 13 },
-        TestCase{ .tag = .keyword_then, .text = "then", .line = 13 },
-        TestCase{ .tag = .identifier, .text = "print", .line = 14 },
-        TestCase{ .tag = .parentheses_left, .text = "(", .line = 14 },
-        TestCase{ .tag = .keyword_true, .text = "true", .line = 14 },
-        TestCase{ .tag = .parentheses_right, .text = ")", .line = 14 },
-        TestCase{ .tag = .semicolon, .text = ";", .line = 14 },
-        TestCase{ .tag = .keyword_end, .text = "end", .line = 15 },
+        .{ .tag = .keyword_if, .text = "if", .line = 13 },
+        .{ .tag = .identifier, .text = "x", .line = 13 },
+        .{ .tag = .equal_equal, .text = "==", .line = 13 },
+        .{ .tag = .number_literal, .text = "1", .line = 13 },
+        .{ .tag = .keyword_then, .text = "then", .line = 13 },
+        .{ .tag = .identifier, .text = "print", .line = 14 },
+        .{ .tag = .parentheses_left, .text = "(", .line = 14 },
+        .{ .tag = .keyword_true, .text = "true", .line = 14 },
+        .{ .tag = .parentheses_right, .text = ")", .line = 14 },
+        .{ .tag = .semicolon, .text = ";", .line = 14 },
+        .{ .tag = .keyword_end, .text = "end", .line = 15 },
     };
 
     var tokenizer = Tokenizer.init(std.testing.allocator, input);
@@ -687,4 +730,32 @@ test "next unfinished string" {
     defer tokenizer.deinit();
     _ = try tokenizer.next(); // skip "print"
     try std.testing.expectError(TokenizerError.UnfinishedString, tokenizer.next());
+}
+
+test "next number_literals" {
+    const TestCase = struct { input: [:0]const u8, expected: Token.Tag };
+    const tests = [_]TestCase{
+        .{ .input = "0", .expected = .number_literal },
+        .{ .input = "1", .expected = .number_literal },
+        .{ .input = "01", .expected = .number_literal },
+        .{ .input = "10", .expected = .number_literal },
+        .{ .input = "1234", .expected = .number_literal },
+        .{ .input = "0x1234", .expected = .number_literal },
+    };
+
+    for (tests) |t| {
+        var tokenizer = Tokenizer.init(std.testing.allocator, t.input);
+        defer tokenizer.deinit();
+        const token = try tokenizer.next();
+        try std.testing.expectEqual(t.expected, token.tag);
+        try std.testing.expectEqual(0, token.location.start);
+        try std.testing.expectEqual(t.input.len, token.location.end);
+    }
+}
+
+test "next malformed number literal" {
+    const input = "1234my_identifier"; // no space between number literal token and identifier token
+    var tokenizer = Tokenizer.init(std.testing.allocator, input);
+    defer tokenizer.deinit();
+    try std.testing.expectError(TokenizerError.MalformedNumberLiteral, tokenizer.next());
 }

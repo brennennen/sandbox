@@ -535,11 +535,11 @@ pub const Parser = struct {
 
 };
 
+// All code below this point is only used for testing.
+
 //
 // MARK: Test Helpers
 //
-// All code below this point is only used for testing.
-
 pub const ParserTestError = ParserError || error{
     TestExpectedEqual,
     UnexpectedStatement,
@@ -715,7 +715,7 @@ fn expectBoolean(expected: *const ast.Boolean, actual: *const ast.Boolean) Parse
 }
 
 //
-// MARK: Tests Start
+// MARK: Tests
 //
 
 // Their are 2 main types of tests below: "ast tests" and "string tests".

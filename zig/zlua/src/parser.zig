@@ -120,7 +120,7 @@ pub const Parser = struct {
 
     pub fn parseProgram(self: *Parser) ParserError!ast.Program {
         std.debug.print("parseProgram: '{s}'\n", .{self.tokenizer.buffer});
-        var _statements = std.ArrayList(ast.Statement).init(self.allocator);
+        var statements = std.ArrayList(ast.Statement).init(self.allocator);
         var sentinal: i32 = 0;
         while (self.token.tag != .eof) {
             sentinal += 1;
@@ -128,15 +128,12 @@ pub const Parser = struct {
                 std.debug.print("ERROR! hit sentinal max statements in program.\n", .{});
                 break;
             }
-            std.debug.print("   parsing stmt: {d}\n", .{_statements.items.len});
+            std.debug.print("   parsing stmt: {d}\n", .{statements.items.len});
             const statement = try self.parseStatement();
-            //statements.append(statement) catch return ParserError.InvalidProgram;
-            try _statements.append(statement);
-            //try self.next();
+            try statements.append(statement);
         }
 
-        //return ast.Program{ .statements = try _statements.toOwnedSlice() };
-        return ast.Program{ .chunk = ast.Chunk{ .statements = try _statements.toOwnedSlice() } };
+        return ast.Program{ .entry = ast.Chunk{ .statements = try statements.toOwnedSlice() } };
     }
 
     //
@@ -272,7 +269,7 @@ pub const Parser = struct {
                 return ast.Statement{ ._return = try self.parseReturnStatement() };
             },
             else => {
-                return ast.Statement{ .expression = try self.parseExpressionStatement() };
+                return ast.Statement{ .expressionStatement = try self.parseExpressionStatement() };
             },
         }
         std.debug.print("parseStatement: Failed! token: {?s} not supported yet.\n", .{self.token.getValue(self.tokenizer.buffer)});
@@ -326,13 +323,14 @@ pub const Parser = struct {
         return ast.Return{ .value = expression };
     }
 
-    pub fn parseExpressionStatement(self: *Parser) ParserError!ast.Expression {
-        const expression = try self.parseExpression(.lowest);
+    pub fn parseExpressionStatement(self: *Parser) ParserError!ast.ExpressionStatement {
+        const expression = try self.allocator.create(ast.Expression);
+        expression.* = try self.parseExpression(.lowest);
         try self.next();
         if (self.token.tag == .semicolon) {
             try self.next();
         }
-        return expression;
+        return ast.ExpressionStatement{ .expression = expression };
     }
 
     pub fn isTokenChunkEnd(token: Token) bool {
@@ -580,10 +578,10 @@ fn expectStatement(expected: *const ast.Statement, actual: *const ast.Statement)
                 },
             }
         },
-        .expression => |expectedExpression| {
+        .expressionStatement => |expectedExpressionStatement| {
             switch (actual.*) {
-                .expression => |actualExpression| {
-                    try expectExpression(&expectedExpression, &actualExpression);
+                .expressionStatement => |actualExpressionStatement| {
+                    try expectExpressionStatement(&expectedExpressionStatement, &actualExpressionStatement);
                 },
                 else => {
                     std.debug.print("expectStatement: unknown actual statement type: {}\n", .{actual});
@@ -615,6 +613,10 @@ fn expectLocal(expected: *const ast.Local, actual: *const ast.Local) ParserTestE
 
 fn expectReturnStatement(expected: *const ast.Return, actual: *const ast.Return) ParserTestError!void {
     try expectExpression(expected.*.value, actual.*.value);
+}
+
+fn expectExpressionStatement(expected: *const ast.ExpressionStatement, actual: *const ast.ExpressionStatement) ParserTestError!void {
+    try expectExpression(expected.expression, actual.expression);
 }
 
 fn expectIdentifier(expected: *const ast.Identifier, actual: *const ast.Identifier) ParserTestError!void {
@@ -861,8 +863,8 @@ test "parse arithmetic infix expression tests" {
         var parser = try Parser.init(&tokenizer, allocator.allocator());
         const program = try parser.parseProgram();
 
-        try std.testing.expectEqual(1, program.chunk.statements.len);
-        try expectInfixExpression(&testCase.expected, &program.chunk.statements[0].expression.infixExpression);
+        try std.testing.expectEqual(1, program.entry.statements.len);
+        try expectInfixExpression(&testCase.expected, &program.entry.statements[0].expressionStatement.expression.infixExpression);
     }
 }
 
@@ -900,9 +902,9 @@ test "parse single statement arithmetic expression string tests" {
         var parser = try Parser.init(&tokenizer, allocator.allocator());
         const program = try parser.parseProgram();
 
-        try std.testing.expectEqual(1, program.chunk.statements.len);
+        try std.testing.expectEqual(1, program.entry.statements.len);
         const actual = try std.fmt.allocPrint(allocator.allocator(), "{}", .{
-            program.chunk.statements[0],
+            program.entry.statements[0],
         });
         try std.testing.expectEqualStrings(testCase.expected, actual);
     }
@@ -959,9 +961,9 @@ test "parse single statement equality expression string tests" {
         var parser = try Parser.init(&tokenizer, allocator.allocator());
         const program = try parser.parseProgram();
 
-        try std.testing.expectEqual(1, program.chunk.statements.len);
+        try std.testing.expectEqual(1, program.entry.statements.len);
         const actual = try std.fmt.allocPrint(allocator.allocator(), "{}", .{
-            program.chunk.statements[0],
+            program.entry.statements[0],
         });
         try std.testing.expectEqualStrings(testCase.expected, actual);
     }
@@ -1041,28 +1043,63 @@ test "parse IfExpression if else tests" {
         var parser = try Parser.init(&tokenizer, allocator.allocator());
         const program = try parser.parseProgram();
 
-        try std.testing.expectEqual(1, program.chunk.statements.len);
+        try std.testing.expectEqual(1, program.entry.statements.len);
         // Assert condition
         try expectExpression(
             &testCase.condition,
-            program.chunk.statements[0].expression.ifExpression.condition,
+            program.entry.statements[0].expressionStatement.expression.ifExpression.condition,
         );
 
         // Assert consequence "if" branch
         // For these test cases, the consequence and alternative Chunk only allow 1 statement to make testing easier.
-        try std.testing.expectEqual(1, program.chunk.statements[0].expression.ifExpression.consequence.statements.len);
-        try expectStatement(
-            &testCase.consequence,
-            &program.chunk.statements[0].expression.ifExpression.consequence.statements[0],
-        );
+        try std.testing.expectEqual(1, program.entry.statements[0].expressionStatement.expression.ifExpression.consequence.statements.len);
+        try expectStatement(&testCase.consequence, &program.entry.statements[0].expressionStatement.expression.ifExpression.consequence.statements[0]);
         // Assert alternative "else" branch
         if (testCase.alternative != null) {
-            try std.testing.expectEqual(1, program.chunk.statements[0].expression.ifExpression.alternative.?.statements.len);
+            try std.testing.expectEqual(1, program.entry.statements[0].expressionStatement.expression.ifExpression.alternative.?.statements.len);
             try expectStatement(
                 &(testCase.alternative.?),
-                &program.chunk.statements[0].expression.ifExpression.alternative.?.statements[0],
+                &program.entry.statements[0].expressionStatement.expression.ifExpression.alternative.?.statements[0],
             );
         }
+    }
+}
+
+// TODO: this was added to make testing the evaluator early on easier.
+// lua doesn't actually allow expression statements, so remove all this and make sure an error
+// is raised instead down the line.
+//
+// MARK: ExpressionStatement Tests
+//
+test "parse expression statement tests" {
+    const TestCase = struct {
+        input: [:0]const u8,
+        expected: ast.ExpressionStatement,
+    };
+
+    const tests = [_]TestCase{
+        .{
+            .input = "true",
+            .expected = ast.ExpressionStatement{
+                .expression = @constCast(&ast.Expression{
+                    .boolean = ast.Boolean{ .value = true },
+                }),
+            },
+        },
+    };
+
+    for (tests) |testCase| {
+        var allocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+        defer allocator.deinit();
+
+        var tokenizer = Tokenizer.init(std.testing.allocator, testCase.input);
+        defer tokenizer.deinit();
+
+        var parser = try Parser.init(&tokenizer, allocator.allocator());
+        const program = try parser.parseProgram();
+
+        try std.testing.expectEqual(1, program.entry.statements.len);
+        try expectExpressionStatement(&testCase.expected, &program.entry.statements[0].expressionStatement);
     }
 }
 
@@ -1122,9 +1159,8 @@ test "parse local tests" {
         var parser = try Parser.init(&tokenizer, allocator.allocator());
         const program = try parser.parseProgram();
 
-        try std.testing.expectEqual(1, program.chunk.statements.len);
-        //try expectStatement(&testCase.expected, &program.statements[0]);
-        try expectLocal(&testCase.expected, &program.chunk.statements[0].local);
+        try std.testing.expectEqual(1, program.entry.statements.len);
+        try expectLocal(&testCase.expected, &program.entry.statements[0].local);
     }
 }
 
@@ -1134,32 +1170,26 @@ test "parse local tests" {
 test "parse single statement return tests" {
     const TestCase = struct {
         input: [:0]const u8,
-        expected: ast.Statement,
+        expected: ast.Return,
     };
 
     const tests = [_]TestCase{
         .{
             .input = "return 42;",
-            .expected = ast.Statement{
-                ._return = ast.Return{
-                    .value = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 42 } }),
-                },
+            .expected = ast.Return{
+                .value = @constCast(&ast.Expression{ .integer = ast.Integer{ .value = 42 } }),
             },
         },
         .{
             .input = "return false;",
-            .expected = ast.Statement{
-                ._return = ast.Return{
-                    .value = @constCast(&ast.Expression{ .boolean = ast.Boolean{ .value = false } }),
-                },
+            .expected = ast.Return{
+                .value = @constCast(&ast.Expression{ .boolean = ast.Boolean{ .value = false } }),
             },
         },
         .{
             .input = "return 'alice';",
-            .expected = ast.Statement{
-                ._return = ast.Return{
-                    .value = @constCast(&ast.Expression{ .string = ast.String{ .value = "alice" } }),
-                },
+            .expected = ast.Return{
+                .value = @constCast(&ast.Expression{ .string = ast.String{ .value = "alice" } }),
             },
         },
     };
@@ -1173,8 +1203,8 @@ test "parse single statement return tests" {
         var parser = try Parser.init(&tokenizer, allocator.allocator());
         const program = try parser.parseProgram();
 
-        try std.testing.expectEqual(1, program.chunk.statements.len);
-        try expectStatement(&testCase.expected, &program.chunk.statements[0]);
+        try std.testing.expectEqual(1, program.entry.statements.len);
+        try expectReturnStatement(&testCase.expected, &program.entry.statements[0]._return);
     }
 }
 
@@ -1230,8 +1260,8 @@ test "parse chunk tests" {
         var parser = try Parser.init(&tokenizer, allocator.allocator());
         const program = try parser.parseProgram();
 
-        try std.testing.expectEqual(testCase.expected.statements.len, program.chunk.statements.len);
-        try expectChunk(&testCase.expected, &program.chunk);
+        try std.testing.expectEqual(testCase.expected.statements.len, program.entry.statements.len);
+        try expectChunk(&testCase.expected, &program.entry);
     }
 }
 

@@ -104,8 +104,11 @@ pub const Operator = enum {
 
 // MARK: AST Node
 pub const Node = union(enum) {
-    program: *Program,
-    statement: *Statement,
+    //program: *Program,
+    statement: *const Statement,
+    boolean: Boolean,
+    //expression: *Expression,
+    //statement: *const Statement,
     //expression: *Expression,
 
     pub fn format(self: Node, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
@@ -118,13 +121,11 @@ pub const Node = union(enum) {
 
 // MARK: AST Root Node
 pub const Program = struct {
-    // TODO: have a "Chunk" instead of a statement list?
-    //statements: []Statement,
-    chunk: Chunk,
+    entry: Chunk,
 
     pub fn format(self: Program, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
         try writer.print("Program: \n", .{});
-        try writer.print("{}\n", .{self.chunk});
+        try writer.print("{}\n", .{self.entry});
 
         // for (self.chunk.statements.items, 0..) |statement, i| {
         //     try writer.print("[{d}]   {}\n", .{ i, statement });
@@ -144,15 +145,16 @@ pub const Program = struct {
 pub const Statement = union(enum) {
     local: Local,
     _return: Return,
-    expression: Expression,
+    expressionStatement: ExpressionStatement,
     chunk: Chunk,
 
     pub fn format(self: Statement, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
         return switch (self) {
-            .local => try writer.print("{}", .{self.local}),
-            ._return => try writer.print("{}", .{self._return}),
-            .expression => try writer.print("{}", .{self.expression}),
-            .chunk => try writer.print("{}", .{self.chunk}),
+            inline else => |*case| try writer.print("{}", .{case.*}),
+            // .local => try writer.print("{}", .{self.local}),
+            // ._return => try writer.print("{}", .{self._return}),
+            // .expressionStatement => try writer.print("{}", .{self.expressionStatement}),
+            // .chunk => try writer.print("{}", .{self.chunk}),
         };
     }
 
@@ -188,10 +190,13 @@ pub const Return = struct {
     }
 };
 
+// TODO: this was added to make testing the evaluator early on easier.
+// lua doesn't actually allow expression statements, so remove all this and make sure an error
+// is raised instead down the line.
 pub const ExpressionStatement = struct {
     expression: *Expression,
 
-    pub fn format(self: Local, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
+    pub fn format(self: ExpressionStatement, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
         try writer.print("{}", .{self.expression});
     }
 

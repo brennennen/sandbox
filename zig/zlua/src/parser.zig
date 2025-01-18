@@ -559,7 +559,7 @@ fn expectStatement(expected: *const ast.Statement, actual: *const ast.Statement)
         .local => |expectedLocal| {
             switch (actual.*) {
                 .local => |actualLocal| {
-                    try expectLocal(&expectedLocal, &actualLocal);
+                    try expectLocal(expectedLocal, actualLocal);
                 },
                 else => {
                     std.debug.print("expectStatement: unknown actual statement type: {}\n", .{actual});
@@ -570,7 +570,7 @@ fn expectStatement(expected: *const ast.Statement, actual: *const ast.Statement)
         ._return => |expectedReturn| {
             switch (actual.*) {
                 ._return => |actualReturn| {
-                    try expectReturnStatement(&expectedReturn, &actualReturn);
+                    try expectReturnStatement(expectedReturn, actualReturn);
                 },
                 else => {
                     std.debug.print("expectStatement: unknown actual statement type: {}\n", .{actual});
@@ -581,7 +581,7 @@ fn expectStatement(expected: *const ast.Statement, actual: *const ast.Statement)
         .expressionStatement => |expectedExpressionStatement| {
             switch (actual.*) {
                 .expressionStatement => |actualExpressionStatement| {
-                    try expectExpressionStatement(&expectedExpressionStatement, &actualExpressionStatement);
+                    try expectExpressionStatement(expectedExpressionStatement, actualExpressionStatement);
                 },
                 else => {
                     std.debug.print("expectStatement: unknown actual statement type: {}\n", .{actual});
@@ -592,7 +592,7 @@ fn expectStatement(expected: *const ast.Statement, actual: *const ast.Statement)
         .chunk => |expectedChunk| {
             switch (actual.*) {
                 .chunk => |actualChunk| {
-                    try expectChunk(&expectedChunk, &actualChunk);
+                    try expectChunk(expectedChunk, actualChunk);
                 },
                 else => {
                     std.debug.print("\n", .{});
@@ -606,29 +606,29 @@ fn expectStatement(expected: *const ast.Statement, actual: *const ast.Statement)
     }
 }
 
-fn expectLocal(expected: *const ast.Local, actual: *const ast.Local) ParserTestError!void {
-    try expectIdentifier(&expected.*.name, &actual.*.name);
-    try expectExpression(expected.*.value, actual.*.value);
+fn expectLocal(expected: ast.Local, actual: ast.Local) ParserTestError!void {
+    try expectIdentifier(expected.name, actual.name);
+    try expectExpression(expected.value.*, actual.value.*);
 }
 
-fn expectReturnStatement(expected: *const ast.Return, actual: *const ast.Return) ParserTestError!void {
-    try expectExpression(expected.*.value, actual.*.value);
+fn expectReturnStatement(expected: ast.Return, actual: ast.Return) ParserTestError!void {
+    try expectExpression(expected.value.*, actual.value.*);
 }
 
-fn expectExpressionStatement(expected: *const ast.ExpressionStatement, actual: *const ast.ExpressionStatement) ParserTestError!void {
-    try expectExpression(expected.expression, actual.expression);
+fn expectExpressionStatement(expected: ast.ExpressionStatement, actual: ast.ExpressionStatement) ParserTestError!void {
+    try expectExpression(expected.expression.*, actual.expression.*);
 }
 
-fn expectIdentifier(expected: *const ast.Identifier, actual: *const ast.Identifier) ParserTestError!void {
-    try std.testing.expectEqualStrings(expected.*.value, actual.*.value);
+fn expectIdentifier(expected: ast.Identifier, actual: ast.Identifier) ParserTestError!void {
+    try std.testing.expectEqualStrings(expected.value, actual.value);
 }
 
-fn expectExpression(expected: *const ast.Expression, actual: *const ast.Expression) ParserTestError!void {
-    switch (expected.*) {
+fn expectExpression(expected: ast.Expression, actual: ast.Expression) ParserTestError!void {
+    switch (expected) {
         .integer => |expectedInteger| {
-            switch (actual.*) {
+            switch (actual) {
                 .integer => |actualInteger| {
-                    try expectInteger(&expectedInteger, &actualInteger);
+                    try expectInteger(expectedInteger, actualInteger);
                 },
                 else => {
                     return error.UnexpectedExpression;
@@ -636,9 +636,9 @@ fn expectExpression(expected: *const ast.Expression, actual: *const ast.Expressi
             }
         },
         .identifier => |expectedIdentifier| {
-            switch (actual.*) {
+            switch (actual) {
                 .identifier => |actualIdentifier| {
-                    try expectIdentifier(&expectedIdentifier, &actualIdentifier);
+                    try expectIdentifier(expectedIdentifier, actualIdentifier);
                 },
                 else => {
                     return error.UnexpectedExpression;
@@ -646,9 +646,9 @@ fn expectExpression(expected: *const ast.Expression, actual: *const ast.Expressi
             }
         },
         .string => |expectedString| {
-            switch (actual.*) {
+            switch (actual) {
                 .string => |actualString| {
-                    try expectString(&expectedString, &actualString);
+                    try expectString(expectedString, actualString);
                 },
                 else => {
                     return error.UnexpectedExpression;
@@ -656,9 +656,9 @@ fn expectExpression(expected: *const ast.Expression, actual: *const ast.Expressi
             }
         },
         .boolean => |expectedBool| {
-            switch (actual.*) {
+            switch (actual) {
                 .boolean => |actualBool| {
-                    try expectBoolean(&expectedBool, &actualBool);
+                    try expectBoolean(expectedBool, actualBool);
                 },
                 else => {
                     return error.UnexpectedExpression;
@@ -666,9 +666,9 @@ fn expectExpression(expected: *const ast.Expression, actual: *const ast.Expressi
             }
         },
         .prefixExpression => |expectedPrefixExpression| {
-            switch (actual.*) {
+            switch (actual) {
                 .prefixExpression => |actualPrefixExpression| {
-                    try expectPrefixExpression(&expectedPrefixExpression, &actualPrefixExpression);
+                    try expectPrefixExpression(expectedPrefixExpression, actualPrefixExpression);
                 },
                 else => {
                     return error.UnexpectedExpression;
@@ -676,9 +676,9 @@ fn expectExpression(expected: *const ast.Expression, actual: *const ast.Expressi
             }
         },
         .infixExpression => |expectedInfixExpression| {
-            switch (actual.*) {
+            switch (actual) {
                 .infixExpression => |actualInfixExpression| {
-                    try expectInfixExpression(&expectedInfixExpression, &actualInfixExpression);
+                    try expectInfixExpression(expectedInfixExpression, actualInfixExpression);
                 },
                 else => {
                     return error.UnexpectedExpression;
@@ -691,7 +691,7 @@ fn expectExpression(expected: *const ast.Expression, actual: *const ast.Expressi
     }
 }
 
-fn expectChunk(expected: *const ast.Chunk, actual: *const ast.Chunk) ParserTestError!void {
+fn expectChunk(expected: ast.Chunk, actual: ast.Chunk) ParserTestError!void {
     try std.testing.expectEqual(
         expected.statements.len,
         actual.statements.len,
@@ -702,37 +702,37 @@ fn expectChunk(expected: *const ast.Chunk, actual: *const ast.Chunk) ParserTestE
     }
 }
 
-fn expectIfExpression(expected: *const ast.IfExpression, actual: *const ast.IfExpression) ParserTestError!void {
+fn expectIfExpression(expected: ast.IfExpression, actual: ast.IfExpression) ParserTestError!void {
     try expectExpression(expected.condition, actual.condition);
-    try expectChunk(expected.consequence, actual.consequence);
+    try expectChunk(expected.consequence.*, actual.consequence.*);
 
     // TODO: expect elseifs!
 
     if (expected.alternative != null) {
-        try expectChunk(expected.alternative.?, actual.alternative.?);
+        try expectChunk(expected.alternative.?.*, actual.alternative.?.*);
     }
 }
 
-fn expectPrefixExpression(expected: *const ast.PrefixExpression, actual: *const ast.PrefixExpression) ParserTestError!void {
+fn expectPrefixExpression(expected: ast.PrefixExpression, actual: ast.PrefixExpression) ParserTestError!void {
     try std.testing.expectEqual(expected.operator, actual.operator);
-    try expectExpression(expected.right, actual.right);
+    try expectExpression(expected.right.*, actual.right.*);
 }
 
-fn expectInfixExpression(expected: *const ast.InfixExpression, actual: *const ast.InfixExpression) ParserTestError!void {
-    try expectExpression(expected.left, actual.left);
+fn expectInfixExpression(expected: ast.InfixExpression, actual: ast.InfixExpression) ParserTestError!void {
+    try expectExpression(expected.left.*, actual.left.*);
     try std.testing.expectEqual(expected.operator, actual.operator);
-    try expectExpression(expected.right, actual.right);
+    try expectExpression(expected.right.*, actual.right.*);
 }
 
-fn expectInteger(expected: *const ast.Integer, actual: *const ast.Integer) ParserTestError!void {
-    try std.testing.expectEqual(expected.*.value, actual.*.value);
+fn expectInteger(expected: ast.Integer, actual: ast.Integer) ParserTestError!void {
+    try std.testing.expectEqual(expected.value, actual.value);
 }
 
-fn expectString(expected: *const ast.String, actual: *const ast.String) ParserTestError!void {
+fn expectString(expected: ast.String, actual: ast.String) ParserTestError!void {
     try std.testing.expectEqualStrings(expected.value, actual.value);
 }
 
-fn expectBoolean(expected: *const ast.Boolean, actual: *const ast.Boolean) ParserTestError!void {
+fn expectBoolean(expected: ast.Boolean, actual: ast.Boolean) ParserTestError!void {
     try std.testing.expectEqual(expected.value, actual.value);
 }
 
@@ -864,7 +864,7 @@ test "parse arithmetic infix expression tests" {
         const program = try parser.parseProgram();
 
         try std.testing.expectEqual(1, program.entry.statements.len);
-        try expectInfixExpression(&testCase.expected, &program.entry.statements[0].expressionStatement.expression.infixExpression);
+        try expectInfixExpression(testCase.expected, program.entry.statements[0].expressionStatement.expression.infixExpression);
     }
 }
 
@@ -1046,8 +1046,8 @@ test "parse IfExpression if else tests" {
         try std.testing.expectEqual(1, program.entry.statements.len);
         // Assert condition
         try expectExpression(
-            &testCase.condition,
-            program.entry.statements[0].expressionStatement.expression.ifExpression.condition,
+            testCase.condition,
+            program.entry.statements[0].expressionStatement.expression.ifExpression.condition.*,
         );
 
         // Assert consequence "if" branch
@@ -1099,7 +1099,7 @@ test "parse expression statement tests" {
         const program = try parser.parseProgram();
 
         try std.testing.expectEqual(1, program.entry.statements.len);
-        try expectExpressionStatement(&testCase.expected, &program.entry.statements[0].expressionStatement);
+        try expectExpressionStatement(testCase.expected, program.entry.statements[0].expressionStatement);
     }
 }
 
@@ -1160,7 +1160,7 @@ test "parse local tests" {
         const program = try parser.parseProgram();
 
         try std.testing.expectEqual(1, program.entry.statements.len);
-        try expectLocal(&testCase.expected, &program.entry.statements[0].local);
+        try expectLocal(testCase.expected, program.entry.statements[0].local);
     }
 }
 
@@ -1204,7 +1204,7 @@ test "parse single statement return tests" {
         const program = try parser.parseProgram();
 
         try std.testing.expectEqual(1, program.entry.statements.len);
-        try expectReturnStatement(&testCase.expected, &program.entry.statements[0]._return);
+        try expectReturnStatement(testCase.expected, program.entry.statements[0]._return);
     }
 }
 
@@ -1261,7 +1261,7 @@ test "parse chunk tests" {
         const program = try parser.parseProgram();
 
         try std.testing.expectEqual(testCase.expected.statements.len, program.entry.statements.len);
-        try expectChunk(&testCase.expected, &program.entry);
+        try expectChunk(testCase.expected, program.entry);
     }
 }
 

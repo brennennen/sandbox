@@ -2,6 +2,7 @@ const std = @import("std");
 
 pub const Object = union(enum) {
     nil: Nil,
+    //number: Number,
     integer: Integer,
     boolean: Boolean,
     _return: Return,
@@ -20,7 +21,15 @@ pub const Nil = struct {
 };
 
 // need to represent floats and i64s
-pub const Number = struct { value: i64 };
+// maybe do a union?
+pub const Number = union(enum) {
+    integer: i64,
+    float: f64,
+
+    pub fn format(self: Number, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
+        try writer.print("{}", .{self.value});
+    }
+};
 
 pub const Boolean = struct {
     value: bool,

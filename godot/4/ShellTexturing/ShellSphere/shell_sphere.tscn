@@ -1,43 +1,52 @@
 [gd_scene load_steps=6 format=3 uid="uid://dkvrohfyjtdj3"]
 
-[ext_resource type="Script" path="res://ShellSphere/shell_sphere.gd" id="1_rwcbo"]
-[ext_resource type="Shader" path="res://ShellSphere/shell_sphere_shader.gdshader" id="2_lkgoe"]
+[ext_resource type="Script" uid="uid://b83nmftr6jsfy" path="res://ShellSphere/shell_sphere.gd" id="1_rwcbo"]
+[ext_resource type="Shader" uid="uid://dc74r8m7uwqdi" path="res://ShellSphere/shell_sphere_shader.gdshader" id="2_lkgoe"]
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_vx1sw"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_xfsh1"]
 render_priority = 0
 shader = ExtResource("2_lkgoe")
-shader_parameter/shell_offset_strength = 0.05
+shader_parameter/shell_offset_strength = 0.125
 shader_parameter/shell_top_color = Color(0.3, 0.1, 0.1, 1)
 shader_parameter/shell_bottom_color = Color(0.7, 0.5, 0.5, 1)
+shader_parameter/shell_base_direction = Vector3(0, 0, 0)
+shader_parameter/shell_wind_direction = Vector3(-0.0715261, -0.399305, 1.00535)
 shader_parameter/shell_strand_constant = 3.0
 shader_parameter/shell_strand_strength = 1.0
 shader_parameter/shell_strand_add_strength = 1.5
 shader_parameter/shell_strand_minus_strength = 1.0
 shader_parameter/shell_strand_divide_constant = 1.0
 shader_parameter/shell_movement = true
-shader_parameter/shell_movement_speed = 3.0
-shader_parameter/uv_scale = 50.0
-shader_parameter/worley_columns = 5.0
-shader_parameter/worley_rows = 5.0
+shader_parameter/shell_movement_speed = 1.0
+shader_parameter/uv_scale = 100.0
+shader_parameter/worley_columns = 1.0
+shader_parameter/worley_rows = 1.0
 
 [sub_resource type="SphereMesh" id="SphereMesh_5cvjh"]
-material = SubResource("ShaderMaterial_vx1sw")
+material = SubResource("ShaderMaterial_xfsh1")
 
-[sub_resource type="MultiMesh" id="MultiMesh_000gp"]
+[sub_resource type="MultiMesh" id="MultiMesh_ngwju"]
 transform_format = 1
 use_colors = true
 use_custom_data = true
-instance_count = 8
+instance_count = 64
 mesh = SubResource("SphereMesh_5cvjh")
-buffer = PackedFloat32Array(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.125, 1, 1, 1, 0.125, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.25, 1, 1, 1, 0.25, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.375, 1, 1, 1, 0.375, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.5, 1, 1, 1, 0.5, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.625, 1, 1, 1, 0.625, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.75, 1, 1, 1, 0.75, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.875, 1, 1, 1, 0.875)
+buffer = PackedFloat32Array(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.015625, 1, 1, 1, 0.015625, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.03125, 1, 1, 1, 0.03125, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.046875, 1, 1, 1, 0.046875, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.0625, 1, 1, 1, 0.0625, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.078125, 1, 1, 1, 0.078125, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.09375, 1, 1, 1, 0.09375, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.109375, 1, 1, 1, 0.109375, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.125, 1, 1, 1, 0.125, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.140625, 1, 1, 1, 0.140625, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.15625, 1, 1, 1, 0.15625, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.171875, 1, 1, 1, 0.171875, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.1875, 1, 1, 1, 0.1875, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.203125, 1, 1, 1, 0.203125, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.21875, 1, 1, 1, 0.21875, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.234375, 1, 1, 1, 0.234375, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.25, 1, 1, 1, 0.25, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.265625, 1, 1, 1, 0.265625, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.28125, 1, 1, 1, 0.28125, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.296875, 1, 1, 1, 0.296875, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.3125, 1, 1, 1, 0.3125, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.328125, 1, 1, 1, 0.328125, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.34375, 1, 1, 1, 0.34375, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.359375, 1, 1, 1, 0.359375, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.375, 1, 1, 1, 0.375, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.390625, 1, 1, 1, 0.390625, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.40625, 1, 1, 1, 0.40625, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.421875, 1, 1, 1, 0.421875, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.4375, 1, 1, 1, 0.4375, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.453125, 1, 1, 1, 0.453125, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.46875, 1, 1, 1, 0.46875, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.484375, 1, 1, 1, 0.484375, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.5, 1, 1, 1, 0.5, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.515625, 1, 1, 1, 0.515625, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.53125, 1, 1, 1, 0.53125, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.546875, 1, 1, 1, 0.546875, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.5625, 1, 1, 1, 0.5625, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.578125, 1, 1, 1, 0.578125, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.59375, 1, 1, 1, 0.59375, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.609375, 1, 1, 1, 0.609375, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.625, 1, 1, 1, 0.625, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.640625, 1, 1, 1, 0.640625, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.65625, 1, 1, 1, 0.65625, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.671875, 1, 1, 1, 0.671875, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.6875, 1, 1, 1, 0.6875, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.703125, 1, 1, 1, 0.703125, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.71875, 1, 1, 1, 0.71875, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.734375, 1, 1, 1, 0.734375, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.75, 1, 1, 1, 0.75, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.765625, 1, 1, 1, 0.765625, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.78125, 1, 1, 1, 0.78125, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.796875, 1, 1, 1, 0.796875, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.8125, 1, 1, 1, 0.8125, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.828125, 1, 1, 1, 0.828125, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.84375, 1, 1, 1, 0.84375, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.859375, 1, 1, 1, 0.859375, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.875, 1, 1, 1, 0.875, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.890625, 1, 1, 1, 0.890625, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.90625, 1, 1, 1, 0.90625, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.921875, 1, 1, 1, 0.921875, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.9375, 1, 1, 1, 0.9375, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.953125, 1, 1, 1, 0.953125, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.96875, 1, 1, 1, 0.96875, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0.984375, 1, 1, 1, 0.984375)
 
 [node name="ShellSphere" type="Node3D" node_paths=PackedStringArray("mesh")]
 script = ExtResource("1_rwcbo")
 mesh = NodePath("MeshInstance3D")
+shell_count = 64
+shell_wind_direction = Vector3(-0.0715261, -0.399305, 1.00535)
+shell_offset_strength = 0.125
+uv_scale = 100.0
+worley_columns = 1.0
+worley_rows = 1.0
+shell_movement_speed = 1.0
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="."]
 visible = false
 mesh = SubResource("SphereMesh_5cvjh")
 
-[node name="@MultiMeshInstance3D@17242" type="MultiMeshInstance3D" parent="."]
-multimesh = SubResource("MultiMesh_000gp")
+[node name="@MultiMeshInstance3D@61128" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("MultiMesh_ngwju")

@@ -14,6 +14,16 @@ func set_shell_count(val: int) -> void:
 	shell_count = val
 	editor_reset()
 
+@export var shell_base_direction_strength: Vector3 = Vector3(0.0, 0.0, 0.0) : set = set_shell_base_direction_strength
+func set_shell_base_direction_strength(val: Vector3) -> void:
+	shell_base_direction_strength = val
+	editor_reset()
+
+@export var shell_wind_direction: Vector3 = Vector3(0.0, 0.0, 0.0) : set = set_shell_wind_direction
+func set_shell_wind_direction(val: Vector3) -> void:
+	shell_wind_direction = val
+	editor_reset()
+
 @export var shell_offset_strength: float = 0.05 : set = set_shell_offset_strength
 func set_shell_offset_strength(val: float) -> void:
 	shell_offset_strength = val
@@ -74,6 +84,11 @@ func set_shell_movement(val: bool) -> void:
 	shell_movement = val
 	editor_reset()
 
+@export var shell_wind: bool = true : set = set_shell_wind
+func set_shell_wind(val: bool) -> void:
+	shell_wind = val
+	editor_reset()
+
 @export var shell_movement_speed: float = 3.0 : set = set_shell_movement_speed
 func set_shell_movement_speed(val: float) -> void:
 	shell_movement_speed = val
@@ -103,6 +118,7 @@ func init_shells_material() -> void:
 		return
 	shells_material = ShaderMaterial.new()
 	shells_material.shader = load("res://ShellSphere/shell_sphere_shader.gdshader")
+	shells_material.set_shader_parameter("shell_wind_direction", shell_wind_direction)
 	shells_material.set_shader_parameter("shell_offset_strength", shell_offset_strength)
 	shells_material.set_shader_parameter("shell_strand_constant", shell_strand_constant)
 	shells_material.set_shader_parameter("shell_strand_strength", shell_strand_strength)
@@ -155,3 +171,27 @@ func remove_shells():
 	for node in get_children():
 		if node is MultiMeshInstance3D:
 			node.queue_free()
+
+# Pretend this is a callback function that gets the wind from some global game state object
+var rng = RandomNumberGenerator.new()
+var wind_change_accumulator: float = 0.0
+var wind: Vector3 = Vector3(1.0, 1.0, 1.0)
+func get_global_game_wind(delta: float) -> Vector3:
+	wind_change_accumulator += delta
+	if (wind_change_accumulator >= 5.0):
+		wind_change_accumulator = 0.0
+		var x = clamp(sin(Time.get_ticks_msec() * 0.001), -0.5, 0.5)
+		var y = clamp(sin(Time.get_ticks_msec() * 0.005), -0.5, 0.5)
+		var z = 1.0
+		wind = Vector3(x, y, z)
+	return wind
+
+var update_shell_dir_accum: float = 0.0
+func _process(delta: float) -> void:
+	if shell_wind:
+		update_shell_dir_accum += delta
+		if update_shell_dir_accum >= 1.0:
+			update_shell_dir_accum = 0.0
+			var my_wind = get_global_game_wind(delta)
+			shell_wind_direction = shell_wind_direction.slerp(my_wind, 0.05)
+			shells_material.set_shader_parameter("shell_wind_direction", shell_wind_direction)

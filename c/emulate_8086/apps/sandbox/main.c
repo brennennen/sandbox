@@ -27,6 +27,8 @@ int main(int argc, char* argv[]) {
     printf("Starting decode on: '%s'\n", input_path);
     decoder_t decoder;
     instruction_t instructions[4096] = {0};
+    printf("instruction size: %ld (tag: %ld, data: %ld)\n", 
+        sizeof(instructions[0]), sizeof(instructions[0].tag), sizeof(instructions[0].data));
     dcd_init(&decoder, instructions, 4096);
     result_t result = dcd_decode_file(&decoder, argv[1]);
     printf("Decode result: %s, instructions: %d\n", result_strings[result], decoder.instructions_count);

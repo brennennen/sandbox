@@ -3,7 +3,9 @@
 #define INSTRUCTIONS_H
 
 #include <stdint.h>
+#include <inttypes.h>
 
+#include "shared/include/binary_utilities.h"
 
 // MARK: Instruction Tags
 /**
@@ -13,14 +15,14 @@
  * NOTE: Parallel array with "opcodes" and "instruction_metadata"! If you update this 
  * enum, you need to also update both of these arrays too!
  */
-typedef enum instruction_tag {
+typedef enum ENUM_PACK_ATTRIBUTE {
     I_INVALID = 0,
     // MOV
     I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY,
     I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY,
     I_MOVE_IMMEDIATE_TO_REGISTER,
-    // NOT IMPLEMENTED
     I_MOVE_MEMORY_TO_ACCUMULATOR,
+    // NOT IMPLEMENTED
     I_MOVE_ACCUMULATOR_TO_MEMORY,
     I_MOVE_REGISTER_OR_MEMORY_TO_SEGMENT_REGISTER,
     I_MOVE_SEGMENT_REGISTER_TO_REGISTER_OR_MEMORY,
@@ -206,7 +208,7 @@ static instruction_metadata_t instruction_metadata[] = {
  * 1 = the REG field in the second byte identifies the destination operand
  * 0 = the REG field identifies the source operand
  */
-typedef enum direction {
+typedef enum {
     DIR_TO_REGISTER,
     DIR_FROM_REGISTER,
 } direction_t;
@@ -215,7 +217,7 @@ typedef enum direction {
  * 
  * Table 4.7. Single Bit Field Encoding (page 160)
  */
-typedef enum wide {
+typedef enum {
     WIDE_BYTE = 0, // Instruction operates on byte data
     WIDE_WORD = 1, // Instruction operates on word data
 } wide_t;
@@ -224,7 +226,7 @@ typedef enum wide {
  * Indicates whether one of the operands is in memory or whether both operands
  * are registers.
  */
-typedef enum mod {
+typedef enum {
     MOD_MEMORY = 0,
     MOD_MEMORY_8BIT_DISPLACEMENT = 1,
     MOD_MEMORY_16BIT_DISPLACEMENT = 2,
@@ -238,7 +240,7 @@ static char mod_strings[][64] = {
     "Register Mode (no displacement)",
 };
 
-typedef enum reg {
+typedef enum {
     REG_AL_AX = 0,
     REG_CL_CX = 1,
     REG_DL_DX = 2,
@@ -251,7 +253,7 @@ typedef enum reg {
 
 
 
-typedef enum reg_byte {
+typedef enum {
     REGB_AL = 0,
     REGB_CL = 1,
     REGB_DL = 2,
@@ -273,7 +275,7 @@ static char regb_strings[][3] = {
     "bh",
 };
 
-typedef enum reg_wide {
+typedef enum {
     REGW_AX = 0,
     REGW_CX = 1,
     REGW_DX = 2,
@@ -295,102 +297,102 @@ static char regw_strings[][3] = {
     "di",
 };
 
-typedef enum rm_effective_address_calc {
-    RM_BX_SI,
-    RM_BX_DI,
-    RM_BP_DI,
+typedef enum {
+    RM_BX_SI = 0,
+    RM_BX_DI = 1,
+    RM_BP_SI = 2,
+    RM_BP_DI = 3,
     RM_SI,
     RM_DI,
     RM_BP,
-    BM_BX,
+    RM_BX,
 } rm_effective_address_calc_t;
 
-// I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY
-typedef struct move_register_or_memory_to_or_from_register_or_memory_s {
-    direction_t direction;
-    wide_t wide;
-    mod_t mod;
-    reg_t reg;
-    uint8_t rm;
+
+// MARK: MOV
+// 7 different mov encodings
+typedef struct {
+    uint8_t fields1;
+    uint8_t fields2;
     uint16_t displacement;
 } move_register_or_memory_to_or_from_register_or_memory_t;
-
-/**
- * Encoding:
- * byte 1: 1100011w
- * byte 2: mod 0 0 0 r/m
- * byte 3: (DISP-LO)
- * byte 4: (DISP-HI)
- * byte 5: data
- * byte 6: data if w = 1
- */
-typedef struct move_immediate_to_register_or_memory_s {
-    wide_t wide;
-    mod_t mod;
-    uint8_t rm;
+typedef struct {
+    uint8_t fields1;
+    uint8_t fields2;
     uint16_t displacement;
-    uint16_t immediate;
+    uint16_t data;
 } move_immediate_to_register_or_memory_t;
+typedef struct {
+    uint8_t fields1;
+    uint16_t data;
+} move_immediate_to_register_t;
+typedef struct {
+    uint8_t fields1;
+    uint16_t address;
+} move_memory_to_accumulator_t;
+typedef struct {
+    uint8_t fields1;
+    uint16_t address;
+} move_accumulator_to_memory_t;
+typedef struct {
+    uint8_t fields1;
+    uint8_t fields2;
+    uint16_t displacement;
+} move_register_or_memory_to_segment_register_t;
+typedef struct {
+    uint8_t fields1;
+    uint8_t fields2;
+    uint16_t displacement;
+} move_segment_register_to_register_or_memory_t;
+
+// MARK: PUSH
+typedef struct {
+    uint8_t fields1;
+    uint8_t fields2;
+    uint16_t displacement;
+} push_register_or_memory_t;
+typedef struct {
+    uint8_t fields1;
+} push_register_t;
+typedef struct {
+    uint8_t fields1;
+} push_segment_register_t;
+
+// MARK: POP
+// ...
+
+// MARK: Instruction
 
 /**
- * Encoding:
- * byte 1: 1011wreg
- * byte 2: data
- * byte 3: data if w = 1
+ * Each member should be 6 bytes max
  */
-typedef struct move_immediate_to_register_s {
-    wide_t wide;
-    reg_t reg;
-    uint16_t immediate;
-} move_immediate_to_register_t;
-
 typedef union instruction_data {
+    // MOV
     move_register_or_memory_to_or_from_register_or_memory_t move_register_or_memory_to_or_from_register_or_memory;
     move_immediate_to_register_or_memory_t move_immediate_to_register_or_memory;
     move_immediate_to_register_t move_immediate_to_register;
+    move_memory_to_accumulator_t move_memory_to_accumulator;
+    move_accumulator_to_memory_t move_accumulator_to_memory;
+    move_register_or_memory_to_segment_register_t move_register_or_memory_to_segment_register;
+    move_segment_register_to_register_or_memory_t move_segment_register_to_register_or_memory;
+    // PUSH
+    push_register_or_memory_t push_register_or_memory;
+    push_register_t push_register;
+    push_segment_register_t push_segment_register;
+    // POP
+    // ...
 } instruction_data_t;
 
-typedef struct instruction{
-    instruction_tag_t tag;
+typedef struct PACK_ATTRIBUTE {
+    instruction_tag_t tag; // instruction_tag_t packed.
     instruction_data_t data;
+    
+    // rather than the tagged union approach, it's probably better to just store the data
+    // and re-calc any field needed on the fly. math is cheap.
+    //uint8_t byte1;
+    //uint8_t byte2;
+    //uint16_t data;
+    //uint16_t displacement;
 } instruction_t;
-
-
-/**
- * 
- */
-static inline uint8_t read_direction(uint8_t byte) {
-    return (byte & 0b00000010) >> 1;
-}
-
-/**
- * 
- */
-static inline uint8_t read_width(uint8_t byte) {
-    return byte & 0b00000001;
-}
-
-/**
- * Read the "MOD" upper 2 bits of the second byte of an instruction.
- * Register mode/memory mode with displacement length
- */
-static inline uint8_t read_mod(uint8_t byte) {
-    return (byte & 0b11000000) >> 6;
-}
-
-/**
- * Register operand/extension of opcode
- */
-static inline uint8_t read_reg(uint8_t byte) {
-    return (byte & 0b00111000) >> 3;
-}
-
-/**
- * Register operand/registers to use in ea calculation
- * 
- */
-static inline uint8_t read_rm(uint8_t byte) {
-    return byte & 0b00000111;
-}
 
 #endif // INSTRUCTIONS_H

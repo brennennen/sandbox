@@ -74,7 +74,9 @@ void dcd_write_assembly_instruction(instruction_t* instruction, char* buffer, in
                 buffer, index, buffer_size);
             break;
         case I_MOVE_MEMORY_TO_ACCUMULATOR:
-            write__move_memory_to_accumulator(instruction, buffer, index, buffer_size);
+            write__move_memory_to_accumulator(
+                &instruction->data.move_memory_to_accumulator, 
+                buffer, index, buffer_size);
             break;
         default:
             snprintf(buffer, buffer_size, "NOT IMPLEMENTED! tag: %d", instruction->tag);

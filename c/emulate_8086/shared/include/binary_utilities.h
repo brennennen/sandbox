@@ -15,4 +15,21 @@
   ((byte) & 0x02 ? '1' : '0'), \
   ((byte) & 0x01 ? '1' : '0') 
 
+#define ENABLE_ENUM_PACK_ATTRIBUTE
+#ifdef ENABLE_ENUM_PACK_ATTRIBUTE
+#define ENUM_PACK_ATTRIBUTE __attribute__((__packed__))
+#else
+#define ENUM_PACK_ATTRIBUTE
+#endif
+
+//#define ENABLE_PACK_ATTRIBUTE
+#ifdef ENABLE_PACK_ATTRIBUTE
+#define PACK_ATTRIBUTE __attribute__((__packed__))
+#else
+#define PACK_ATTRIBUTE
+#endif
+
+
+
+
 #endif // BINARY_UTILS_H

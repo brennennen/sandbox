@@ -1,4 +1,6 @@
-
+/**
+ * 
+ */
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -8,238 +10,71 @@
 #include "shared/include/instructions.h"
 #include "shared/include/result.h"
 
-
 #include "libraries/decode8086/include/decode8086.h"
-//#include "decode8086.h"
+#include "libraries/decode8086/include/decode_utils.h"
+#include "libraries/decode8086/include/decode_mov.h"
 
-
+/**
+ * Initializes the decoder.
+ */
 void dcd_init(decoder_t* decoder, instruction_t* instructions, size_t instructions_size) {
     decoder->instructions = instructions;
     decoder->instructions_capacity = instructions_size;
     decoder->instructions_count = 0;
 }
 
-result_iter_t dcd_read_byte(decoder_t* decoder, uint8_t* out_byte) {
-    if (decoder->buffer_index >= decoder->buffer_size) {
-        return RI_FAILURE;
-    }
-    *out_byte = decoder->buffer[decoder->buffer_index];
-    decoder->buffer_index += 1;
-    if (decoder->buffer_index >= decoder->buffer_size) {
-        return RI_DONE;
-    }
-    return RI_CONTINUE;
-}
-
-result_iter_t dcd_read_word(decoder_t* decoder, uint16_t* out_word) {
-    if (decoder->buffer_index + 1 >= decoder->buffer_size) {
-        return RI_FAILURE;
-    }
-    *out_word = decoder->buffer[decoder->buffer_index];
-    decoder->buffer_index += 2;
-    if (decoder->buffer_index >= decoder->buffer_size) {
-        return RI_DONE;
-    }
-    return RI_CONTINUE;
-}
-
-
-
 /**
  * Reads the opcode of an instruction and returns the associated instruction tag.
  * @param byte Byte to read the opcode from.
  * @param instruction_tag Instruction type/tag associated with the opcode read.
- * @return SUCCESS if an instruction was found, FAILURE otherwise.
+ * @return DR_SUCCESS if an instruction was found for the specified opcode, DR_UNKNOWN_OPCODE otherwise.
  */
-result_t read_opcode(uint8_t byte, instruction_tag_t* out_instruction_tag) {
+decode_result_t dcd_read_opcode(uint8_t byte, instruction_tag_t* instruction_tag) {
     int opcodes_count = sizeof(opcodes) / sizeof(opcodes[0]);
     for (int i = 0; i < opcodes_count; i++) {
         if ((byte & opcodes[i].opcode_mask) == opcodes[i].opcode) {
-            *out_instruction_tag = i;
-            return SUCCESS;
+            *instruction_tag = i;
+            return DR_SUCCESS;
         }
     }
-    return FAILURE;
+    return DR_UNKNOWN_OPCODE;
 }
 
-result_t decode__move_register_or_memory_to_or_from_register_or_memory(
-    decoder_t* decoder, 
-    move_register_or_memory_to_or_from_register_or_memory_t *out_move) 
-{
-    out_move->direction = (decoder->current_byte & 0b00000010) >> 1;
-    out_move->wide = decoder->current_byte & 0b00000001;
-    if (dcd_read_byte(decoder, (uint8_t*) &decoder->current_byte) == RI_FAILURE) { 
-        fprintf(stderr, "decode__move_register_or_memory_to_from_register_or_memory: \
-                failed to parse byte 2nd field byte.\n");
-        return FAILURE;
-    }
-    out_move->mod = (decoder->current_byte & 0b11000000) >> 6;
-    out_move->reg = (decoder->current_byte & 0b00111000) >> 3;
-    out_move->rm = decoder->current_byte & 0b00000111;
-
-    if (out_move->mod == MOD_MEMORY) {
-        if (out_move->rm == 0b00000110) {
-            if (dcd_read_word(decoder, &out_move->displacement) == RI_FAILURE) { 
-                fprintf(stderr, "decode__move_register_or_memory_to_from_register_or_memory: \
-                        failed to parse word displacement (rm = 3).\n");
-                return FAILURE; 
-            }
-        }
-    } else if (out_move->mod == MOD_MEMORY_8BIT_DISPLACEMENT) {
-        if (dcd_read_byte(decoder, (uint8_t*) &out_move->displacement) == RI_FAILURE) { 
-            fprintf(stderr, "decode__move_register_or_memory_to_from_register_or_memory: \
-                    failed to parse byte displacement.\n");
-            return FAILURE;
-        }
-    } else if (out_move->mod == MOD_MEMORY_16BIT_DISPLACEMENT) {
-        if (dcd_read_word(decoder, &out_move->displacement) == RI_FAILURE) { 
-            fprintf(stderr, "decode__move_register_or_memory_to_from_register_or_memory: \
-                    failed to parse word displacement.\n");
-            return FAILURE; 
-        }
-    } else { // MOD_REGISTER
-        // Don't have extra bytes for register to register movs. Nothing to do.
-    }
-
-    return SUCCESS;
-}
-
-void write__move_register_or_memory_to_from_register_or_memory(
-    move_register_or_memory_to_or_from_register_or_memory_t* move, 
-    char* buffer, 
-    int buffer_size)
-{
-    if (move->mod == MOD_REGISTER) {
-        uint8_t* left = &move->rm;
-        uint8_t* right = (uint8_t*)&move->reg;
-        if (move->direction == DIR_FROM_REGISTER) {
-            left = (uint8_t*)&move->reg;
-            right = &move->rm;
-        }
-
-        char* left_string = regb_strings[*left];
-        char* right_string = regb_strings[*right];
-
-        if (move->wide == WIDE_WORD) {
-            left_string = regw_strings[*left];
-            right_string = regw_strings[*right];
-        }
-
-        snprintf(buffer, buffer_size, "%s %s, %s", 
-                instruction_metadata[I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY]
-                    .mnemonic,
-                left_string,
-                right_string);
-    } else {
-        printf("rm: %d\n", move->rm);
-        if (move->direction == DIR_TO_REGISTER) {
-            char* reg_string = regb_strings[move->reg];
-            if (move->wide == WIDE_WORD) {
-                reg_string = regw_strings[move->reg];
-            }
-
-            // TODO: replace "???" with memory address as dictated by RM
-            snprintf(buffer, buffer_size, "%s %s, %s", 
-                        instruction_metadata[I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY]
-                            .mnemonic,
-                        "[???]",
-                        reg_string);
-        } else { 
-            char* reg_string = regb_strings[move->reg];
-            if (move->wide == WIDE_WORD) {
-                reg_string = regw_strings[move->reg];
-            }
-            snprintf(buffer, buffer_size, "%s %s, %s", 
-                        instruction_metadata[I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY]
-                            .mnemonic,
-                        reg_string,
-                        "???");
-        }
-        
-        //snprintf(buffer, buffer_size, "NOT IMPLEMENTED!");
+void dcd_write_all_assembly(instruction_t* instructions, size_t instructions_count, 
+                            char* buffer, size_t buffer_size) {
+    int index = 0;
+    //int written = snprintf(buffer, buffer_size, "bits 16\n");
+    //index += written;
+    for (int i = 0; i < instructions_count; i++) {
+        dcd_write_assembly_instruction(&instructions[i], buffer, &index, buffer_size);
+        snprintf(buffer + index, buffer_size - index, "\n");
+        index += 1;
     }
 }
 
-result_t decode__move_immediate_to_register_or_memory(
-    decoder_t* decoder, 
-    move_immediate_to_register_or_memory_t* out_move) 
-{
-    out_move->wide = (decoder->current_byte & 0b00001000) >> 3;
-    // TODO
-    return FAILURE;
-}
-
-result_t decode__move_immediate_to_register(
-    decoder_t* decoder, 
-    move_immediate_to_register_t* out_move) 
-{
-    out_move->wide = (decoder->current_byte & 0b00001000) >> 3;
-    out_move->reg = decoder->current_byte & 0b00000111;
-    if (out_move->wide == WIDE_BYTE) {
-        if (dcd_read_byte(decoder, (uint8_t*)&out_move->immediate) == RI_FAILURE) {
-            fprintf(stderr, "decode__move_immediate_to_register: failed to parse byte immediate.\n");
-            return FAILURE;
-        }
-    } else { // WIDE_WORD
-        if (dcd_read_word(decoder, &out_move->immediate) == RI_FAILURE) {
-            fprintf(stderr, "decode__move_immediate_to_register: failed to parse word immediate.\n");
-            return FAILURE; 
-        }
-    }
-    return SUCCESS;
-}
-
-void write__move_immediate_to_register_or_memory(
-    move_immediate_to_register_or_memory_t* move, 
-    char* buffer, 
-    int buffer_size)
-{
-    snprintf(buffer, buffer_size, "TODO: I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY!");
-}
-
-void write__move_immediate_to_register(
-    move_immediate_to_register_t* move, 
-    char* buffer, 
-    int buffer_size)
-{
-    if (move->wide == WIDE_BYTE) {
-        snprintf(buffer, buffer_size, "%s %s, %d", 
-            instruction_metadata[I_MOVE_IMMEDIATE_TO_REGISTER].mnemonic,
-            regb_strings[move->reg],
-            move->immediate);
-    } else { // WIDE_WORD
-        snprintf(buffer, buffer_size, "%s %s, %d", 
-            instruction_metadata[I_MOVE_IMMEDIATE_TO_REGISTER].mnemonic,
-            regw_strings[move->reg],
-            move->immediate);
-    }
-}
-
-void write__instruction(instruction_t* instruction, char* buffer, int buffer_size) {
+void dcd_write_assembly_instruction(instruction_t* instruction, char* buffer, int* index, size_t buffer_size) {
     switch(instruction->tag) {
         case I_INVALID:
-        snprintf(buffer, buffer_size, "INVALID!");
+            int written = snprintf((buffer + *index), (buffer_size - *index), "INVALID!");
+            *index += written;
             break;
         case I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY:
-            write__move_register_or_memory_to_from_register_or_memory(
+            write__move_register_or_memory_to_or_from_register_or_memory(
                 &instruction->data.move_register_or_memory_to_or_from_register_or_memory, 
-                buffer, 
-                buffer_size
-            );
+                buffer, index, buffer_size);
             break;
         case I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY:
             write__move_immediate_to_register_or_memory(
-                &instruction->data.move_immediate_to_register_or_memory,
-                buffer,
-                buffer_size
-            );
+                &instruction->data.move_immediate_to_register_or_memory, 
+                buffer, index, buffer_size);
             break;
         case I_MOVE_IMMEDIATE_TO_REGISTER:
             write__move_immediate_to_register(
-                &instruction->data.move_immediate_to_register,
-                buffer, 
-                buffer_size
-            );
+                &instruction->data.move_immediate_to_register, 
+                buffer, index, buffer_size);
+            break;
+        case I_MOVE_MEMORY_TO_ACCUMULATOR:
+            write__move_memory_to_accumulator(instruction, buffer, index, buffer_size);
             break;
         default:
             snprintf(buffer, buffer_size, "NOT IMPLEMENTED! tag: %d", instruction->tag);
@@ -249,41 +84,46 @@ void write__instruction(instruction_t* instruction, char* buffer, int buffer_siz
 
 result_iter_t next(decoder_t* decoder) {
     decoder->current_byte = decoder->buffer[decoder->buffer_index];
+    uint8_t current_byte = decoder->current_byte;
     printf("next: index: %d\n", decoder->buffer_index);
     decoder->buffer_index += 1;
     if (decoder->buffer_index >= decoder->buffer_size) {
         return RI_DONE;
     }
 
-    printf("next: "BYTE_TO_BINARY_PATTERN"\n", BYTE_TO_BINARY(decoder->current_byte));
+    printf("next: "BYTE_TO_BINARY_PATTERN"\n", BYTE_TO_BINARY(current_byte));
     instruction_tag_t instruction_tag = 0;
-    result_t read_result = read_opcode(decoder->current_byte, &instruction_tag);
-
-    instruction_t* next_instr = &decoder->instructions[decoder->instructions_count];
+    result_t read_result = dcd_read_opcode(decoder->current_byte, &instruction_tag);
+    
+    instruction_t* instruction = &decoder->instructions[decoder->instructions_count];
+    instruction->tag = instruction_tag;
     decoder->instructions_count += 1;
 
-    next_instr->tag = instruction_tag;
-    result_iter_t result = RI_FAILURE;
+    decode_result_t result = RI_FAILURE;
     if (read_result == SUCCESS) {
-        switch(instruction_tag) {
+        switch(instruction->tag) {
             // MOV
-            case I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY:
+            case I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY:                
                 result = decode__move_register_or_memory_to_or_from_register_or_memory(decoder, 
-                            &next_instr->data.move_register_or_memory_to_or_from_register_or_memory);
+                    current_byte, &instruction->data.move_register_or_memory_to_or_from_register_or_memory);
                 break;
             case I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY:
                 result = decode__move_immediate_to_register_or_memory(decoder, 
-                            &next_instr->data.move_immediate_to_register_or_memory);
+                    current_byte, &instruction->data.move_immediate_to_register_or_memory);
                 break;
             case I_MOVE_IMMEDIATE_TO_REGISTER:
                 result = decode__move_immediate_to_register(decoder, 
-                            &next_instr->data.move_immediate_to_register);
+                    current_byte, &instruction->data.move_immediate_to_register);
                 break;
             case I_MOVE_MEMORY_TO_ACCUMULATOR:
+                result = decode__move_memory_to_accumulator(decoder, 
+                current_byte, &instruction->data.move_memory_to_accumulator);
+                break;
             case I_MOVE_ACCUMULATOR_TO_MEMORY:
             case I_MOVE_REGISTER_OR_MEMORY_TO_SEGMENT_REGISTER:
             case I_MOVE_SEGMENT_REGISTER_TO_REGISTER_OR_MEMORY:
                 printf("Not implemented!\n");
+                result = DR_UNIMPLEMENTED_INSTRUCTION;
                 break;
             // PUSH
             // case I_PUSH_REGISTER_OR_MEMORY:
@@ -297,17 +137,18 @@ result_iter_t next(decoder_t* decoder) {
             // ...
             default:
                 printf("Not implemented!\n");
+                result = DR_UNIMPLEMENTED_INSTRUCTION;
                 break;
         }
     }
-    if (result == FAILURE) {
-        fprintf(stderr, "Failed to parse instruction! decode_result = failure\n");
+    if (result != DR_SUCCESS) {
+        fprintf(stderr, "Failed to parse instruction! decode_result = %s (%d)\n", decode_result_strings[result], result);
         return RI_FAILURE;
     }
     return RI_CONTINUE;
 }
 
-result_t decode_file(decoder_t* decoder, char* input_path) {
+result_t dcd_decode_file(decoder_t* decoder, char* input_path) {
     printf("Starting decode file...\n");
     FILE* file = fopen(input_path, "r");
     
@@ -324,19 +165,19 @@ result_t decode_file(decoder_t* decoder, char* input_path) {
         return FAILURE;
     }
 
-    result_t result = decode(decoder);
+    result_t result = dcd_decode(decoder);
     free(decoder->buffer);
     return result;
 }
 
-result_t decode_chunk(decoder_t* decoder, char* buffer, size_t buffer_size) {
+result_t dcd_decode_chunk(decoder_t* decoder, char* buffer, size_t buffer_size) {
     decoder->buffer = buffer;
     decoder->buffer_index = 0;
     decoder->buffer_size = buffer_size;
-    return decode(decoder);
+    return dcd_decode(decoder);
 }
 
-result_t decode(decoder_t* decoder) {
+result_t dcd_decode(decoder_t* decoder) {
     for (int i = 0; i < decoder->buffer_size; i++) {
         printf("[%d] "BYTE_TO_BINARY_PATTERN"\n", i, BYTE_TO_BINARY(decoder->buffer[i]));
     }

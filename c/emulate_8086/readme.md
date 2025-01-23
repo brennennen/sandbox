@@ -6,8 +6,9 @@ Linux
 ```
 premake5 gmake
 make -C ./.build/
-./bin/Debug/sandbox.exe
-./bin/Debug/test.exe
+./bin/Debug/sandbox
+./bin/Debug/test_decode8086
+./bin/Debug/test
 ```
 
 Windows:
@@ -15,6 +16,7 @@ Windows:
 premake5 vs2022
 MSBuild.exe ./.build/PremakeSandbox.sln
 ./bin/debug/sandbox.exe
+./bin/Debug/test_decode8086.exe
 ./bin/Debug/test.exe
 ```
 

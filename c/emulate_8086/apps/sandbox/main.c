@@ -28,11 +28,14 @@ int main(int argc, char* argv[]) {
     decoder_t decoder;
     instruction_t instructions[4096] = {0};
     dcd_init(&decoder, instructions, 4096);
-    result_t result = decode_file(&decoder, argv[1]);
-    printf("Decode result: %s\n", result_strings[result]);
-    for (int i = 0; i < decoder.instructions_count; i++) {
-        char buffer[1024];
-        write__instruction(&decoder.instructions[i], buffer, 1024);
-        printf("%s\n", buffer);
-    }
+    result_t result = dcd_decode_file(&decoder, argv[1]);
+    printf("Decode result: %s, instructions: %d\n", result_strings[result], decoder.instructions_count);
+    char buffer[4096] = { 0x00 };
+    dcd_write_all_assembly(decoder.instructions, decoder.instructions_count, buffer, 4096);
+    printf("Assembly:\n%s\n", buffer);
+    // for (int i = 0; i < decoder.instructions_count; i++) {
+    //     char buffer[1024];
+    //     dcd_write_assembly_instruction(&decoder.instructions[i], buffer, 1024);
+    //     printf("%s\n", buffer);
+    // }
 }

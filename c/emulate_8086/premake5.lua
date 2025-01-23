@@ -15,6 +15,7 @@ project "test_decode8086"
     files { "./libraries/decode8086/test/**.h", "./libraries/decode8086/test/**.c" }
     includedirs { "./librares/decode8086/include", "./shared/include", "." }
     links { "decode8086", "criterion" }
+    sanitize { "Address" }
 
 project "emulate8086"
     kind "StaticLib"

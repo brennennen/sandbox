@@ -140,3 +140,94 @@ Test(decode__I_MOVE_IMMEDIATE_TO_REGISTER__tests,
     dcd_write_all_assembly(g_decoder.instructions, g_decoder.instructions_count, output, sizeof(output));
     cr_assert(strncmp(expected, output, sizeof(output)) == 0, "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
+
+// MARK: 4. I_MOVE_MEMORY_TO_ACCUMULATOR
+Test(decode__I_MOVE_MEMORY_TO_ACCUMULATOR__tests, 
+     mov1, .init = default_setup)
+{
+    char* expected = "mov ax, [2555]\n";
+    uint8_t input[] = { 0xa1, 0xfb, 0x09 };
+    cr_assert(SUCCESS == dcd_decode_chunk(&g_decoder, input, sizeof(input)));
+    cr_assert(1 == g_decoder.instructions_count);
+    uint8_t output[16] = { 0x00 };
+    dcd_write_all_assembly(g_decoder.instructions, g_decoder.instructions_count, output, sizeof(output));
+    cr_assert(strncmp(expected, output, sizeof(output)) == 0, "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
+}
+
+// MARK: 5. I_MOVE_ACCUMULATOR_TO_MEMORY
+Test(decode__I_MOVE_ACCUMULATOR_TO_MEMORY__tests, 
+     mov1, .init = default_setup)
+{
+    char* expected = "mov [2554], ax\n";
+    uint8_t input[] = { 0xa3, 0xfa, 0x09 };
+    cr_assert(SUCCESS == dcd_decode_chunk(&g_decoder, input, sizeof(input)));
+    cr_assert(1 == g_decoder.instructions_count);
+    uint8_t output[16] = { 0x00 };
+    dcd_write_all_assembly(g_decoder.instructions, g_decoder.instructions_count, output, sizeof(output));
+    cr_assert(strncmp(expected, output, sizeof(output)) == 0, "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
+}
+
+// MARK: 6. I_MOVE_REGISTER_OR_MEMORY_TO_SEGMENT_REGISTER
+// MARK: 7. I_MOVE_SEGMENT_REGISTER_TO_REGISTER_OR_MEMORY
+
+
+// MARK: MISC
+
+Test(decode__mov_misc__tests,
+     bulk_mov, .init = default_setup)
+{
+    char* expected = "mov si, bx\n\
+mov dh, al\n\
+mov cl, 12\n\
+mov ch, 244\n\
+mov cx, 12\n\
+mov cx, 65524\n\
+mov dx, 3948\n\
+mov dx, 61588\n\
+mov al, [bx + si]\n\
+mov bx, [bp + di]\n\
+mov dx, [bp]\n\
+mov ah, [bx + si + 4]\n\
+mov al, [bx + si + 4999]\n\
+mov [bx + di], cx\n\
+mov [bp + si], cl\n\
+mov [bp], ch\n";
+    uint8_t input[] = {
+        0x89, 0xde, 0x88, 0xc6, 0xb1, 0x0c, 0xb5, 0xf4, 0xb9, 0x0c, 0x00, 0xb9,
+        0xf4, 0xff, 0xba, 0x6c, 0x0f, 0xba, 0x94, 0xf0, 0x8a, 0x00, 0x8b, 0x1b,
+        0x8b, 0x56, 0x00, 0x8a, 0x60, 0x04, 0x8a, 0x80, 0x87, 0x13, 0x89, 0x09,
+        0x88, 0x0a, 0x88, 0x6e, 0x00
+    };
+    cr_assert(SUCCESS == dcd_decode_chunk(&g_decoder, input, sizeof(input)));
+    cr_assert(16 == g_decoder.instructions_count);
+    uint8_t output[512] = { 0x00 };
+    dcd_write_all_assembly(g_decoder.instructions, g_decoder.instructions_count, output, sizeof(output));
+    cr_assert(strncmp(expected, output, sizeof(output)) == 0, "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
+}
+
+Test(decode__mov_misc__tests,
+     bulk_mov2, .init = default_setup)
+{
+    char* expected = "mov ax, [bx + di - 37]\n\
+mov [si - 300], cx\n\
+mov dx, [bx - 32]\n\
+mov [bp + di], byte 7\n\
+mov [di + 901], word 347\n\
+mov bp, [5]\n\
+mov bx, [3458]\n\
+mov ax, [2555]\n\
+mov ax, [16]\n\
+mov [2554], ax\n\
+mov [15], ax\n";
+    uint8_t input[] = {
+        0x8b, 0x41, 0xdb, 0x89, 0x8c, 0xd4, 0xfe, 0x8b, 0x57, 0xe0, 0xc6, 0x03,
+        0x07, 0xc7, 0x85, 0x85, 0x03, 0x5b, 0x01, 0x8b, 0x2e, 0x05, 0x00, 0x8b,
+        0x1e, 0x82, 0x0d, 0xa1, 0xfb, 0x09, 0xa1, 0x10, 0x00, 0xa3, 0xfa, 0x09,
+        0xa3, 0x0f, 0x00
+    };
+    cr_assert(SUCCESS == dcd_decode_chunk(&g_decoder, input, sizeof(input)));
+    cr_assert(11 == g_decoder.instructions_count);
+    uint8_t output[512] = { 0x00 };
+    dcd_write_all_assembly(g_decoder.instructions, g_decoder.instructions_count, output, sizeof(output));
+    cr_assert(strncmp(expected, output, sizeof(output)) == 0, "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
+}

@@ -5,6 +5,11 @@
  * 
  * 1. I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY
  * 2. I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY
+ * 3. I_MOVE_IMMEDIATE_TO_REGISTER
+ * 4. I_MOVE_MEMORY_TO_ACCUMULATOR
+ * 5. I_MOVE_ACCUMULATOR_TO_MEMORY
+ * 6. I_MOVE_REGISTER_OR_MEMORY_TO_SEGMENT_REGISTER
+ * 7. I_MOVE_SEGMENT_REGISTER_TO_REGISTER_OR_MEMORY
  * 
  */
 
@@ -304,9 +309,10 @@ decode_result_t decode__move_immediate_to_register_or_memory(
     if (dcd_read_byte(decoder, (uint8_t*) &move->fields2) == RI_FAILURE) { 
         return DR_UNKNOWN_OPCODE;
     }
-    mod_t mod = (move->fields2 & 0b00001000) >> 3;
+    mod_t mod = move->fields2 & 0b00000001;
     uint8_t rm = move->fields2 & 0b00000111;
 
+    printf("mod: %d, rm: %d\n", mod, rm);
     if (mod == MOD_MEMORY) {
         if (rm == 0b00000110) {
             decode_result_t read_displace_result = dcd_read_word(decoder, &move->displacement);
@@ -320,6 +326,7 @@ decode_result_t decode__move_immediate_to_register_or_memory(
             return read_displace_result;
         }
     } else if (mod == MOD_MEMORY_16BIT_DISPLACEMENT) {
+        printf("reading displacement\n");
         decode_result_t read_displace_result = dcd_read_word(decoder, &move->displacement);
         if (read_displace_result != DR_SUCCESS) { 
             return read_displace_result; 
@@ -329,9 +336,10 @@ decode_result_t decode__move_immediate_to_register_or_memory(
     }
 
     if (wide == WIDE_BYTE) {
-        decode_result_t read_data_result = dcd_read_byte(decoder, (uint8_t*) &move->data);
+        decode_result_t read_data_result = dcd_read_byte(decoder, (uint8_t*) &move->immediate);
     } else {
-        decode_result_t read_data_result = dcd_read_word(decoder, &move->data);
+        printf("reading immediate\n");
+        decode_result_t read_data_result = dcd_read_word(decoder, &move->immediate);
     }
     
     return SUCCESS;
@@ -343,7 +351,25 @@ void write__move_immediate_to_register_or_memory(
     int* index,
     int buffer_size)
 {
-    snprintf(buffer, buffer_size, "TODO: I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY!");
+    wide_t wide = move->fields1 & 0b00000001;
+    mod_t mod = (move->fields2 & 0b11000000) >> 6;
+    //uint8_t reg = (move->fields2 & 0b00111000) >> 3;
+    uint8_t rm = move->fields2 & 0b00000111;
+
+    char effective_address_string[32] = { 0 };
+    build_effective_address(effective_address_string, sizeof(effective_address_string),
+                            mod, rm, move->displacement);
+    int written = snprintf(buffer + *index,  buffer_size - *index, "mov %s, %d", 
+                            effective_address_string,
+                            move->immediate);
+    if (written < 0) {
+        // TODO: propogate error
+    }
+    *index += written;
+
+
+
+    //snprintf(buffer, buffer_size, "TODO: I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY!");
     
     // char* left_string = "TODO";
     // char* right_string = "TODO";
@@ -364,14 +390,14 @@ decode_result_t decode__move_immediate_to_register(
     uint8_t reg = move->fields1 & 0b00000111;
 
     if (wide == WIDE_BYTE) {
-        decode_result_t read_data_result = dcd_read_byte(decoder, (uint8_t*)&move->data);
-        printf("immed to reg data: %d\n", move->data);
+        decode_result_t read_data_result = dcd_read_byte(decoder, (uint8_t*)&move->immediate);
+        printf("immed to reg data: %d\n", move->immediate);
         if (read_data_result != DR_SUCCESS) {
             return FAILURE;
         }
     } else { // WIDE_WORD
-        decode_result_t read_data_result = dcd_read_word(decoder, &move->data);
-        printf("immed to reg (wide) data: %d\n", move->data);
+        decode_result_t read_data_result = dcd_read_word(decoder, &move->immediate);
+        printf("immed to reg (wide) data: %d\n", move->immediate);
         if (read_data_result != DR_SUCCESS) {
             return FAILURE;
         }
@@ -396,7 +422,7 @@ void write__move_immediate_to_register(
     int written = snprintf(buffer + *index, buffer_size - *index, "%s %s, %d", 
                             instruction_metadata[I_MOVE_IMMEDIATE_TO_REGISTER].mnemonic,
                             reg_string,
-                            move->data);
+                            move->immediate);
     if (written < 0) {
         // TODO: propogate error
     }
@@ -411,11 +437,12 @@ decode_result_t decode__move_memory_to_accumulator(
 ) {
     move->fields1 = byte1;
     wide_t wide = move->fields1 & 0b00000001;
-
-    // addr_lo
-    // addr_hi
-    
-    return DR_UNIMPLEMENTED_INSTRUCTION;
+    decode_result_t read_data_result = dcd_read_word(decoder, &move->address);
+    printf("address: %d\n", move->address);
+    if (read_data_result != DR_SUCCESS) {
+        return DR_FAILURE;
+    }
+    return DR_SUCCESS;
 }
 
 void write__move_memory_to_accumulator(
@@ -424,5 +451,55 @@ void write__move_memory_to_accumulator(
     int* index,
     int buffer_size
 ) {
+    wide_t wide = move->fields1 & 0b00000001;
+    char* reg_string = "al";
+    if (wide == WIDE_WORD) {
+        reg_string = "ax";
+    }
 
+    int written = snprintf(buffer + *index, buffer_size - *index, "%s %s, [%d]", 
+                            instruction_metadata[I_MOVE_MEMORY_TO_ACCUMULATOR].mnemonic,
+                            reg_string,
+                            move->address);
+    if (written < 0) {
+        // TODO: propogate error
+    }
+    *index += written;
+}
+
+// MARK: 5. I_MOVE_ACCUMULATOR_TO_MEMORY
+decode_result_t decode__move_accumulator_to_memory(
+    decoder_t* decoder,
+    uint8_t byte1,
+    move_accumulator_to_memory_t* move
+) {
+    move->fields1 = byte1;
+    wide_t wide = move->fields1 & 0b00000001;
+    decode_result_t read_data_result = dcd_read_word(decoder, &move->address);
+    if (read_data_result != DR_SUCCESS) {
+        return DR_FAILURE;
+    }
+    return DR_SUCCESS;
+}
+
+void write__move_accumulator_to_memory(
+    move_accumulator_to_memory_t* move, 
+    char* buffer,
+    int* index,
+    int buffer_size
+) {
+    wide_t wide = move->fields1 & 0b00000001;
+    char* reg_string = "al";
+    if (wide == WIDE_WORD) {
+        reg_string = "ax";
+    }
+
+    int written = snprintf(buffer + *index, buffer_size - *index, "%s [%d], %s", 
+                            instruction_metadata[I_MOVE_MEMORY_TO_ACCUMULATOR].mnemonic,
+                            move->address,
+                            reg_string);
+    if (written < 0) {
+        // TODO: propogate error
+    }
+    *index += written;
 }

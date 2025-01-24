@@ -320,11 +320,11 @@ typedef struct {
     uint8_t fields1;
     uint8_t fields2;
     uint16_t displacement;
-    uint16_t data;
+    uint16_t immediate;
 } move_immediate_to_register_or_memory_t;
 typedef struct {
     uint8_t fields1;
-    uint16_t data;
+    uint16_t immediate;
 } move_immediate_to_register_t;
 typedef struct {
     uint8_t fields1;

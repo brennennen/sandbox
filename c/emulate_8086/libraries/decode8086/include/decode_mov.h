@@ -72,5 +72,17 @@ void write__move_memory_to_accumulator(
     int buffer_size
 );
 
+// MARK: 5. I_MOVE_ACCUMULATOR_TO_MEMORY
+decode_result_t decode__move_accumulator_to_memory(
+    decoder_t* decoder,
+    uint8_t byte1,
+    move_accumulator_to_memory_t* move
+);
+void write__move_accumulator_to_memory(
+    move_accumulator_to_memory_t* move, 
+    char* buffer,
+    int* index,
+    int buffer_size
+);
 
 #endif // DECODE_MOV_H

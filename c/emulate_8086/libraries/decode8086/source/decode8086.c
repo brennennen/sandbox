@@ -30,6 +30,7 @@ void dcd_init(decoder_t* decoder, instruction_t* instructions, size_t instructio
  * @return DR_SUCCESS if an instruction was found for the specified opcode, DR_UNKNOWN_OPCODE otherwise.
  */
 decode_result_t dcd_read_opcode(uint8_t byte, instruction_tag_t* instruction_tag) {
+    // TODO: performance: replace with a series of jump tables?
     int opcodes_count = sizeof(opcodes) / sizeof(opcodes[0]);
     for (int i = 0; i < opcodes_count; i++) {
         if ((byte & opcodes[i].opcode_mask) == opcodes[i].opcode) {
@@ -78,6 +79,11 @@ void dcd_write_assembly_instruction(instruction_t* instruction, char* buffer, in
                 &instruction->data.move_memory_to_accumulator, 
                 buffer, index, buffer_size);
             break;
+        case I_MOVE_ACCUMULATOR_TO_MEMORY:
+            write__move_accumulator_to_memory(
+                &instruction->data.move_accumulator_to_memory, 
+                buffer, index, buffer_size);
+            break;
         default:
             snprintf(buffer, buffer_size, "NOT IMPLEMENTED! tag: %d", instruction->tag);
             break;
@@ -119,9 +125,12 @@ result_iter_t next(decoder_t* decoder) {
                 break;
             case I_MOVE_MEMORY_TO_ACCUMULATOR:
                 result = decode__move_memory_to_accumulator(decoder, 
-                current_byte, &instruction->data.move_memory_to_accumulator);
+                    current_byte, &instruction->data.move_memory_to_accumulator);
                 break;
             case I_MOVE_ACCUMULATOR_TO_MEMORY:
+                result = decode__move_accumulator_to_memory(decoder, 
+                    current_byte, &instruction->data.move_accumulator_to_memory);
+                break;
             case I_MOVE_REGISTER_OR_MEMORY_TO_SEGMENT_REGISTER:
             case I_MOVE_SEGMENT_REGISTER_TO_REGISTER_OR_MEMORY:
                 printf("Not implemented!\n");

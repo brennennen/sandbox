@@ -11,9 +11,6 @@
 /**
  * All Instructions for the 8086 processor as defined in the "8086 family users manual".
  * See Table 4-12. "8086 Instruction Encoding" (~page 164).
- * 
- * NOTE: Parallel array with "opcodes" and "instruction_metadata"! If you update this 
- * enum, you need to also update both of these arrays too!
  */
 typedef enum ENUM_PACK_ATTRIBUTE {
     I_INVALID = 0,
@@ -22,187 +19,146 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY,
     I_MOVE_IMMEDIATE_TO_REGISTER,
     I_MOVE_MEMORY_TO_ACCUMULATOR,
-    // NOT IMPLEMENTED
     I_MOVE_ACCUMULATOR_TO_MEMORY,
     I_MOVE_REGISTER_OR_MEMORY_TO_SEGMENT_REGISTER,
     I_MOVE_SEGMENT_REGISTER_TO_REGISTER_OR_MEMORY,
-    // // PUSH
-    // I_PUSH_REGISTER_OR_MEMORY,
-    // I_PUSH_REGISTER,
-    // I_PUSH_SEGMENT_REGISTER,
-    // // XCHNG
-    // I_XCHNG_REGISTER_OR_MEMORY_WITH_REGISTER,
-    // I_XCHNG_REGISTER_WITH_ACCUMULATOR,
-    // IN
-    // OUT
-    // ARITHMETIC
-    // ADD
-    // ADC
-    // INC
-    // SUB
-    // SBB
-    // DEC
-    // NEG
-    // CMP
-} instruction_tag_t;
-
-// MARK: opcodes
-typedef struct opcode {
-    uint8_t opcode;        // ex: 0b100010XX for MOV (rightmost 2 bits are flags and not part of the opcode)
-    uint8_t opcode_mask;   // ex: 0b11111100
-} opcode_t;
-
-/**
- * NOTE: Parallel array with "instruction_tag_t" enum!
- */
-static opcode_t opcodes[] = {
-    {   // I_INVALID
-        .opcode = 0b00000000,
-        .opcode_mask = 0b11111111,
-    },
-    {   // I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY
-        .opcode = 0b10001000,
-        .opcode_mask = 0b11111100,
-    },
-    {   // I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY
-        .opcode = 0b11000110,
-        .opcode_mask = 0b11111110,
-    },
-    {   // I_MOVE_IMMEDIATE_TO_REGISTER
-        .opcode = 0b10110000,      
-        .opcode_mask = 0b11110000,
-    },
-    {   // I_MOVE_MEMORY_TO_ACCUMULATOR
-        .opcode = 0b10100000, 
-        .opcode_mask = 0b11111110,
-    },
-    {   // I_MOVE_ACCUMULATOR_TO_MEMORY
-        .opcode = 0b10100010, 
-        .opcode_mask = 0b11111110,
-    },
-    {   // I_MOVE_REGISTER_OR_MEMORY_TO_SEGMENT_REGISTER
-        .opcode = 0b10001110, 
-        .opcode_mask = 0b11111111,
-    },
-    {   // I_MOVE_SEGMENT_REGISTER_TO_REGISTER_OR_MEMORY
-        .opcode = 0b10001100, 
-        .opcode_mask = 0b11111111,
-    },
     // PUSH
-    // {   // I_PUSH_REGISTER_OR_MEMORY
-    //     .opcode = 0b11111111, 
-    //     .opcode_mask = 0b11111111,
-    // },
-    // {   // I_PUSH_REGISTER
-    //     .opcode = 0b01010000, 
-    //     .opcode_mask = 0b11111000,
-    // },
-    // {   // I_PUSH_SEGMENT_REGISTER
-    //     .opcode = 0b00000111, 
-    //     .opcode_mask = 0b11100111,
-    // },
-    // // XCHNG
-    // {   // I_XCHNG_REGISTER_OR_MEMORY_WITH_REGISTER
-    //     .opcode = 0b10000110, 
-    //     .opcode_mask = 0b11111110,
-    // },
-    // {   // I_XCHNG_REGISTER_WITH_ACCUMULATOR
-    //     .opcode = 0b10010000,
-    //     .opcode_mask = 0b11111000,
-    // },
-};
-
-typedef struct instruction_metadata {
-    char mnemonic[16];
-    char name[256];
-    char description[256];
-} instruction_metadata_t;
-
-/**
- * 
- * NOTE: Parallel array with "instruction_tag_t" enum!
- */
-static instruction_metadata_t instruction_metadata[] = {
-    {
-        .mnemonic = "inv", 
-        .name = "Invalid", 
-        .description = "Invalid opcode",
-    },
-    // MOV
-    {   // I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY
-        .mnemonic = "mov", 
-        .name = "Move", 
-        .description = "Register/memory to/from register",
-    },
-    {   // I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY
-        .mnemonic = "mov", 
-        .name = "Move", 
-        .description = "Immediate to register/memory",
-    },
-    {   // I_MOVE_IMMEDIATE_TO_REGISTER
-        .mnemonic = "mov", 
-        .name = "Move", 
-        .description = "Immediate to register",
-    },
-    { 
-        .mnemonic = "mov", 
-        .name = "Move", 
-        .description = "Memory to accumulator",
-    },
-    {
-        .mnemonic = "mov", 
-        .name = "Move", 
-        .description = "Accumulator to memory",
-    },
-    {
-        .mnemonic = "mov", 
-        .name = "Move", 
-        .description = "Register/memory to segment register",
-    },
-    {
-        .mnemonic = "mov", 
-        .name = "Move", 
-        .description = "Segment register to register/memory",
-    },
-    // PUSH
-    {
-        .mnemonic = "push", 
-        .name = "Push", 
-        .description = "Register/memory",
-    },
-    {
-        .mnemonic = "push", 
-        .name = "Push", 
-        .description = "Register/memory",
-    },
-    {
-        .mnemonic = "push", 
-        .name = "Push", 
-        .description = "Segment register",
-    },
+    I_PUSH_REGISTER_OR_MEMORY,
+    I_PUSH_REGISTER,
+    I_PUSH_SEGMENT_REGISTER,
+    // POP
+    I_POP_REGISTER_OR_MEMORY,
+    I_POP_REGISTER,
+    I_POP_SEGMENT_REGISTER,
     // XCHNG
-    {
-        .mnemonic = "xchg", 
-        .name = "Exchange", 
-        .description = "Register/memory with register",
-    },
-    {
-        .mnemonic = "xchg", 
-        .name = "Exchange", 
-        .description = "Register with accumulator",
-    },
+    I_EXCHANGE_REGISTER_OR_MEMORY_WITH_REGISTER,
+    I_EXCHANGE_REGISTER_WITH_ACCUMULATOR,
     // IN
-    {
-        .mnemonic = "in", 
-        .name = "Input From", 
-        .description = "Fixed port",
-    },
-    {
-        .mnemonic = "in", 
-        .name = "Input From", 
-        .description = "Variable port",
-    }
-};
+    I_INPUT_FROM_FIXED_PORT,
+    I_INPUT_FROM_VARIABLE_PORT,
+    // OUT
+    I_OUTPUT_TO_FIXED_PORT,
+    I_OUTPUT_TO_VARIABLE_PORT,
+    // XLAT
+    I_TRANSLATE_BYTE_TO_AL,
+    // LEA
+    I_LOAD_EA_TO_REGISTER,
+    // LDS
+    I_LOAD_POINTER_TO_DS,
+    // LES
+    I_LOAD_POINTER_TO_ES,
+    // LAHF
+    I_LOAD_AH_WITH_FLAGS,
+    // SAHF
+    I_STORE_AH_INTO_FLAGS,
+    // PUSHF
+    I_PUSH_FLAGS,
+    // POPF
+    I_POP_FLAGS,
+    // ADD
+    I_ADD_REGISTER_OR_MEMORY_WITH_REGISTER_TO_EITHER,
+    I_ADD_IMMEDIATE_TO_REGISTER_OR_MEMORY,
+    I_ADD_IMMEDIATE_TO_ACCUMULATOR,
+    // ADC
+    I_ADC_REGISTER_OR_MEMORY_WITH_REGISTER_TO_EITHER,
+    I_ADC_IMMEDIATE_TO_REGISTER_OR_MEMORY,
+    I_ADC_IMMEDIATE_TO_ACCUMULATOR,
+    // INC
+    I_INC_REGISTER_OR_MEMORY,
+    I_INC_REGISTER,
+    I_AAA_ASCII_ADJUST_FOR_ADD,
+    I_DAA_DECIMAL_ADJUST_FOR_ADD,
+    // SUB
+    I_SUB_REGISTER_OR_MEMORY_AND_REGISTER_TO_EITHER,
+    I_SUB_IMMEDIATE_FROM_REGISTER_OR_MEMORY,
+    I_SUB_IMMEDIATE_FROM_ACCUMULATOR,
+    // SBB
+    I_SBB_REGISTER_OR_MEMORY_AND_REGISTER_TO_EITHER,
+    I_SBB_IMMEDIATE_FROM_REGISTER_OR_MEMORY,
+    I_SBB_IMMEDIATE_FROM_ACCUMULATOR,
+    // DEC
+    I_DEC_REGISTER_OR_MEMORY,
+    I_DEC_REGISTER,
+    // NEG
+    I_NEGATE_CHANGE_SIGN,
+    // CMP
+    I_COMPARE_REGISTER_OR_MEMORY_AND_REGISTER,
+    I_COMPARE_IMMEDIATE_WITH_REGISTER_OR_MEMORY,
+    I_COMPARE_IMMEDIATE_WITH_ACCUMULATOR,
+    // AAS
+    I_ASCII_ADJUST_FOR_SUBTRACT,
+    // DAS
+    I_DECIMAL_ADJUST_FOR_SUBTRACT,
+    // MUL
+    I_MULTIPLY_UNSIGNED,
+    // IMUL
+    I_INTEGER_MULTIPLY_SIGNED,
+    // AAM
+    // DIV
+    // IDIV
+    // AAD
+    // CBW
+    // CWD
+    // LOGIC
+    // NOT
+    // SHL/SAL
+    // SHR
+    // SAR
+    // ROL
+    // ROR
+    // RCL
+    // RCR
+    // AND
+    // TEST
+    // OR
+    // XOR
+    // STRING MANIPULATION
+    // REP
+    // MOVS
+    // CMPS
+    // SCAS
+    // LODS
+    // STDS
+    // CALL
+    // JMP
+    // RET
+    // JE/JZ
+    // JL/JNGE
+    // JLE/JNG
+    // JB/JNAE
+    // JBE/JNA
+    // JP/JPE
+    // JO
+    // JS
+    // JNE/JNZ
+    // JNL/JGE
+    // JNLE/JG
+    // JNB/JAE
+    // JNBE/JA
+    // JNP/JPO
+    // JNO
+    // JNS
+    // LOOP
+    // LOOPZ/LOOPE
+    // LOOPNZ/LOOPNE
+    // JCXZ
+    // INT
+    // INTO
+    // IRET
+    // CLC
+    // CMC
+    // STC
+    // CLD
+    // STD
+    // CLI
+    // STI
+    // HLT
+    // WAIT
+    // ESC
+    // LOCK
+    // SEGMENT
+
+} instruction_tag_t;
 
 /**
  * 1 = the REG field in the second byte identifies the destination operand

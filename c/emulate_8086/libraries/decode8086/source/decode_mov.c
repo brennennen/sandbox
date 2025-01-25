@@ -213,9 +213,7 @@ void write__move_register_or_memory_to_or_from_register_or_memory(
             right_string = regw_strings[*right];
         }
 
-        int written = snprintf(buffer + *index, buffer_size - *index, "%s %s, %s", 
-                                instruction_metadata[I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY]
-                                    .mnemonic,
+        int written = snprintf(buffer + *index, buffer_size - *index, "mov %s, %s",
                                 left_string,
                                 right_string);
         if (written < 0) {
@@ -230,9 +228,7 @@ void write__move_register_or_memory_to_or_from_register_or_memory(
                 if (wide == WIDE_WORD) {
                     reg_string = regw_strings[reg];
                 }
-                int written = snprintf(buffer + *index,  buffer_size - *index, "%s [%d], %s", 
-                                            instruction_metadata[I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY]
-                                                .mnemonic,
+                int written = snprintf(buffer + *index,  buffer_size - *index, "mov [%d], %s", 
                                             move->displacement,
                                             reg_string);
                 if (written < 0) {
@@ -244,9 +240,7 @@ void write__move_register_or_memory_to_or_from_register_or_memory(
                 if (wide == WIDE_WORD) {
                     reg_string = regw_strings[reg];
                 }
-                int written = snprintf(buffer + *index, buffer_size - *index, "%s %s, [%d]", 
-                                        instruction_metadata[I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY]
-                                            .mnemonic,
+                int written = snprintf(buffer + *index, buffer_size - *index, "mov %s, [%d]",
                                         reg_string,
                                         move->displacement);
                 if (written < 0) {
@@ -264,9 +258,7 @@ void write__move_register_or_memory_to_or_from_register_or_memory(
                 char effective_address_string[32] = { 0 };
                 build_effective_address(effective_address_string, sizeof(effective_address_string),
                                         mod, rm, move->displacement);
-                int written = snprintf(buffer + *index,  buffer_size - *index, "%s %s, %s", 
-                                        instruction_metadata[I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY]
-                                            .mnemonic,
+                int written = snprintf(buffer + *index,  buffer_size - *index, "mov %s, %s",
                                         effective_address_string,
                                         reg_string);
                 if (written < 0) {
@@ -281,9 +273,7 @@ void write__move_register_or_memory_to_or_from_register_or_memory(
                 char effective_address_string[32] = { 0 };
                 build_effective_address(effective_address_string, sizeof(effective_address_string),
                                         mod, rm, move->displacement);
-                int written = snprintf(buffer + *index, buffer_size - *index, "%s %s, %s", 
-                                        instruction_metadata[I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY]
-                                            .mnemonic,
+                int written = snprintf(buffer + *index, buffer_size - *index, "mov %s, %s",
                                         reg_string,
                                         effective_address_string);
                 if (written < 0) {
@@ -419,8 +409,7 @@ void write__move_immediate_to_register(
         reg_string = regw_strings[reg];
     }
 
-    int written = snprintf(buffer + *index, buffer_size - *index, "%s %s, %d", 
-                            instruction_metadata[I_MOVE_IMMEDIATE_TO_REGISTER].mnemonic,
+    int written = snprintf(buffer + *index, buffer_size - *index, "mov %s, %d",
                             reg_string,
                             move->immediate);
     if (written < 0) {
@@ -457,8 +446,7 @@ void write__move_memory_to_accumulator(
         reg_string = "ax";
     }
 
-    int written = snprintf(buffer + *index, buffer_size - *index, "%s %s, [%d]", 
-                            instruction_metadata[I_MOVE_MEMORY_TO_ACCUMULATOR].mnemonic,
+    int written = snprintf(buffer + *index, buffer_size - *index, "mov %s, [%d]",
                             reg_string,
                             move->address);
     if (written < 0) {
@@ -494,8 +482,7 @@ void write__move_accumulator_to_memory(
         reg_string = "ax";
     }
 
-    int written = snprintf(buffer + *index, buffer_size - *index, "%s [%d], %s", 
-                            instruction_metadata[I_MOVE_MEMORY_TO_ACCUMULATOR].mnemonic,
+    int written = snprintf(buffer + *index, buffer_size - *index, "mov [%d], %s",
                             move->address,
                             reg_string);
     if (written < 0) {

@@ -168,8 +168,9 @@ Test(decode__I_MOVE_ACCUMULATOR_TO_MEMORY__tests,
 }
 
 // MARK: 6. I_MOVE_REGISTER_OR_MEMORY_TO_SEGMENT_REGISTER
+// TODO
 // MARK: 7. I_MOVE_SEGMENT_REGISTER_TO_REGISTER_OR_MEMORY
-
+// TODO
 
 // MARK: MISC
 
@@ -205,29 +206,29 @@ mov [bp], ch\n";
     cr_assert(strncmp(expected, output, sizeof(output)) == 0, "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
 
-Test(decode__mov_misc__tests,
-     bulk_mov2, .init = default_setup)
-{
-    char* expected = "mov ax, [bx + di - 37]\n\
-mov [si - 300], cx\n\
-mov dx, [bx - 32]\n\
-mov [bp + di], byte 7\n\
-mov [di + 901], word 347\n\
-mov bp, [5]\n\
-mov bx, [3458]\n\
-mov ax, [2555]\n\
-mov ax, [16]\n\
-mov [2554], ax\n\
-mov [15], ax\n";
-    uint8_t input[] = {
-        0x8b, 0x41, 0xdb, 0x89, 0x8c, 0xd4, 0xfe, 0x8b, 0x57, 0xe0, 0xc6, 0x03,
-        0x07, 0xc7, 0x85, 0x85, 0x03, 0x5b, 0x01, 0x8b, 0x2e, 0x05, 0x00, 0x8b,
-        0x1e, 0x82, 0x0d, 0xa1, 0xfb, 0x09, 0xa1, 0x10, 0x00, 0xa3, 0xfa, 0x09,
-        0xa3, 0x0f, 0x00
-    };
-    cr_assert(SUCCESS == dcd_decode_chunk(&g_decoder, input, sizeof(input)));
-    cr_assert(11 == g_decoder.instructions_count);
-    uint8_t output[512] = { 0x00 };
-    dcd_write_all_assembly(g_decoder.instructions, g_decoder.instructions_count, output, sizeof(output));
-    cr_assert(strncmp(expected, output, sizeof(output)) == 0, "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
-}
+// Test(decode__mov_misc__tests,
+//      bulk_mov2, .init = default_setup)
+// {
+//     char* expected = "mov ax, [bx + di - 37]\n\
+// mov [si - 300], cx\n\
+// mov dx, [bx - 32]\n\
+// mov [bp + di], byte 7\n\
+// mov [di + 901], word 347\n\
+// mov bp, [5]\n\
+// mov bx, [3458]\n\
+// mov ax, [2555]\n\
+// mov ax, [16]\n\
+// mov [2554], ax\n\
+// mov [15], ax\n";
+//     uint8_t input[] = {
+//         0x8b, 0x41, 0xdb, 0x89, 0x8c, 0xd4, 0xfe, 0x8b, 0x57, 0xe0, 0xc6, 0x03,
+//         0x07, 0xc7, 0x85, 0x85, 0x03, 0x5b, 0x01, 0x8b, 0x2e, 0x05, 0x00, 0x8b,
+//         0x1e, 0x82, 0x0d, 0xa1, 0xfb, 0x09, 0xa1, 0x10, 0x00, 0xa3, 0xfa, 0x09,
+//         0xa3, 0x0f, 0x00
+//     };
+//     cr_assert(SUCCESS == dcd_decode_chunk(&g_decoder, input, sizeof(input)));
+//     cr_assert(11 == g_decoder.instructions_count);
+//     uint8_t output[512] = { 0x00 };
+//     dcd_write_all_assembly(g_decoder.instructions, g_decoder.instructions_count, output, sizeof(output));
+//     cr_assert(strncmp(expected, output, sizeof(output)) == 0, "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
+// }

@@ -12,7 +12,10 @@
 
 #include "libraries/decode8086/include/decode8086.h"
 #include "libraries/decode8086/include/decode_utils.h"
+#include "libraries/decode8086/include/decode_tag.h"
 #include "libraries/decode8086/include/decode_mov.h"
+
+#include "decode_tag.c"
 
 /**
  * Initializes the decoder.
@@ -21,24 +24,6 @@ void dcd_init(decoder_t* decoder, instruction_t* instructions, size_t instructio
     decoder->instructions = instructions;
     decoder->instructions_capacity = instructions_size;
     decoder->instructions_count = 0;
-}
-
-/**
- * Reads the opcode of an instruction and returns the associated instruction tag.
- * @param byte Byte to read the opcode from.
- * @param instruction_tag Instruction type/tag associated with the opcode read.
- * @return DR_SUCCESS if an instruction was found for the specified opcode, DR_UNKNOWN_OPCODE otherwise.
- */
-decode_result_t dcd_read_opcode(uint8_t byte, instruction_tag_t* instruction_tag) {
-    // TODO: performance: replace with a series of jump tables?
-    int opcodes_count = sizeof(opcodes) / sizeof(opcodes[0]);
-    for (int i = 0; i < opcodes_count; i++) {
-        if ((byte & opcodes[i].opcode_mask) == opcodes[i].opcode) {
-            *instruction_tag = i;
-            return DR_SUCCESS;
-        }
-    }
-    return DR_UNKNOWN_OPCODE;
 }
 
 void dcd_write_all_assembly(instruction_t* instructions, size_t instructions_count, 
@@ -92,65 +77,72 @@ void dcd_write_assembly_instruction(instruction_t* instruction, char* buffer, in
 
 result_iter_t next(decoder_t* decoder) {
     decoder->current_byte = decoder->buffer[decoder->buffer_index];
-    uint8_t current_byte = decoder->current_byte;
+    uint8_t byte1 = decoder->current_byte;
     printf("next: index: %d\n", decoder->buffer_index);
     decoder->buffer_index += 1;
     if (decoder->buffer_index >= decoder->buffer_size) {
         return RI_DONE;
     }
 
-    printf("next: "BYTE_TO_BINARY_PATTERN"\n", BYTE_TO_BINARY(current_byte));
+    printf("next: "BYTE_TO_BINARY_PATTERN"\n", BYTE_TO_BINARY(byte1));
     instruction_tag_t instruction_tag = 0;
-    result_t read_result = dcd_read_opcode(decoder->current_byte, &instruction_tag);
+    uint8_t byte2 = 0;
+    if (decoder->buffer_index + 1 < decoder->buffer_size) {
+        byte2 = decoder->buffer[decoder->buffer_index + 1];
+    }
+    instruction_tag = dcd_decode_tag(byte1, byte2);
     
     instruction_t* instruction = &decoder->instructions[decoder->instructions_count];
     instruction->tag = instruction_tag;
     decoder->instructions_count += 1;
 
     decode_result_t result = RI_FAILURE;
-    if (read_result == SUCCESS) {
-        switch(instruction->tag) {
-            // MOV
-            case I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY:                
-                result = decode__move_register_or_memory_to_or_from_register_or_memory(decoder, 
-                    current_byte, &instruction->data.move_register_or_memory_to_or_from_register_or_memory);
-                break;
-            case I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY:
-                result = decode__move_immediate_to_register_or_memory(decoder, 
-                    current_byte, &instruction->data.move_immediate_to_register_or_memory);
-                break;
-            case I_MOVE_IMMEDIATE_TO_REGISTER:
-                result = decode__move_immediate_to_register(decoder, 
-                    current_byte, &instruction->data.move_immediate_to_register);
-                break;
-            case I_MOVE_MEMORY_TO_ACCUMULATOR:
-                result = decode__move_memory_to_accumulator(decoder, 
-                    current_byte, &instruction->data.move_memory_to_accumulator);
-                break;
-            case I_MOVE_ACCUMULATOR_TO_MEMORY:
-                result = decode__move_accumulator_to_memory(decoder, 
-                    current_byte, &instruction->data.move_accumulator_to_memory);
-                break;
-            case I_MOVE_REGISTER_OR_MEMORY_TO_SEGMENT_REGISTER:
-            case I_MOVE_SEGMENT_REGISTER_TO_REGISTER_OR_MEMORY:
-                printf("Not implemented!\n");
-                result = DR_UNIMPLEMENTED_INSTRUCTION;
-                break;
-            // PUSH
-            // case I_PUSH_REGISTER_OR_MEMORY:
-            // case I_PUSH_REGISTER:
-            // case I_PUSH_SEGMENT_REGISTER:
-            //     printf("Not implemented!\n");
-            //     break;
-            // XCHNG
-            // IN
-            // OUT
-            // ...
-            default:
-                printf("Not implemented!\n");
-                result = DR_UNIMPLEMENTED_INSTRUCTION;
-                break;
-        }
+    switch(instruction->tag) {
+        // MARK: MOV
+        case I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY:                
+            result = decode__move_register_or_memory_to_or_from_register_or_memory(decoder, 
+                byte1, &instruction->data.move_register_or_memory_to_or_from_register_or_memory);
+            break;
+        case I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY:
+            result = decode__move_immediate_to_register_or_memory(decoder, 
+                byte1, &instruction->data.move_immediate_to_register_or_memory);
+            break;
+        case I_MOVE_IMMEDIATE_TO_REGISTER:
+            result = decode__move_immediate_to_register(decoder, 
+                byte1, &instruction->data.move_immediate_to_register);
+            break;
+        case I_MOVE_MEMORY_TO_ACCUMULATOR:
+            result = decode__move_memory_to_accumulator(decoder, 
+                byte1, &instruction->data.move_memory_to_accumulator);
+            break;
+        case I_MOVE_ACCUMULATOR_TO_MEMORY:
+            result = decode__move_accumulator_to_memory(decoder, 
+                byte1, &instruction->data.move_accumulator_to_memory);
+            break;
+        case I_MOVE_REGISTER_OR_MEMORY_TO_SEGMENT_REGISTER:
+        case I_MOVE_SEGMENT_REGISTER_TO_REGISTER_OR_MEMORY:
+            printf("Not implemented!\n");
+            result = DR_UNIMPLEMENTED_INSTRUCTION;
+            break;
+        // PUSH
+        // case I_PUSH_REGISTER_OR_MEMORY:
+        // case I_PUSH_REGISTER:
+        // case I_PUSH_SEGMENT_REGISTER:
+        //     printf("Not implemented!\n");
+        //     break;
+        // XCHNG
+        // IN
+        // OUT
+        // ARITHMETIC
+        // MARK: ADD
+        case I_ADD_REGISTER_OR_MEMORY_WITH_REGISTER_TO_EITHER:
+            // TODO
+            break;
+        // ADC
+        default:
+            printf("Not implemented!\n");
+            result = DR_UNIMPLEMENTED_INSTRUCTION;
+            break;
     }
     if (result != DR_SUCCESS) {
         fprintf(stderr, "Failed to parse instruction! decode_result = %s (%d)\n", decode_result_strings[result], result);

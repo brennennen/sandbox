@@ -115,15 +115,15 @@ instruction_tag_t dcd_decode_tag(uint8_t byte1, uint8_t byte2) {
         case 0b01010111:
             return I_PUSH_REGISTER_OR_MEMORY;
         // PUSH 3. I_PUSH_SEGMENT_REGISTER - 0b000xxx110
-        case 0b00000110:
-        case 0b00001110:
-        case 0b00010110:
-        case 0b00011110:
-        case 0b00100110:
-        case 0b00101110:
-        case 0b00110110:
-        case 0b00111110:
-            return I_PUSH_SEGMENT_REGISTER;
+        // case 0b00000110:
+        // case 0b00001110:
+        // case 0b00010110:
+        // case 0b00011110:
+        // case 0b00100110:
+        // case 0b00101110:
+        // case 0b00110110:
+        // case 0b00111110:
+        //     return I_PUSH_SEGMENT_REGISTER;
 
         // MARK: POP
         // POP 1. I_POP_REGISTER_OR_MEMORY - handled by common unary operation
@@ -138,15 +138,15 @@ instruction_tag_t dcd_decode_tag(uint8_t byte1, uint8_t byte2) {
         case 0b01011111:
             return I_POP_REGISTER;
         // POP 3. I_POP_SEGMENT_REGISTER - 0b000xxx111
-        case 0b000000111:
-        case 0b000001111:
-        case 0b000010111:
-        case 0b000011111:
-        case 0b000100111:
-        case 0b000101111:
-        case 0b000110111:
-        case 0b000111111:
-            return I_POP_SEGMENT_REGISTER;
+        // case 0b000000111:
+        // case 0b000001111:
+        // case 0b000010111:
+        // case 0b000011111:
+        // case 0b000100111:
+        // case 0b000101111:
+        // case 0b000110111:
+        // case 0b000111111:
+        //     return I_POP_SEGMENT_REGISTER;
 
         // MARK: XCHG
         // XCHG 1. I_EXCHANGE_REGISTER_OR_MEMORY_WITH_REGISTER - 0b1000011x
@@ -240,6 +240,28 @@ instruction_tag_t dcd_decode_tag(uint8_t byte1, uint8_t byte2) {
             break;
         }
 
+        // MARK: COMMON BINARY 2
+        // 0b1111011x
+        case 0b11110110:
+        case 0b11110111: {
+            uint8_t sub_opcode = byte2 & 0b00111000;
+            switch(sub_opcode) {
+                case 0b00011000:
+                    return I_NEGATE_CHANGE_SIGN;
+                case 0b000100000:
+                    return I_MULTIPLY_UNSIGNED;
+                case 0b00101000:
+                    return I_INTEGER_MULTIPLY_SIGNED;
+                case 0b00110000:
+                    return I_DIVIDE_UNSIGNED;
+                case 0b00111000:
+                    return I_INTEGER_DIVIDE_SIGNED;
+                default:
+                    break;
+            };
+            break;
+        }
+
         // MARK: ADD
         // ADD 1. I_ADD_REGISTER_OR_MEMORY_WITH_REGISTER_TO_EITHER - 0b000000xx
         case 0b00000000:
@@ -278,13 +300,14 @@ instruction_tag_t dcd_decode_tag(uint8_t byte1, uint8_t byte2) {
         case 0b01000110:
         case 0b01000111:
             return I_INC_REGISTER;
-        // TOOD: overlap between AAA/DAA that needs to be figured out
-        // // AAA - I_AAA_ASCII_ADJUST_FOR_ADD - 0b00110111
-        // case 0b00110111:
-        //     return I_AAA_ASCII_ADJUST_FOR_ADD;
-        // // DAA - I_DAA_DECIMAL_ADJUST_FOR_ADD - 0b00100111
-        // case 0b00100111:
-        //     return I_DAA_DECIMAL_ADJUST_FOR_ADD;
+
+        // AAA - I_AAA_ASCII_ADJUST_FOR_ADD - 0b00110111
+        case 0b00110111:
+            return I_AAA_ASCII_ADJUST_FOR_ADD;
+
+        // DAA - I_DAA_DECIMAL_ADJUST_FOR_ADD - 0b00100111
+        case 0b00100111:
+            return I_DAA_DECIMAL_ADJUST_FOR_ADD;
 
         // MARK: SUB
         // SUB 1. I_SUB_REGISTER_OR_MEMORY_AND_REGISTER_TO_EITHER - 0b001010xx
@@ -325,10 +348,7 @@ instruction_tag_t dcd_decode_tag(uint8_t byte1, uint8_t byte2) {
         case 0b01001111:
             return I_DEC_REGISTER;
 
-        // NEG - 0b1111011x
-        case 0b11110110:
-        case 0b11110111:
-            return I_NEGATE_CHANGE_SIGN;
+        // NEG - handled by common binary 2
         // MARK: CMP
         // CMP 1. I_COMPARE_REGISTER_OR_MEMORY_AND_REGISTER - 0b001110xx
         case 0b00111000:
@@ -343,10 +363,35 @@ instruction_tag_t dcd_decode_tag(uint8_t byte1, uint8_t byte2) {
             return I_COMPARE_IMMEDIATE_WITH_ACCUMULATOR;
         
         // AAS
+        case 0b00111111:
+            return I_ASCII_ADJUST_FOR_SUBTRACT;
+
         // DAS
-        // MUL
-        // IMUL
-        // AAM
+        case 0b00101111:
+            return I_DECIMAL_ADJUST_FOR_SUBTRACT;
+
+        // MUL - handled by common binary 2
+        // IMUL - handled by common binary 2
+        // AAM - 0b11010100
+        case 0b11010100:
+            return I_ASCII_ADJUST_FOR_MULTIPLY;
+        // DIV - handled by common binary 2
+        // IDIV - handled by common binary 2
+        // AAD
+        case 0b11010101:
+            return I_ASCII_ADJUST_FOR_DIVIDE;
+        // CBW
+        case 0b10011000:
+            return I_CONVERT_BYTE_TO_WORD;
+        // CWD
+        case 0b10011001:
+            return I_CONVERT_WORD_TO_DOUBLE_WORD;
+        // NOT
+        // SHL
+        // SHR
+        // SAR
+        // ROL
+        // ROR
         // TODO: the rest of the owl
         default:
             break;

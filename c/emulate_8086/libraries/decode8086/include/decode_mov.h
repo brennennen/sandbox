@@ -2,7 +2,7 @@
  * Responsible for decoding the "mov" assembly instruction for the 8086. This instruction
  * can be mapped into 7 different opcode encodings. The order of these encodings will
  * follow the datasheet table 4-12.
- * 
+ *
  * 1. I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY
  * 2. I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY
  * 3. I_MOVE_IMMEDIATE_TO_REGISTER
@@ -10,7 +10,7 @@
  * 5. I_MOVE_ACCUMULATOR_TO_MEMORY
  * 6. I_MOVE_REGISTER_OR_MEMORY_TO_SEGMENT_REGISTER
  * 7. I_MOVE_SEGMENT_REGISTER_TO_REGISTER_OR_MEMORY
- * 
+ *
  * NOTE:
  * These names are unfortunately long, but that's how the 8086 designers decided to split
  * up the work. I kicked around naming them "I_MOVE_1", "I_MOVE_2", etc. but that required
@@ -20,6 +20,13 @@
 #ifndef DECODE_MOV_H
 #define DECODE_MOV_H
 
+#include <stdint.h>
+
+#include "shared/include/instructions.h"
+
+#include "libraries/decode8086/include/decode8086.h"
+
+
 // MARK: 1. I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY
 decode_result_t decode__move_register_or_memory_to_or_from_register_or_memory(
     decoder_t* decoder,
@@ -27,7 +34,7 @@ decode_result_t decode__move_register_or_memory_to_or_from_register_or_memory(
     move_register_or_memory_to_or_from_register_or_memory_t* move
 );
 void write__move_register_or_memory_to_or_from_register_or_memory(
-    move_register_or_memory_to_or_from_register_or_memory_t* move, 
+    move_register_or_memory_to_or_from_register_or_memory_t* move,
     char* buffer,
     int* index,
     int buffer_size
@@ -40,7 +47,7 @@ decode_result_t decode__move_immediate_to_register_or_memory(
     move_immediate_to_register_or_memory_t* move
 );
 void write__move_immediate_to_register_or_memory(
-    move_immediate_to_register_or_memory_t* move, 
+    move_immediate_to_register_or_memory_t* move,
     char* buffer,
     int* index,
     int buffer_size
@@ -53,7 +60,7 @@ decode_result_t decode__move_immediate_to_register(
     move_immediate_to_register_t* move
 );
 void write__move_immediate_to_register(
-    move_immediate_to_register_t* move, 
+    move_immediate_to_register_t* move,
     char* buffer,
     int* index,
     int buffer_size
@@ -66,7 +73,7 @@ decode_result_t decode__move_memory_to_accumulator(
     move_memory_to_accumulator_t* move
 );
 void write__move_memory_to_accumulator(
-    move_memory_to_accumulator_t* move, 
+    move_memory_to_accumulator_t* move,
     char* buffer,
     int* index,
     int buffer_size
@@ -79,7 +86,7 @@ decode_result_t decode__move_accumulator_to_memory(
     move_accumulator_to_memory_t* move
 );
 void write__move_accumulator_to_memory(
-    move_accumulator_to_memory_t* move, 
+    move_accumulator_to_memory_t* move,
     char* buffer,
     int* index,
     int buffer_size

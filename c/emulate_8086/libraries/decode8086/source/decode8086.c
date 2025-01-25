@@ -1,5 +1,5 @@
 /**
- * 
+ *
  */
 
 #include <stdlib.h>
@@ -13,7 +13,9 @@
 #include "libraries/decode8086/include/decode8086.h"
 #include "libraries/decode8086/include/decode_utils.h"
 #include "libraries/decode8086/include/decode_tag.h"
+
 #include "libraries/decode8086/include/decode_mov.h"
+#include "libraries/decode8086/include/decode_add.h"
 
 #include "decode_tag.c"
 
@@ -26,7 +28,7 @@ void dcd_init(decoder_t* decoder, instruction_t* instructions, size_t instructio
     decoder->instructions_count = 0;
 }
 
-void dcd_write_all_assembly(instruction_t* instructions, size_t instructions_count, 
+void dcd_write_all_assembly(instruction_t* instructions, size_t instructions_count,
                             char* buffer, size_t buffer_size) {
     int index = 0;
     //int written = snprintf(buffer, buffer_size, "bits 16\n");
@@ -44,31 +46,40 @@ void dcd_write_assembly_instruction(instruction_t* instruction, char* buffer, in
             int written = snprintf((buffer + *index), (buffer_size - *index), "INVALID!");
             *index += written;
             break;
+        // MARK: MOV
         case I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY:
             write__move_register_or_memory_to_or_from_register_or_memory(
-                &instruction->data.move_register_or_memory_to_or_from_register_or_memory, 
+                &instruction->data.move_register_or_memory_to_or_from_register_or_memory,
                 buffer, index, buffer_size);
             break;
         case I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY:
             write__move_immediate_to_register_or_memory(
-                &instruction->data.move_immediate_to_register_or_memory, 
+                &instruction->data.move_immediate_to_register_or_memory,
                 buffer, index, buffer_size);
             break;
         case I_MOVE_IMMEDIATE_TO_REGISTER:
             write__move_immediate_to_register(
-                &instruction->data.move_immediate_to_register, 
+                &instruction->data.move_immediate_to_register,
                 buffer, index, buffer_size);
             break;
         case I_MOVE_MEMORY_TO_ACCUMULATOR:
             write__move_memory_to_accumulator(
-                &instruction->data.move_memory_to_accumulator, 
+                &instruction->data.move_memory_to_accumulator,
                 buffer, index, buffer_size);
             break;
         case I_MOVE_ACCUMULATOR_TO_MEMORY:
             write__move_accumulator_to_memory(
-                &instruction->data.move_accumulator_to_memory, 
+                &instruction->data.move_accumulator_to_memory,
                 buffer, index, buffer_size);
             break;
+        // TODO: all instructions between MOV and ADD
+        // MARK: ADD
+        case I_ADD_REGISTER_OR_MEMORY_WITH_REGISTER_TO_EITHER:
+            write__add_register_or_memory_with_register_to_either(
+                &instruction->data.add_register_or_memory_with_register_to_either,
+                buffer, index, buffer_size);
+            break;
+
         default:
             snprintf(buffer, buffer_size, "NOT IMPLEMENTED! tag: %d", instruction->tag);
             break;
@@ -91,7 +102,7 @@ result_iter_t next(decoder_t* decoder) {
         byte2 = decoder->buffer[decoder->buffer_index + 1];
     }
     instruction_tag = dcd_decode_tag(byte1, byte2);
-    
+
     instruction_t* instruction = &decoder->instructions[decoder->instructions_count];
     instruction->tag = instruction_tag;
     decoder->instructions_count += 1;
@@ -99,25 +110,25 @@ result_iter_t next(decoder_t* decoder) {
     decode_result_t result = RI_FAILURE;
     switch(instruction->tag) {
         // MARK: MOV
-        case I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY:                
-            result = decode__move_register_or_memory_to_or_from_register_or_memory(decoder, 
-                byte1, &instruction->data.move_register_or_memory_to_or_from_register_or_memory);
+        case I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY:
+            result = decode__move_register_or_memory_to_or_from_register_or_memory(decoder, byte1,
+                &instruction->data.move_register_or_memory_to_or_from_register_or_memory);
             break;
         case I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY:
-            result = decode__move_immediate_to_register_or_memory(decoder, 
-                byte1, &instruction->data.move_immediate_to_register_or_memory);
+            result = decode__move_immediate_to_register_or_memory(decoder, byte1,
+                &instruction->data.move_immediate_to_register_or_memory);
             break;
         case I_MOVE_IMMEDIATE_TO_REGISTER:
-            result = decode__move_immediate_to_register(decoder, 
-                byte1, &instruction->data.move_immediate_to_register);
+            result = decode__move_immediate_to_register(decoder, byte1,
+                &instruction->data.move_immediate_to_register);
             break;
         case I_MOVE_MEMORY_TO_ACCUMULATOR:
-            result = decode__move_memory_to_accumulator(decoder, 
-                byte1, &instruction->data.move_memory_to_accumulator);
+            result = decode__move_memory_to_accumulator(decoder, byte1,
+                &instruction->data.move_memory_to_accumulator);
             break;
         case I_MOVE_ACCUMULATOR_TO_MEMORY:
-            result = decode__move_accumulator_to_memory(decoder, 
-                byte1, &instruction->data.move_accumulator_to_memory);
+            result = decode__move_accumulator_to_memory(decoder, byte1,
+                &instruction->data.move_accumulator_to_memory);
             break;
         case I_MOVE_REGISTER_OR_MEMORY_TO_SEGMENT_REGISTER:
         case I_MOVE_SEGMENT_REGISTER_TO_REGISTER_OR_MEMORY:
@@ -136,6 +147,9 @@ result_iter_t next(decoder_t* decoder) {
         // ARITHMETIC
         // MARK: ADD
         case I_ADD_REGISTER_OR_MEMORY_WITH_REGISTER_TO_EITHER:
+            result = decode__add_register_or_memory_with_register_to_either(decoder, byte1,
+                &instruction->data.add_register_or_memory_with_register_to_either);
+            break;
             // TODO
             break;
         // ADC
@@ -154,7 +168,7 @@ result_iter_t next(decoder_t* decoder) {
 result_t dcd_decode_file(decoder_t* decoder, char* input_path) {
     printf("Starting decode file...\n");
     FILE* file = fopen(input_path, "r");
-    
+
     fseek(file, 0, SEEK_END);
     int file_size = ftell(file);
     rewind(file);

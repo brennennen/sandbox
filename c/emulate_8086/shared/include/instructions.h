@@ -354,35 +354,41 @@ typedef enum {
 
 
 // MARK: MOV
-// 7 different mov encodings
+// MOV 1 - I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY
 typedef struct {
     uint8_t fields1;
     uint8_t fields2;
     uint16_t displacement;
 } move_register_or_memory_to_or_from_register_or_memory_t;
+// MOV 2 - I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY
 typedef struct {
     uint8_t fields1;
     uint8_t fields2;
     uint16_t displacement;
     uint16_t immediate;
 } move_immediate_to_register_or_memory_t;
+// MOV 3 - I_MOVE_IMMEDIATE_TO_REGISTER
 typedef struct {
     uint8_t fields1;
     uint16_t immediate;
 } move_immediate_to_register_t;
+// MOV 4 - I_MOVE_MEMORY_TO_ACCUMULATOR
 typedef struct {
     uint8_t fields1;
     uint16_t address;
 } move_memory_to_accumulator_t;
+// MOV 5 - I_MOVE_ACCUMULATOR_TO_MEMORY
 typedef struct {
     uint8_t fields1;
     uint16_t address;
 } move_accumulator_to_memory_t;
+// MOV 6 - I_MOVE_REGISTER_OR_MEMORY_TO_SEGMENT_REGISTER
 typedef struct {
     uint8_t fields1;
     uint8_t fields2;
     uint16_t displacement;
 } move_register_or_memory_to_segment_register_t;
+// MOV 7 - I_MOVE_SEGMENT_REGISTER_TO_REGISTER_OR_MEMORY
 typedef struct {
     uint8_t fields1;
     uint8_t fields2;
@@ -403,9 +409,33 @@ typedef struct {
 } push_segment_register_t;
 
 // MARK: POP
-// ...
+// TODO: all instructions between push and add
 
+// MARK: ADD
+// ADD 1 - I_ADD_REGISTER_OR_MEMORY_WITH_REGISTER_TO_EITHER
+typedef struct {
+    uint8_t fields1;
+    uint8_t fields2;
+    uint16_t displacement;
+} add_register_or_memory_with_register_to_either_t;
+// ADD 2 - I_ADD_IMMEDIATE_TO_REGISTER_OR_MEMORY
+typedef struct {
+    uint8_t fields1;
+    uint8_t fields2;
+    uint16_t displacement;
+    uint16_t immediate;
+} add_immediate_to_register_or_memory_t;
+// ADD 3 - I_ADD_IMMEDIATE_TO_ACCUMULATOR
+typedef struct {
+    uint8_t fields1;
+    uint16_t immediate;
+} add_immediate_to_accumulator_t;
+
+
+
+//
 // MARK: Instruction
+//
 
 /**
  * Each member should be 6 bytes max
@@ -423,20 +453,19 @@ typedef union instruction_data {
     push_register_or_memory_t push_register_or_memory;
     push_register_t push_register;
     push_segment_register_t push_segment_register;
-    // POP
+    // TODO: all instructions between push and add
+    // ADD
+    add_register_or_memory_with_register_to_either_t add_register_or_memory_with_register_to_either;
+    add_immediate_to_register_or_memory_t add_immediate_to_register_or_memory;
+    add_immediate_to_accumulator_t add_immediate_to_accumulator;
+    // ADC
+    // INC
     // ...
 } instruction_data_t;
 
 typedef struct PACK_ATTRIBUTE {
     instruction_tag_t tag; // instruction_tag_t packed.
     instruction_data_t data;
-
-    // rather than the tagged union approach, it's probably better to just store the data
-    // and re-calc any field needed on the fly. math is cheap.
-    //uint8_t byte1;
-    //uint8_t byte2;
-    //uint16_t data;
-    //uint16_t displacement;
 } instruction_t;
 
 #endif // INSTRUCTIONS_H

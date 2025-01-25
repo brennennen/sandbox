@@ -204,7 +204,7 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     // JNO
     I_JUMP_ON_NOT_OVERFLOW,
     // JNS
-    I_JUMP_ON_NOT_SIGNED,
+    I_JUMP_ON_NOT_SIGN,
     // LOOP
     I_LOOP,
     // LOOPZ/LOOPE
@@ -214,7 +214,7 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     // JCXZ
     I_JUMP_ON_CX_ZERO,
     // INT
-    I_INTERRUPT_TYPE,
+    I_INTERRUPT_TYPE_SPECIFIED,
     I_INTERRUPT_TYPE_3,
     // INTO
     I_INTERRUPT_ON_OVERFLOW,
@@ -258,7 +258,7 @@ typedef enum {
 } direction_t;
 
 /**
- * 
+ *
  * Table 4.7. Single Bit Field Encoding (page 160)
  */
 typedef enum {
@@ -430,7 +430,7 @@ typedef union instruction_data {
 typedef struct PACK_ATTRIBUTE {
     instruction_tag_t tag; // instruction_tag_t packed.
     instruction_data_t data;
-    
+
     // rather than the tagged union approach, it's probably better to just store the data
     // and re-calc any field needed on the fly. math is cheap.
     //uint8_t byte1;

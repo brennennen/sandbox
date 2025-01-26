@@ -264,7 +264,7 @@ instruction_tag_t dcd_decode_tag(uint8_t byte1, uint8_t byte2) {
             switch(sub_opcode) {
                 // ADD 2
                 case 0b00000000:
-                    return I_ADD_IMMEDIATE_TO_REGISTER_OR_MEMORY;
+                    return I_ADD_IMMEDIATE;
                 // ADC 2
                 case 0b00010000:
                     return I_ADC_IMMEDIATE_TO_REGISTER_OR_MEMORY;
@@ -337,12 +337,12 @@ instruction_tag_t dcd_decode_tag(uint8_t byte1, uint8_t byte2) {
         case 0b00000001:
         case 0b00000010:
         case 0b00000011:
-            return I_ADD_REGISTER_OR_MEMORY_WITH_REGISTER_TO_EITHER;
-        // ADD 2 - I_ADD_IMMEDIATE_TO_REGISTER_OR_MEMORY - handled by "COMMON 0b100000xx"
+            return I_ADD;
+        // ADD 2 - I_ADD_IMMEDIATE - handled by "COMMON 0b100000xx"
         // ADD 3 - 0b0000010x
         case 0b00000100:
         case 0b00000101:
-            return I_ADD_IMMEDIATE_TO_ACCUMULATOR;
+            return I_ADD_IMMEDIATE_TO_AX;
 
         // MARK: ADC
         // ADC 1 - 0b000100xx

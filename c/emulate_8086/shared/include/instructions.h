@@ -58,9 +58,9 @@ typedef enum ENUM_PACK_ATTRIBUTE {
 
     // MARK: ARITHMETIC
     // ADD
-    I_ADD_REGISTER_OR_MEMORY_WITH_REGISTER_TO_EITHER,
-    I_ADD_IMMEDIATE_TO_REGISTER_OR_MEMORY,
-    I_ADD_IMMEDIATE_TO_ACCUMULATOR,
+    I_ADD,
+    I_ADD_IMMEDIATE,
+    I_ADD_IMMEDIATE_TO_AX,
     // ADC
     I_ADC_REGISTER_OR_MEMORY_WITH_REGISTER_TO_EITHER,
     I_ADC_IMMEDIATE_TO_REGISTER_OR_MEMORY,
@@ -412,24 +412,24 @@ typedef struct {
 // TODO: all instructions between push and add
 
 // MARK: ADD
-// ADD 1 - I_ADD_REGISTER_OR_MEMORY_WITH_REGISTER_TO_EITHER
+// ADD 1 - I_ADD
 typedef struct {
     uint8_t fields1;
     uint8_t fields2;
     uint16_t displacement;
-} add_register_or_memory_with_register_to_either_t;
-// ADD 2 - I_ADD_IMMEDIATE_TO_REGISTER_OR_MEMORY
+} add_t;
+// ADD 2 - I_ADD_IMMEDIATE
 typedef struct {
     uint8_t fields1;
     uint8_t fields2;
     uint16_t displacement;
     uint16_t immediate;
-} add_immediate_to_register_or_memory_t;
-// ADD 3 - I_ADD_IMMEDIATE_TO_ACCUMULATOR
+} add_immediate_t;
+// ADD 3 - I_ADD_IMMEDIATE_TO_AX
 typedef struct {
     uint8_t fields1;
     uint16_t immediate;
-} add_immediate_to_accumulator_t;
+} add_immediate_to_ax_t;
 
 
 
@@ -455,9 +455,9 @@ typedef union instruction_data {
     push_segment_register_t push_segment_register;
     // TODO: all instructions between push and add
     // ADD
-    add_register_or_memory_with_register_to_either_t add_register_or_memory_with_register_to_either;
-    add_immediate_to_register_or_memory_t add_immediate_to_register_or_memory;
-    add_immediate_to_accumulator_t add_immediate_to_accumulator;
+    add_t add;
+    add_immediate_t add_immediate;
+    add_immediate_to_ax_t add_immediate_to_accumulator;
     // ADC
     // INC
     // ...

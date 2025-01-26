@@ -7,6 +7,8 @@
 
 decode_result_t dcd_read_byte(decoder_t* decoder, uint8_t* out_byte) {
     if (decoder->buffer_index >= decoder->buffer_size) {
+        printf("dcd_read_byte: DR_OUT_OF_BOUNDS. i: %d >= s: %ld\n",
+            decoder->buffer_index, decoder->buffer_size);
         return DR_OUT_OF_BOUNDS;
     }
     *out_byte = decoder->buffer[decoder->buffer_index];
@@ -16,6 +18,8 @@ decode_result_t dcd_read_byte(decoder_t* decoder, uint8_t* out_byte) {
 
 decode_result_t dcd_read_word(decoder_t* decoder, uint16_t* out_word) {
     if (decoder->buffer_index + 1 >= decoder->buffer_size) {
+        printf("dcd_read_word: DR_OUT_OF_BOUNDS. i: %d >= s: %ld\n",
+            decoder->buffer_index, decoder->buffer_size);
         return DR_OUT_OF_BOUNDS;
     }
     *out_word = decoder->buffer[decoder->buffer_index] | (decoder->buffer[decoder->buffer_index + 1] << 8);

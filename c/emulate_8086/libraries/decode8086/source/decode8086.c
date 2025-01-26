@@ -74,14 +74,16 @@ void dcd_write_assembly_instruction(instruction_t* instruction, char* buffer, in
             break;
         // TODO: all instructions between MOV and ADD
         // MARK: ADD
-        case I_ADD_REGISTER_OR_MEMORY_WITH_REGISTER_TO_EITHER:
-            write__add_register_or_memory_with_register_to_either(
-                &instruction->data.add_register_or_memory_with_register_to_either,
-                buffer, index, buffer_size);
+        case I_ADD:
+            write_add(&instruction->data.add, buffer, index, buffer_size);
+            break;
+        case I_ADD_IMMEDIATE:
+            write_add_immediate(&instruction->data.add_immediate, buffer, index, buffer_size);
             break;
 
         default:
             snprintf(buffer, buffer_size, "NOT IMPLEMENTED! tag: %d", instruction->tag);
+            printf("write NOT IMPLEMENTED! tag: %d\n", instruction->tag);
             break;
     }
 }
@@ -89,17 +91,16 @@ void dcd_write_assembly_instruction(instruction_t* instruction, char* buffer, in
 result_iter_t next(decoder_t* decoder) {
     decoder->current_byte = decoder->buffer[decoder->buffer_index];
     uint8_t byte1 = decoder->current_byte;
-    printf("next: index: %d\n", decoder->buffer_index);
     decoder->buffer_index += 1;
     if (decoder->buffer_index >= decoder->buffer_size) {
         return RI_DONE;
     }
 
-    printf("next: "BYTE_TO_BINARY_PATTERN"\n", BYTE_TO_BINARY(byte1));
+    //printf("next: "BYTE_TO_BINARY_PATTERN"\n", BYTE_TO_BINARY(byte1));
     instruction_tag_t instruction_tag = 0;
     uint8_t byte2 = 0;
-    if (decoder->buffer_index + 1 < decoder->buffer_size) {
-        byte2 = decoder->buffer[decoder->buffer_index + 1];
+    if (decoder->buffer_index < decoder->buffer_size) {
+        byte2 = decoder->buffer[decoder->buffer_index];
     }
     instruction_tag = dcd_decode_tag(byte1, byte2);
 
@@ -146,15 +147,15 @@ result_iter_t next(decoder_t* decoder) {
         // OUT
         // ARITHMETIC
         // MARK: ADD
-        case I_ADD_REGISTER_OR_MEMORY_WITH_REGISTER_TO_EITHER:
-            result = decode__add_register_or_memory_with_register_to_either(decoder, byte1,
-                &instruction->data.add_register_or_memory_with_register_to_either);
+        case I_ADD:
+            result = decode_add(decoder, byte1, &instruction->data.add);
             break;
-            // TODO
+        case I_ADD_IMMEDIATE:
+            result = decode_add_immediate(decoder, byte1, &instruction->data.add_immediate);
             break;
         // ADC
         default:
-            printf("Not implemented!\n");
+            printf("Not implemented! %d\n", instruction_tag);
             result = DR_UNIMPLEMENTED_INSTRUCTION;
             break;
     }

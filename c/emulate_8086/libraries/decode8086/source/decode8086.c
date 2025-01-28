@@ -14,8 +14,12 @@
 #include "libraries/decode8086/include/decode_utils.h"
 #include "libraries/decode8086/include/decode_tag.h"
 
-#include "libraries/decode8086/include/decode_mov.h"
-#include "libraries/decode8086/include/decode_add.h"
+#include "libraries/decode8086/include/instructions/decode_mov.h"
+#include "libraries/decode8086/include/instructions/decode_add.h"
+#include "libraries/decode8086/include/instructions/decode_sub.h"
+#include "libraries/decode8086/include/instructions/decode_cmp.h"
+
+#include "libraries/decode8086/include/instructions/conditional_jumps/je.h"
 
 #include "decode_tag.c"
 
@@ -80,7 +84,14 @@ void dcd_write_assembly_instruction(instruction_t* instruction, char* buffer, in
         case I_ADD_IMMEDIATE:
             write_add_immediate(&instruction->data.add_immediate, buffer, index, buffer_size);
             break;
-
+        // TODO: between add and sub
+        case I_SUB:
+            write_sub(&instruction->data.sub, buffer, index, buffer_size);
+            break;
+        // TODO: between sub and cmp
+        case I_COMPARE:
+            write_compare(&instruction->data.compare, buffer, index, buffer_size);
+            break;
         default:
             snprintf(buffer, buffer_size, "NOT IMPLEMENTED! tag: %d", instruction->tag);
             printf("write NOT IMPLEMENTED! tag: %d\n", instruction->tag);
@@ -110,6 +121,11 @@ result_iter_t next(decoder_t* decoder) {
 
     decode_result_t result = RI_FAILURE;
     switch(instruction->tag) {
+        // TODO: rename this to "expand"?
+
+
+
+
         // MARK: MOV
         case I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY:
             result = decode__move_register_or_memory_to_or_from_register_or_memory(decoder, byte1,
@@ -154,10 +170,26 @@ result_iter_t next(decoder_t* decoder) {
             result = decode_add_immediate(decoder, byte1, &instruction->data.add_immediate);
             break;
         // ADC
+        // ...
+        // MARK: SUB
+        case I_SUB:
+            result = decode_sub(decoder, byte1, &instruction->data.sub);
+            break;
+        // ...
+        // CMP
+        case I_COMPARE:
+            result = decode_compare(decoder, byte1, &instruction->data.compare);
+            break;
+        // ...
+        // JE
+        case I_JUMP_ON_EQUAL:
+            result = decode_jump_on_equal(decoder, byte1, &instruction->data.jump_on_equal);
+        // ...
         default:
             printf("Not implemented! %d\n", instruction_tag);
             result = DR_UNIMPLEMENTED_INSTRUCTION;
             break;
+
     }
     if (result != DR_SUCCESS) {
         fprintf(stderr, "Failed to parse instruction! decode_result = %s (%d)\n", decode_result_strings[result], result);

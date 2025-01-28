@@ -21,9 +21,9 @@
 
 #include "libraries/decode8086/include/decode8086.h"
 #include "libraries/decode8086/include/decode_utils.h"
-#include "libraries/decode8086/include/decode_mov.h"
 #include "libraries/decode8086/include/decode_shared.h"
 
+#include "libraries/decode8086/include/instructions/decode_mov.h"
 
 
 // MARK: 1. I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY
@@ -33,39 +33,9 @@ decode_result_t decode__move_register_or_memory_to_or_from_register_or_memory(
     uint8_t byte1,
     move_register_or_memory_to_or_from_register_or_memory_t* move)
 {
-    move->fields1 = byte1;
-    direction_t direction = (move->fields1 & 0b00000010) >> 1;
-    wide_t wide = move->fields1 & 0b00000001;
-    decode_result_t read_byte2_result = dcd_read_byte(decoder, (uint8_t*) &move->fields2);
-    if (read_byte2_result != DR_SUCCESS) {
-        return read_byte2_result;
-    }
-
-    mod_t mod = (move->fields2 & 0b11000000) >> 6;
-    reg_t reg = (move->fields2 & 0b00111000) >> 3;
-    uint8_t rm = move->fields2 & 0b00000111;
-    if (mod == MOD_MEMORY) {
-        if (rm == 0b00000110) {
-            decode_result_t read_displace_result = dcd_read_word(decoder, &move->displacement);
-            if (read_displace_result != DR_SUCCESS) {
-                return read_displace_result;
-            }
-        }
-    } else if (mod == MOD_MEMORY_8BIT_DISPLACEMENT) {
-        decode_result_t read_displace_result = dcd_read_byte(decoder, (uint8_t*) &move->displacement);
-        if (read_displace_result != DR_SUCCESS) {
-            return read_displace_result;
-        }
-    } else if (mod == MOD_MEMORY_16BIT_DISPLACEMENT) {
-        decode_result_t read_displace_result = dcd_read_word(decoder, &move->displacement);
-        if (read_displace_result != DR_SUCCESS) {
-            return read_displace_result;
-        }
-    } else { // MOD_REGISTER
-        // Don't have extra bytes for register to register movs. Nothing to do.
-    }
-
-    return SUCCESS;
+    return decode__opcode_d_w__mod_reg_rm__disp_lo__disp_hi(
+        decoder, byte1, &move->fields1, &move->fields2, &move->displacement
+    );
 }
 
 void write__move_register_or_memory_to_or_from_register_or_memory(

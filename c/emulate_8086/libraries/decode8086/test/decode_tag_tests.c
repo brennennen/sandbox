@@ -122,10 +122,10 @@ Test(dcd_decode_tag_tests, I_INC_REGISTER) {
 // }
 
 // MARK: SUB
-Test(dcd_decode_tag_tests, I_SUB_REGISTER_OR_MEMORY_AND_REGISTER_TO_EITHER) {
+Test(dcd_decode_tag_tests, I_SUB) {
     instruction_tag_t output_tag = dcd_decode_tag(0b00101000, 0);
-    cr_assert(I_SUB_REGISTER_OR_MEMORY_AND_REGISTER_TO_EITHER == output_tag,
-        "Expected I_SUB_REGISTER_OR_MEMORY_AND_REGISTER_TO_EITHER opcode, got: %d", output_tag);
+    cr_assert(I_SUB == output_tag,
+        "Expected I_SUB opcode, got: %d", output_tag);
 }
 
 Test(dcd_decode_tag_tests, I_SUB_IMMEDIATE_FROM_REGISTER_OR_MEMORY) {

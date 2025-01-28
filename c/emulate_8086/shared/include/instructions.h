@@ -71,7 +71,7 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_AAA_ASCII_ADJUST_FOR_ADD,
     I_DAA_DECIMAL_ADJUST_FOR_ADD,
     // SUB
-    I_SUB_REGISTER_OR_MEMORY_AND_REGISTER_TO_EITHER,
+    I_SUB,
     I_SUB_IMMEDIATE_FROM_REGISTER_OR_MEMORY,
     I_SUB_IMMEDIATE_FROM_ACCUMULATOR,
     // SBB
@@ -84,7 +84,7 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     // NEG
     I_NEGATE_CHANGE_SIGN,
     // CMP
-    I_COMPARE_REGISTER_OR_MEMORY_AND_REGISTER,
+    I_COMPARE,
     I_COMPARE_IMMEDIATE_WITH_REGISTER_OR_MEMORY,
     I_COMPARE_IMMEDIATE_WITH_ACCUMULATOR,
     // AAS
@@ -352,6 +352,28 @@ typedef enum {
     RM_BX,
 } rm_effective_address_calc_t;
 
+// MARK: COMMON
+typedef struct {
+    uint8_t fields1;
+} i_1_byte_t;
+
+typedef struct {
+    uint8_t fields1;
+    uint8_t fields2;
+} i_2_field_bytes_t;
+
+typedef struct {
+    uint8_t fields1;
+    uint8_t fields2;
+    uint16_t displacement;
+} i_4_byte_displacement_t;
+
+typedef struct {
+    uint8_t fields1;
+    uint8_t fields2;
+    uint16_t displacement;
+    uint16_t data;
+} i_6_byte_displacement_data_t;
 
 // MARK: MOV
 // MOV 1 - I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY
@@ -431,7 +453,34 @@ typedef struct {
     uint16_t immediate;
 } add_immediate_to_ax_t;
 
+// MARK: SUB
+// SUB 1 - I_SUB
+typedef struct {
+    uint8_t fields1;
+    uint8_t fields2;
+    uint16_t displacement;
+} sub_t;
 
+// TODO: between sub and cmp
+typedef struct {
+    uint8_t fields1;
+    uint8_t fields2;
+    uint16_t displacement;
+} compare_t;
+
+// TODO: between cmp and je
+typedef struct {
+    uint8_t fields1;
+    uint8_t jump_offset;
+} conditional_jump_t;
+
+typedef struct {
+    uint8_t fields1;
+    uint8_t jump_offset; // IP-INC8 - 8-bit signed increment to instruction pointer
+} jump_on_equal_t;
+
+
+// TODO: the je to end
 
 //
 // MARK: Instruction
@@ -454,12 +503,23 @@ typedef union instruction_data {
     push_register_t push_register;
     push_segment_register_t push_segment_register;
     // TODO: all instructions between push and add
+    // ...
     // ADD
     add_t add;
     add_immediate_t add_immediate;
     add_immediate_to_ax_t add_immediate_to_accumulator;
     // ADC
     // INC
+    // ...
+    // SUB
+    sub_t sub;
+    // SBB
+    // DEC
+    // ...
+    compare_t compare;
+    // ...
+    conditional_jump_t conditional_jump;
+    jump_on_equal_t jump_on_equal;
     // ...
 } instruction_data_t;
 

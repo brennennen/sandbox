@@ -379,12 +379,12 @@ instruction_tag_t dcd_decode_tag(uint8_t byte1, uint8_t byte2) {
             return I_DAA_DECIMAL_ADJUST_FOR_ADD;
 
         // MARK: SUB
-        // SUB 1
+        // SUB 1 - 0b001010xx
         case 0b00101000:
         case 0b00101001:
         case 0b00101010:
         case 0b00101011:
-            return I_SUB_REGISTER_OR_MEMORY_AND_REGISTER_TO_EITHER;
+            return I_SUB;
         // SUB 2 - I_SUB_IMMEDIATE_FROM_REGISTER_OR_MEMORY - handled by common "COMMON 0b100000xx"
         // SUB 3 - 0b0010110x
         case 0b00101100:
@@ -425,7 +425,7 @@ instruction_tag_t dcd_decode_tag(uint8_t byte1, uint8_t byte2) {
         case 0b00111001:
         case 0b00111010:
         case 0b00111011:
-            return I_COMPARE_REGISTER_OR_MEMORY_AND_REGISTER;
+            return I_COMPARE;
         // CMP 2 - I_COMPARE_IMMEDIATE_WITH_REGISTER_OR_MEMORY - handled by "COMMON 0b100000xx"
         // CMP 3 - 0b0011110x
         case 0b00111100:

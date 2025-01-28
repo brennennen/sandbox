@@ -16,8 +16,9 @@
 
 #include "libraries/decode8086/include/decode8086.h"
 #include "libraries/decode8086/include/decode_utils.h"
-#include "libraries/decode8086/include/decode_add.h"
 #include "libraries/decode8086/include/decode_shared.h"
+
+#include "libraries/decode8086/include/instructions/decode_add.h"
 
 // MARK: ADD 1 - I_ADD
 decode_result_t decode_add(
@@ -25,39 +26,9 @@ decode_result_t decode_add(
     uint8_t byte1,
     add_t* add)
 {
-    add->fields1 = byte1;
-    direction_t direction = (add->fields1 & 0b00000010) >> 1;
-    wide_t wide = add->fields1 & 0b00000001;
-    decode_result_t read_byte2_result = dcd_read_byte(decoder, (uint8_t*) &add->fields2);
-    if (read_byte2_result != DR_SUCCESS) {
-        return read_byte2_result;
-    }
-
-    mod_t mod = (add->fields2 & 0b11000000) >> 6;
-    reg_t reg = (add->fields2 & 0b00111000) >> 3;
-    uint8_t rm = add->fields2 & 0b00000111;
-    if (mod == MOD_MEMORY) {
-        if (rm == 0b00000110) {
-            decode_result_t read_displace_result = dcd_read_word(decoder, &add->displacement);
-            if (read_displace_result != DR_SUCCESS) {
-                return read_displace_result;
-            }
-        }
-    } else if (mod == MOD_MEMORY_8BIT_DISPLACEMENT) {
-        decode_result_t read_displace_result = dcd_read_byte(decoder, (uint8_t*) &add->displacement);
-        if (read_displace_result != DR_SUCCESS) {
-            return read_displace_result;
-        }
-    } else if (mod == MOD_MEMORY_16BIT_DISPLACEMENT) {
-        decode_result_t read_displace_result = dcd_read_word(decoder, &add->displacement);
-        if (read_displace_result != DR_SUCCESS) {
-            return read_displace_result;
-        }
-    } else { // MOD_REGISTER
-        // Don't have extra bytes for register to register movs. Nothing to do.
-    }
-
-    return SUCCESS;
+    return decode__opcode_d_w__mod_reg_rm__disp_lo__disp_hi(
+        decoder, byte1, &add->fields1, &add->fields2, &add->displacement
+    );
 }
 
 void write_add(
@@ -76,7 +47,7 @@ void write_add(
         add->displacement, "add", 3, buffer, index, buffer_size);
 }
 
-// MARK: ADD 2 - I_ADD_IMMEDIATE_TO_REGISTER_OR_MEMORY
+// MARK: ADD 2 - I_ADD_IMMEDIATE
 
 decode_result_t decode_add_immediate(
     decoder_t* decoder,

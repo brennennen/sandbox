@@ -4,7 +4,64 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "shared/include/result.h"
+#include "libraries/decode8086/include/decode8086.h"
+
 #include "libraries/decode8086/include/decode_shared.h"
+
+/**
+ *
+ */
+decode_result_t read_displacement(decoder_t* decoder, mod_t mod, uint8_t rm, uint16_t* displacement) {
+    if (mod == MOD_MEMORY) {
+        if (rm == 0b00000110) {
+            decode_result_t read_displace_result = dcd_read_word(decoder, displacement);
+            if (read_displace_result != DR_SUCCESS) {
+                return read_displace_result;
+            }
+        }
+    } else if (mod == MOD_MEMORY_8BIT_DISPLACEMENT) {
+        decode_result_t read_displace_result = dcd_read_byte(decoder, (uint8_t*) displacement);
+        if (read_displace_result != DR_SUCCESS) {
+            return read_displace_result;
+        }
+    } else if (mod == MOD_MEMORY_16BIT_DISPLACEMENT) {
+        decode_result_t read_displace_result = dcd_read_word(decoder, displacement);
+        if (read_displace_result != DR_SUCCESS) {
+            return read_displace_result;
+        }
+    }
+    return DR_SUCCESS;
+}
+
+/**
+ * Decodes the standard 4 byte format: [opcode dw][mod reg r/m][disp-lo][disp-high]
+ */
+decode_result_t decode__opcode_d_w__mod_reg_rm__disp_lo__disp_hi(
+    decoder_t* decoder,
+    uint8_t byte1,
+    uint8_t* fields1,
+    uint8_t* fields2,
+    uint16_t* displacement
+) {
+    *fields1 = byte1;
+    direction_t direction = (*fields1 & 0b00000010) >> 1;
+    wide_t wide = *fields1 & 0b00000001;
+    decode_result_t read_byte2_result = dcd_read_byte(decoder, (uint8_t*) fields2);
+    if (read_byte2_result != DR_SUCCESS) {
+        return read_byte2_result;
+    }
+
+    mod_t mod = (*fields2 & 0b11000000) >> 6;
+    reg_t reg = (*fields2 & 0b00111000) >> 3;
+    uint8_t rm = *fields2 & 0b00000111;
+    decode_result_t read_displacement_result = read_displacement(decoder, mod, rm, displacement);
+    if (read_displacement_result != DR_SUCCESS) {
+        return read_displacement_result;
+    }
+
+    return SUCCESS;
+}
 
 void write_uint8(char* buffer, int* index, size_t buffer_size, uint8_t num) {
     // TODO: write something optimized. just use sprintf for now
@@ -116,7 +173,7 @@ void build_effective_address(char* buffer, size_t buffer_size,
             }
             break;
         case MOD_REGISTER:
-            
+
         default:
             memcpy(buffer, "INVALID", sizeof("INVALID"));
             break;
@@ -127,8 +184,8 @@ void write__common_register_or_memory_with_register_or_memory(
     direction_t direction,
     wide_t wide,
     mod_t mod,
-    uint16_t reg,
-    uint16_t rm,
+    uint8_t reg,
+    uint8_t rm,
     uint16_t displacement,
     char* mnemonic,
     uint8_t mnemonic_size,
@@ -137,11 +194,14 @@ void write__common_register_or_memory_with_register_or_memory(
     int buffer_size)
 {
     if (mod == MOD_REGISTER) {
+        // TODO: change both of these to uint16_t
+        //uint8_t* left = &rm;
         uint8_t* left = &rm;
-        uint8_t* right = (uint8_t*)&reg;
+        //uint8_t* right = (uint8_t*)&reg;
+        uint8_t* right = &reg;
 
         if (direction == DIR_FROM_REGISTER) {
-            left = (uint8_t*)&reg;
+            left = &reg;
             right = &rm;
         }
 
@@ -229,4 +289,34 @@ void write__common_register_or_memory_with_register_or_memory(
             //snprintf(buffer, buffer_size, "NOT IMPLEMENTED!");
         }
     }
+}
+
+void write__common_immediate_to_register_or_memory(
+    direction_t direction,
+    wide_t wide,
+    mod_t mod,
+    uint8_t rm,
+    uint16_t displacement,
+    uint16_t immediate,
+    char* mnemonic,
+    uint8_t mnemonic_size,
+    char* buffer,
+    int* index,
+    int buffer_size)
+{
+    //wide_t wide = move->fields1 & 0b00000001;
+    //mod_t mod = (move->fields2 & 0b11000000) >> 6;
+    //uint8_t rm = move->fields2 & 0b00000111;
+
+    char effective_address_string[32] = { 0 };
+    build_effective_address(effective_address_string, sizeof(effective_address_string),
+                            mod, rm, displacement);
+    int written = snprintf(buffer + *index,  buffer_size - *index, "%s %s, %d",
+                            mnemonic,
+                            effective_address_string,
+                            immediate);
+    if (written < 0) {
+        // TODO: propogate error
+    }
+    *index += written;
 }

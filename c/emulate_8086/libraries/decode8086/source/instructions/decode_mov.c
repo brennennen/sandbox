@@ -3,7 +3,7 @@
  * can be mapped into 7 different opcode encodings. The order of these encodings will
  * follow the datasheet table 4-12.
  *
- * 1. I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY
+ * 1. I_MOVE
  * 2. I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY
  * 3. I_MOVE_IMMEDIATE_TO_REGISTER
  * 4. I_MOVE_MEMORY_TO_ACCUMULATOR
@@ -26,20 +26,20 @@
 #include "libraries/decode8086/include/instructions/decode_mov.h"
 
 
-// MARK: 1. I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY
+// MARK: 1. I_MOVE
 
-decode_result_t decode__move_register_or_memory_to_or_from_register_or_memory(
+decode_result_t decode_move(
     decoder_t* decoder,
     uint8_t byte1,
-    move_register_or_memory_to_or_from_register_or_memory_t* move)
+    move_t* move)
 {
     return decode__opcode_d_w__mod_reg_rm__disp_lo__disp_hi(
         decoder, byte1, &move->fields1, &move->fields2, &move->displacement
     );
 }
 
-void write__move_register_or_memory_to_or_from_register_or_memory(
-    move_register_or_memory_to_or_from_register_or_memory_t* move,
+void write_move(
+    move_t* move,
     char* buffer,
     int* index,
     int buffer_size)

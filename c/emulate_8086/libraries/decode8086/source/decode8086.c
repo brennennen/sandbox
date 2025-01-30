@@ -20,8 +20,9 @@
 #include "libraries/decode8086/include/instructions/decode_cmp.h"
 
 #include "libraries/decode8086/include/instructions/conditional_jumps/je.h"
+#include "libraries/decode8086/include/instructions/decode_conditional_jumps.h"
 
-#include "decode_tag.c"
+//#include "decode_tag.c"
 
 /**
  * Initializes the decoder.
@@ -51,9 +52,9 @@ void dcd_write_assembly_instruction(instruction_t* instruction, char* buffer, in
             *index += written;
             break;
         // MARK: MOV
-        case I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY:
-            write__move_register_or_memory_to_or_from_register_or_memory(
-                &instruction->data.move_register_or_memory_to_or_from_register_or_memory,
+        case I_MOVE:
+            write_move(
+                &instruction->data.move,
                 buffer, index, buffer_size);
             break;
         case I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY:
@@ -92,6 +93,29 @@ void dcd_write_assembly_instruction(instruction_t* instruction, char* buffer, in
         case I_COMPARE:
             write_compare(&instruction->data.compare, buffer, index, buffer_size);
             break;
+        // MARK: CONDITIONAL JUMPS
+        case I_JUMP_ON_EQUAL:
+        case I_JUMP_ON_LESS:
+        case I_JUMP_ON_LESS_OR_EQUAL:
+        case I_JUMP_ON_BELOW:
+        case I_JUMP_ON_BELOW_OR_EQUAL:
+        case I_JUMP_ON_PARITY:
+        case I_JUMP_ON_OVERLFLOW:
+        case I_JUMP_ON_SIGN:
+        case I_JUMP_ON_NOT_EQUAL:
+        case I_JUMP_ON_GREATER_OR_EQUAL:
+        case I_JUMP_ON_GREATER:
+        case I_JUMP_ON_ABOVE_OR_EQUAL:
+        case I_JUMP_ON_ABOVE:
+        case I_JUMP_ON_NOT_PARITY:
+        case I_JUMP_ON_NOT_OVERFLOW:
+        case I_JUMP_ON_NOT_SIGN:
+        case I_LOOP:
+        case I_LOOP_WHILE_EQUAL:
+        case I_LOOP_WHILE_NOT_EQUAL:
+        case I_JUMP_ON_CX_ZERO:
+            write_conditional_jump(&instruction->data.conditional_jump, instruction->tag, buffer, index, buffer_size);
+            break;
         default:
             snprintf(buffer, buffer_size, "NOT IMPLEMENTED! tag: %d", instruction->tag);
             printf("write NOT IMPLEMENTED! tag: %d\n", instruction->tag);
@@ -127,9 +151,9 @@ result_iter_t next(decoder_t* decoder) {
 
 
         // MARK: MOV
-        case I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY:
-            result = decode__move_register_or_memory_to_or_from_register_or_memory(decoder, byte1,
-                &instruction->data.move_register_or_memory_to_or_from_register_or_memory);
+        case I_MOVE:
+            result = decode_move(decoder, byte1,
+                &instruction->data.move);
             break;
         case I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY:
             result = decode__move_immediate_to_register_or_memory(decoder, byte1,
@@ -181,9 +205,29 @@ result_iter_t next(decoder_t* decoder) {
             result = decode_compare(decoder, byte1, &instruction->data.compare);
             break;
         // ...
-        // JE
+        // MARK: CONDITIONAL JUMPS
         case I_JUMP_ON_EQUAL:
-            result = decode_jump_on_equal(decoder, byte1, &instruction->data.jump_on_equal);
+        case I_JUMP_ON_LESS:
+        case I_JUMP_ON_LESS_OR_EQUAL:
+        case I_JUMP_ON_BELOW:
+        case I_JUMP_ON_BELOW_OR_EQUAL:
+        case I_JUMP_ON_PARITY:
+        case I_JUMP_ON_OVERLFLOW:
+        case I_JUMP_ON_SIGN:
+        case I_JUMP_ON_NOT_EQUAL:
+        case I_JUMP_ON_GREATER_OR_EQUAL:
+        case I_JUMP_ON_GREATER:
+        case I_JUMP_ON_ABOVE_OR_EQUAL:
+        case I_JUMP_ON_ABOVE:
+        case I_JUMP_ON_NOT_PARITY:
+        case I_JUMP_ON_NOT_OVERFLOW:
+        case I_JUMP_ON_NOT_SIGN:
+        case I_LOOP:
+        case I_LOOP_WHILE_EQUAL:
+        case I_LOOP_WHILE_NOT_EQUAL:
+        case I_JUMP_ON_CX_ZERO:
+            result = decode_conditional_jump2(decoder, instruction->tag, byte1, &instruction->data.conditional_jump);
+            break;
         // ...
         default:
             printf("Not implemented! %d\n", instruction_tag);

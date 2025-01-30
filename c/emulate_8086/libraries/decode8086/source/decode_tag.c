@@ -36,7 +36,7 @@ instruction_tag_t dcd_decode_tag(uint8_t byte1, uint8_t byte2) {
         case 0b10001001:
         case 0b10001010:
         case 0b10001011:
-            return I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY;
+            return I_MOVE;
         // MOV 2 - 0b100010xx
         case 0b11000110:
         case 0b11000111:

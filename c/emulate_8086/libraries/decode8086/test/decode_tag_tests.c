@@ -9,10 +9,10 @@
 #include "libraries/decode8086/include/decode_tag.h"
 
 // MARK: MOV
-Test(dcd_decode_tag_tests, I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY) {
+Test(dcd_decode_tag_tests, I_MOVE) {
     instruction_tag_t output_tag = dcd_decode_tag(0b10001000, 0);
-    cr_assert(I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY == output_tag,
-        "Expected I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY opcode, got: %d", output_tag);
+    cr_assert(I_MOVE == output_tag,
+        "Expected I_MOVE opcode, got: %d", output_tag);
 }
 
 Test(dcd_decode_tag_tests, I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY) {

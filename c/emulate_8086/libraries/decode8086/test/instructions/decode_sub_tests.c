@@ -31,8 +31,7 @@ Test(decode__I_SUB__tests,
     uint8_t input[] = { 0x29, 0xd9 }; // 0b00101001 0b11011001
     cr_assert(SUCCESS == dcd_decode_chunk(&g_decoder2, input, sizeof(input)));
     cr_assert(1 == g_decoder2.instructions_count);
-    uint8_t output[32] = { 0x00 };
+    char output[32] = { 0x00 };
     dcd_write_all_assembly(g_decoder2.instructions, g_decoder2.instructions_count, output, sizeof(output));
     cr_assert(strncmp(expected, output, sizeof(output)) == 0, "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
-
 }

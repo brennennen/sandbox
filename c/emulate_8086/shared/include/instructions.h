@@ -15,7 +15,7 @@
 typedef enum ENUM_PACK_ATTRIBUTE {
     I_INVALID = 0,
     // MOV
-    I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY,
+    I_MOVE,
     I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY,
     I_MOVE_IMMEDIATE_TO_REGISTER,
     I_MOVE_MEMORY_TO_ACCUMULATOR,
@@ -30,7 +30,7 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_POP_REGISTER_OR_MEMORY,
     I_POP_REGISTER,
     I_POP_SEGMENT_REGISTER,
-    // XCHNG
+    // XCHG
     I_EXCHANGE_REGISTER_OR_MEMORY_WITH_REGISTER,
     I_EXCHANGE_REGISTER_WITH_ACCUMULATOR,
     // IN
@@ -249,6 +249,150 @@ typedef enum ENUM_PACK_ATTRIBUTE {
 } instruction_tag_t;
 
 /**
+ * Lookup table for machine instructions to their associated assembly instruction mnemonics.
+ * TODO: maybe have a function that returns access into this and have a #define that allows
+ * compiling this out to reduce binary size if needed. the function would just return "?" for
+ * each instruction if this is compiled out.
+ * WARNING: Parallal array with "instruction_tag_t".
+ */
+static char instruction_tag_mnemonic[][8] = {
+    "invalid",  // I_INVALID
+    "mov",      // I_MOVE
+    "mov",      // I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY
+    "mov",      // I_MOVE_IMMEDIATE_TO_REGISTER
+    "mov",      // I_MOVE_MEMORY_TO_ACCUMULATOR
+    "mov",      // I_MOVE_ACCUMULATOR_TO_MEMORY
+    "mov",      // I_MOVE_REGISTER_OR_MEMORY_TO_SEGMENT_REGISTER
+    "mov",      // I_MOVE_SEGMENT_REGISTER_TO_REGISTER_OR_MEMORY
+    "push",     // I_PUSH_REGISTER_OR_MEMORY
+    "push",     // I_PUSH_REGISTER
+    "push",     // I_PUSH_SEGMENT_REGISTER
+    "pop",      // I_POP_REGISTER_OR_MEMORY
+    "pop",      // I_POP_REGISTER
+    "pop",      // I_POP_SEGMENT_REGISTER
+    "xchg",     // I_EXCHANGE_REGISTER_OR_MEMORY_WITH_REGISTER
+    "xchg",     // I_EXCHANGE_REGISTER_WITH_ACCUMULATOR
+    "in",       // I_INPUT_FROM_FIXED_PORT
+    "in",       // I_INPUT_FROM_VARIABLE_PORT
+    "out",      // I_OUTPUT_TO_FIXED_PORT
+    "out",      // I_OUTPUT_TO_VARIABLE_PORT
+    "xlat",     // I_TRANSLATE_BYTE_TO_AL
+    "lea",      // I_LOAD_EA_TO_REGISTER
+    "lds",      // I_LOAD_POINTER_TO_DS
+    "les",
+    "lahf",
+    "sahf",
+    "pushf",
+    "popf",
+    "add",      // I_ADD
+    "add",      // I_ADD_IMMEDIATE
+    "add",      // I_ADD_IMMEDIATE_TO_AX
+    "adc",
+    "adc",
+    "adc",
+    "inc",
+    "inc",
+    "aaa",
+    "daa",
+    "sub",      // I_SUB
+    "sub",
+    "sub",
+    "sbb",
+    "sbb",
+    "sbb",
+    "dec",
+    "dec",
+    "neg",
+    "cmp",      // I_COMPARE
+    "cmp",
+    "cmp",
+    "aas",
+    "das",
+    "mul",
+    "imul",
+    "aam",
+    "div",
+    "idiv",
+    "add",
+    "cbw",
+    "cwd",
+    "not",
+    "shl",
+    "shr",
+    "sar",
+    "rol",
+    "ror",
+    "rcl",
+    "rcr",
+    "and",
+    "and",
+    "and",
+    "test",
+    "test",
+    "test",
+    "or",
+    "or",
+    "or",
+    "xor",
+    "xor",
+    "xor",
+    "rep",
+    "movs",
+    "cmps",
+    "scas",
+    "lods",
+    "stds",
+    "call",
+    "call",
+    "call",
+    "call",
+    "jmp",
+    "jmp",
+    "jmp",
+    "jmp",
+    "jmp",
+    "ret",
+    "ret",
+    "ret",
+    "ret",
+    "je",
+    "jl",
+    "jle",
+    "jb",
+    "jbe",
+    "jp",
+    "jo",
+    "js",
+    "jne",
+    "jnl",
+    "jnle",
+    "jnb",
+    "jnbe",
+    "jnp",
+    "jno",
+    "jns",
+    "loop",
+    "loopz",
+    "loopnz",
+    "jcxz",
+    "int",
+    "into",
+    "iret",
+    "clc",
+    "cmc",
+    "stc",
+    "cld",
+    "std",
+    "cli",
+    "sti",
+    "hlt",
+    "wait",
+    "esc",
+    "lock",
+    "segment",
+};
+
+/**
  * 1 = the REG field in the second byte identifies the destination operand
  * 0 = the REG field identifies the source operand
  */
@@ -354,13 +498,13 @@ typedef enum {
 
 // MARK: COMMON
 typedef struct {
-    uint8_t fields1;
+    uint8_t byte1;
 } i_1_byte_t;
 
 typedef struct {
-    uint8_t fields1;
-    uint8_t fields2;
-} i_2_field_bytes_t;
+    uint8_t byte1;
+    uint8_t byte2;
+} i_2_bytes_t;
 
 typedef struct {
     uint8_t fields1;
@@ -376,12 +520,12 @@ typedef struct {
 } i_6_byte_displacement_data_t;
 
 // MARK: MOV
-// MOV 1 - I_MOVE_REGISTER_OR_MEMORY_TO_OR_FROM_REGISTER_OR_MEMORY
+// MOV 1 - I_MOVE
 typedef struct {
     uint8_t fields1;
     uint8_t fields2;
     uint16_t displacement;
-} move_register_or_memory_to_or_from_register_or_memory_t;
+} move_t;
 // MOV 2 - I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY
 typedef struct {
     uint8_t fields1;
@@ -471,7 +615,7 @@ typedef struct {
 // TODO: between cmp and je
 typedef struct {
     uint8_t fields1;
-    uint8_t jump_offset;
+    int8_t jump_offset;
 } conditional_jump_t;
 
 typedef struct {
@@ -481,7 +625,6 @@ typedef struct {
 
 
 // TODO: the je to end
-
 //
 // MARK: Instruction
 //
@@ -490,8 +633,11 @@ typedef struct {
  * Each member should be 6 bytes max
  */
 typedef union instruction_data {
+    // COMMON
+    i_1_byte_t byte;
+    i_2_bytes_t two_bytes;
     // MOV
-    move_register_or_memory_to_or_from_register_or_memory_t move_register_or_memory_to_or_from_register_or_memory;
+    move_t move;
     move_immediate_to_register_or_memory_t move_immediate_to_register_or_memory;
     move_immediate_to_register_t move_immediate_to_register;
     move_memory_to_accumulator_t move_memory_to_accumulator;
@@ -519,7 +665,6 @@ typedef union instruction_data {
     compare_t compare;
     // ...
     conditional_jump_t conditional_jump;
-    jump_on_equal_t jump_on_equal;
     // ...
 } instruction_data_t;
 

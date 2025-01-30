@@ -31,7 +31,7 @@ Test(decode__I_ADD__tests,
     uint8_t input[] = { 0x01, 0xd9 };
     cr_assert(SUCCESS == dcd_decode_chunk(&g_decoder, input, sizeof(input)));
     cr_assert(1 == g_decoder.instructions_count);
-    uint8_t output[32] = { 0x00 };
+    char output[32] = { 0x00 };
     dcd_write_all_assembly(g_decoder.instructions, g_decoder.instructions_count, output, sizeof(output));
     cr_assert(strncmp(expected, output, sizeof(output)) == 0, "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
@@ -44,7 +44,7 @@ Test(decode__I_ADD_IMMEDIATE__tests,
     uint8_t input[] = { 0x83, 0xc1, 0x08 };
     cr_assert(SUCCESS == dcd_decode_chunk(&g_decoder, input, sizeof(input)));
     cr_assert(1 == g_decoder.instructions_count);
-    uint8_t output[32] = { 0x00 };
+    char output[32] = { 0x00 };
     dcd_write_all_assembly(g_decoder.instructions, g_decoder.instructions_count, output, sizeof(output));
     cr_assert(strncmp(expected, output, sizeof(output)) == 0, "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }

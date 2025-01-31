@@ -57,7 +57,7 @@ void dcd_write_assembly_instruction(instruction_t* instruction, char* buffer, in
                 &instruction->data.move,
                 buffer, index, buffer_size);
             break;
-        case I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY:
+        case I_MOVE_IMMEDIATE:
             write__move_immediate_to_register_or_memory(
                 &instruction->data.move_immediate_to_register_or_memory,
                 buffer, index, buffer_size);
@@ -67,12 +67,12 @@ void dcd_write_assembly_instruction(instruction_t* instruction, char* buffer, in
                 &instruction->data.move_immediate_to_register,
                 buffer, index, buffer_size);
             break;
-        case I_MOVE_MEMORY_TO_ACCUMULATOR:
+        case I_MOVE_TO_AX:
             write__move_memory_to_accumulator(
                 &instruction->data.move_memory_to_accumulator,
                 buffer, index, buffer_size);
             break;
-        case I_MOVE_ACCUMULATOR_TO_MEMORY:
+        case I_MOVE_AX:
             write__move_accumulator_to_memory(
                 &instruction->data.move_accumulator_to_memory,
                 buffer, index, buffer_size);
@@ -116,6 +116,7 @@ void dcd_write_assembly_instruction(instruction_t* instruction, char* buffer, in
         case I_JUMP_ON_CX_ZERO:
             write_conditional_jump(&instruction->data.conditional_jump, instruction->tag, buffer, index, buffer_size);
             break;
+
         default:
             snprintf(buffer, buffer_size, "NOT IMPLEMENTED! tag: %d", instruction->tag);
             printf("write NOT IMPLEMENTED! tag: %d\n", instruction->tag);
@@ -146,16 +147,11 @@ result_iter_t next(decoder_t* decoder) {
     decode_result_t result = RI_FAILURE;
     switch(instruction->tag) {
         // TODO: rename this to "expand"?
-
-
-
-
         // MARK: MOV
         case I_MOVE:
-            result = decode_move(decoder, byte1,
-                &instruction->data.move);
+            result = decode_move(decoder, byte1, &instruction->data.move);
             break;
-        case I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY:
+        case I_MOVE_IMMEDIATE:
             result = decode__move_immediate_to_register_or_memory(decoder, byte1,
                 &instruction->data.move_immediate_to_register_or_memory);
             break;
@@ -163,21 +159,21 @@ result_iter_t next(decoder_t* decoder) {
             result = decode__move_immediate_to_register(decoder, byte1,
                 &instruction->data.move_immediate_to_register);
             break;
-        case I_MOVE_MEMORY_TO_ACCUMULATOR:
+        case I_MOVE_TO_AX:
             result = decode__move_memory_to_accumulator(decoder, byte1,
                 &instruction->data.move_memory_to_accumulator);
             break;
-        case I_MOVE_ACCUMULATOR_TO_MEMORY:
+        case I_MOVE_AX:
             result = decode__move_accumulator_to_memory(decoder, byte1,
                 &instruction->data.move_accumulator_to_memory);
             break;
-        case I_MOVE_REGISTER_OR_MEMORY_TO_SEGMENT_REGISTER:
-        case I_MOVE_SEGMENT_REGISTER_TO_REGISTER_OR_MEMORY:
+        case I_MOVE_TO_SEGMENT_REGISTER:
+        case I_MOVE_SEGMENT_REGISTER:
             printf("Not implemented!\n");
             result = DR_UNIMPLEMENTED_INSTRUCTION;
             break;
         // PUSH
-        // case I_PUSH_REGISTER_OR_MEMORY:
+        // case I_PUSH:
         // case I_PUSH_REGISTER:
         // case I_PUSH_SEGMENT_REGISTER:
         //     printf("Not implemented!\n");
@@ -227,6 +223,38 @@ result_iter_t next(decoder_t* decoder) {
         case I_LOOP_WHILE_NOT_EQUAL:
         case I_JUMP_ON_CX_ZERO:
             result = decode_conditional_jump2(decoder, instruction->tag, byte1, &instruction->data.conditional_jump);
+            break;
+        case I_INTERRUPT_TYPE_SPECIFIED:
+        case I_INTERRUPT_TYPE_3:
+        case I_INTERRUPT_ON_OVERFLOW:
+        case I_INTERRUPT_RETURN:
+            printf("Not implemented! %d\n", instruction_tag);
+            result = DR_UNIMPLEMENTED_INSTRUCTION;
+            break;
+        case I_CLEAR_CARRY:
+        case I_COMPLEMENT_CARRY:
+        case I_SET_CARRY:
+        case I_CLEAR_DIRECTION:
+        case I_SET_DIRECTION:
+        case I_CLEAR_INTERRUPT:
+        case I_SET_INTERRUPT:
+        case I_HALT:
+        case I_WAIT:
+
+            // TODO: "decode_command"
+            printf("Not implemented! %d\n", instruction_tag);
+            result = DR_UNIMPLEMENTED_INSTRUCTION;
+            break;
+        case I_ESCAPE:
+            // TODO: read 4 bytes
+            printf("Not implemented! %d\n", instruction_tag);
+            result = DR_UNIMPLEMENTED_INSTRUCTION;
+            break;
+        case I_LOCK:
+        case I_SEGMENT:
+            // TODO: "decode_command"
+            printf("Not implemented! %d\n", instruction_tag);
+            result = DR_UNIMPLEMENTED_INSTRUCTION;
             break;
         // ...
         default:

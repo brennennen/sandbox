@@ -16,23 +16,23 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_INVALID = 0,
     // MOV
     I_MOVE,
-    I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY,
+    I_MOVE_IMMEDIATE,
     I_MOVE_IMMEDIATE_TO_REGISTER,
-    I_MOVE_MEMORY_TO_ACCUMULATOR,
-    I_MOVE_ACCUMULATOR_TO_MEMORY,
-    I_MOVE_REGISTER_OR_MEMORY_TO_SEGMENT_REGISTER,
-    I_MOVE_SEGMENT_REGISTER_TO_REGISTER_OR_MEMORY,
+    I_MOVE_TO_AX,
+    I_MOVE_AX,
+    I_MOVE_TO_SEGMENT_REGISTER,
+    I_MOVE_SEGMENT_REGISTER,
     // PUSH
-    I_PUSH_REGISTER_OR_MEMORY,
+    I_PUSH,
     I_PUSH_REGISTER,
     I_PUSH_SEGMENT_REGISTER,
     // POP
-    I_POP_REGISTER_OR_MEMORY,
+    I_POP,
     I_POP_REGISTER,
     I_POP_SEGMENT_REGISTER,
     // XCHG
-    I_EXCHANGE_REGISTER_OR_MEMORY_WITH_REGISTER,
-    I_EXCHANGE_REGISTER_WITH_ACCUMULATOR,
+    I_EXCHANGE,
+    I_EXCHANGE_WITH_AX,
     // IN
     I_INPUT_FROM_FIXED_PORT,
     I_INPUT_FROM_VARIABLE_PORT,
@@ -62,9 +62,9 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_ADD_IMMEDIATE,
     I_ADD_IMMEDIATE_TO_AX,
     // ADC
-    I_ADC_REGISTER_OR_MEMORY_WITH_REGISTER_TO_EITHER,
-    I_ADC_IMMEDIATE_TO_REGISTER_OR_MEMORY,
-    I_ADC_IMMEDIATE_TO_ACCUMULATOR,
+    I_ADC,
+    I_ADC_IMMEDIATE,
+    I_ADC_IMMEDIATE_TO_AX,
     // INC
     I_INC_REGISTER_OR_MEMORY,
     I_INC_REGISTER,
@@ -72,12 +72,12 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_DAA_DECIMAL_ADJUST_FOR_ADD,
     // SUB
     I_SUB,
-    I_SUB_IMMEDIATE_FROM_REGISTER_OR_MEMORY,
-    I_SUB_IMMEDIATE_FROM_ACCUMULATOR,
+    I_SUB_IMMEDIATE,
+    I_SUB_IMMEDIATE_FROM_AX,
     // SBB
-    I_SBB_REGISTER_OR_MEMORY_AND_REGISTER_TO_EITHER,
-    I_SBB_IMMEDIATE_FROM_REGISTER_OR_MEMORY,
-    I_SBB_IMMEDIATE_FROM_ACCUMULATOR,
+    I_SBB,
+    I_SBB_IMMEDIATE,
+    I_SBB_IMMEDIATE_FROM_AX,
     // DEC
     I_DEC_REGISTER_OR_MEMORY,
     I_DEC_REGISTER,
@@ -85,8 +85,8 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_NEGATE_CHANGE_SIGN,
     // CMP
     I_COMPARE,
-    I_COMPARE_IMMEDIATE_WITH_REGISTER_OR_MEMORY,
-    I_COMPARE_IMMEDIATE_WITH_ACCUMULATOR,
+    I_COMPARE_IMMEDIATE,
+    I_COMPARE_IMMEDIATE_WITH_AX,
     // AAS
     I_ASCII_ADJUST_FOR_SUBTRACT,
     // DAS
@@ -126,9 +126,9 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     // RCR
     I_ROTATE_RIGHT_CARRY,
     // AND
-    I_AND_REGISTER_OR_MEMORY_WITH_REGISTER_TO_EITHER,
-    I_AND_IMMEDIATE_TO_REGISTER_OR_MEMORY,
-    I_AND_IMMEDIATE_TO_ACCUMULATOR,
+    I_AND,
+    I_AND_IMMEDIATE,
+    I_AND_IMMEDIATE_TO_AX,
     // TEST
     I_TEST_REGISTER_OR_MEMORY_AND_REGISTER,
     I_TEST_IMMEDIATE_DATA_AND_REGISTER_OR_MEMORY,
@@ -258,20 +258,20 @@ typedef enum ENUM_PACK_ATTRIBUTE {
 static char instruction_tag_mnemonic[][8] = {
     "invalid",  // I_INVALID
     "mov",      // I_MOVE
-    "mov",      // I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY
+    "mov",      // I_MOVE_IMMEDIATE
     "mov",      // I_MOVE_IMMEDIATE_TO_REGISTER
-    "mov",      // I_MOVE_MEMORY_TO_ACCUMULATOR
-    "mov",      // I_MOVE_ACCUMULATOR_TO_MEMORY
-    "mov",      // I_MOVE_REGISTER_OR_MEMORY_TO_SEGMENT_REGISTER
-    "mov",      // I_MOVE_SEGMENT_REGISTER_TO_REGISTER_OR_MEMORY
-    "push",     // I_PUSH_REGISTER_OR_MEMORY
+    "mov",      // I_MOVE_TO_AX
+    "mov",      // I_MOVE_AX
+    "mov",      // I_MOVE_TO_SEGMENT_REGISTER
+    "mov",      // I_MOVE_SEGMENT_REGISTER
+    "push",     // I_PUSH
     "push",     // I_PUSH_REGISTER
     "push",     // I_PUSH_SEGMENT_REGISTER
-    "pop",      // I_POP_REGISTER_OR_MEMORY
+    "pop",      // I_POP
     "pop",      // I_POP_REGISTER
     "pop",      // I_POP_SEGMENT_REGISTER
-    "xchg",     // I_EXCHANGE_REGISTER_OR_MEMORY_WITH_REGISTER
-    "xchg",     // I_EXCHANGE_REGISTER_WITH_ACCUMULATOR
+    "xchg",     // I_EXCHANGE
+    "xchg",     // I_EXCHANGE_WITH_AX
     "in",       // I_INPUT_FROM_FIXED_PORT
     "in",       // I_INPUT_FROM_VARIABLE_PORT
     "out",      // I_OUTPUT_TO_FIXED_PORT
@@ -499,12 +499,21 @@ typedef enum {
 // MARK: COMMON
 typedef struct {
     uint8_t byte1;
-} i_1_byte_t;
+} i_command_t;
+
+/**
+ * Single byte instruction. Usually consisting of just an opcode, but sometimes
+ * has some 1 bit fields.
+ * Examples: clc, cmc, stc, rep, movs, cmps, scas, lods, etc.
+ */
+typedef struct {
+    uint8_t byte;
+} i_byte_t;
 
 typedef struct {
     uint8_t byte1;
     uint8_t byte2;
-} i_2_bytes_t;
+} i_word_t;
 
 typedef struct {
     uint8_t fields1;
@@ -526,7 +535,7 @@ typedef struct {
     uint8_t fields2;
     uint16_t displacement;
 } move_t;
-// MOV 2 - I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY
+// MOV 2 - I_MOVE_IMMEDIATE
 typedef struct {
     uint8_t fields1;
     uint8_t fields2;
@@ -538,23 +547,23 @@ typedef struct {
     uint8_t fields1;
     uint16_t immediate;
 } move_immediate_to_register_t;
-// MOV 4 - I_MOVE_MEMORY_TO_ACCUMULATOR
+// MOV 4 - I_MOVE_TO_AX
 typedef struct {
     uint8_t fields1;
     uint16_t address;
 } move_memory_to_accumulator_t;
-// MOV 5 - I_MOVE_ACCUMULATOR_TO_MEMORY
+// MOV 5 - I_MOVE_AX
 typedef struct {
     uint8_t fields1;
     uint16_t address;
 } move_accumulator_to_memory_t;
-// MOV 6 - I_MOVE_REGISTER_OR_MEMORY_TO_SEGMENT_REGISTER
+// MOV 6 - I_MOVE_TO_SEGMENT_REGISTER
 typedef struct {
     uint8_t fields1;
     uint8_t fields2;
     uint16_t displacement;
 } move_register_or_memory_to_segment_register_t;
-// MOV 7 - I_MOVE_SEGMENT_REGISTER_TO_REGISTER_OR_MEMORY
+// MOV 7 - I_MOVE_SEGMENT_REGISTER
 typedef struct {
     uint8_t fields1;
     uint8_t fields2;
@@ -634,8 +643,8 @@ typedef struct {
  */
 typedef union instruction_data {
     // COMMON
-    i_1_byte_t byte;
-    i_2_bytes_t two_bytes;
+    i_byte_t byte;
+    i_word_t word;
     // MOV
     move_t move;
     move_immediate_to_register_or_memory_t move_immediate_to_register_or_memory;

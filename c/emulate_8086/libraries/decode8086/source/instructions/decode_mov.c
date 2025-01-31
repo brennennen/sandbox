@@ -4,12 +4,12 @@
  * follow the datasheet table 4-12.
  *
  * 1. I_MOVE
- * 2. I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY
+ * 2. I_MOVE_IMMEDIATE
  * 3. I_MOVE_IMMEDIATE_TO_REGISTER
- * 4. I_MOVE_MEMORY_TO_ACCUMULATOR
- * 5. I_MOVE_ACCUMULATOR_TO_MEMORY
- * 6. I_MOVE_REGISTER_OR_MEMORY_TO_SEGMENT_REGISTER
- * 7. I_MOVE_SEGMENT_REGISTER_TO_REGISTER_OR_MEMORY
+ * 4. I_MOVE_TO_AX
+ * 5. I_MOVE_AX
+ * 6. I_MOVE_TO_SEGMENT_REGISTER
+ * 7. I_MOVE_SEGMENT_REGISTER
  *
  */
 
@@ -55,7 +55,7 @@ void write_move(
         "mov", 3, buffer, index, buffer_size);
 }
 
-// MARK: 2. I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY
+// MARK: 2. I_MOVE_IMMEDIATE
 
 decode_result_t decode__move_immediate_to_register_or_memory(
     decoder_t* decoder,
@@ -171,7 +171,7 @@ void write__move_immediate_to_register(
     *index += written;
 }
 
-// MARK: 4. I_MOVE_MEMORY_TO_ACCUMULATOR
+// MARK: 4. I_MOVE_TO_AX
 decode_result_t decode__move_memory_to_accumulator(
     decoder_t* decoder,
     uint8_t byte1,
@@ -208,7 +208,7 @@ void write__move_memory_to_accumulator(
     *index += written;
 }
 
-// MARK: 5. I_MOVE_ACCUMULATOR_TO_MEMORY
+// MARK: 5. I_MOVE_AX
 decode_result_t decode__move_accumulator_to_memory(
     decoder_t* decoder,
     uint8_t byte1,

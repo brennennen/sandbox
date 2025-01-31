@@ -64,8 +64,7 @@ Test(decode__I_MOVE__tests,
     cr_assert(strncmp(expected, output, sizeof(output)) == 0, "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
 
-Test(decode__I_MOVE__tests,
-     mov3, .init = default_setup)
+Test(decode__I_MOVE__tests, mov3, .init = default_setup)
 {
     char* expected = "mov si, bx\n";
     uint8_t input[] = { 0x89, 0xde };
@@ -76,8 +75,7 @@ Test(decode__I_MOVE__tests,
     cr_assert(strncmp(expected, output, sizeof(output)) == 0, "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
 
-Test(decode__I_MOVE__tests,
-     bulk_mov, .init = default_setup)
+Test(decode__I_MOVE__tests, bulk_mov, .init = default_setup)
 {
     char* expected = "mov cx, bx\n\
 mov ch, ah\n\
@@ -113,7 +111,7 @@ Test(decode__I_MOVE__tests,
     cr_assert(strncmp(expected, output, sizeof(output)) == 0, "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
 
-// MARK: 2. I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY
+// MARK: 2. I_MOVE_IMMEDIATE
 // TODO
 
 // MARK: 3. I_MOVE_IMMEDIATE_TO_REGISTER
@@ -141,8 +139,8 @@ Test(decode__I_MOVE_IMMEDIATE_TO_REGISTER__tests,
     cr_assert(strncmp(expected, output, sizeof(output)) == 0, "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
 
-// MARK: 4. I_MOVE_MEMORY_TO_ACCUMULATOR
-Test(decode__I_MOVE_MEMORY_TO_ACCUMULATOR__tests,
+// MARK: 4. I_MOVE_TO_AX
+Test(decode__I_MOVE_TO_AX__tests,
      mov1, .init = default_setup)
 {
     char* expected = "mov ax, [2555]\n";
@@ -154,8 +152,8 @@ Test(decode__I_MOVE_MEMORY_TO_ACCUMULATOR__tests,
     cr_assert(strncmp(expected, output, sizeof(output)) == 0, "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
 
-// MARK: 5. I_MOVE_ACCUMULATOR_TO_MEMORY
-Test(decode__I_MOVE_ACCUMULATOR_TO_MEMORY__tests,
+// MARK: 5. I_MOVE_AX
+Test(decode__I_MOVE_AX__tests,
      mov1, .init = default_setup)
 {
     char* expected = "mov [2554], ax\n";
@@ -167,9 +165,9 @@ Test(decode__I_MOVE_ACCUMULATOR_TO_MEMORY__tests,
     cr_assert(strncmp(expected, output, sizeof(output)) == 0, "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
 
-// MARK: 6. I_MOVE_REGISTER_OR_MEMORY_TO_SEGMENT_REGISTER
+// MARK: 6. I_MOVE_TO_SEGMENT_REGISTER
 // TODO
-// MARK: 7. I_MOVE_SEGMENT_REGISTER_TO_REGISTER_OR_MEMORY
+// MARK: 7. I_MOVE_SEGMENT_REGISTER
 // TODO
 
 // MARK: MISC

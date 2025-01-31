@@ -9,134 +9,108 @@
 #include "libraries/decode8086/include/decode_tag.h"
 
 // MARK: MOV
-Test(dcd_decode_tag_tests, I_MOVE) {
-    instruction_tag_t output_tag = dcd_decode_tag(0b10001000, 0);
-    cr_assert(I_MOVE == output_tag,
-        "Expected I_MOVE opcode, got: %d", output_tag);
-}
-
-Test(dcd_decode_tag_tests, I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY) {
-    instruction_tag_t output_tag = dcd_decode_tag(0b11000110, 0);
-    cr_assert(I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY == output_tag,
-        "Expected I_MOVE_IMMEDIATE_TO_REGISTER_OR_MEMORY opcode, got: %d", output_tag);
-}
-
-Test(dcd_decode_tag_tests, I_MOVE_IMMEDIATE_TO_REGISTER) {
-    instruction_tag_t output_tag = dcd_decode_tag(0b10110000, 0);
-    cr_assert(I_MOVE_IMMEDIATE_TO_REGISTER == output_tag,
-        "Expected I_MOVE_IMMEDIATE_TO_REGISTER opcode, got: %d", output_tag);
-}
-
-Test(dcd_decode_tag_tests, I_MOVE_MEMORY_TO_ACCUMULATOR) {
-    instruction_tag_t output_tag = dcd_decode_tag(0b10100000, 0);
-    cr_assert(I_MOVE_MEMORY_TO_ACCUMULATOR == output_tag,
-        "Expected I_MOVE_MEMORY_TO_ACCUMULATOR opcode, got: %d", output_tag);
-}
-
-Test(dcd_decode_tag_tests, I_MOVE_ACCUMULATOR_TO_MEMORY) {
-    instruction_tag_t output_tag = dcd_decode_tag(0b10100010, 0);
-    cr_assert(I_MOVE_ACCUMULATOR_TO_MEMORY == output_tag,
-        "Expected I_MOVE_ACCUMULATOR_TO_MEMORY opcode, got: %d", output_tag);
-}
-
-Test(dcd_decode_tag_tests, I_MOVE_REGISTER_OR_MEMORY_TO_SEGMENT_REGISTER) {
-    instruction_tag_t output_tag = dcd_decode_tag(0b10001110, 0);
-    cr_assert(I_MOVE_REGISTER_OR_MEMORY_TO_SEGMENT_REGISTER == output_tag,
-        "Expected I_MOVE_REGISTER_OR_MEMORY_TO_SEGMENT_REGISTER opcode, got: %d", output_tag);
-}
-
-Test(dcd_decode_tag_tests, I_MOVE_SEGMENT_REGISTER_TO_REGISTER_OR_MEMORY) {
-    instruction_tag_t output_tag = dcd_decode_tag(0b10001100, 0);
-    cr_assert(I_MOVE_SEGMENT_REGISTER_TO_REGISTER_OR_MEMORY == output_tag,
-        "Expected I_MOVE_SEGMENT_REGISTER_TO_REGISTER_OR_MEMORY opcode, got: %d", output_tag);
+Test(dcd_decode_tag_tests, MOVE) {
+    cr_assert(I_MOVE == dcd_decode_tag(0b10001000, 0));
+    cr_assert(I_MOVE_IMMEDIATE == dcd_decode_tag(0b11000110, 0));
+    cr_assert(I_MOVE_IMMEDIATE_TO_REGISTER == dcd_decode_tag(0b10110000, 0));
+    cr_assert(I_MOVE_TO_AX == dcd_decode_tag(0b10100000, 0));
+    cr_assert(I_MOVE_AX == dcd_decode_tag(0b10100010, 0));
+    cr_assert(I_MOVE_TO_SEGMENT_REGISTER == dcd_decode_tag(0b10001110, 0));
+    cr_assert(I_MOVE_SEGMENT_REGISTER == dcd_decode_tag(0b10001100, 0));
 }
 
 // MARK: PUSH
+Test(dcd_decode_tag_tests, PUSH) {
+    cr_assert(I_PUSH == dcd_decode_tag(0b11111111, 0b00110000));
+    //cr_assert(I_PUSH_REGISTER == dcd_decode_tag(0b01010000, 0));
+    //cr_assert(I_PUSH_SEGMENT_REGISTER == dcd_decode_tag(0b00000110, 0));
+}
+
 // MARK: POP
+Test(dcd_decode_tag_tests, POP) {
+    cr_assert(I_POP == dcd_decode_tag(0b10001111, 0b00000000));
+    //cr_assert(I_POP_REGISTER == dcd_decode_tag(0b01011000, 0));
+    //cr_assert(I_POP_SEGMENT_REGISTER == dcd_decode_tag(0b00000111, 0));
+}
+
 // MARK: XCHG
+Test(dcd_decode_tag_tests, XCHG) {
+    cr_assert(I_EXCHANGE == dcd_decode_tag(0b10000110, 0));
+    cr_assert(I_EXCHANGE_WITH_AX == dcd_decode_tag(0b10010000, 0));
+}
+
 // MARK: IN
+Test(dcd_decode_tag_tests, IN) {
+    cr_assert(I_INPUT_FROM_FIXED_PORT == dcd_decode_tag(0b11100100, 0));
+    cr_assert(I_INPUT_FROM_VARIABLE_PORT == dcd_decode_tag(0b11101100, 0));
+}
+
 // MARK: OUT
+Test(dcd_decode_tag_tests, OUT) {
+    cr_assert(I_OUTPUT_TO_FIXED_PORT == dcd_decode_tag(0b11100110, 0));
+    cr_assert(I_OUTPUT_TO_VARIABLE_PORT == dcd_decode_tag(0b11101110, 0));
+}
+
 // MARK: ARITHMETIC
 
 // MARK: ADD
-Test(dcd_decode_tag_tests, I_ADD) {
-    instruction_tag_t output_tag = dcd_decode_tag(0b00000000, 0);
-    cr_assert(I_ADD == output_tag,
-        "Expected I_ADD opcode, got: %d", output_tag);
-}
-
-Test(dcd_decode_tag_tests, I_ADD_IMMEDIATE) {
-    instruction_tag_t output_tag = dcd_decode_tag(0b10000000, 0b00000000);
-    cr_assert(I_ADD_IMMEDIATE == output_tag,
-        "Expected I_ADD_IMMEDIATE opcode, got: %d", output_tag);
-}
-
-Test(dcd_decode_tag_tests, I_ADD_IMMEDIATE_TO_AX) {
-    instruction_tag_t output_tag = dcd_decode_tag(0b00000100, 0);
-    cr_assert(I_ADD_IMMEDIATE_TO_AX == output_tag,
-        "Expected I_ADD_IMMEDIATE_TO_AX opcode, got: %d", output_tag);
+Test(dcd_decode_tag_tests, ADD) {
+    cr_assert(I_ADD == dcd_decode_tag(0b00000000, 0));
+    cr_assert(I_ADD_IMMEDIATE == dcd_decode_tag(0b10000000, 0b00000000));
+    cr_assert(I_ADD_IMMEDIATE_TO_AX == dcd_decode_tag(0b00000100, 0));
 }
 
 // MARK: ADC
-Test(dcd_decode_tag_tests, I_ADC_REGISTER_OR_MEMORY_WITH_REGISTER_TO_EITHER) {
-    instruction_tag_t output_tag = dcd_decode_tag(0b00010000, 0);
-    cr_assert(I_ADC_REGISTER_OR_MEMORY_WITH_REGISTER_TO_EITHER == output_tag,
-        "Expected I_ADC_REGISTER_OR_MEMORY_WITH_REGISTER_TO_EITHER opcode, got: %d", output_tag);
-}
-
-Test(dcd_decode_tag_tests, I_ADC_IMMEDIATE_TO_REGISTER_OR_MEMORY) {
-    instruction_tag_t output_tag = dcd_decode_tag(0b10000000, 0b00010000);
-    cr_assert(I_ADC_IMMEDIATE_TO_REGISTER_OR_MEMORY == output_tag,
-        "Expected I_ADC_IMMEDIATE_TO_REGISTER_OR_MEMORY opcode, got: %d", output_tag);
-}
-
-Test(dcd_decode_tag_tests, I_ADC_IMMEDIATE_TO_ACCUMULATOR) {
-    instruction_tag_t output_tag = dcd_decode_tag(0b00010100, 0);
-    cr_assert(I_ADC_IMMEDIATE_TO_ACCUMULATOR == output_tag,
-        "Expected I_ADC_IMMEDIATE_TO_ACCUMULATOR opcode, got: %d", output_tag);
+Test(dcd_decode_tag_tests, ADC) {
+    cr_assert(I_ADC == dcd_decode_tag(0b00010000, 0));
+    cr_assert(I_ADC_IMMEDIATE == dcd_decode_tag(0b10000000, 0b00010000));
+    cr_assert(I_ADC_IMMEDIATE_TO_AX == dcd_decode_tag(0b00010100, 0));
 }
 
 // MARK: INC
-Test(dcd_decode_tag_tests, I_INC_REGISTER_OR_MEMORY) {
-    instruction_tag_t output_tag = dcd_decode_tag(0b11111110, 0);
-    cr_assert(I_INC_REGISTER_OR_MEMORY == output_tag,
-        "Expected I_INC_REGISTER_OR_MEMORY opcode, got: %d", output_tag);
+Test(dcd_decode_tag_tests, INC) {
+    cr_assert(I_INC_REGISTER_OR_MEMORY == dcd_decode_tag(0b11111110, 0));
+    cr_assert(I_INC_REGISTER == dcd_decode_tag(0b01000000, 0));
 }
 
-Test(dcd_decode_tag_tests, I_INC_REGISTER) {
-    instruction_tag_t output_tag = dcd_decode_tag(0b01000000, 0);
-    cr_assert(I_INC_REGISTER == output_tag,
-        "Expected I_INC_REGISTER opcode, got: %d", output_tag);
+// MARK: AAA
+Test(dcd_decode_tag_tests, AAA) {
+    cr_assert(I_AAA_ASCII_ADJUST_FOR_ADD == dcd_decode_tag(0b00110111, 0));
 }
 
-// Test(dcd_decode_tag_tests, I_AAA_ASCII_ADJUST_FOR_ADD) {
-//     instruction_tag_t output_tag = dcd_decode_tag(0b00110111, 0);
-//     cr_assert(I_AAA_ASCII_ADJUST_FOR_ADD == output_tag,
-//         "Expected I_AAA_ASCII_ADJUST_FOR_ADD opcode, got: %d", output_tag);
-// }
-
-// Test(dcd_decode_tag_tests, I_DAA_DECIMAL_ADJUST_FOR_ADD) {
-//     instruction_tag_t output_tag = dcd_decode_tag(0b00100111, 0);
-//     cr_assert(I_DAA_DECIMAL_ADJUST_FOR_ADD == output_tag,
-//         "Expected I_DAA_DECIMAL_ADJUST_FOR_ADD opcode, got: %d", output_tag);
-// }
+// MARK: DAA
+Test(dcd_decode_tag_tests, DAA) {
+    cr_assert(I_DAA_DECIMAL_ADJUST_FOR_ADD == dcd_decode_tag(0b00100111, 0));
+}
 
 // MARK: SUB
-Test(dcd_decode_tag_tests, I_SUB) {
-    instruction_tag_t output_tag = dcd_decode_tag(0b00101000, 0);
-    cr_assert(I_SUB == output_tag,
-        "Expected I_SUB opcode, got: %d", output_tag);
+Test(dcd_decode_tag_tests, SUB) {
+    cr_assert(I_SUB == dcd_decode_tag(0b00101000, 0));
+    cr_assert(I_SUB_IMMEDIATE == dcd_decode_tag(0b10000000, 0b00101000));
+    cr_assert(I_SUB_IMMEDIATE_FROM_AX == dcd_decode_tag(0b00101100, 0));
 }
 
-Test(dcd_decode_tag_tests, I_SUB_IMMEDIATE_FROM_REGISTER_OR_MEMORY) {
-    instruction_tag_t output_tag = dcd_decode_tag(0b10000000, 0b00101000);
-    cr_assert(I_SUB_IMMEDIATE_FROM_REGISTER_OR_MEMORY == output_tag,
-        "Expected I_SUB_IMMEDIATE_FROM_REGISTER_OR_MEMORY opcode, got: %d", output_tag);
+// MARK: SBB
+Test(dcd_decode_tag_tests, SBB) {
+    cr_assert(I_SBB == dcd_decode_tag(0b00011000, 0));
+    cr_assert(I_SBB_IMMEDIATE == dcd_decode_tag(0b10000000, 0b00011000));
+    cr_assert(I_SBB_IMMEDIATE_FROM_AX == dcd_decode_tag(0b00011100, 0));
 }
 
-Test(dcd_decode_tag_tests, I_SUB_IMMEDIATE_FROM_ACCUMULATOR) {
-    instruction_tag_t output_tag = dcd_decode_tag(0b00101100, 0);
-    cr_assert(I_SUB_IMMEDIATE_FROM_ACCUMULATOR == output_tag,
-        "Expected I_SUB_IMMEDIATE_FROM_ACCUMULATOR opcode, got: %d", output_tag);
+// MARK: DEC
+Test(dcd_decode_tag_tests, DEC) {
+    cr_assert(I_DEC_REGISTER_OR_MEMORY == dcd_decode_tag(0b11111110, 0b00001000));
+    cr_assert(I_DEC_REGISTER == dcd_decode_tag(0b01001000, 0));
 }
 
+// MARK: NEG
+Test(dcd_decode_tag_tests, NEG) {
+    cr_assert(I_NEGATE_CHANGE_SIGN == dcd_decode_tag(0b11110110, 0b00011000));
+}
+
+// MARK: CMP
+Test(dcd_decode_tag_tests, CMP) {
+    cr_assert(I_COMPARE == dcd_decode_tag(0b00111000, 0));
+    cr_assert(I_COMPARE_IMMEDIATE == dcd_decode_tag(0b10000000, 0b00111000));
+    cr_assert(I_COMPARE_IMMEDIATE_WITH_AX == dcd_decode_tag(0b00111100, 0));
+}

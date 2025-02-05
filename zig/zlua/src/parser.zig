@@ -236,7 +236,7 @@ pub const Parser = struct {
             return ifExpression;
         }
 
-        // TODO: elseif
+        // TODO: implement elseif as just nested if elses?
 
         if (self.token.tag == .keyword_else) {
             try self.next();
@@ -254,6 +254,56 @@ pub const Parser = struct {
 
         std.debug.print("malformed ifExpression. last tok: {}, expr: {}\n", .{ self.token.tag, ifExpression });
         return ParserError.InvalidProgram; // TODO: throw better error
+    }
+
+    /// function <name>(<args>) <chunk> end
+    /// function foo() return 5 end
+    pub fn parseFunction(self: *Parser) ParserError!ast.Function {
+        std.debug.print("parseFunction: tok: {} {s}\n", .{ self.token.tag, self.token.getValue(self.tokenizer.buffer) });
+
+        // function
+        try self.next();
+        // <name>
+        const ident = try parseIdentifier(self);
+        try self.next();
+
+        if (self.token.tag != .parentheses_left) {
+            std.debug.print("function missing left paren\n", .{});
+            return ParserError.InvalidProgram;
+        }
+
+        // (<args>)
+        const arguments = try parseFunctionArguments(self);
+
+        // <chunk>
+        const chunk = try self.allocator.create(ast.Chunk);
+        chunk.* = try parseChunkStatement(self);
+
+        // end
+        if (self.token.tag == .keyword_end) {
+            try self.next();
+            return ast.Function{ .name = ident, .arguments = arguments, .body = chunk };
+        }
+
+        return ParserError.InvalidProgram;
+    }
+
+    pub fn parseFunctionArguments(self: *Parser) ParserError![]ast.Identifier {
+        if (self.token.tag != .parentheses_left) {
+            std.debug.print("function missing left paren\n", .{});
+            return ParserError.InvalidProgram;
+        }
+        try self.next();
+
+        var arguments = std.ArrayList(ast.Identifier).init(self.allocator);
+        // Return an empty list if there are no arguments.
+        if (self.token.tag == .parentheses_right) {
+            try self.next();
+            return try arguments.toOwnedSlice();
+        }
+        // TODO: support 1 or more arguments.
+
+        return ParserError.InvalidProgram;
     }
 
     //
@@ -419,9 +469,9 @@ pub const Parser = struct {
             .keyword_if => {
                 return ast.Expression{ .ifExpression = try self.parseIfExpression() };
             },
-            // .keyword_function => {
-            //     return ast.Expression{ .function = try self.parseFunctionLiteral}
-            // },
+            .keyword_function => {
+                return ast.Expression{ .function = try self.parseFunction() };
+            },
             else => {
                 std.debug.print("invalid prefix token:{}\n", .{self.token.tag});
                 return ParserError.InvalidProgram;
@@ -711,6 +761,12 @@ fn expectIfExpression(expected: ast.IfExpression, actual: ast.IfExpression) Pars
     if (expected.alternative != null) {
         try expectChunk(expected.alternative.?.*, actual.alternative.?.*);
     }
+}
+
+fn expectFunction(expected: ast.Function, actual: ast.Function) ParserTestError!void {
+    try expectIdentifier(expected.name, actual.name);
+    // TODO: check arguments
+    try expectChunk(expected.body.*, actual.body.*);
 }
 
 fn expectPrefixExpression(expected: ast.PrefixExpression, actual: ast.PrefixExpression) ParserTestError!void {
@@ -1276,72 +1332,40 @@ test "parse function tests" {
 
     const TestCase = struct {
         input: [:0]const u8,
-        name: ast.Identifier,
-        arguments: []const ast.Identifier,
-        body: []const ast.Statement,
+        expected: ast.Function,
     };
 
     const tests = [_]TestCase{
         .{
             .input = "function foo() return 5 end",
-            .name = ast.Identifier{ .value = "foo" },
-            .arguments = &.{
-                ast.Identifier{ .value = "foo" },
-                ast.Identifier{ .value = "foo" },
-            },
-            .body = &.{
-                ast.Statement{
-                    ._return = ast.Return{
-                        .value = @constCast(&ast.Expression{
-                            .integer = ast.Integer{ .value = 5 },
-                        }),
+            .expected = ast.Function{
+                .name = ast.Identifier{ .value = "foo" },
+                .arguments = &.{},
+                .body = @constCast(&ast.Chunk{
+                    .statements = &.{
+                        ast.Statement{
+                            ._return = ast.Return{
+                                .value = @constCast(&ast.Expression{
+                                    .integer = ast.Integer{ .value = 5 },
+                                }),
+                            },
+                        },
                     },
-                },
+                }),
             },
-            // .body = [1]ast.Statement{
-            //     ast.Statement{
-            //         ._return = ast.Return{
-            //             .value = @constCast(&ast.Expression{
-            //                 .integer = ast.Integer{ .value = 5 },
-            //             }),
-            //         },
-            //     },
-            // },
         },
     };
 
     for (tests) |testCase| {
-        _ = testCase;
-        // var allocator = std.heap.ArenaAllocator.init(std.testing.allocator);
-        // defer allocator.deinit();
+        var allocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+        defer allocator.deinit();
 
-        // var tokenizer = Tokenizer.init(std.testing.allocator, testCase.input);
-        // defer tokenizer.deinit();
-        // var parser = try Parser.init(&tokenizer, allocator.allocator());
-        // const program = try parser.parseProgram();
+        var tokenizer = Tokenizer.init(std.testing.allocator, testCase.input);
+        defer tokenizer.deinit();
+        var parser = try Parser.init(&tokenizer, allocator.allocator());
+        const program = try parser.parseProgram();
 
-        // try std.testing.expectEqual(1, program.statements.items.len);
-
-        // Assert condition
-        // try expectExpression(
-        //     &testCase.condition,
-        //     program.statements.items[0].expression.ifExpression.condition,
-        // );
-
-        // // Assert consequence "if" branch
-        // // For these test cases, the consequence and alternative Chunk only allow 1 statement to make testing easier.
-        // try std.testing.expectEqual(1, program.statements.items[0].expression.ifExpression.consequence.statements.items.len);
-        // try expectStatement(
-        //     &testCase.consequence,
-        //     &program.statements.items[0].expression.ifExpression.consequence.statements.items[0],
-        // );
-        // // Assert alternative "else" branch
-        // if (testCase.alternative != null) {
-        //     try std.testing.expectEqual(1, program.statements.items[0].expression.ifExpression.alternative.?.statements.items.len);
-        //     try expectStatement(
-        //         &(testCase.alternative.?),
-        //         &program.statements.items[0].expression.ifExpression.alternative.?.statements.items[0],
-        //     );
-        // }
+        try std.testing.expectEqual(1, program.entry.statements.len);
+        try expectFunction(testCase.expected, program.entry.statements[0].expressionStatement.expression.function);
     }
 }

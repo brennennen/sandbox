@@ -151,10 +151,6 @@ pub const Statement = union(enum) {
     pub fn format(self: Statement, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
         return switch (self) {
             inline else => |*case| try writer.print("{}", .{case.*}),
-            // .local => try writer.print("{}", .{self.local}),
-            // ._return => try writer.print("{}", .{self._return}),
-            // .expressionStatement => try writer.print("{}", .{self.expressionStatement}),
-            // .chunk => try writer.print("{}", .{self.chunk}),
         };
     }
 
@@ -236,14 +232,7 @@ pub const Expression = union(enum) {
 
     pub fn format(self: Expression, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
         return switch (self) {
-            .identifier => try writer.print("{}", .{self.identifier}),
-            .prefixExpression => try writer.print("{}", .{self.prefixExpression}),
-            .infixExpression => try writer.print("{}", .{self.infixExpression}),
-            .integer => try writer.print("{}", .{self.integer}),
-            .boolean => try writer.print("{}", .{self.boolean}),
-            .string => try writer.print("{}", .{self.string}),
-            .ifExpression => try writer.print("{}", .{self.ifExpression}),
-            .function => try writer.print("{}", .{self.function}),
+            inline else => |*case| try writer.print("{}", .{case.*}),
         };
     }
 

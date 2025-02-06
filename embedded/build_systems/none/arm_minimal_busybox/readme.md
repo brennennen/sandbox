@@ -1,5 +1,5 @@
 # Minimal BusyBox QEMU Embedded Linux
-The goal with this repo is to create a minimal ARM embedded linux kernal image with busybox from scratch without buildroot or yocto that targets QEMU.
+The goal with this repo is to create a minimal ARM embedded linux kernal image, with busybox, and a small "business" logic program from scratch without buildroot or yocto that targets QEMU.
 
 ## Resources
 * Great high level overview of embedded linux for review - https://www.thirtythreeforty.net/posts/2019/08/mastering-embedded-linux-part-1-concepts/

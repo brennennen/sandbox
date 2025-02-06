@@ -18,6 +18,10 @@ CROSS_COMPILE="aarch64-none-linux-gnu-"
 sudo rm -rf ${OUT_DIR}/rootfs
 sudo rm -f ${OUT_DIR}/initramfs.cpio.gz
 
+# Build the example hello.c program
+${CROSS_COMPILE}gcc ./hello.c
+cp ./a.out ${OUT_DIR}
+
 # Copy the init script to the output area.
 cp ./init ${OUT_DIR}
 
@@ -29,6 +33,7 @@ mkdir -p bin dev etc home lib lib64 proc sbin sys tmp usr var
 mkdir -p usr/bin usr/lib usr/sbin
 mkdir -p var/log
 cp ${OUT_DIR}/init ${OUT_DIR}/rootfs/
+cp ${OUT_DIR}/a.out ${OUT_DIR}/rootfs/a.out
 chmod +x ${OUT_DIR}/rootfs/init
 
 if [ ! -e ${OUT_DIR}/Image ]; then
@@ -65,16 +70,17 @@ make CONFIG_PREFIX=${OUT_DIR}/rootfs ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE}
 # output: /lib/ld-linux-aarch64.so.1
 # this library should be in the toolchain package.
 cd ${OUT_DIR}/rootfs
-cp ${TOOLCHAIN_DIR}/libc/lib/ld-linux-aarch64.so.1 ./lib/
+toolchain_libc_dir=$(${CROSS_COMPILE}gcc -print-sysroot)
+cp ${toolchain_libc_dir}/lib/ld-linux-aarch64.so.1 ./lib/
 
 # Find and add any libraries/dependencies required to run busybox
 # ex: aarch64-none-linux-gnu-readelf -a bin/busybox | grep "Shared library"
 # output: libm.so.6, libresolv.so.2, libc.so.6
 # These files should be located in your toolchains package.
 # ex: find ~/toolchains/ -name "libm.so.6"
-cp ${TOOLCHAIN_DIR}/libc/lib64/libm.so.6 ./lib64/
-cp ${TOOLCHAIN_DIR}/libc/lib64/libresolv.so.2 ./lib64/
-cp ${TOOLCHAIN_DIR}/libc/lib64/libc.so.6 ./lib64/
+cp ${toolchain_libc_dir}/lib64/libm.so.6 ./lib64/
+cp ${toolchain_libc_dir}/lib64/libresolv.so.2 ./lib64/
+cp ${toolchain_libc_dir}/lib64/libc.so.6 ./lib64/
 
 # Build device tree
 cd ${OUT_DIR}/rootfs
@@ -103,16 +109,3 @@ echo "qemu-system-arm64 \
     -mon chardev=char0 \
     -append "console=ttyAMA0" \
     -initrd ${OUT_DIR}/initramfs.cpio.gz"
-
-# qemu-system-arm64 \
-#     -m 256M \
-#     -M virt \
-#     -cpu cortex-a53 \
-#     -nographic \
-#     -smp 1 \
-#     -kernel ${OUT_DIR}/Image \
-#     -chardev stdio,id=char0,mux=on,logfile=${OUT_DIR}/serial.log,signal=off \
-#     -serial chardev:char0 \
-#     -mon chardev=char0 \
-#     -append "console=ttyAMA0" \
-#     -initrd ${OUT_DIR}/initramfs.cpio.gz

@@ -301,7 +301,22 @@ pub const Parser = struct {
             try self.next();
             return try arguments.toOwnedSlice();
         }
-        // TODO: support 1 or more arguments.
+
+        //std.debug.print("first arg: tok: {} {s}\n", .{ self.token.tag, self.token.getValue(self.tokenizer.buffer) });
+        try arguments.append(try self.parseIdentifier());
+        try self.next();
+
+        while (self.token.tag == Token.Tag.comma) {
+            try self.next();
+            try arguments.append(try self.parseIdentifier());
+            try self.next();
+        }
+
+        if (self.token.tag == .parentheses_right) {
+            try self.next();
+            //std.debug.print("done parsing function arguments: tok: {} {s}\n", .{ self.token.tag, self.token.getValue(self.tokenizer.buffer) });
+            return try arguments.toOwnedSlice();
+        }
 
         return ParserError.InvalidProgram;
     }
@@ -1321,8 +1336,6 @@ test "parse chunk tests" {
     }
 }
 
-// function foo() return 5 end
-// function bar(x, y) return x + y end
 //
 // MARK: Function Literal Tests
 //
@@ -1347,6 +1360,56 @@ test "parse function tests" {
                             ._return = ast.Return{
                                 .value = @constCast(&ast.Expression{
                                     .integer = ast.Integer{ .value = 5 },
+                                }),
+                            },
+                        },
+                    },
+                }),
+            },
+        },
+        .{
+            .input = "function bar(x, y) return x + y end",
+            .expected = ast.Function{
+                .name = ast.Identifier{ .value = "bar" },
+                .arguments = &.{},
+                // Can't seem to find the correct syntax for initializing a slice literal in
+                // a format like this. It might just not be possible in current zig...
+                // below is a list of attempts and their corresponding error messages.
+                // .arguments = []ast.Identifier{
+                //     ast.Identifier{ .value = "x" },
+                //     ast.Identifier{ .value = "y" },
+                // },
+                // error: type '[]ast.Identifier' does not support array initialization syntax
+                // .arguments = [_]ast.Identifier{
+                //     ast.Identifier{ .value = "x" },
+                //     ast.Identifier{ .value = "y" },
+                // },
+                // error: array literal requires address-of operator (&) to coerce to slice type '[]ast.Identifier'
+                // .arguments = &[_]ast.Identifier{
+                //     ast.Identifier{ .value = "x" },
+                //     ast.Identifier{ .value = "y" },
+                // },
+                // error: expected type '[]ast.Identifier', found '*const [2]ast.Identifier'
+                // .arguments = .{
+                //     ast.Identifier{ .value = "x" },
+                //     ast.Identifier{ .value = "y" },
+                // },
+                // error: type '[]ast.Identifier' does not support array initialization syntax
+                // .arguments = &.{
+                //     ast.Identifier{ .value = "x" },
+                //     ast.Identifier{ .value = "y" },
+                // },
+                // error: expected type '[]ast.Identifier', found '*const [2]ast.Identifier'
+                .body = @constCast(&ast.Chunk{
+                    .statements = &.{
+                        ast.Statement{
+                            ._return = ast.Return{
+                                .value = @constCast(&ast.Expression{
+                                    .infixExpression = ast.InfixExpression{
+                                        .left = @constCast(&ast.Expression{ .identifier = ast.Identifier{ .value = "x" } }),
+                                        .operator = ast.Operator.add,
+                                        .right = @constCast(&ast.Expression{ .identifier = ast.Identifier{ .value = "y" } }),
+                                    },
                                 }),
                             },
                         },

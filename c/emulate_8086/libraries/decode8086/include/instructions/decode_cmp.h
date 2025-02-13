@@ -10,17 +10,14 @@
 #include "libraries/decode8086/include/decode8086.h"
 
 // MARK: CMP 1 - I_CMP
-decode_result_t decode_compare(
-    decoder_t* decoder,
+emu_result_t decode_compare(
+    emulator_t* emulator,
     uint8_t byte1,
-    compare_t* compare
-);
-void write_compare(
-    compare_t* sub,
-    char* buffer,
+    char* out_buffer,
     int* index,
-    int buffer_size
+    size_t out_buffer_size
 );
+emu_result_t emu_compare(emulator_t* emulator, uint8_t byte1);
 
 // MARK: CMP 2 - I_COMPARE_IMMEDIATE
 // MARK: CMP 3 - I_COMPARE_IMMEDIATE_TO_AX

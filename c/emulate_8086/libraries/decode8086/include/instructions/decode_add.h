@@ -10,30 +10,24 @@
 #include "libraries/decode8086/include/decode8086.h"
 
 // MARK: ADD 1 - I_ADD
-decode_result_t decode_add(
-    decoder_t* decoder,
+emu_result_t decode_add(
+    emulator_t* emulator,
     uint8_t byte1,
-    add_t* add
-);
-void write_add(
-    add_t* add,
-    char* buffer,
+    char* out_buffer,
     int* index,
-    int buffer_size
+    size_t out_buffer_size
 );
+emu_result_t emu_add(emulator_t* emulator, uint8_t byte1);
 
 // MARK: ADD 2 - I_ADD_IMMEDIATE
-decode_result_t decode_add_immediate(
-    decoder_t* decoder,
+emu_result_t decode_add_immediate(
+    emulator_t* emulator,
     uint8_t byte1,
-    add_immediate_t* add
-);
-void write_add_immediate(
-    add_immediate_t* add,
-    char* buffer,
+    char* out_buffer,
     int* index,
-    int buffer_size
+    size_t out_buffer_size
 );
+emu_result_t emu_add_immediate(emulator_t* emulator, uint8_t byte1);
 
 // MARK: ADD 3 - I_ADD_IMMEDIATE_TO_AX
 

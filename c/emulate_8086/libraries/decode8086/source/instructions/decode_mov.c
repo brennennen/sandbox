@@ -28,135 +28,205 @@
 
 // MARK: 1. I_MOVE
 
-decode_result_t decode_move(
-    decoder_t* decoder,
+emu_result_t decode_move(
+    emulator_t* emulator,
     uint8_t byte1,
-    move_t* move)
+    char* out_buffer,
+    int* index,
+    size_t out_buffer_size)
 {
-    return decode__opcode_d_w__mod_reg_rm__disp_lo__disp_hi(
-        decoder, byte1, &move->fields1, &move->fields2, &move->displacement
+    direction_t direction = 0;
+    wide_t wide = 0;
+    mod_t mod = 0;
+    uint8_t reg = 0;
+    uint8_t rm = 0;
+    uint16_t displacement = 0;
+
+    emu_result_t decode_result = decode__opcode_d_w__mod_reg_rm__disp_lo__disp_hi(
+        emulator, byte1, &direction, &wide, &mod, &reg, &rm, &displacement
     );
+    write__common_register_or_memory_with_register_or_memory(
+        direction, wide, mod, reg, rm, displacement,
+        "mov", 3, out_buffer, index, out_buffer_size
+    );
+    return decode_result;
 }
 
-void write_move(
-    move_t* move,
-    char* buffer,
-    int* index,
-    int buffer_size)
-{
-    wide_t wide = move->fields1 & 0b00000001;
-    direction_t direction = (move->fields1 & 0b00000010) >> 1;
-    mod_t mod = (move->fields2 & 0b11000000) >> 6;
-    uint8_t reg = (move->fields2 & 0b00111000) >> 3;
-    uint8_t rm = move->fields2 & 0b00000111;
+emu_result_t emu_move(emulator_t* emulator, uint8_t byte1) {
+    direction_t direction;
+    wide_t wide;
+    mod_t mod;
+    uint8_t reg;
+    uint8_t rm;
+    uint16_t displacement;
 
-    write__common_register_or_memory_with_register_or_memory(
-        direction, wide, mod, reg, rm, move->displacement,
-        "mov", 3, buffer, index, buffer_size);
+    emu_result_t decode_result = decode__opcode_d_w__mod_reg_rm__disp_lo__disp_hi(
+        emulator, byte1, &direction, &wide, &mod, &reg, &rm, &displacement
+    );
+
+    // TODO
+
+    return ER_FAILURE;
 }
 
 // MARK: 2. I_MOVE_IMMEDIATE
-
-decode_result_t decode__move_immediate_to_register_or_memory(
-    decoder_t* decoder,
+emu_result_t read_move_immediate(
+    emulator_t* emulator,
     uint8_t byte1,
-    move_immediate_to_register_or_memory_t* move)
-{
-    move->fields1 = byte1;
-    wide_t wide = move->fields1 & 0b00000001;
-
-    if (dcd_read_byte(decoder, (uint8_t*) &move->fields2) == RI_FAILURE) {
-        return DR_UNKNOWN_OPCODE;
+    wide_t* wide,
+    mod_t* mod,
+    uint8_t* subcode,
+    uint8_t* rm,
+    uint16_t* displacement,
+    uint16_t* data
+) {
+    *wide = byte1 & 0b00000001;
+    uint8_t byte2 = 0;
+    if (dcd_read_byte(emulator, (uint8_t*) &byte2) == RI_FAILURE) {
+        return ER_UNKNOWN_OPCODE;
     }
-    mod_t mod = move->fields2 & 0b00000001;
-    uint8_t rm = move->fields2 & 0b00000111;
-    if (mod == MOD_MEMORY) {
-        if (rm == 0b00000110) {
-            decode_result_t read_displace_result = dcd_read_word(decoder, &move->displacement);
-            if (read_displace_result != DR_SUCCESS) {
+    *mod = (byte2 & 0b11000000) >> 6;
+    *subcode = (byte2 & 0b00111000) >> 3;
+    *rm = byte2 & 0b00000111;
+    if (*mod == MOD_MEMORY) {
+        if (*rm == 0b00000110) {
+            emu_result_t read_displace_result = dcd_read_word(emulator, displacement);
+            if (read_displace_result != ER_SUCCESS) {
                 return read_displace_result;
             }
         }
-    } else if (mod == MOD_MEMORY_8BIT_DISPLACEMENT) {
-        decode_result_t read_displace_result = dcd_read_byte(decoder, (uint8_t*) &move->displacement);
-        if (read_displace_result != DR_SUCCESS) {
+    } else if (*mod == MOD_MEMORY_8BIT_DISPLACEMENT) {
+        emu_result_t read_displace_result = dcd_read_byte(emulator, (uint8_t*) displacement);
+        if (read_displace_result != ER_SUCCESS) {
             return read_displace_result;
         }
-    } else if (mod == MOD_MEMORY_16BIT_DISPLACEMENT) {
-        decode_result_t read_displace_result = dcd_read_word(decoder, &move->displacement);
-        if (read_displace_result != DR_SUCCESS) {
+    } else if (*mod == MOD_MEMORY_16BIT_DISPLACEMENT) {
+        emu_result_t read_displace_result = dcd_read_word(emulator, displacement);
+        if (read_displace_result != ER_SUCCESS) {
             return read_displace_result;
         }
     } else { // MOD_REGISTER
         // Don't have extra bytes for register to register movs. Nothing to do.
     }
 
-    if (wide == WIDE_BYTE) {
-        decode_result_t read_data_result = dcd_read_byte(decoder, (uint8_t*) &move->immediate);
+    if (*wide == WIDE_BYTE) {
+        emu_result_t read_data_result = dcd_read_byte(emulator, (uint8_t*) data);
     } else {
-        decode_result_t read_data_result = dcd_read_word(decoder, &move->immediate);
+        emu_result_t read_data_result = dcd_read_word(emulator, data);
     }
 
-    return DR_SUCCESS;
+    return ER_SUCCESS;
 }
 
-void write__move_immediate_to_register_or_memory(
-    move_immediate_to_register_or_memory_t* move,
-    char* buffer,
+emu_result_t decode_move_immediate(
+    emulator_t* emulator,
+    uint8_t byte1,
+    char* out_buffer,
     int* index,
-    int buffer_size)
+    size_t out_buffer_size)
 {
-    wide_t wide = move->fields1 & 0b00000001;
-    mod_t mod = (move->fields2 & 0b11000000) >> 6;
-    uint8_t rm = move->fields2 & 0b00000111;
+    uint8_t sign = 0;
+    wide_t wide = 0;
+    mod_t mod = 0;
+    uint8_t subcode = 0;
+    uint8_t rm = 0;
+    uint16_t displacement = 0;
+    uint16_t data = 0;
 
-    char effective_address_string[32] = { 0 };
-    build_effective_address(effective_address_string, sizeof(effective_address_string),
-                            mod, rm, move->displacement);
-    int written = snprintf(buffer + *index,  buffer_size - *index, "mov %s, %d",
-                            effective_address_string,
-                            move->immediate);
-    if (written < 0) {
-        // TODO: propogate error
-    }
-    *index += written;
+    emu_result_t result = read_move_immediate(
+        emulator, byte1, &wide, &mod, &subcode, &rm, &displacement, &data
+    );
+
+    write__common_immediate_to_register_or_memory(
+        sign, wide, mod, rm, displacement, data,
+        "mov", 3, out_buffer, index, out_buffer_size
+    );
+
+    return result;
+}
+
+emu_result_t emu_move_immediate(emulator_t* emulator, uint8_t byte1) {
+    uint8_t sign = 0;
+    wide_t wide = 0;
+    mod_t mod = 0;
+    uint8_t subcode = 0;
+    uint8_t rm = 0;
+    uint16_t displacement = 0;
+    uint16_t data = 0;
+    emu_result_t result = decode__opcode_s_w__mod_subcode_rm__disp_lo__disp_hi__data_lo__data_hi(
+        emulator, byte1, &sign, &wide, &mod, &subcode, &rm, &displacement, &data
+    );
+
+    // TODO
+
+    return ER_FAILURE;
 }
 
 // MARK: 3. I_MOVE_IMMEDIATE_TO_REGISTER
-decode_result_t decode__move_immediate_to_register(
-    decoder_t* decoder,
-    uint8_t byte1,
-    move_immediate_to_register_t* move)
-{
-    move->fields1 = byte1;
-    uint8_t wide = (move->fields1 & 0b00001000) >> 3;
-    uint8_t reg = move->fields1 & 0b00000111;
 
-    if (wide == WIDE_BYTE) {
-        decode_result_t read_data_result = dcd_read_byte(decoder, (uint8_t*)&move->immediate);
-        printf("immed to reg data: %d\n", move->immediate);
-        if (read_data_result != DR_SUCCESS) {
+emu_result_t read_move_immediate_to_register(
+    emulator_t* emulator,
+    uint8_t byte1,
+    wide_t* wide,
+    uint8_t* reg,
+    uint16_t* immediate
+) {
+    *wide = (byte1 & 0b00001000) >> 3;
+    *reg = byte1 & 0b00000111;
+    if (*wide == WIDE_BYTE) {
+        emu_result_t read_data_result = dcd_read_byte(emulator, (uint8_t*)immediate);
+        printf("immed to reg data: %d\n", *immediate);
+        if (read_data_result != ER_SUCCESS) {
             return FAILURE;
         }
     } else { // WIDE_WORD
-        decode_result_t read_data_result = dcd_read_word(decoder, &move->immediate);
-        printf("immed to reg (wide) data: %d\n", move->immediate);
-        if (read_data_result != DR_SUCCESS) {
+        emu_result_t read_data_result = dcd_read_word(emulator, immediate);
+        printf("immed to reg (wide) data: %d\n", *immediate);
+        if (read_data_result != ER_SUCCESS) {
             return FAILURE;
         }
     }
-    return DR_SUCCESS;
+    return ER_SUCCESS;
+}
+emu_result_t decode_move_immediate_to_register(
+    emulator_t* emulator,
+    uint8_t byte1,
+    char* out_buffer,
+    int* index,
+    size_t out_buffer_size)
+{
+    wide_t wide = 0;
+    uint8_t reg = 0;
+    uint16_t immediate = 0;
+
+    emu_result_t result = read_move_immediate_to_register(
+        emulator, byte1, &wide, &reg, &immediate);
+
+    write_move_immediate_to_register(wide, reg, immediate, out_buffer, index, out_buffer_size);
+    return result;
 }
 
-void write__move_immediate_to_register(
-    move_immediate_to_register_t* move,
+emu_result_t emu_move_immediate_to_register(emulator_t* emulator, uint8_t byte1) {
+    wide_t wide = 0;
+    uint8_t reg = 0;
+    uint16_t immediate = 0;
+
+    emu_result_t result = read_move_immediate_to_register(
+        emulator, byte1, &wide, &reg, &immediate);
+
+    // TODO
+
+    return ER_FAILURE;
+}
+
+void write_move_immediate_to_register(
+    wide_t wide,
+    uint8_t reg,
+    uint16_t immediate,
     char* buffer,
     int* index,
     int buffer_size)
 {
-    uint8_t wide = (move->fields1 & 0b00001000) >> 3;
-    uint8_t reg = move->fields1 & 0b00000111;
-
     char* reg_string = regb_strings[reg];
     if (wide == WIDE_WORD) {
         reg_string = regw_strings[reg];
@@ -164,36 +234,63 @@ void write__move_immediate_to_register(
 
     int written = snprintf(buffer + *index, buffer_size - *index, "mov %s, %d",
                             reg_string,
-                            move->immediate);
+                            immediate);
     if (written < 0) {
         // TODO: propogate error
     }
     *index += written;
+    snprintf(buffer + *index, buffer_size - *index, "\n");
+    *index += 1;
 }
 
 // MARK: 4. I_MOVE_TO_AX
-decode_result_t decode__move_memory_to_accumulator(
-    decoder_t* decoder,
+emu_result_t read_move_to_ax(
+    emulator_t* emulator,
     uint8_t byte1,
-    move_memory_to_accumulator_t* move
+    wide_t* wide,
+    uint16_t* address
 ) {
-    move->fields1 = byte1;
-    wide_t wide = move->fields1 & 0b00000001;
-    decode_result_t read_data_result = dcd_read_word(decoder, &move->address);
-    printf("address: %d\n", move->address);
-    if (read_data_result != DR_SUCCESS) {
-        return DR_FAILURE;
+   *wide = byte1 & 0b00000001;
+    emu_result_t read_data_result = dcd_read_word(emulator, address);
+    printf("address: %d\n", *address);
+    if (read_data_result != ER_SUCCESS) {
+        return ER_FAILURE;
     }
-    return DR_SUCCESS;
+    return ER_SUCCESS;
 }
 
-void write__move_memory_to_accumulator(
-    move_memory_to_accumulator_t* move,
+emu_result_t decode_move_to_ax(
+    emulator_t* emulator,
+    uint8_t byte1,
+    char* out_buffer,
+    int* index,
+    size_t out_buffer_size
+) {
+    wide_t wide = 0;
+    uint16_t address = 0;
+    emu_result_t read_data_result = read_move_to_ax(emulator, byte1, &wide, &address);
+    write_move_to_ax(wide, address, out_buffer, index, out_buffer_size);
+    return read_data_result;
+}
+
+emu_result_t emu_move_to_ax(emulator_t* emulator, uint8_t byte1) {
+    wide_t wide = 0;
+    uint16_t address = 0;
+
+    emu_result_t read_data_result = read_move_to_ax(emulator, byte1, &wide, &address);
+
+    // TODO
+
+    return ER_FAILURE;
+}
+
+void write_move_to_ax(
+    wide_t wide,
+    uint16_t address,
     char* buffer,
     int* index,
     int buffer_size
 ) {
-    wide_t wide = move->fields1 & 0b00000001;
     char* reg_string = "al";
     if (wide == WIDE_WORD) {
         reg_string = "ax";
@@ -201,45 +298,74 @@ void write__move_memory_to_accumulator(
 
     int written = snprintf(buffer + *index, buffer_size - *index, "mov %s, [%d]",
                             reg_string,
-                            move->address);
+                            address);
     if (written < 0) {
         // TODO: propogate error
     }
     *index += written;
+    snprintf(buffer + *index, buffer_size - *index, "\n");
+    *index += 1;
 }
 
 // MARK: 5. I_MOVE_AX
-decode_result_t decode__move_accumulator_to_memory(
-    decoder_t* decoder,
+emu_result_t read_move_ax(
+    emulator_t* emulator,
     uint8_t byte1,
-    move_accumulator_to_memory_t* move
+    wide_t* wide,
+    uint16_t* address
 ) {
-    move->fields1 = byte1;
-    wide_t wide = move->fields1 & 0b00000001;
-    decode_result_t read_data_result = dcd_read_word(decoder, &move->address);
-    if (read_data_result != DR_SUCCESS) {
-        return DR_FAILURE;
+   *wide = byte1 & 0b00000001;
+    emu_result_t read_data_result = dcd_read_word(emulator, address);
+    printf("address: %d\n", *address);
+    if (read_data_result != ER_SUCCESS) {
+        return ER_FAILURE;
     }
-    return DR_SUCCESS;
+    return ER_SUCCESS;
 }
 
-void write__move_accumulator_to_memory(
-    move_accumulator_to_memory_t* move,
+emu_result_t decode_move_ax(
+    emulator_t* emulator,
+    uint8_t byte1,
+    char* out_buffer,
+    int* index,
+    size_t out_buffer_size
+) {
+    wide_t wide = 0;
+    uint16_t address = 0;
+    emu_result_t result = read_move_ax(emulator, byte1, &wide, &address);
+    write_move_ax(wide, address, out_buffer, index, out_buffer_size);
+    return result;
+}
+
+emu_result_t emu_move_ax(emulator_t* emulator, uint8_t byte1) {
+    wide_t wide = 0;
+    uint16_t address = 0;
+    emu_result_t result = read_move_ax(emulator, byte1, &wide, &address);
+
+    // TODO
+
+    return ER_FAILURE;
+}
+
+void write_move_ax(
+    wide_t wide,
+    uint16_t address,
     char* buffer,
     int* index,
     int buffer_size
 ) {
-    wide_t wide = move->fields1 & 0b00000001;
     char* reg_string = "al";
     if (wide == WIDE_WORD) {
         reg_string = "ax";
     }
 
     int written = snprintf(buffer + *index, buffer_size - *index, "mov [%d], %s",
-                            move->address,
+                            address,
                             reg_string);
     if (written < 0) {
         // TODO: propogate error
     }
     *index += written;
+    snprintf(buffer + *index, buffer_size - *index, "\n");
+    *index += 1;
 }

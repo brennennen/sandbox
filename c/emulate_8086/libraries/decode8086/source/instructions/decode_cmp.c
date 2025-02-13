@@ -17,29 +17,44 @@
 
 
 
-decode_result_t decode_compare(
-    decoder_t* decoder,
+emu_result_t decode_compare(
+    emulator_t* emulator,
     uint8_t byte1,
-    compare_t* compare
-) {
-    return decode__opcode_d_w__mod_reg_rm__disp_lo__disp_hi(
-        decoder, byte1, &compare->fields1, &compare->fields2, &compare->displacement
-    );
-}
-
-void write_compare(
-    compare_t* compare,
-    char* buffer,
+    char* out_buffer,
     int* index,
-    int buffer_size
+    size_t out_buffer_size
 ) {
-    direction_t direction = (compare->fields1 & 0b00000010) >> 1;
-    wide_t wide = compare->fields1 & 0b00000001;
-    mod_t mod = (compare->fields2 & 0b11000000) >> 6;
-    reg_t reg = (compare->fields2 & 0b00111000) >> 3;
-    uint8_t rm = compare->fields2 & 0b00000111;
+    direction_t direction = 0;
+    wide_t wide = 0;
+    mod_t mod = 0;
+    uint8_t reg = 0;
+    uint8_t rm = 0;
+    uint16_t displacement = 0;
 
-    write__common_register_or_memory_with_register_or_memory(direction, wide, mod, reg, rm,
-        compare->displacement, "cmp", 3, buffer, index, buffer_size);
+    emu_result_t result = decode__opcode_d_w__mod_reg_rm__disp_lo__disp_hi(
+        emulator, byte1, &direction, &wide, &mod, &reg, &rm, &displacement
+    );
+
+    write__common_register_or_memory_with_register_or_memory(
+        direction, wide, mod, reg, rm, displacement,
+        "cmp", 3, out_buffer, index, out_buffer_size
+    );
+    return result;
 }
 
+emu_result_t emu_compare(emulator_t* emulator, uint8_t byte1) {
+    direction_t direction = 0;
+    wide_t wide = 0;
+    mod_t mod = 0;
+    uint8_t reg = 0;
+    uint8_t rm = 0;
+    uint16_t displacement = 0;
+
+    emu_result_t result = decode__opcode_d_w__mod_reg_rm__disp_lo__disp_hi(
+        emulator, byte1, &direction, &wide, &mod, &reg, &rm, &displacement
+    );
+
+    // TODO
+
+    return ER_FAILURE;
+}

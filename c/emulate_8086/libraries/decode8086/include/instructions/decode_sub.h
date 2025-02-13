@@ -10,17 +10,14 @@
 #include "libraries/decode8086/include/decode8086.h"
 
 // MARK: SUB 1 - I_SUB
-decode_result_t decode_sub(
-    decoder_t* decoder,
+emu_result_t decode_sub(
+    emulator_t* emulator,
     uint8_t byte1,
-    sub_t* sub
-);
-void write_sub(
-    sub_t* sub,
-    char* buffer,
+    char* out_buffer,
     int* index,
-    int buffer_size
+    size_t out_buffer_size
 );
+emu_result_t emu_sub(emulator_t* emulator, uint8_t byte1);
 
 // MARK: SUB 2 - I_SUB_IMMEDIATE
 // MARK: SUB 3 - I_SUB_IMMEDIATE_TO_AX

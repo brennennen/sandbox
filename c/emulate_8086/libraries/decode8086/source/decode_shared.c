@@ -12,56 +12,215 @@
 /**
  *
  */
-decode_result_t read_displacement(decoder_t* decoder, mod_t mod, uint8_t rm, uint16_t* displacement) {
+emu_result_t read_displacement(emulator_t* emulator, mod_t mod, uint8_t rm, uint16_t* displacement) {
     if (mod == MOD_MEMORY) {
         if (rm == 0b00000110) {
-            decode_result_t read_displace_result = dcd_read_word(decoder, displacement);
-            if (read_displace_result != DR_SUCCESS) {
+            emu_result_t read_displace_result = dcd_read_word(emulator, displacement);
+            if (read_displace_result != ER_SUCCESS) {
                 return read_displace_result;
             }
         }
     } else if (mod == MOD_MEMORY_8BIT_DISPLACEMENT) {
-        decode_result_t read_displace_result = dcd_read_byte(decoder, (uint8_t*) displacement);
-        if (read_displace_result != DR_SUCCESS) {
+        emu_result_t read_displace_result = dcd_read_byte(emulator, (uint8_t*) displacement);
+        if (read_displace_result != ER_SUCCESS) {
             return read_displace_result;
         }
     } else if (mod == MOD_MEMORY_16BIT_DISPLACEMENT) {
-        decode_result_t read_displace_result = dcd_read_word(decoder, displacement);
-        if (read_displace_result != DR_SUCCESS) {
+        emu_result_t read_displace_result = dcd_read_word(emulator, displacement);
+        if (read_displace_result != ER_SUCCESS) {
             return read_displace_result;
         }
+    } else {
+        *displacement = 0;
     }
-    return DR_SUCCESS;
+    return ER_SUCCESS;
 }
 
 /**
  * Decodes the standard 4 byte format: [opcode dw][mod reg r/m][disp-lo][disp-high]
  */
-decode_result_t decode__opcode_d_w__mod_reg_rm__disp_lo__disp_hi(
-    decoder_t* decoder,
+emu_result_t decode__opcode_d_w__mod_reg_rm__disp_lo__disp_hi(
+    emulator_t* emulator,
     uint8_t byte1,
-    uint8_t* fields1,
-    uint8_t* fields2,
+    direction_t* direction,
+    wide_t* wide,
+    mod_t* mod,
+    uint8_t* reg,
+    uint8_t* rm,
     uint16_t* displacement
 ) {
-    *fields1 = byte1;
-    direction_t direction = (*fields1 & 0b00000010) >> 1;
-    wide_t wide = *fields1 & 0b00000001;
-    decode_result_t read_byte2_result = dcd_read_byte(decoder, (uint8_t*) fields2);
-    if (read_byte2_result != DR_SUCCESS) {
+    //*fields1 = byte1;
+    *direction = (byte1 & 0b00000010) >> 1;
+    *wide = byte1 & 0b00000001;
+
+    uint8_t byte2 = 0;
+    emu_result_t read_byte2_result = dcd_read_byte(emulator, &byte2);
+    if (read_byte2_result != ER_SUCCESS) {
         return read_byte2_result;
     }
 
-    mod_t mod = (*fields2 & 0b11000000) >> 6;
-    reg_t reg = (*fields2 & 0b00111000) >> 3;
-    uint8_t rm = *fields2 & 0b00000111;
-    decode_result_t read_displacement_result = read_displacement(decoder, mod, rm, displacement);
-    if (read_displacement_result != DR_SUCCESS) {
+    *mod = (byte2 & 0b11000000) >> 6;
+    *reg = (byte2 & 0b00111000) >> 3;
+    *rm = byte2 & 0b00000111;
+    emu_result_t read_displacement_result = read_displacement(emulator, *mod, *rm, displacement);
+    if (read_displacement_result != ER_SUCCESS) {
         return read_displacement_result;
     }
 
     return SUCCESS;
 }
+
+// emu_result_t decode__opcode_s_w__mod_subcode_rm__disp_lo__disp_hi__data_lo__data_hi(
+//     emulator_t* emulator,
+//     uint8_t byte1,
+//     uint8_t* sign,
+//     wide_t* wide,
+//     mod_t* mod,
+//     uint8_t* subcode,
+//     uint8_t* rm,
+//     uint16_t* displacement,
+//     uint16_t* data
+// ) {
+//     *sign = (byte1 & 0b00000010) >> 1;
+//     *wide = byte1 & 0b00000001;
+//     uint8_t byte2 = 0;
+//     if (dcd_read_byte(emulator, (uint8_t*) &byte2) == RI_FAILURE) {
+//         return ER_UNKNOWN_OPCODE;
+//     }
+//     *mod = (byte2 & 0b11000000) >> 6;
+//     *subcode = (byte2 & 0b00111000) >> 3;
+//     *rm = byte2 & 0b00000111;
+//     if (*mod == MOD_MEMORY) {
+//         if (*rm == 0b00000110) {
+//             emu_result_t read_displace_result = dcd_read_word(emulator, displacement);
+//             if (read_displace_result != ER_SUCCESS) {
+//                 return read_displace_result;
+//             }
+//         }
+//     } else if (*mod == MOD_MEMORY_8BIT_DISPLACEMENT) {
+//         emu_result_t read_displace_result = dcd_read_byte(emulator, (uint8_t*) displacement);
+//         if (read_displace_result != ER_SUCCESS) {
+//             return read_displace_result;
+//         }
+//     } else if (*mod == MOD_MEMORY_16BIT_DISPLACEMENT) {
+//         emu_result_t read_displace_result = dcd_read_word(emulator, displacement);
+//         if (read_displace_result != ER_SUCCESS) {
+//             return read_displace_result;
+//         }
+//     } else { // MOD_REGISTER
+//         // Don't have extra bytes for register to register movs. Nothing to do.
+//     }
+
+//     if (*wide == WIDE_BYTE) {
+//         emu_result_t read_data_result = dcd_read_byte(emulator, (uint8_t*) data);
+//     } else {
+//         if (sign == 0) {
+//             emu_result_t read_data_result = dcd_read_word(emulator, data);
+//         } else {
+//             emu_result_t read_data_result = dcd_read_byte(emulator, (uint8_t*) data);
+//         }
+//     }
+
+//     return ER_SUCCESS;
+// }
+
+emu_result_t decode__opcode_s_w__mod_subcode_rm__disp_lo__disp_hi__data_lo__data_hi(
+    emulator_t* emulator,
+    uint8_t byte1,
+    uint8_t* sign,
+    wide_t* wide,
+    mod_t* mod,
+    uint8_t* subcode,
+    uint8_t* rm,
+    uint16_t* displacement,
+    uint16_t* data
+) {
+    *sign = (byte1 & 0b00000010) >> 1;
+    *wide = byte1 & 0b00000001;
+    uint8_t byte2 = 0;
+    emu_result_t read_byte2_result = dcd_read_byte(emulator, (uint8_t*) &byte2);
+    if (read_byte2_result != ER_SUCCESS) {
+        return read_byte2_result;
+    }
+
+    *mod = (byte2 & 0b11000000) >> 6;
+    *rm = byte2 & 0b00000111;
+    if (*mod == MOD_MEMORY) {
+        if (*rm == 0b00000110) {
+            emu_result_t read_displace_result = dcd_read_word(emulator, displacement);
+            if (read_displace_result != ER_SUCCESS) {
+                return read_displace_result;
+            }
+        }
+    } else if (*mod == MOD_MEMORY_8BIT_DISPLACEMENT) {
+        emu_result_t read_displace_result = dcd_read_byte(emulator, (uint8_t*) displacement);
+        if (read_displace_result != ER_SUCCESS) {
+            return read_displace_result;
+        }
+    } else if (*mod == MOD_MEMORY_16BIT_DISPLACEMENT) {
+        emu_result_t read_displace_result = dcd_read_word(emulator, displacement);
+        if (read_displace_result != ER_SUCCESS) {
+            return read_displace_result;
+        }
+    } else { // MOD_REGISTER
+        // Don't have extra bytes for register to register movs. Nothing to do.
+    }
+
+    if (*wide == WIDE_BYTE) {
+        emu_result_t read_data_result = dcd_read_byte(emulator, (uint8_t*) data);
+    } else {
+        if (*sign == 0) {
+            emu_result_t read_data_result = dcd_read_word(emulator, data);
+        } else {
+            emu_result_t read_data_result = dcd_read_byte(emulator, (uint8_t*) data);
+        }
+    }
+
+    return ER_SUCCESS;
+}
+
+// add->fields1 = byte1;
+    // uint8_t sign_extension = (add->fields1 & 0b00000010) >> 1;
+    // wide_t wide = add->fields1 & 0b00000001;
+    // emu_result_t read_byte2_result = dcd_read_byte(emulator, (uint8_t*) &add->fields2);
+    // if (read_byte2_result != ER_SUCCESS) {
+    //     return read_byte2_result;
+    // }
+
+    // mod_t mod = (add->fields2 & 0b11000000) >> 6;
+    // uint8_t rm = add->fields2 & 0b00000111;
+    // if (mod == MOD_MEMORY) {
+    //     if (rm == 0b00000110) {
+    //         emu_result_t read_displace_result = dcd_read_word(emulator, &add->displacement);
+    //         if (read_displace_result != ER_SUCCESS) {
+    //             return read_displace_result;
+    //         }
+    //     }
+    // } else if (mod == MOD_MEMORY_8BIT_DISPLACEMENT) {
+    //     emu_result_t read_displace_result = dcd_read_byte(emulator, (uint8_t*) &add->displacement);
+    //     if (read_displace_result != ER_SUCCESS) {
+    //         return read_displace_result;
+    //     }
+    // } else if (mod == MOD_MEMORY_16BIT_DISPLACEMENT) {
+    //     emu_result_t read_displace_result = dcd_read_word(emulator, &add->displacement);
+    //     if (read_displace_result != ER_SUCCESS) {
+    //         return read_displace_result;
+    //     }
+    // } else { // MOD_REGISTER
+    //     // Don't have extra bytes for register to register movs. Nothing to do.
+    // }
+
+    // if (wide == WIDE_BYTE) {
+    //     emu_result_t read_data_result = dcd_read_byte(emulator, (uint8_t*) &add->immediate);
+    // } else {
+    //     if (sign_extension == 0) {
+    //         emu_result_t read_data_result = dcd_read_word(emulator, &add->immediate);
+    //     } else {
+    //         emu_result_t read_data_result = dcd_read_byte(emulator, (uint8_t*) &add->immediate);
+    //     }
+    // }
+
+    // return ER_SUCCESS;
 
 void write_uint8(char* buffer, int* index, size_t buffer_size, uint8_t num) {
     // TODO: write something optimized. just use sprintf for now
@@ -96,8 +255,23 @@ char* mod_memory_effective_address_lookup(uint8_t rm) {
     };
 }
 
+/**
+ * Maps the R/M field encodings to a string format. This function can handle
+ * all R/M field encodings, but should only be used for "Effective Address"
+ * encodings. There are simpler solutions for the standard register encodings.
+ * See "Table 4-10. R/M (Register/Memory) Field Encoding".
+ *
+ * @param buffer Where to write the string encoding of the effective address to.
+ * @param buffer_size Size of the output buffer being written to.
+ * @param wide Whether the R/M field represents a byte or word.
+ * @param mod Mode field encoding, used to determine how to parse the R/M field.
+ *              See tables 4-8 and 4-10. for more details.
+ * @param rm Register/Memory field encoding being processed. See table 4-10.
+ * @param displacement Offset to add to the address when mod is 0b01 or 0b10.
+ */
 void build_effective_address(char* buffer, size_t buffer_size,
-                             mod_t mod, uint8_t rm, uint16_t displacement) {
+                             wide_t wide, mod_t mod, uint8_t rm,
+                             uint16_t displacement) {
     switch(mod) {
         case MOD_MEMORY:
             switch(rm) {
@@ -173,7 +347,74 @@ void build_effective_address(char* buffer, size_t buffer_size,
             }
             break;
         case MOD_REGISTER:
-
+            switch(wide) {
+                case WIDE_BYTE:
+                    switch(rm) {
+                        case RM_BX_SI: // 0
+                            snprintf(buffer, buffer_size, "al");
+                            break;
+                        case RM_BX_DI: // 1
+                            snprintf(buffer, buffer_size, "cl");
+                            break;
+                        case RM_BP_SI:
+                            snprintf(buffer, buffer_size, "dl");
+                            break;
+                        case RM_BP_DI:
+                            snprintf(buffer, buffer_size, "bl");
+                            break;
+                        case RM_SI:
+                            snprintf(buffer, buffer_size, "ah");
+                            break;
+                        case RM_DI:
+                            snprintf(buffer, buffer_size, "ch");
+                            break;
+                        case RM_BP:
+                            snprintf(buffer, buffer_size, "dh");
+                            break;
+                        case RM_BX:
+                            snprintf(buffer, buffer_size, "bh");
+                            break;
+                        default:
+                            memcpy(buffer, "INVALID", sizeof("INVALID"));
+                            break;
+                    }
+                    break;
+                case WIDE_WORD:
+                    switch(rm) {
+                        case RM_BX_SI: // 0
+                            memcpy(buffer, "ax", sizeof("ax"));
+                            break;
+                        case RM_BX_DI: // 1
+                            memcpy(buffer, "cx", sizeof("cx"));
+                            break;
+                        case RM_BP_SI:
+                            memcpy(buffer, "dx", sizeof("dx"));
+                            break;
+                        case RM_BP_DI:
+                            memcpy(buffer, "bx", sizeof("bx"));
+                            break;
+                        case RM_SI:
+                            memcpy(buffer, "sp", sizeof("sp"));
+                            break;
+                        case RM_DI:
+                            memcpy(buffer, "bp", sizeof("bp"));
+                            break;
+                        case RM_BP:
+                            memcpy(buffer, "si", sizeof("ax"));
+                            break;
+                        case RM_BX:
+                            memcpy(buffer, "di", sizeof("di"));
+                            break;
+                        default:
+                            memcpy(buffer, "INVALID", sizeof("INVALID"));
+                            break;
+                    }
+                    break;
+                default:
+                    memcpy(buffer, "INVALID", sizeof("INVALID"));
+                    break;
+            }
+            break;
         default:
             memcpy(buffer, "INVALID", sizeof("INVALID"));
             break;
@@ -260,7 +501,7 @@ void write__common_register_or_memory_with_register_or_memory(
                 }
                 char effective_address_string[32] = { 0 };
                 build_effective_address(effective_address_string, sizeof(effective_address_string),
-                                        mod, rm, displacement);
+                                        wide, mod, rm, displacement);
                 int written = snprintf(buffer + *index,  buffer_size - *index, "%s %s, %s",
                                         mnemonic,
                                         effective_address_string,
@@ -276,7 +517,7 @@ void write__common_register_or_memory_with_register_or_memory(
                 }
                 char effective_address_string[32] = { 0 };
                 build_effective_address(effective_address_string, sizeof(effective_address_string),
-                                        mod, rm, displacement);
+                                        wide, mod, rm, displacement);
                 int written = snprintf(buffer + *index, buffer_size - *index, "%s %s, %s",
                                         mnemonic,
                                         reg_string,
@@ -289,10 +530,13 @@ void write__common_register_or_memory_with_register_or_memory(
             //snprintf(buffer, buffer_size, "NOT IMPLEMENTED!");
         }
     }
+    // TODO: bounds safety checks
+    snprintf(buffer + *index, buffer_size - *index, "\n");
+    *index += 1;
 }
 
 void write__common_immediate_to_register_or_memory(
-    direction_t direction,
+    uint8_t sign,
     wide_t wide,
     mod_t mod,
     uint8_t rm,
@@ -304,13 +548,10 @@ void write__common_immediate_to_register_or_memory(
     int* index,
     int buffer_size)
 {
-    //wide_t wide = move->fields1 & 0b00000001;
-    //mod_t mod = (move->fields2 & 0b11000000) >> 6;
-    //uint8_t rm = move->fields2 & 0b00000111;
-
+    printf("rm: %d, mod: %d\n", rm, mod);
     char effective_address_string[32] = { 0 };
     build_effective_address(effective_address_string, sizeof(effective_address_string),
-                            mod, rm, displacement);
+                            wide, mod, rm, displacement);
     int written = snprintf(buffer + *index,  buffer_size - *index, "%s %s, %d",
                             mnemonic,
                             effective_address_string,
@@ -319,4 +560,6 @@ void write__common_immediate_to_register_or_memory(
         // TODO: propogate error
     }
     *index += written;
+    snprintf(buffer + *index, buffer_size - *index, "\n");
+    *index += 1;
 }

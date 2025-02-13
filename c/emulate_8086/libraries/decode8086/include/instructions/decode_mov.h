@@ -11,11 +11,6 @@
  * 6. I_MOVE_TO_SEGMENT_REGISTER
  * 7. I_MOVE_SEGMENT_REGISTER
  *
- * NOTE:
- * These names are unfortunately long, but that's how the 8086 designers decided to split
- * up the work. I kicked around naming them "I_MOVE_1", "I_MOVE_2", etc. but that required
- * me to constantly look up which was which. I'm not happy with either direction, but
- * sticking with the long names for now.
  */
 #ifndef DECODE_MOV_H
 #define DECODE_MOV_H
@@ -26,70 +21,92 @@
 
 #include "libraries/decode8086/include/decode8086.h"
 
-
 // MARK: 1. I_MOVE
-decode_result_t decode_move(
-    decoder_t* decoder,
+/**
+ * Decodes the first x86 mov machine code instruction described as "Register/memory
+ * to/from register" into it's assembly code representation.
+ * Ex: 10001001 11011001 -> "mov cx, bx"
+ *
+ * @param emulator Emulator holding the machine code to decode.
+ * @param byte1 First byte in the machine code instruction.
+ * @param out_buffer Where to write the assembly code instruction to.
+ * @param index Index into `out_buffer` to write at.
+ * @param out_buffer_size Size of the output buffer.
+ */
+emu_result_t decode_move(
+    emulator_t* emulator,
     uint8_t byte1,
-    move_t* move
-);
-void write_move(
-    move_t* move,
-    char* buffer,
+    char* out_buffer,
     int* index,
-    int buffer_size
-);
+    size_t out_buffer_size);
+
+/**
+ * Emulates the first x86 mov machine code instruction described as "Register/memory
+ * to/from register", modifying registers and memory addresses accordingly.
+ *
+ * @param emulator Emulator holding the mov instruction to perform, registers
+ *                  to update, and any other peripheral data.
+ * @param byet1 First byte in the machine code instruction being executed.
+ */
+emu_result_t emu_move(emulator_t* emulator, uint8_t byte1);
 
 // MARK: 2. I_MOVE_IMMEDIATE
-decode_result_t decode__move_immediate_to_register_or_memory(
-    decoder_t* decoder,
+
+emu_result_t decode_move_immediate(
+    emulator_t* emulator,
     uint8_t byte1,
-    move_immediate_to_register_or_memory_t* move
-);
-void write__move_immediate_to_register_or_memory(
-    move_immediate_to_register_or_memory_t* move,
-    char* buffer,
+    char* out_buffer,
     int* index,
-    int buffer_size
-);
+    size_t out_buffer_size);
+
+
+emu_result_t emu_move_immediate(emulator_t* emulator, uint8_t byte1);
 
 // MARK: 3. I_MOVE_IMMEDIATE_TO_REGISTER
-decode_result_t decode__move_immediate_to_register(
-    decoder_t* decoder,
+
+emu_result_t decode_move_immediate_to_register(
+    emulator_t* emulator,
     uint8_t byte1,
-    move_immediate_to_register_t* move
-);
-void write__move_immediate_to_register(
-    move_immediate_to_register_t* move,
+    char* out_buffer,
+    int* index,
+    size_t out_buffer_size);
+emu_result_t emu_move_immediate_to_register(emulator_t* emulator, uint8_t byte1);
+void write_move_immediate_to_register(
+    wide_t wide,
+    uint8_t reg,
+    uint16_t immediate,
     char* buffer,
     int* index,
-    int buffer_size
-);
+    int buffer_size);
 
 // MARK: 4. I_MOVE_TO_AX
-decode_result_t decode__move_memory_to_accumulator(
-    decoder_t* decoder,
+emu_result_t decode_move_to_ax(
+    emulator_t* emulator,
     uint8_t byte1,
-    move_memory_to_accumulator_t* move
-);
-void write__move_memory_to_accumulator(
-    move_memory_to_accumulator_t* move,
+    char* out_buffer,
+    int* index,
+    size_t out_buffer_size);
+emu_result_t emu_move_to_ax(emulator_t* emulator, uint8_t byte1);
+void write_move_to_ax(
+    wide_t wide,
+    uint16_t address,
     char* buffer,
     int* index,
-    int buffer_size
-);
+    int buffer_size);
 
 // MARK: 5. I_MOVE_AX
-decode_result_t decode__move_accumulator_to_memory(
-    decoder_t* decoder,
+emu_result_t decode_move_ax(
+    emulator_t* emulator,
     uint8_t byte1,
-    move_accumulator_to_memory_t* move
-);
-void write__move_accumulator_to_memory(
-    move_accumulator_to_memory_t* move,
+    char* out_buffer,
+    int* index,
+    size_t out_buffer_size);
+emu_result_t emu_move_ax(emulator_t* emulator, uint8_t byte1);
+void write_move_ax(
+    wide_t wide,
+    uint16_t address,
     char* buffer,
     int* index,
-    int buffer_size
-);
+    int buffer_size);
 
 #endif // DECODE_MOV_H

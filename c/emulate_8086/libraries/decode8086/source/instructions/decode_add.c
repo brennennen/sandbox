@@ -21,119 +21,80 @@
 #include "libraries/decode8086/include/instructions/decode_add.h"
 
 // MARK: ADD 1 - I_ADD
-decode_result_t decode_add(
-    decoder_t* decoder,
+emu_result_t decode_add(
+    emulator_t* emulator,
     uint8_t byte1,
-    add_t* add)
+    char* out_buffer,
+    int* index,
+    size_t out_buffer_size)
 {
-    return decode__opcode_d_w__mod_reg_rm__disp_lo__disp_hi(
-        decoder, byte1, &add->fields1, &add->fields2, &add->displacement
+    direction_t direction = 0;
+    wide_t wide = 0;
+    mod_t mod = 0;
+    uint8_t reg = 0;
+    uint8_t rm = 0;
+    uint16_t displacement = 0;
+
+    emu_result_t result = decode__opcode_d_w__mod_reg_rm__disp_lo__disp_hi(
+        emulator, byte1, &direction, &wide, &mod, &reg, &rm, &displacement
     );
+
+    write__common_register_or_memory_with_register_or_memory(
+        direction, wide, mod, reg, rm, displacement,
+        "add", 3, out_buffer, index, out_buffer_size
+    );
+    return result;
 }
 
-void write_add(
-    add_t* add,
-    char* buffer,
-    int* index,
-    int buffer_size
-) {
-    direction_t direction = (add->fields1 & 0b00000010) >> 1;
-    wide_t wide = add->fields1 & 0b00000001;
-    mod_t mod = (add->fields2 & 0b11000000) >> 6;
-    reg_t reg = (add->fields2 & 0b00111000) >> 3;
-    uint8_t rm = add->fields2 & 0b00000111;
+emu_result_t emu_add(emulator_t* emulator, uint8_t byte1) {
+    direction_t direction = 0;
+    wide_t wide = 0;
+    mod_t mod = 0;
+    uint8_t reg = 0;
+    uint8_t rm = 0;
+    uint16_t displacement = 0;
 
-    write__common_register_or_memory_with_register_or_memory(direction, wide, mod, reg, rm,
-        add->displacement, "add", 3, buffer, index, buffer_size);
+    emu_result_t result = decode__opcode_d_w__mod_reg_rm__disp_lo__disp_hi(
+        emulator, byte1, &direction, &wide, &mod, &reg, &rm, &displacement
+    );
+
+    // TODO
+
+    return ER_FAILURE;
 }
 
 // MARK: ADD 2 - I_ADD_IMMEDIATE
 
-decode_result_t decode_add_immediate(
-    decoder_t* decoder,
+emu_result_t decode_add_immediate(
+    emulator_t* emulator,
     uint8_t byte1,
-    add_immediate_t* add
+    char* out_buffer,
+    int* index,
+    size_t out_buffer_size
 ) {
-    add->fields1 = byte1;
-    uint8_t sign_extension = (add->fields1 & 0b00000010) >> 1;
-    wide_t wide = add->fields1 & 0b00000001;
-    decode_result_t read_byte2_result = dcd_read_byte(decoder, (uint8_t*) &add->fields2);
-    if (read_byte2_result != DR_SUCCESS) {
-        return read_byte2_result;
-    }
+    uint8_t sign = 0;
+    wide_t wide = 0;
+    mod_t mod = 0;
+    uint8_t subcode = 0;
+    uint8_t rm = 0;
+    uint16_t displacement = 0;
+    uint16_t data = 0;
 
-    mod_t mod = (add->fields2 & 0b11000000) >> 6;
-    uint8_t rm = add->fields2 & 0b00000111;
-    if (mod == MOD_MEMORY) {
-        if (rm == 0b00000110) {
-            decode_result_t read_displace_result = dcd_read_word(decoder, &add->displacement);
-            if (read_displace_result != DR_SUCCESS) {
-                return read_displace_result;
-            }
-        }
-    } else if (mod == MOD_MEMORY_8BIT_DISPLACEMENT) {
-        decode_result_t read_displace_result = dcd_read_byte(decoder, (uint8_t*) &add->displacement);
-        if (read_displace_result != DR_SUCCESS) {
-            return read_displace_result;
-        }
-    } else if (mod == MOD_MEMORY_16BIT_DISPLACEMENT) {
-        decode_result_t read_displace_result = dcd_read_word(decoder, &add->displacement);
-        if (read_displace_result != DR_SUCCESS) {
-            return read_displace_result;
-        }
-    } else { // MOD_REGISTER
-        // Don't have extra bytes for register to register movs. Nothing to do.
-    }
+    emu_result_t result = decode__opcode_s_w__mod_subcode_rm__disp_lo__disp_hi__data_lo__data_hi(
+        emulator, byte1, &sign, &wide, &mod, &subcode, &rm, &displacement, &data
+    );
 
-    if (wide == WIDE_BYTE) {
-        decode_result_t read_data_result = dcd_read_byte(decoder, (uint8_t*) &add->immediate);
-    } else {
-        if (sign_extension == 0) {
-            decode_result_t read_data_result = dcd_read_word(decoder, &add->immediate);
-        } else {
-            decode_result_t read_data_result = dcd_read_byte(decoder, (uint8_t*) &add->immediate);
-        }
-    }
+    write__common_immediate_to_register_or_memory(
+        sign, wide, mod, rm, displacement, data,
+        "add", 3, out_buffer, index, out_buffer_size
+    );
 
-    return DR_SUCCESS;
+    return result;
 }
 
-void write_add_immediate(
-    add_immediate_t* add,
-    char* buffer,
-    int* index,
-    int buffer_size
-) {
-    uint8_t is_signed = (add->fields1 & 0b00000010) >> 1;
-    wide_t wide = add->fields1 & 0b00000001;
-    mod_t mod = (add->fields2 & 0b11000000) >> 6;
-    uint8_t rm = add->fields2 & 0b00000111;
-    // TODO: refactor out similar code with mov_immediate
+emu_result_t emu_add_immediate(emulator_t* emulator, uint8_t byte1) {
 
-    if (mod == MOD_REGISTER) {
-        char* reg_string = regb_strings[rm];
-        if (wide) {
-            reg_string = regw_strings[rm];
-        }
-        int written = snprintf(buffer + *index,  buffer_size - *index, "add %s, %d",
-                                reg_string,
-                                add->immediate);
-        if (written < 0) {
-            // TODO: propogate error
-        }
-        *index += written;
-    } else {
-        char effective_address_string[32] = { 0 };
-        build_effective_address(effective_address_string, sizeof(effective_address_string),
-                            mod, rm, add->displacement);
-        int written = snprintf(buffer + *index,  buffer_size - *index, "add %s, %d",
-                                effective_address_string,
-                                add->immediate);
-        if (written < 0) {
-            // TODO: propogate error
-        }
-        *index += written;
-    }
+    return ER_FAILURE;
 }
 
 // MARK: ADD 3 - I_ADD_IMMEDIATE_TO_AX

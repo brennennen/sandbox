@@ -15,13 +15,12 @@
 #include "libraries/emulate8086/include/decode_utils.h"
 #include "libraries/emulate8086/include/decode_tag.h"
 
-#include "libraries/emulate8086/include/instructions/decode_mov.h"
-#include "libraries/emulate8086/include/instructions/decode_add.h"
-#include "libraries/emulate8086/include/instructions/decode_sub.h"
-#include "libraries/emulate8086/include/instructions/decode_cmp.h"
+#include "libraries/emulate8086/include/instructions/mov.h"
+#include "libraries/emulate8086/include/instructions/add.h"
+#include "libraries/emulate8086/include/instructions/sub.h"
+#include "libraries/emulate8086/include/instructions/cmp.h"
 
-#include "libraries/emulate8086/include/instructions/conditional_jumps/je.h"
-#include "libraries/emulate8086/include/instructions/decode_conditional_jumps.h"
+#include "libraries/emulate8086/include/instructions/conditional_jumps.h"
 
 //#include "decode_tag.c"
 

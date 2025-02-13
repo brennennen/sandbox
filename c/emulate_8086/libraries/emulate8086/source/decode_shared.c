@@ -5,7 +5,7 @@
 #include <string.h>
 
 #include "shared/include/result.h"
-#include "libraries/emulate8086/include/decode8086.h"
+#include "libraries/emulate8086/include/emulate8086.h"
 
 #include "libraries/emulate8086/include/decode_shared.h"
 

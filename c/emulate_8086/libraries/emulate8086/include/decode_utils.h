@@ -5,7 +5,7 @@
 #include "shared/include/instructions.h"
 #include "shared/include/result.h"
 
-#include "libraries/emulate8086/include/decode8086.h"
+#include "libraries/emulate8086/include/emulate8086.h"
 
 
 emu_result_t dcd_read_byte(emulator_t* emulator, uint8_t* out_byte);

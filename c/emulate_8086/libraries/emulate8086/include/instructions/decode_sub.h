@@ -7,7 +7,7 @@
 
 #include "shared/include/instructions.h"
 
-#include "libraries/emulate8086/include/decode8086.h"
+#include "libraries/emulate8086/include/emulate8086.h"
 
 // MARK: SUB 1 - I_SUB
 emu_result_t decode_sub(

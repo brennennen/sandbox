@@ -5,7 +5,7 @@
 
 #include "shared/include/instructions.h"
 
-#include "libraries/emulate8086/include/decode8086.h"
+#include "libraries/emulate8086/include/emulate8086.h"
 #include "libraries/emulate8086/include/decode_tag.h"
 
 // MARK: MOV

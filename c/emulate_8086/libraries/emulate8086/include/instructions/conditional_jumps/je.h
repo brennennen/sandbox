@@ -6,7 +6,7 @@
 
 #include "shared/include/instructions.h"
 
-#include "libraries/emulate8086/include/decode8086.h"
+#include "libraries/emulate8086/include/emulate8086.h"
 
 // MARK: JE/JZ 1 - I_JUMP_ON_EQUAL
 // emu_result_t decode_jump_on_equal(

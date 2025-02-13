@@ -5,7 +5,7 @@
 #include "shared/include/binary_utilities.h"
 #include "shared/include/result.h"
 
-#include "libraries/emulate8086/include/decode8086.h"
+#include "libraries/emulate8086/include/emulate8086.h"
 
 void print_help() {
     printf("Decodes an assembled x86 program to standard out.\n");

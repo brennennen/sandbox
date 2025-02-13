@@ -17,13 +17,6 @@ project "test_decode8086"
     links { "decode8086", "criterion" }
     sanitize { "Address" }
 
-project "emulate8086"
-    kind "StaticLib"
-    language "C"
-    targetdir "bin/%{cfg.buildcfg}"
-    files { "./libraries/emulate8086/**.h", "./libraries/emulate8086/**.c" }
-    includedirs { "./libraries/emulate8086/include", "./shared/include", "." }
-
 project "sandbox"
     kind "ConsoleApp"
     language "C"
@@ -45,7 +38,7 @@ project "test"
     targetdir "bin/%{cfg.buildcfg}"
     files { "./test/**.h", "./test/**.c" }
     includedirs { "./libraries", "./libraries/**/include", "./shared/include", "." }
-    links { "decode8086", "emulate8086", "criterion" }
+    links { "decode8086", "criterion" }
     filter "configurations:Debug"
         defines { "DEBUG" }
         symbols "On"

@@ -5,11 +5,11 @@
 #include "shared/include/instructions.h"
 #include "shared/include/result.h"
 
-#include "libraries/decode8086/include/decode8086.h"
-#include "libraries/decode8086/include/decode_utils.h"
-#include "libraries/decode8086/include/decode_shared.h"
+#include "libraries/emulate8086/include/decode8086.h"
+#include "libraries/emulate8086/include/decode_utils.h"
+#include "libraries/emulate8086/include/decode_shared.h"
 
-#include "libraries/decode8086/include/instructions/decode_conditional_jumps.h"
+#include "libraries/emulate8086/include/instructions/decode_conditional_jumps.h"
 
 // Naming this "decode_conditional_jump" causes linker errors with criterion's unit test system
 // TODO: find a better name that works or change unit test libraries if more issues pop up.

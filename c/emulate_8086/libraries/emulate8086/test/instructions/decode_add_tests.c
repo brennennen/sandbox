@@ -6,7 +6,7 @@
 
 #include "shared/include/instructions.h"
 
-#include "libraries/decode8086/include/decode8086.h"
+#include "libraries/emulate8086/include/decode8086.h"
 
 //
 // MARK: ADD

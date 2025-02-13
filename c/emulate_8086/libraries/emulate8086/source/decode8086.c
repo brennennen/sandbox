@@ -11,17 +11,17 @@
 #include "shared/include/registers.h"
 #include "shared/include/result.h"
 
-#include "libraries/decode8086/include/decode8086.h"
-#include "libraries/decode8086/include/decode_utils.h"
-#include "libraries/decode8086/include/decode_tag.h"
+#include "libraries/emulate8086/include/decode8086.h"
+#include "libraries/emulate8086/include/decode_utils.h"
+#include "libraries/emulate8086/include/decode_tag.h"
 
-#include "libraries/decode8086/include/instructions/decode_mov.h"
-#include "libraries/decode8086/include/instructions/decode_add.h"
-#include "libraries/decode8086/include/instructions/decode_sub.h"
-#include "libraries/decode8086/include/instructions/decode_cmp.h"
+#include "libraries/emulate8086/include/instructions/decode_mov.h"
+#include "libraries/emulate8086/include/instructions/decode_add.h"
+#include "libraries/emulate8086/include/instructions/decode_sub.h"
+#include "libraries/emulate8086/include/instructions/decode_cmp.h"
 
-#include "libraries/decode8086/include/instructions/conditional_jumps/je.h"
-#include "libraries/decode8086/include/instructions/decode_conditional_jumps.h"
+#include "libraries/emulate8086/include/instructions/conditional_jumps/je.h"
+#include "libraries/emulate8086/include/instructions/decode_conditional_jumps.h"
 
 //#include "decode_tag.c"
 

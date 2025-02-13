@@ -6,7 +6,7 @@
 
 #include "shared/include/instructions.h"
 
-#include "libraries/decode8086/include/decode_utils.h"
+#include "libraries/emulate8086/include/decode_utils.h"
 
 emu_result_t read_displacement(emulator_t* emulator, mod_t mod, uint8_t rm, uint16_t* displacement);
 

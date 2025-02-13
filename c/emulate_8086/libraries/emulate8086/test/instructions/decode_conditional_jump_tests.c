@@ -6,7 +6,7 @@
 
 #include "shared/include/instructions.h"
 
-#include "libraries/decode8086/include/decode8086.h"
+#include "libraries/emulate8086/include/decode8086.h"
 
 // Use of this global "g_decoder" is to try and reduce the amount of code per test. It's reset
 // after each test and has a large default instructions buffer.

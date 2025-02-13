@@ -14,11 +14,11 @@
 #include "shared/include/instructions.h"
 #include "shared/include/result.h"
 
-#include "libraries/decode8086/include/decode8086.h"
-#include "libraries/decode8086/include/decode_utils.h"
-#include "libraries/decode8086/include/decode_shared.h"
+#include "libraries/emulate8086/include/decode8086.h"
+#include "libraries/emulate8086/include/decode_utils.h"
+#include "libraries/emulate8086/include/decode_shared.h"
 
-#include "libraries/decode8086/include/instructions/decode_add.h"
+#include "libraries/emulate8086/include/instructions/decode_add.h"
 
 // MARK: ADD 1 - I_ADD
 emu_result_t decode_add(

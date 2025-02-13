@@ -18,7 +18,7 @@
 
 #include "shared/include/instructions.h"
 
-#include "libraries/decode8086/include/decode_tag.h"
+#include "libraries/emulate8086/include/decode_tag.h"
 
 /**
  * Decodes the instruction tag by reading the opcode and sub opcode from the first

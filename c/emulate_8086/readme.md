@@ -4,10 +4,13 @@ Toy partial 8086 emulator to review how cpus work.
 ## Build
 Linux
 ```
+rm -rf ./.build ./bin
 premake5 gmake
 make -C ./.build/
+make config=debug -C ./.build/
+make config=release -C ./.build/
 ./bin/Debug/sandbox
-./bin/Debug/test_decode8086
+./bin/Debug/test_emulate8086
 ./bin/Debug/test
 ```
 
@@ -16,7 +19,7 @@ Windows:
 premake5 vs2022
 MSBuild.exe ./.build/PremakeSandbox.sln
 ./bin/debug/sandbox.exe
-./bin/Debug/test_decode8086.exe
+./bin/Debug/test_emulate8086.exe
 ./bin/Debug/test.exe
 ```
 

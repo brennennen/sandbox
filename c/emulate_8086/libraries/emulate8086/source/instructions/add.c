@@ -93,6 +93,44 @@ emu_result_t decode_add_immediate(
 }
 
 emu_result_t emu_add_immediate(emulator_t* emulator, uint8_t byte1) {
+    uint8_t sign = 0;
+    wide_t wide = 0;
+    mod_t mod = 0;
+    uint8_t subcode = 0;
+    uint8_t rm = 0;
+    uint16_t displacement = 0;
+    uint16_t immediate = 0;
+
+    emu_result_t result = decode__opcode_s_w__mod_subcode_rm__disp_lo__disp_hi__data_lo__data_hi(
+        emulator, byte1, &sign, &wide, &mod, &subcode, &rm, &displacement, &immediate
+    );
+
+    printf("sign: %d, wide: %d, mod: %d, rm: %d, displ: %d, immediate: %d\n",
+        sign, wide, mod, rm, displacement, immediate);
+    switch(mod) {
+        case MOD_REGISTER: {
+            if (wide == WIDE_BYTE) {
+                uint8_t* left = emu_get_byte_register(&emulator->registers, rm);
+                *left = *left + immediate;
+                if (*left == 0) {
+                    // TODO: set 0 flag?
+                }
+            } else {
+                uint16_t* left = emu_get_word_register(&emulator->registers, rm);
+                *left = *left + immediate;
+                if (*left == 0) {
+                    // TODO: set 0 flag?
+                }
+            }
+            return ER_SUCCESS;
+            break;
+        }
+        default: {
+            printf("emu_add_immediate: feature not implemented.");
+            return ER_FAILURE;
+            break;
+        }
+    }
 
     return ER_FAILURE;
 }

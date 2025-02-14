@@ -53,19 +53,40 @@ emu_result_t decode_move(
 }
 
 emu_result_t emu_move(emulator_t* emulator, uint8_t byte1) {
-    direction_t direction;
-    wide_t wide;
-    mod_t mod;
-    uint8_t reg;
-    uint8_t rm;
-    uint16_t displacement;
+    direction_t direction = 0;
+    wide_t wide = 0;
+    mod_t mode = 0;
+    uint8_t reg = 0;
+    uint8_t rm = 0;
+    uint16_t displacement = 0;
 
     emu_result_t decode_result = decode__opcode_d_w__mod_reg_rm__disp_lo__disp_hi(
-        emulator, byte1, &direction, &wide, &mod, &reg, &rm, &displacement
+        emulator, byte1, &direction, &wide, &mode, &reg, &rm, &displacement
     );
 
     // TODO
-
+    printf("dir: %d, wide: %d, mode: %d, reg: %d, rm: %d, disp: %d\n",
+        direction, wide, mode, reg, rm, displacement);
+    switch(mode) {
+        case MOD_REGISTER: {
+            if (wide == WIDE_BYTE) {
+                uint8_t* left = emu_get_byte_register(&emulator->registers, rm);
+                uint8_t* right = emu_get_byte_register(&emulator->registers, reg);
+                *left = *right;
+            } else {
+                uint16_t* left = emu_get_word_register(&emulator->registers, rm);
+                uint16_t* right = emu_get_word_register(&emulator->registers, reg);
+                *left = *right;
+            }
+            return ER_SUCCESS;
+            break;
+        }
+        default: {
+            printf("emu_move with non-register movs: not implemented.");
+            return ER_FAILURE;
+            break;
+        }
+    }
     return ER_FAILURE;
 }
 
@@ -148,13 +169,13 @@ emu_result_t decode_move_immediate(
 emu_result_t emu_move_immediate(emulator_t* emulator, uint8_t byte1) {
     uint8_t sign = 0;
     wide_t wide = 0;
-    mod_t mod = 0;
+    mod_t mode = 0;
     uint8_t subcode = 0;
     uint8_t rm = 0;
     uint16_t displacement = 0;
     uint16_t data = 0;
     emu_result_t result = decode__opcode_s_w__mod_subcode_rm__disp_lo__disp_hi__data_lo__data_hi(
-        emulator, byte1, &sign, &wide, &mod, &subcode, &rm, &displacement, &data
+        emulator, byte1, &sign, &wide, &mode, &subcode, &rm, &displacement, &data
     );
 
     // TODO
@@ -214,9 +235,16 @@ emu_result_t emu_move_immediate_to_register(emulator_t* emulator, uint8_t byte1)
     emu_result_t result = read_move_immediate_to_register(
         emulator, byte1, &wide, &reg, &immediate);
 
-    // TODO
-
-    return ER_FAILURE;
+    printf("wide: %d, reg: %d, immediate: %d\n",
+        wide, reg, immediate);
+    if (wide == WIDE_BYTE) {
+        uint8_t* left = emu_get_byte_register(&emulator->registers, reg);
+        *left = immediate;
+    } else {
+        uint16_t* left = emu_get_word_register(&emulator->registers, reg);
+        *left = immediate;
+    }
+    return ER_SUCCESS;
 }
 
 void write_move_immediate_to_register(

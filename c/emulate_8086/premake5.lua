@@ -8,6 +8,13 @@ project "emulate8086"
     targetdir "bin/%{cfg.buildcfg}"
     files { "./libraries/emulate8086/include/**.h", "./libraries/emulate8086/source/**.c" }
     includedirs { "./librares/emulate8086/include", "./shared/include", "." }
+    filter "configurations:Debug"
+        defines { "DEBUG" }
+        symbols "On"
+    filter "configurations:Release"
+        defines { "NDEBUG" }
+        optimize "On"
+
 project "test_emulate8086"
     kind "ConsoleApp"
     language "C"
@@ -16,12 +23,28 @@ project "test_emulate8086"
     includedirs { "./librares/emulate8086/include", "./shared/include", "." }
     links { "emulate8086", "criterion" }
     sanitize { "Address" }
+    symbols "On"
 
 project "sandbox"
     kind "ConsoleApp"
     language "C"
     targetdir "bin/%{cfg.buildcfg}"
     files { "./apps/sandbox/**.h", "./apps/sandbox/**.c" }
+    includedirs { "./libraries", "./shared", "." }
+    links { "emulate8086" }
+    sanitize { "Address" }
+    filter "configurations:Debug"
+        defines { "DEBUG" }
+        symbols "On"
+    filter "configurations:Release"
+        defines { "NDEBUG" }
+        optimize "On"
+
+project "emulate"
+    kind "ConsoleApp"
+    language "C"
+    targetdir "bin/%{cfg.buildcfg}"
+    files { "./apps/emulate/**.h", "./apps/emulate/**.c" }
     includedirs { "./libraries", "./shared", "." }
     links { "emulate8086" }
     sanitize { "Address" }

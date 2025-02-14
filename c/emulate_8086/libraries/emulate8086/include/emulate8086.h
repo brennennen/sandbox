@@ -48,4 +48,11 @@ result_t emu_decode_chunk(emulator_t* emulator, char* in_buffer, size_t in_buffe
     char* out_buffer, size_t out_buffer_size);
 result_t emu_decode(emulator_t* decoder, char* out_buffer, size_t out_buffer_size);
 
+result_t emu_emulate_file(emulator_t* emulator, char* input_path);
+result_t emu_emulate_chunk(emulator_t* emulator, char* in_buffer, size_t in_buffer_size);
+result_t emu_emulate(emulator_t* decoder);
+
+void print_registers(emulator_t* emulator);
+
+
 #endif

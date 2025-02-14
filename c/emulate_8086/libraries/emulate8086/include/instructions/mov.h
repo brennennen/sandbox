@@ -12,8 +12,8 @@
  * 7. I_MOVE_SEGMENT_REGISTER
  *
  */
-#ifndef DECODE_MOV_H
-#define DECODE_MOV_H
+#ifndef EMU_MOV_H
+#define EMU_MOV_H
 
 #include <stdint.h>
 
@@ -109,4 +109,4 @@ void write_move_ax(
     int* index,
     int buffer_size);
 
-#endif // DECODE_MOV_H
+#endif // EMU_MOV_H

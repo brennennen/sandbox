@@ -55,6 +55,9 @@ void build_effective_address(char* buffer, size_t buffer_size,
                              wide_t wide, mod_t mod, uint8_t rm,
                              uint16_t displacement);
 
+uint8_t* emu_get_byte_register(registers_t* registers, reg_t reg);
+uint16_t* emu_get_word_register(registers_t* registers, reg_t reg);
+
 void write__common_register_or_memory_with_register_or_memory(
     direction_t direction,
     wide_t wide,

@@ -14,18 +14,15 @@
 
 // Use of this global "g_decoder" is to try and reduce the amount of code per test. It's reset
 // after each test and has a large default instructions buffer.
-//static instruction_t g_instructions[4096];
-//static int g_instructions_size = 4096;
 static emulator_t g_decoder;
 
-void add_default_setup(void) {
+void decode_add_default_setup(void) {
     memset(&g_decoder, 0, sizeof(emulator_t));
     emu_init(&g_decoder);
 }
 
 // MARK: 1. I_ADD Tests
-Test(decode__I_ADD__tests,
-     add_1, .init = add_default_setup)
+Test(decode__I_ADD__tests, add_1, .init = decode_add_default_setup)
 {
     char* expected = "add cx, bx\n";
     uint8_t input[] = { 0x01, 0xd9 };
@@ -38,8 +35,7 @@ Test(decode__I_ADD__tests,
 }
 
 // MARK: 2. I_ADD_IMMEDIATE Tests
-Test(decode__I_ADD_IMMEDIATE__tests,
-     add_immediate_1, .init = add_default_setup)
+Test(decode__I_ADD_IMMEDIATE__tests, add_immediate_1, .init = decode_add_default_setup)
 {
     char* expected = "add cx, 8\n";
     uint8_t input[] = { 0x83, 0xc1, 0x08 }; // 0b10000011 11000001 00001000
@@ -56,7 +52,7 @@ Test(decode__I_ADD_IMMEDIATE__tests,
 
 // MARK: MISC Tests
 // Test(decode__add_misc__tests,
-//      bulk_add_tests1, .init = add_default_setup)
+//      bulk_add_tests1, .init = decode_add_default_setup)
 // {
 //     char* expected = "add bx, [bx+si]\n\
 // add bx, [bp]\n\

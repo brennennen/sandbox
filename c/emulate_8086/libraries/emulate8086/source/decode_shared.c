@@ -421,6 +421,64 @@ void build_effective_address(char* buffer, size_t buffer_size,
     };
 }
 
+uint8_t* emu_get_byte_register(registers_t* registers, reg_t reg) {
+    switch(reg) {
+        case(REG_AL_AX): {
+            return (uint8_t*) &registers->ax;
+        }
+        case(REG_CL_CX): {
+            return (uint8_t*) &registers->cx;
+        }
+        case(REG_DL_DX): {
+            return (uint8_t*) &registers->dx;
+        }
+        case(REG_BL_BX): {
+            return (uint8_t*) &registers->bx;
+        }
+        case(REG_AH_SP): {
+            return (uint8_t*) &registers->ax + 1;
+        }
+        case(REG_CH_BP): {
+            return (uint8_t*) &registers->cx + 1;
+        }
+        case(REG_DH_SI): {
+            return (uint8_t*) &registers->di + 1;
+        }
+        case(REG_BH_DI): {
+            return (uint8_t*) &registers->bx + 1;
+        }
+    }
+}
+
+uint16_t* emu_get_word_register(registers_t* registers, reg_t reg) {
+    switch(reg) {
+        case(REG_AL_AX): {
+            return &registers->ax;
+        }
+        case(REG_CL_CX): {
+            return &registers->cx;
+        }
+        case(REG_DL_DX): {
+            return &registers->dx;
+        }
+        case(REG_BL_BX): {
+            return &registers->bx;
+        }
+        case(REG_AH_SP): {
+            return &registers->sp;
+        }
+        case(REG_CH_BP): {
+            return &registers->bp;
+        }
+        case(REG_DH_SI): {
+            return &registers->si;
+        }
+        case(REG_BH_DI): {
+            return &registers->di;
+        }
+    }
+}
+
 void write__common_register_or_memory_with_register_or_memory(
     direction_t direction,
     wide_t wide,

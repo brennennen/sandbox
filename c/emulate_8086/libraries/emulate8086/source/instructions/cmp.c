@@ -10,12 +10,37 @@
 #include "shared/include/result.h"
 
 #include "libraries/emulate8086/include/emulate8086.h"
+#include "libraries/emulate8086/include/emu_registers.h"
 #include "libraries/emulate8086/include/decode_utils.h"
 #include "libraries/emulate8086/include/decode_shared.h"
 
 #include "libraries/emulate8086/include/instructions/cmp.h"
 
+void emu_internal_cmp_8bit(emulator_t* emulator, uint8_t* destination, uint8_t source) {
+    uint8_t left = *destination;
+    uint16_t uint16_result = (uint16_t)*destination - (uint16_t)source; // store the result in a larger result type to detect overflows.
+    uint8_t result_8bit = (uint8_t) uint16_result;
+    emu_reg_update_auxiliary_carry_flag(&emulator->registers.flags, left, source, result_8bit);
+    emu_reg_update_carry_flag_8bit(&emulator->registers.flags, uint16_result);
+    emu_reg_update_overflow_flag_8bit(&emulator->registers.flags, left, source, result_8bit);
+    emu_reg_update_parity_flag(&emulator->registers.flags, result_8bit);
+    emu_reg_update_sign_flag_8bit(&emulator->registers.flags, result_8bit);
+    emu_reg_update_zero_flag(&emulator->registers.flags, result_8bit);
+}
 
+void emu_internal_cmp_16bit(emulator_t* emulator, uint16_t* destination, uint16_t source) {
+    uint16_t left = *destination;
+    uint32_t uint32_result = (uint32_t)*destination - (uint32_t)source;
+    uint16_t result_16bit = (uint16_t) uint32_result;
+    emu_reg_update_auxiliary_carry_flag(&emulator->registers.flags, left, source, result_16bit);
+    emu_reg_update_carry_flag_16bit(&emulator->registers.flags, uint32_result);
+    emu_reg_update_overflow_flag_16bit(&emulator->registers.flags, left, source, result_16bit);
+    emu_reg_update_parity_flag(&emulator->registers.flags, result_16bit);
+    emu_reg_update_sign_flag_16bit(&emulator->registers.flags, result_16bit);
+    emu_reg_update_zero_flag(&emulator->registers.flags, result_16bit);
+}
+
+// MARK: CMP 1 - I_CMP
 
 emu_result_t decode_compare(
     emulator_t* emulator,
@@ -31,7 +56,7 @@ emu_result_t decode_compare(
     uint8_t rm = 0;
     uint16_t displacement = 0;
 
-    emu_result_t result = decode__opcode_d_w__mod_reg_rm__disp_lo__disp_hi(
+    emu_result_t result = emu_decode_common_standard_format(
         emulator, byte1, &direction, &wide, &mod, &reg, &rm, &displacement
     );
 
@@ -50,7 +75,7 @@ emu_result_t emu_compare(emulator_t* emulator, uint8_t byte1) {
     uint8_t rm = 0;
     uint16_t displacement = 0;
 
-    emu_result_t result = decode__opcode_d_w__mod_reg_rm__disp_lo__disp_hi(
+    emu_result_t result = emu_decode_common_standard_format(
         emulator, byte1, &direction, &wide, &mod, &reg, &rm, &displacement
     );
 
@@ -58,3 +83,70 @@ emu_result_t emu_compare(emulator_t* emulator, uint8_t byte1) {
 
     return ER_FAILURE;
 }
+
+// MARK: CMP 2 - I_COMPARE_IMMEDIATE
+emu_result_t decode_cmp_immediate(
+    emulator_t* emulator,
+    uint8_t byte1,
+    char* out_buffer,
+    int* index,
+    size_t out_buffer_size
+) {
+    uint8_t sign = 0;
+    wide_t wide = 0;
+    mod_t mod = 0;
+    uint8_t subcode = 0;
+    uint8_t rm = 0;
+    uint16_t displacement = 0;
+    uint16_t data = 0;
+
+    emu_result_t result = emu_decode_common_immediate_format(
+        emulator, byte1, &sign, &wide, &mod, &subcode, &rm, &displacement, &data
+    );
+
+    write__common_immediate_to_register_or_memory(
+        sign, wide, mod, rm, displacement, data,
+        "sub", 3, out_buffer, index, out_buffer_size
+    );
+
+    return result;
+}
+
+emu_result_t emu_cmp_immediate(emulator_t* emulator, uint8_t byte1) {
+    uint8_t sign = 0;
+    wide_t wide = 0;
+    mod_t mod = 0;
+    uint8_t subcode = 0;
+    uint8_t rm = 0;
+    uint16_t displacement = 0;
+    uint16_t immediate = 0;
+
+    emu_result_t result = emu_decode_common_immediate_format(
+        emulator, byte1, &sign, &wide, &mod, &subcode, &rm, &displacement, &immediate
+    );
+
+    printf("sign: %d, wide: %d, mod: %d, rm: %d, displ: %d, immediate: %d\n",
+        sign, wide, mod, rm, displacement, immediate);
+    switch(mod) {
+        case MOD_REGISTER: {
+            if (wide == WIDE_BYTE) {
+                uint8_t* destination = emu_get_byte_register(&emulator->registers, rm);
+                emu_internal_cmp_8bit(emulator, destination, (uint8_t) immediate);
+            } else {
+                uint16_t* destination = emu_get_word_register(&emulator->registers, rm);
+                emu_internal_cmp_16bit(emulator, destination, immediate);
+            }
+            return ER_SUCCESS;
+            break;
+        }
+        default: {
+            printf("emu_cmp_immediate: feature not implemented.");
+            return ER_FAILURE;
+            break;
+        }
+    }
+
+    return result;
+}
+
+// MARK: CMP 3 - I_COMPARE_IMMEDIATE_TO_AX

@@ -2,13 +2,26 @@
 Toy partial 8086 emulator to review how cpus work.
 
 ## Build
+Currently uses some c23 features when available. Expects at least gcc-14 or later to use
+these c23 features on linux.
+
 Linux
-```
+```sh
+# One time
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
+
+# Clean intermediate files
 rm -rf ./.build ./bin
+
+# Build meta-build files
 premake5 gmake
+
+# Build
 make -C ./.build/
 make config=debug -C ./.build/
 make config=release -C ./.build/
+
+# Run/Test
 ./bin/Debug/sandbox
 ./bin/Debug/test_emulate8086
 ./bin/Debug/test

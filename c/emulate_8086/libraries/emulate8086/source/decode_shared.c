@@ -37,9 +37,13 @@ emu_result_t read_displacement(emulator_t* emulator, mod_t mod, uint8_t rm, uint
 }
 
 /**
+ *
+ *
+ *
  * Decodes the standard 4 byte format: [opcode dw][mod reg r/m][disp-lo][disp-high]
+ * decode__opcode_d_w__mod_reg_rm__disp_lo__disp_hi
  */
-emu_result_t decode__opcode_d_w__mod_reg_rm__disp_lo__disp_hi(
+emu_result_t emu_decode_common_standard_format(
     emulator_t* emulator,
     uint8_t byte1,
     direction_t* direction,
@@ -70,61 +74,8 @@ emu_result_t decode__opcode_d_w__mod_reg_rm__disp_lo__disp_hi(
     return SUCCESS;
 }
 
-// emu_result_t decode__opcode_s_w__mod_subcode_rm__disp_lo__disp_hi__data_lo__data_hi(
-//     emulator_t* emulator,
-//     uint8_t byte1,
-//     uint8_t* sign,
-//     wide_t* wide,
-//     mod_t* mod,
-//     uint8_t* subcode,
-//     uint8_t* rm,
-//     uint16_t* displacement,
-//     uint16_t* data
-// ) {
-//     *sign = (byte1 & 0b00000010) >> 1;
-//     *wide = byte1 & 0b00000001;
-//     uint8_t byte2 = 0;
-//     if (dcd_read_byte(emulator, (uint8_t*) &byte2) == RI_FAILURE) {
-//         return ER_UNKNOWN_OPCODE;
-//     }
-//     *mod = (byte2 & 0b11000000) >> 6;
-//     *subcode = (byte2 & 0b00111000) >> 3;
-//     *rm = byte2 & 0b00000111;
-//     if (*mod == MOD_MEMORY) {
-//         if (*rm == 0b00000110) {
-//             emu_result_t read_displace_result = dcd_read_word(emulator, displacement);
-//             if (read_displace_result != ER_SUCCESS) {
-//                 return read_displace_result;
-//             }
-//         }
-//     } else if (*mod == MOD_MEMORY_8BIT_DISPLACEMENT) {
-//         emu_result_t read_displace_result = dcd_read_byte(emulator, (uint8_t*) displacement);
-//         if (read_displace_result != ER_SUCCESS) {
-//             return read_displace_result;
-//         }
-//     } else if (*mod == MOD_MEMORY_16BIT_DISPLACEMENT) {
-//         emu_result_t read_displace_result = dcd_read_word(emulator, displacement);
-//         if (read_displace_result != ER_SUCCESS) {
-//             return read_displace_result;
-//         }
-//     } else { // MOD_REGISTER
-//         // Don't have extra bytes for register to register movs. Nothing to do.
-//     }
 
-//     if (*wide == WIDE_BYTE) {
-//         emu_result_t read_data_result = dcd_read_byte(emulator, (uint8_t*) data);
-//     } else {
-//         if (sign == 0) {
-//             emu_result_t read_data_result = dcd_read_word(emulator, data);
-//         } else {
-//             emu_result_t read_data_result = dcd_read_byte(emulator, (uint8_t*) data);
-//         }
-//     }
-
-//     return ER_SUCCESS;
-// }
-
-emu_result_t decode__opcode_s_w__mod_subcode_rm__disp_lo__disp_hi__data_lo__data_hi(
+emu_result_t emu_decode_common_immediate_format(
     emulator_t* emulator,
     uint8_t byte1,
     uint8_t* sign,
@@ -178,49 +129,6 @@ emu_result_t decode__opcode_s_w__mod_subcode_rm__disp_lo__disp_hi__data_lo__data
 
     return ER_SUCCESS;
 }
-
-// add->fields1 = byte1;
-    // uint8_t sign_extension = (add->fields1 & 0b00000010) >> 1;
-    // wide_t wide = add->fields1 & 0b00000001;
-    // emu_result_t read_byte2_result = dcd_read_byte(emulator, (uint8_t*) &add->fields2);
-    // if (read_byte2_result != ER_SUCCESS) {
-    //     return read_byte2_result;
-    // }
-
-    // mod_t mod = (add->fields2 & 0b11000000) >> 6;
-    // uint8_t rm = add->fields2 & 0b00000111;
-    // if (mod == MOD_MEMORY) {
-    //     if (rm == 0b00000110) {
-    //         emu_result_t read_displace_result = dcd_read_word(emulator, &add->displacement);
-    //         if (read_displace_result != ER_SUCCESS) {
-    //             return read_displace_result;
-    //         }
-    //     }
-    // } else if (mod == MOD_MEMORY_8BIT_DISPLACEMENT) {
-    //     emu_result_t read_displace_result = dcd_read_byte(emulator, (uint8_t*) &add->displacement);
-    //     if (read_displace_result != ER_SUCCESS) {
-    //         return read_displace_result;
-    //     }
-    // } else if (mod == MOD_MEMORY_16BIT_DISPLACEMENT) {
-    //     emu_result_t read_displace_result = dcd_read_word(emulator, &add->displacement);
-    //     if (read_displace_result != ER_SUCCESS) {
-    //         return read_displace_result;
-    //     }
-    // } else { // MOD_REGISTER
-    //     // Don't have extra bytes for register to register movs. Nothing to do.
-    // }
-
-    // if (wide == WIDE_BYTE) {
-    //     emu_result_t read_data_result = dcd_read_byte(emulator, (uint8_t*) &add->immediate);
-    // } else {
-    //     if (sign_extension == 0) {
-    //         emu_result_t read_data_result = dcd_read_word(emulator, &add->immediate);
-    //     } else {
-    //         emu_result_t read_data_result = dcd_read_byte(emulator, (uint8_t*) &add->immediate);
-    //     }
-    // }
-
-    // return ER_SUCCESS;
 
 void write_uint8(char* buffer, int* index, size_t buffer_size, uint8_t num) {
     // TODO: write something optimized. just use sprintf for now

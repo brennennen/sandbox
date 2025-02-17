@@ -10,7 +10,7 @@
 
 emu_result_t read_displacement(emulator_t* emulator, mod_t mod, uint8_t rm, uint16_t* displacement);
 
-emu_result_t decode__opcode_d_w__mod_reg_rm__disp_lo__disp_hi(
+emu_result_t emu_decode_common_standard_format(
     emulator_t* emulator,
     uint8_t byte1,
     direction_t* direction,
@@ -21,7 +21,33 @@ emu_result_t decode__opcode_d_w__mod_reg_rm__disp_lo__disp_hi(
     uint16_t* displacement
 );
 
-emu_result_t decode__opcode_s_w__mod_subcode_rm__disp_lo__disp_hi__data_lo__data_hi(
+/**
+ * Decodes a common 8086 4 - 6 byte variable structure that's shared across
+ * many instructions.
+ *
+ * Machine code instructions that use this pattern:
+ * MOV 2 - I_MOVE_IMMEDIATE
+ * ADD 2 - I_ADD_IMMEDIATE
+ * ADC 2 - I_ADC_IMMEDIATE
+ * SUB 2 - I_SUB_IMMEDIATE
+ * SBB 2 - I_SBB_IMMEDIATE
+ * CMP 2 - I_CMP_IMMEDIATE
+ * AND 2 - I_AND_IMMEDIATE
+ * TEST 2 - I_TEST_IMMEDIATE
+ * OR 2 - I_OR_IMMEDIATE
+ * XOR 2 - I_XOR_IMMEDIATE
+ *
+ * See table 4-12 8086 Family Users Manual, page 4-22, pdf page ~164.
+ *
+ * byte1: [opcode sign wide]
+ * byte2: [mod subcode r/m]
+ * byte3: [displacement low]
+ * byte4: [displacement high]
+ * byte5: [data low]
+ * byte6: [data high]
+ * decode__opcode_s_w__mod_subcode_rm__disp_lo__disp_hi__data_lo__data_hi
+ */
+emu_result_t emu_decode_common_immediate_format(
     emulator_t* emulator,
     uint8_t byte1,
     uint8_t* sign,

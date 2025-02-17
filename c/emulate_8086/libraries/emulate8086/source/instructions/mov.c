@@ -1,7 +1,12 @@
 /**
- * Responsible for decoding the "mov" assembly instruction for the 8086. This instruction
- * can be mapped into 7 different opcode encodings. The order of these encodings will
- * follow the datasheet table 4-12.
+ * `MOV destination, source`
+ * MOV transfers a byte or a word from the source operand to the destination operand.
+ *
+ * One of the 14 data transfer instructions. Categorized as a "General Purpose" data
+ * transfer instruction (see Table 2-8. Data Transfer Instructions).
+ *
+ * This instruction can be mapped into 7 different opcode encodings. The order of
+ * these encodings will follow the datasheet table 4-12.
  *
  * 1. I_MOVE
  * 2. I_MOVE_IMMEDIATE
@@ -42,7 +47,7 @@ emu_result_t decode_move(
     uint8_t rm = 0;
     uint16_t displacement = 0;
 
-    emu_result_t decode_result = decode__opcode_d_w__mod_reg_rm__disp_lo__disp_hi(
+    emu_result_t decode_result = emu_decode_common_standard_format(
         emulator, byte1, &direction, &wide, &mod, &reg, &rm, &displacement
     );
     write__common_register_or_memory_with_register_or_memory(
@@ -60,7 +65,7 @@ emu_result_t emu_move(emulator_t* emulator, uint8_t byte1) {
     uint8_t rm = 0;
     uint16_t displacement = 0;
 
-    emu_result_t decode_result = decode__opcode_d_w__mod_reg_rm__disp_lo__disp_hi(
+    emu_result_t decode_result = emu_decode_common_standard_format(
         emulator, byte1, &direction, &wide, &mode, &reg, &rm, &displacement
     );
 
@@ -174,7 +179,7 @@ emu_result_t emu_move_immediate(emulator_t* emulator, uint8_t byte1) {
     uint8_t rm = 0;
     uint16_t displacement = 0;
     uint16_t data = 0;
-    emu_result_t result = decode__opcode_s_w__mod_subcode_rm__disp_lo__disp_hi__data_lo__data_hi(
+    emu_result_t result = emu_decode_common_immediate_format(
         emulator, byte1, &sign, &wide, &mode, &subcode, &rm, &displacement, &data
     );
 

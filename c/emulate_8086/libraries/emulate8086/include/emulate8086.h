@@ -1,5 +1,5 @@
 /**
- * Decoder for 8086 assembly per the "8086 family users manual 1".
+ * Emulator for 8086 assembly per the "8086 family users manual 1".
  */
 #ifndef DECODE_8086_H
 #define DECODE_8086_H
@@ -10,7 +10,7 @@
 #include "shared/include/instructions.h"
 #include "shared/include/registers.h"
 
-typedef struct decoder {
+typedef struct {
     uint8_t* buffer;
     size_t buffer_size;
     int buffer_index;
@@ -51,8 +51,5 @@ result_t emu_decode(emulator_t* decoder, char* out_buffer, size_t out_buffer_siz
 result_t emu_emulate_file(emulator_t* emulator, char* input_path);
 result_t emu_emulate_chunk(emulator_t* emulator, char* in_buffer, size_t in_buffer_size);
 result_t emu_emulate(emulator_t* decoder);
-
-void print_registers(emulator_t* emulator);
-
 
 #endif

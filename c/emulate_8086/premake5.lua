@@ -14,6 +14,9 @@ project "emulate8086"
     filter "configurations:Release"
         defines { "NDEBUG" }
         optimize "On"
+    filter { "system:linux", "action:gmake" }
+        toolset "gcc"
+        buildoptions { "-std=c23" }
 
 project "test_emulate8086"
     kind "ConsoleApp"
@@ -24,6 +27,9 @@ project "test_emulate8086"
     links { "emulate8086", "criterion" }
     sanitize { "Address" }
     symbols "On"
+    filter { "system:linux", "action:gmake" }
+        toolset "gcc"
+        buildoptions { "-std=c23" }
 
 project "sandbox"
     kind "ConsoleApp"
@@ -39,6 +45,9 @@ project "sandbox"
     filter "configurations:Release"
         defines { "NDEBUG" }
         optimize "On"
+    filter { "system:linux", "action:gmake" }
+        toolset "gcc"
+        buildoptions { "-std=c23" }
 
 project "emulate"
     kind "ConsoleApp"
@@ -54,6 +63,9 @@ project "emulate"
     filter "configurations:Release"
         defines { "NDEBUG" }
         optimize "On"
+    filter { "system:linux", "action:gmake" }
+        toolset "gcc"
+        buildoptions { "-std=c23" }
 
 project "test"
     kind "ConsoleApp"
@@ -68,3 +80,6 @@ project "test"
     filter "configurations:Release"
         defines { "NDEBUG" }
         optimize "On"
+    filter { "system:linux", "action:gmake" }
+        toolset "gcc"
+        buildoptions { "-std=c23" }

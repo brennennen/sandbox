@@ -12,6 +12,7 @@
 #include "shared/include/result.h"
 
 #include "libraries/emulate8086/include/emulate8086.h"
+#include "libraries/emulate8086/include/emu_registers.h"
 #include "libraries/emulate8086/include/decode_utils.h"
 #include "libraries/emulate8086/include/decode_tag.h"
 
@@ -97,6 +98,9 @@ result_iter_t emu_decode_next(emulator_t* decoder, char* out_buffer, int* index,
         // MARK: SUB
         case I_SUB:
             result = decode_sub(decoder, byte1, out_buffer, index, out_buffer_size);
+            break;
+        case I_SUB_IMMEDIATE:
+            result = decode_sub_immediate(decoder, byte1, out_buffer, index, out_buffer_size);
             break;
         // ...
         // CMP
@@ -297,6 +301,9 @@ result_iter_t emu_next(emulator_t* emulator) {
     case I_SUB:
         result = emu_sub(emulator, byte1);
         break;
+    case I_SUB_IMMEDIATE:
+        result = emu_sub_immediate(emulator, byte1);
+        break;
     // ...
     // CMP
     case I_COMPARE:
@@ -419,35 +426,4 @@ result_t emu_emulate(emulator_t* emulator) {
     } else {
         return FAILURE;
     }
-}
-
-void print_registers(emulator_t* emulator) {
-    printf("ax: %d\n\
-bx: %d\n\
-cx: %d\n\
-dx: %d\n\
-si: %d\n\
-di: %d\n\
-bp: %d\n\
-sp: %d\n\
-cs: %d\n\
-ds: %d\n\
-es: %d\n\
-ss: %d\n\
-ip: %d\n\
-",
-    emulator->registers.ax,
-    emulator->registers.bx,
-    emulator->registers.cx,
-    emulator->registers.dx,
-    emulator->registers.si,
-    emulator->registers.di,
-    emulator->registers.bp,
-    emulator->registers.sp,
-    emulator->registers.cs,
-    emulator->registers.ds,
-    emulator->registers.es,
-    emulator->registers.ss,
-    emulator->registers.ip
-);
 }

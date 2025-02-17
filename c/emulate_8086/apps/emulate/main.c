@@ -6,6 +6,7 @@
 #include "shared/include/result.h"
 
 #include "libraries/emulate8086/include/emulate8086.h"
+#include "libraries/emulate8086/include/emu_registers.h"
 
 void print_help() {
     printf("Decodes an assembled x86 program to standard out.\n");
@@ -13,6 +14,13 @@ void print_help() {
 }
 
 int main(int argc, char* argv[]) {
+    #ifdef __STDC_VERSION__
+        printf("__STDC_VERSION__ = %ld\n", __STDC_VERSION__);
+    #else
+        printf("__STDC_VERSION__ is not defined\n");
+    #endif
+
+
     if (argc < 2) {
         printf("Missing filepath argument!\n");
         print_help();
@@ -32,6 +40,5 @@ int main(int argc, char* argv[]) {
     printf("Emulate result: %s, instructions: %d\n", result_strings[result], emulator.instructions_count);
 
     print_registers(&emulator);
-    // TODO: print registers
-
+    print_flags(emulator.registers.flags);
 }

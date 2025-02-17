@@ -1,7 +1,13 @@
 /**
- * Responsible for decoding the "add" assembly instruction for the 8086. This assembly instruction
- * can be encoded into 3 different machine instructions. The order of these encodings will
- * follow the datasheet table 4-12.
+ * `ADD destination, source`
+ * The sum of the two operands, which may be bytes or words, replaces the destination
+ * operand. Both operands may be signed or unsigned binary numbers (see AAA and DAA).
+ * ADD updates AF, CF, OF, PF, SF, and ZF (8086 Family Users Manual, page 2-35,
+ * pdf page ~50).
+ *
+ * This assembly instruction can be encoded into 3 different machine instructions.
+ * The order of these encodings will follow the datasheet table 4-12 (8086 Family
+ * Users Manual, page 4-23, pdf page ~165).
  *
  * ADD 1 - I_ADD
  * ADD 2 - I_ADD_IMMEDIATE
@@ -15,10 +21,36 @@
 #include "shared/include/result.h"
 
 #include "libraries/emulate8086/include/emulate8086.h"
+#include "libraries/emulate8086/include/emu_registers.h"
 #include "libraries/emulate8086/include/decode_utils.h"
 #include "libraries/emulate8086/include/decode_shared.h"
 
 #include "libraries/emulate8086/include/instructions/add.h"
+
+
+void emu_internal_add_8bit(emulator_t* emulator, uint8_t* destination, uint8_t source) {
+    uint8_t left = *destination;
+    uint16_t uint16_result = (uint16_t)*destination + (uint16_t)source; // store the result in a larger result type to detect overflows.
+    *destination = (uint8_t) uint16_result;
+    emu_reg_update_auxiliary_carry_flag(&emulator->registers.flags, left, source, *destination);
+    emu_reg_update_carry_flag_8bit(&emulator->registers.flags, uint16_result);
+    emu_reg_update_overflow_flag_8bit(&emulator->registers.flags, left, source, *destination);
+    emu_reg_update_parity_flag(&emulator->registers.flags, *destination);
+    emu_reg_update_sign_flag_8bit(&emulator->registers.flags, *destination);
+    emu_reg_update_zero_flag(&emulator->registers.flags, *destination);
+}
+
+void emu_internal_add_16bit(emulator_t* emulator, uint16_t* destination, uint16_t source) {
+    uint16_t left = *destination;
+    uint32_t uint32_result = (uint32_t)*destination + (uint32_t)source;
+    *destination = (uint16_t) uint32_result;
+    emu_reg_update_auxiliary_carry_flag(&emulator->registers.flags, left, source, *destination);
+    emu_reg_update_carry_flag_16bit(&emulator->registers.flags, uint32_result);
+    emu_reg_update_overflow_flag_16bit(&emulator->registers.flags, left, source, *destination);
+    emu_reg_update_parity_flag(&emulator->registers.flags, *destination);
+    emu_reg_update_sign_flag_16bit(&emulator->registers.flags, *destination);
+    emu_reg_update_zero_flag(&emulator->registers.flags, *destination);
+}
 
 // MARK: ADD 1 - I_ADD
 emu_result_t decode_add(
@@ -35,7 +67,7 @@ emu_result_t decode_add(
     uint8_t rm = 0;
     uint16_t displacement = 0;
 
-    emu_result_t result = decode__opcode_d_w__mod_reg_rm__disp_lo__disp_hi(
+    emu_result_t result = emu_decode_common_standard_format(
         emulator, byte1, &direction, &wide, &mod, &reg, &rm, &displacement
     );
 
@@ -54,11 +86,13 @@ emu_result_t emu_add(emulator_t* emulator, uint8_t byte1) {
     uint8_t rm = 0;
     uint16_t displacement = 0;
 
-    emu_result_t result = decode__opcode_d_w__mod_reg_rm__disp_lo__disp_hi(
+    emu_result_t result = emu_decode_common_standard_format(
         emulator, byte1, &direction, &wide, &mod, &reg, &rm, &displacement
     );
 
     // TODO
+
+
 
     return ER_FAILURE;
 }
@@ -80,7 +114,7 @@ emu_result_t decode_add_immediate(
     uint16_t displacement = 0;
     uint16_t data = 0;
 
-    emu_result_t result = decode__opcode_s_w__mod_subcode_rm__disp_lo__disp_hi__data_lo__data_hi(
+    emu_result_t result = emu_decode_common_immediate_format(
         emulator, byte1, &sign, &wide, &mod, &subcode, &rm, &displacement, &data
     );
 
@@ -101,26 +135,24 @@ emu_result_t emu_add_immediate(emulator_t* emulator, uint8_t byte1) {
     uint16_t displacement = 0;
     uint16_t immediate = 0;
 
-    emu_result_t result = decode__opcode_s_w__mod_subcode_rm__disp_lo__disp_hi__data_lo__data_hi(
+    emu_result_t result = emu_decode_common_immediate_format(
         emulator, byte1, &sign, &wide, &mod, &subcode, &rm, &displacement, &immediate
     );
+
+    if (result != ER_SUCCESS) {
+        // todo: error out?
+    }
 
     printf("sign: %d, wide: %d, mod: %d, rm: %d, displ: %d, immediate: %d\n",
         sign, wide, mod, rm, displacement, immediate);
     switch(mod) {
         case MOD_REGISTER: {
             if (wide == WIDE_BYTE) {
-                uint8_t* left = emu_get_byte_register(&emulator->registers, rm);
-                *left = *left + immediate;
-                if (*left == 0) {
-                    // TODO: set 0 flag?
-                }
+                uint8_t* destination = emu_get_byte_register(&emulator->registers, rm);
+                emu_internal_add_8bit(emulator, destination, (uint8_t) immediate);
             } else {
-                uint16_t* left = emu_get_word_register(&emulator->registers, rm);
-                *left = *left + immediate;
-                if (*left == 0) {
-                    // TODO: set 0 flag?
-                }
+                uint16_t* destination = emu_get_word_register(&emulator->registers, rm);
+                emu_internal_add_16bit(emulator, destination, immediate);
             }
             return ER_SUCCESS;
             break;
@@ -131,7 +163,6 @@ emu_result_t emu_add_immediate(emulator_t* emulator, uint8_t byte1) {
             break;
         }
     }
-
     return ER_FAILURE;
 }
 

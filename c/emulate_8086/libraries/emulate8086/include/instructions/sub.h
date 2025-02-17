@@ -20,6 +20,15 @@ emu_result_t decode_sub(
 emu_result_t emu_sub(emulator_t* emulator, uint8_t byte1);
 
 // MARK: SUB 2 - I_SUB_IMMEDIATE
+emu_result_t decode_sub_immediate(
+    emulator_t* emulator,
+    uint8_t byte1,
+    char* out_buffer,
+    int* index,
+    size_t out_buffer_size
+);
+emu_result_t emu_sub_immediate(emulator_t* emulator, uint8_t byte1);
+
 // MARK: SUB 3 - I_SUB_IMMEDIATE_TO_AX
 
 

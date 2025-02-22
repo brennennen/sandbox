@@ -18,6 +18,7 @@
 
 #include "libraries/emulate8086/include/instructions/mov.h"
 #include "libraries/emulate8086/include/instructions/push.h"
+#include "libraries/emulate8086/include/instructions/pop.h"
 #include "libraries/emulate8086/include/instructions/add.h"
 #include "libraries/emulate8086/include/instructions/sub.h"
 #include "libraries/emulate8086/include/instructions/cmp.h"
@@ -89,7 +90,9 @@ result_iter_t emu_decode_next(emulator_t* decoder, char* out_buffer, int* index,
         //     break;
         // MARK: POP
         // case I_POP:
-        // case I_POP_REGISTER:
+        case I_POP_REGISTER:
+            result = decode_pop_register(decoder, byte1, out_buffer, index, out_buffer_size);
+            break;
         // case I_POP_SEGMENT_REGISTER:
         // XCHNG
         // IN
@@ -297,7 +300,9 @@ result_iter_t emu_next(emulator_t* emulator) {
     //     break;
     // MARK: POP
     // case I_POP:
-    // case I_POP_REGISTER:
+    case I_POP_REGISTER:
+        result = emu_pop_register(emulator, byte1);
+        break;
     // case I_POP_SEGMENT_REGISTER:
     // XCHNG
     // IN

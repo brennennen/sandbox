@@ -1,4 +1,10 @@
 /**
+ * x64
+ *
+ * i386
+ * (Intel 80386 Programmer's Reference Manual, 3.1.2, page 46).
+ *
+ * 8086
  * `PUSH source`
  * PUSH decrements SP (the stack pointer) by two and then transfers a word from the source
  * operand to the top of stack now pointed to by SP. PUSH often is used to place parameters
@@ -27,7 +33,7 @@
 
 // MARK: 2. I_PUSH_REGISTER
 /**
- * Decodes the first x86 push machine code instruction described as "Register"
+ * Decodes the seconds x86 push machine code instruction described as "Register"
  * into it's assembly code representation.
  * Ex: 01010001 -> "push cx"
  *
@@ -45,7 +51,7 @@ emu_result_t decode_push_register(
     size_t out_buffer_size);
 
 /**
- * Emulates the first x86 push machine code instruction described as "Register",
+ * Emulates the second x86 push machine code instruction described as "Register",
  * modifying registers and memory addresses accordingly.
  *
  * @param emulator Emulator holding the push instruction to perform, registers

@@ -54,6 +54,8 @@ emu_result_t decode_push_register(
 
 emu_result_t emu_push_register(emulator_t* emulator, uint8_t byte1) {
     uint8_t reg = byte1 & 0b00000111;
+
+    return ER_FAILURE;
 }
 
 // MARK: 3. I_PUSH_SEGMENT_REGISTER

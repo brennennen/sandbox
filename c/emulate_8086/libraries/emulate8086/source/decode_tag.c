@@ -6,11 +6,12 @@
  *
  * The order machine instruction decoding matches the specification to make it easier
  * The order of the case statements below matches the order machine instructions are defined
- * int the 8086 family user's manual table 4-12.
+ * int the 8086 family user's manual table 4-12 (8086 Family Users Manual, page 4-22,
+ * pdf page ~164).
  *
- * Some assembly instructions have map to multiple machine instructions. For example the "MOV"
+ * Some assembly instructions map to multiple machine instructions. For example the "MOV"
  * assembly instruction maps to 7 different machine instructions. Throughout this file, the
- * 7 different moves are labeled as "MOV 1", "MOV 2", etc. below.
+ * 7 different moves are labeled as "MOV 1", "MOV 2", etc.
  */
 
 
@@ -150,7 +151,7 @@ instruction_tag_t dcd_decode_tag(uint8_t byte1, uint8_t byte2) {
         case 0b01010101:
         case 0b01010110:
         case 0b01010111:
-            return I_PUSH;
+            return I_PUSH_REGISTER;
         // TODO: look into segment registers. some of the reg range overlaps. guessing there is something reducing segment register reg values
         // PUSH 3 - 0b000xxx110
         // case 0b00000110:

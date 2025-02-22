@@ -63,6 +63,9 @@ emu_result_t emu_decode_common_immediate_format(
 void write_uint8(char* buffer, int* index, size_t buffer_size, uint8_t num);
 void write_uint16(char* buffer, int* index, size_t buffer_size, uint16_t num);
 
+
+char* map_register_field_encoding(reg_wide_t reg);
+
 /**
  * Maps the R/M field encodings to a string format. This function can handle
  * all R/M field encodings, but should only be used for "Effective Address"

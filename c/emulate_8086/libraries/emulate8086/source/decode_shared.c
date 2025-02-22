@@ -163,6 +163,29 @@ char* mod_memory_effective_address_lookup(uint8_t rm) {
     };
 }
 
+char* map_register_field_encoding(reg_wide_t reg) {
+    switch(reg) {
+        case REGW_AX:
+            return "ax";
+        case REGW_CX:
+            return "cx";
+        case REGW_DX:
+            return "dx";
+        case REGW_BX:
+            return "bx";
+        case REGW_SP:
+            return "sp";
+        case REGW_BP:
+            return "bp";
+        case REGW_SI:
+            return "si";
+        case REGW_DI:
+            return "di";
+        default:
+            return "??";
+    }
+}
+
 /**
  * Maps the R/M field encodings to a string format. This function can handle
  * all R/M field encodings, but should only be used for "Effective Address"

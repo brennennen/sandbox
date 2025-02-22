@@ -17,6 +17,7 @@
 #include "libraries/emulate8086/include/decode_tag.h"
 
 #include "libraries/emulate8086/include/instructions/mov.h"
+#include "libraries/emulate8086/include/instructions/push.h"
 #include "libraries/emulate8086/include/instructions/add.h"
 #include "libraries/emulate8086/include/instructions/sub.h"
 #include "libraries/emulate8086/include/instructions/cmp.h"
@@ -36,7 +37,7 @@ result_iter_t emu_decode_next(emulator_t* decoder, char* out_buffer, int* index,
     decoder->current_byte = decoder->buffer[decoder->buffer_index];
     uint8_t byte1 = decoder->current_byte;
     decoder->buffer_index += 1;
-    if (decoder->buffer_index >= decoder->buffer_size) {
+    if (decoder->buffer_index > decoder->buffer_size) {
         return RI_DONE;
     }
 
@@ -76,12 +77,20 @@ result_iter_t emu_decode_next(emulator_t* decoder, char* out_buffer, int* index,
             printf("Not implemented!\n");
             result = ER_UNIMPLEMENTED_INSTRUCTION;
             break;
-        // PUSH
+        // MARK: PUSH
         // case I_PUSH:
-        // case I_PUSH_REGISTER:
+        //     printf("Not implemented!\n");
+        //     break;
+        case I_PUSH_REGISTER:
+            result = decode_push_register(decoder, byte1, out_buffer, index, out_buffer_size);
+            break;
         // case I_PUSH_SEGMENT_REGISTER:
         //     printf("Not implemented!\n");
         //     break;
+        // MARK: POP
+        // case I_POP:
+        // case I_POP_REGISTER:
+        // case I_POP_SEGMENT_REGISTER:
         // XCHNG
         // IN
         // OUT
@@ -280,10 +289,16 @@ result_iter_t emu_next(emulator_t* emulator) {
         break;
     // PUSH
     // case I_PUSH:
-    // case I_PUSH_REGISTER:
+    case I_PUSH_REGISTER:
+        result = emu_push_register(emulator, byte1);
+        break;
     // case I_PUSH_SEGMENT_REGISTER:
     //     printf("Not implemented!\n");
     //     break;
+    // MARK: POP
+    // case I_POP:
+    // case I_POP_REGISTER:
+    // case I_POP_SEGMENT_REGISTER:
     // XCHNG
     // IN
     // OUT

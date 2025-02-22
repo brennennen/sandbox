@@ -22,14 +22,14 @@ Test(dcd_decode_tag_tests, MOVE) {
 // MARK: PUSH
 Test(dcd_decode_tag_tests, PUSH) {
     cr_assert(I_PUSH == dcd_decode_tag(0b11111111, 0b00110000));
-    //cr_assert(I_PUSH_REGISTER == dcd_decode_tag(0b01010000, 0));
+    cr_assert(I_PUSH_REGISTER == dcd_decode_tag(0b01010001, 0));
     //cr_assert(I_PUSH_SEGMENT_REGISTER == dcd_decode_tag(0b00000110, 0));
 }
 
 // MARK: POP
 Test(dcd_decode_tag_tests, POP) {
     cr_assert(I_POP == dcd_decode_tag(0b10001111, 0b00000000));
-    //cr_assert(I_POP_REGISTER == dcd_decode_tag(0b01011000, 0));
+    cr_assert(I_POP_REGISTER == dcd_decode_tag(0b01011001, 0));
     //cr_assert(I_POP_SEGMENT_REGISTER == dcd_decode_tag(0b00000111, 0));
 }
 

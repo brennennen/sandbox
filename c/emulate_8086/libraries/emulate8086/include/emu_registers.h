@@ -21,6 +21,10 @@ static inline void emu_reg_clear_flag(uint16_t* flags, uint16_t mask) {
     *flags = *flags & ~mask;
 }
 
+static inline void emu_reg_toggle_flag(uint16_t* flags, uint16_t mask) {
+    *flags = *flags ^ ~mask;
+}
+
 static inline uint16_t emu_reg_get_flag(uint16_t flags, uint16_t mask) {
     return flags & mask;
 }

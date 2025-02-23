@@ -1,5 +1,5 @@
-# 8086 Disassembler
-Toy partial 8086 emulator to review how cpus work.
+# 8086 Emulator
+Toy partial 8086 emulator to review and deeper learn x86/x64 architecture.
 
 ## Build
 Currently uses some c23 features when available. Expects at least gcc-14 or later to use
@@ -55,3 +55,9 @@ chmod +x ./premake5
 # Install criterion dev package for unit testing
 apt-get install libcriterion-dev
 ```
+
+## References
+* Intel developer manuals - https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html
+* Intel 8086 datasheet (16 bit) - https://edge.edx.org/c4x/BITSPilani/EEE231/asset/8086_family_Users_Manual_1_.pdf
+* Intel x86/80386 (32 bit) - https://css.csail.mit.edu/6.858/2014/readings/i386.pdf
+* Intel x86-64 (64 bit) -

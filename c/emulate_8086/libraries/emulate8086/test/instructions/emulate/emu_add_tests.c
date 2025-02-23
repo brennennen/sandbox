@@ -1,19 +1,5 @@
 /**
- * Emulation tests for the "mov" instruction.
- *
- * NOTE: when building test data, use "xxd", the "-i" argument adds syntax for c arrays
- * to the output. Reminder to myself that "hexdump" outputs 16 bit words and will cause
- * every pair of bytes to be flipped on little endian machines.
- * `xxd -i {my_assembled_file}`
- *
- * Remeber to also add "bits 16" to the top of any assembly files passed to nasm to get
- * the older x86 era instructions. ex:
- * ```asm
- * ; my_assembly.asm
- * ; compile to machine code with: `nasm ./my_assemby.asm`
- * bits 16
- * mov ch, ah
- * ```
+ * Emulation tests for the "add" instruction.
  */
 #include <stdio.h>
 #include <string.h>

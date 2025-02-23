@@ -114,3 +114,70 @@ Test(dcd_decode_tag_tests, CMP) {
     cr_assert(I_COMPARE_IMMEDIATE == dcd_decode_tag(0b10000000, 0b00111000));
     cr_assert(I_COMPARE_IMMEDIATE_WITH_AX == dcd_decode_tag(0b00111100, 0));
 }
+
+// LOGIC
+
+// STRING MANIPULATION
+
+// CONTROL TRANSFER
+
+// MARK: PROCESSOR CONTROL
+// MARK: CLC
+Test(dcd_decode_tag_tests, CLC) {
+    cr_assert(I_CLEAR_CARRY == dcd_decode_tag(0b11111000, 0));
+}
+
+// MARK: CMC
+Test(dcd_decode_tag_tests, CMC) {
+    cr_assert(I_COMPLEMENT_CARRY == dcd_decode_tag(0b11110101, 0));
+}
+
+// MARK: STC
+Test(dcd_decode_tag_tests, STC) {
+    cr_assert(I_SET_CARRY == dcd_decode_tag(0b11111001, 0));
+}
+
+// MARK: CLD
+Test(dcd_decode_tag_tests, CLD) {
+    cr_assert(I_CLEAR_DIRECTION == dcd_decode_tag(0b11111100, 0));
+}
+
+// MARK: STD
+Test(dcd_decode_tag_tests, STD) {
+    cr_assert(I_SET_DIRECTION == dcd_decode_tag(0b11111101, 0));
+}
+
+// MARK: CLI
+Test(dcd_decode_tag_tests, CLI) {
+    cr_assert(I_CLEAR_INTERRUPT == dcd_decode_tag(0b11111010, 0));
+}
+
+// MARK: STI
+Test(dcd_decode_tag_tests, STI) {
+    cr_assert(I_SET_INTERRUPT == dcd_decode_tag(0b11111011, 0));
+}
+
+// MARK: HLT
+Test(dcd_decode_tag_tests, HLT) {
+    cr_assert(I_HALT == dcd_decode_tag(0b11110100, 0));
+}
+
+// MARK: WAIT
+Test(dcd_decode_tag_tests, WAIT) {
+    cr_assert(I_WAIT == dcd_decode_tag(0b10011011, 0));
+}
+
+// MARK: ESC
+Test(dcd_decode_tag_tests, ESC) {
+    cr_assert(I_ESCAPE == dcd_decode_tag(0b11011000, 0));
+}
+
+// MARK: LOCK
+Test(dcd_decode_tag_tests, LOCK) {
+    cr_assert(I_LOCK == dcd_decode_tag(0b11110000, 0));
+}
+
+// MARK: SEGMENT
+Test(dcd_decode_tag_tests, SEGMENT) {
+    cr_assert(I_SEGMENT == dcd_decode_tag(0b00100110, 0));
+}

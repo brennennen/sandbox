@@ -24,6 +24,9 @@
 #include "libraries/emulate8086/include/instructions/cmp.h"
 
 #include "libraries/emulate8086/include/instructions/conditional_jumps.h"
+#include "libraries/emulate8086/include/instructions/processor_control/clc.h"
+#include "libraries/emulate8086/include/instructions/processor_control/cmc.h"
+#include "libraries/emulate8086/include/instructions/processor_control/stc.h"
 
 //#include "decode_tag.c"
 
@@ -151,8 +154,14 @@ result_iter_t emu_decode_next(emulator_t* decoder, char* out_buffer, int* index,
             result = ER_UNIMPLEMENTED_INSTRUCTION;
             break;
         case I_CLEAR_CARRY:
+            result = decode_clc(decoder, byte1, out_buffer, index, out_buffer_size);
+            break;
         case I_COMPLEMENT_CARRY:
+            result = decode_cmc(decoder, byte1, out_buffer, index, out_buffer_size);
+            break;
         case I_SET_CARRY:
+            result = decode_stc(decoder, byte1, out_buffer, index, out_buffer_size);
+            break;
         case I_CLEAR_DIRECTION:
         case I_SET_DIRECTION:
         case I_CLEAR_INTERRUPT:
@@ -251,7 +260,7 @@ result_iter_t emu_next(emulator_t* emulator) {
     emulator->current_byte = emulator->buffer[emulator->buffer_index];
     uint8_t byte1 = emulator->current_byte;
     emulator->buffer_index += 1;
-    if (emulator->buffer_index >= emulator->buffer_size) {
+    if (emulator->buffer_index > emulator->buffer_size) {
         return RI_DONE;
     }
 
@@ -361,8 +370,14 @@ result_iter_t emu_next(emulator_t* emulator) {
         result = ER_UNIMPLEMENTED_INSTRUCTION;
         break;
     case I_CLEAR_CARRY:
+        result = emu_clc(emulator, byte1);
+        break;
     case I_COMPLEMENT_CARRY:
+        result = emu_cmc(emulator, byte1);
+        break;
     case I_SET_CARRY:
+        result = emu_stc(emulator, byte1);
+        break;
     case I_CLEAR_DIRECTION:
     case I_SET_DIRECTION:
     case I_CLEAR_INTERRUPT:

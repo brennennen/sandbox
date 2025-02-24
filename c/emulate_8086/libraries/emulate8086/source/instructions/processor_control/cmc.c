@@ -44,5 +44,6 @@ emu_result_t decode_cmc(
 
 emu_result_t emu_cmc(emulator_t* emulator, uint8_t byte1) {
     emu_reg_toggle_flag(&emulator->registers.flags, FLAG_CF_MASK);
+    emulator->registers.ip += 1;
     return ER_SUCCESS;
 }

@@ -12,21 +12,28 @@
 /**
  *
  */
-emu_result_t read_displacement(emulator_t* emulator, mod_t mod, uint8_t rm, uint16_t* displacement) {
+emu_result_t read_displacement(
+    emulator_t* emulator, mod_t mod,
+    uint8_t rm, uint16_t* displacement,
+    uint8_t* displacement_byte_size
+) {
     if (mod == MOD_MEMORY) {
         if (rm == 0b00000110) {
             emu_result_t read_displace_result = dcd_read_word(emulator, displacement);
+            *displacement_byte_size = 2;
             if (read_displace_result != ER_SUCCESS) {
                 return read_displace_result;
             }
         }
     } else if (mod == MOD_MEMORY_8BIT_DISPLACEMENT) {
         emu_result_t read_displace_result = dcd_read_byte(emulator, (uint8_t*) displacement);
+        *displacement_byte_size = 1;
         if (read_displace_result != ER_SUCCESS) {
             return read_displace_result;
         }
     } else if (mod == MOD_MEMORY_16BIT_DISPLACEMENT) {
         emu_result_t read_displace_result = dcd_read_word(emulator, displacement);
+        *displacement_byte_size = 2;
         if (read_displace_result != ER_SUCCESS) {
             return read_displace_result;
         }
@@ -51,9 +58,10 @@ emu_result_t emu_decode_common_standard_format(
     mod_t* mod,
     uint8_t* reg,
     uint8_t* rm,
-    uint16_t* displacement
+    uint16_t* displacement,
+    uint8_t* instruction_size
 ) {
-    //*fields1 = byte1;
+    *instruction_size = 1;
     *direction = (byte1 & 0b00000010) >> 1;
     *wide = byte1 & 0b00000001;
 
@@ -62,11 +70,15 @@ emu_result_t emu_decode_common_standard_format(
     if (read_byte2_result != ER_SUCCESS) {
         return read_byte2_result;
     }
+    *instruction_size += 1;
 
     *mod = (byte2 & 0b11000000) >> 6;
     *reg = (byte2 & 0b00111000) >> 3;
     *rm = byte2 & 0b00000111;
-    emu_result_t read_displacement_result = read_displacement(emulator, *mod, *rm, displacement);
+    uint8_t displacement_byte_size = 0;
+    emu_result_t read_displacement_result = read_displacement(emulator, *mod,
+        *rm, displacement, &displacement_byte_size);
+    *instruction_size += displacement_byte_size;
     if (read_displacement_result != ER_SUCCESS) {
         return read_displacement_result;
     }
@@ -84,8 +96,10 @@ emu_result_t emu_decode_common_immediate_format(
     uint8_t* subcode,
     uint8_t* rm,
     uint16_t* displacement,
-    uint16_t* data
+    uint16_t* data,
+    uint8_t* instruction_size
 ) {
+    *instruction_size = 1;
     *sign = (byte1 & 0b00000010) >> 1;
     *wide = byte1 & 0b00000001;
     uint8_t byte2 = 0;
@@ -93,6 +107,7 @@ emu_result_t emu_decode_common_immediate_format(
     if (read_byte2_result != ER_SUCCESS) {
         return read_byte2_result;
     }
+    *instruction_size += 1;
 
     *mod = (byte2 & 0b11000000) >> 6;
     *rm = byte2 & 0b00000111;
@@ -106,11 +121,13 @@ emu_result_t emu_decode_common_immediate_format(
     } else if (*mod == MOD_MEMORY_8BIT_DISPLACEMENT) {
         emu_result_t read_displace_result = dcd_read_byte(emulator, (uint8_t*) displacement);
         if (read_displace_result != ER_SUCCESS) {
+            *instruction_size += 1;
             return read_displace_result;
         }
     } else if (*mod == MOD_MEMORY_16BIT_DISPLACEMENT) {
         emu_result_t read_displace_result = dcd_read_word(emulator, displacement);
         if (read_displace_result != ER_SUCCESS) {
+            *instruction_size += 2;
             return read_displace_result;
         }
     } else { // MOD_REGISTER
@@ -119,11 +136,14 @@ emu_result_t emu_decode_common_immediate_format(
 
     if (*wide == WIDE_BYTE) {
         emu_result_t read_data_result = dcd_read_byte(emulator, (uint8_t*) data);
+        *instruction_size += 1;
     } else {
         if (*sign == 0) {
             emu_result_t read_data_result = dcd_read_word(emulator, data);
+            *instruction_size += 2;
         } else {
             emu_result_t read_data_result = dcd_read_byte(emulator, (uint8_t*) data);
+            *instruction_size += 1;
         }
     }
 

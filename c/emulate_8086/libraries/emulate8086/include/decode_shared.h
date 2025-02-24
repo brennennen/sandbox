@@ -8,7 +8,10 @@
 
 #include "libraries/emulate8086/include/decode_utils.h"
 
-emu_result_t read_displacement(emulator_t* emulator, mod_t mod, uint8_t rm, uint16_t* displacement);
+emu_result_t read_displacement(
+    emulator_t* emulator, mod_t mod,
+    uint8_t rm, uint16_t* displacement,
+    uint8_t* displacement_byte_size);
 
 emu_result_t emu_decode_common_standard_format(
     emulator_t* emulator,
@@ -18,7 +21,8 @@ emu_result_t emu_decode_common_standard_format(
     mod_t* mod,
     uint8_t* reg,
     uint8_t* rm,
-    uint16_t* displacement
+    uint16_t* displacement,
+    uint8_t* instruction_size
 );
 
 /**
@@ -56,7 +60,8 @@ emu_result_t emu_decode_common_immediate_format(
     uint8_t* subcode,
     uint8_t* rm,
     uint16_t* displacement,
-    uint16_t* data
+    uint16_t* data,
+    uint8_t* instruction_size
 );
 
 

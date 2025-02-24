@@ -46,10 +46,12 @@ emu_result_t decode_move(
     uint8_t reg = 0;
     uint8_t rm = 0;
     uint16_t displacement = 0;
+    uint8_t instruction_size = 0;
 
     emu_result_t decode_result = emu_decode_common_standard_format(
-        emulator, byte1, &direction, &wide, &mod, &reg, &rm, &displacement
+        emulator, byte1, &direction, &wide, &mod, &reg, &rm, &displacement, &instruction_size
     );
+
     write__common_register_or_memory_with_register_or_memory(
         direction, wide, mod, reg, rm, displacement,
         "mov", 3, out_buffer, index, out_buffer_size
@@ -64,10 +66,12 @@ emu_result_t emu_move(emulator_t* emulator, uint8_t byte1) {
     uint8_t reg = 0;
     uint8_t rm = 0;
     uint16_t displacement = 0;
+    uint8_t instruction_size = 0;
 
     emu_result_t decode_result = emu_decode_common_standard_format(
-        emulator, byte1, &direction, &wide, &mode, &reg, &rm, &displacement
+        emulator, byte1, &direction, &wide, &mode, &reg, &rm, &displacement, &instruction_size
     );
+    emulator->registers.ip += instruction_size;
 
     // TODO
     printf("dir: %d, wide: %d, mode: %d, reg: %d, rm: %d, disp: %d\n",
@@ -179,8 +183,10 @@ emu_result_t emu_move_immediate(emulator_t* emulator, uint8_t byte1) {
     uint8_t rm = 0;
     uint16_t displacement = 0;
     uint16_t data = 0;
+    uint8_t instruction_size = 0;
+
     emu_result_t result = emu_decode_common_immediate_format(
-        emulator, byte1, &sign, &wide, &mode, &subcode, &rm, &displacement, &data
+        emulator, byte1, &sign, &wide, &mode, &subcode, &rm, &displacement, &data, &instruction_size
     );
 
     // TODO
@@ -195,18 +201,22 @@ emu_result_t read_move_immediate_to_register(
     uint8_t byte1,
     wide_t* wide,
     uint8_t* reg,
-    uint16_t* immediate
+    uint16_t* immediate,
+    uint8_t* instruction_size
 ) {
+    *instruction_size = 1;
     *wide = (byte1 & 0b00001000) >> 3;
     *reg = byte1 & 0b00000111;
     if (*wide == WIDE_BYTE) {
         emu_result_t read_data_result = dcd_read_byte(emulator, (uint8_t*)immediate);
+        *instruction_size += 1;
         printf("immed to reg data: %d\n", *immediate);
         if (read_data_result != ER_SUCCESS) {
             return FAILURE;
         }
     } else { // WIDE_WORD
         emu_result_t read_data_result = dcd_read_word(emulator, immediate);
+        *instruction_size += 2;
         printf("immed to reg (wide) data: %d\n", *immediate);
         if (read_data_result != ER_SUCCESS) {
             return FAILURE;
@@ -224,9 +234,10 @@ emu_result_t decode_move_immediate_to_register(
     wide_t wide = 0;
     uint8_t reg = 0;
     uint16_t immediate = 0;
+    uint8_t instruction_size = 0;
 
     emu_result_t result = read_move_immediate_to_register(
-        emulator, byte1, &wide, &reg, &immediate);
+        emulator, byte1, &wide, &reg, &immediate, &instruction_size);
 
     write_move_immediate_to_register(wide, reg, immediate, out_buffer, index, out_buffer_size);
     return result;
@@ -236,12 +247,12 @@ emu_result_t emu_move_immediate_to_register(emulator_t* emulator, uint8_t byte1)
     wide_t wide = 0;
     uint8_t reg = 0;
     uint16_t immediate = 0;
+    uint8_t instruction_size = 0;
 
     emu_result_t result = read_move_immediate_to_register(
-        emulator, byte1, &wide, &reg, &immediate);
+        emulator, byte1, &wide, &reg, &immediate, &instruction_size);
+    emulator->registers.ip += instruction_size;
 
-    printf("wide: %d, reg: %d, immediate: %d\n",
-        wide, reg, immediate);
     if (wide == WIDE_BYTE) {
         uint8_t* left = emu_get_byte_register(&emulator->registers, reg);
         *left = immediate;

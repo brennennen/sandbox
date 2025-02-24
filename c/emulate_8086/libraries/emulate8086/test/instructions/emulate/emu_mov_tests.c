@@ -28,55 +28,58 @@
 // MARK: MOV
 //
 
-// Use of this global "g_decoder" is to try and reduce the amount of code per test. It's reset
+// Use of this global "g_emulator" is to try and reduce the amount of code per test. It's reset
 // after each test and has a large default instructions buffer.
-static emulator_t g_decoder;
+static emulator_t g_emulator;
 
-void default_setup2(void) {
-    memset(&g_decoder, 0, sizeof(emulator_t));
-    emu_init(&g_decoder);
+void emu_mov_default_setup(void) {
+    memset(&g_emulator, 0, sizeof(emulator_t));
+    emu_init(&g_emulator);
 }
 
 // MARK: 1. I_MOVE
-Test(emu__I_MOVE__tests, mov1, .init = default_setup2)
+Test(emu__I_MOVE__tests, mov1, .init = emu_mov_default_setup)
 {
     char* expected = "mov cx, bx\n";
     uint8_t input[] = { 0x89, 0xd9 };
     char output[32] = { 0x00 };
-    g_decoder.registers.bx = 5;
-    cr_assert(SUCCESS == emu_emulate_chunk(&g_decoder, input, sizeof(input)));
-    cr_assert(1 == g_decoder.instructions_count);
-    cr_assert(g_decoder.registers.bx == g_decoder.registers.cx,
+    g_emulator.registers.bx = 5;
+    cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
+    cr_assert(1 == g_emulator.instructions_count);
+    cr_assert(2 == g_emulator.registers.ip);
+    cr_assert(g_emulator.registers.bx == g_emulator.registers.cx,
         "expected:\n'%d'\n\nactual:\n'%d'\n",
-        g_decoder.registers.bx, g_decoder.registers.cx);
+        g_emulator.registers.bx, g_emulator.registers.cx);
 }
 
 // MARK: 2. I_MOVE_IMMEDIATE
 // TODO
 
 // MARK: 3. I_MOVE_IMMEDIATE_TO_REGISTER
-Test(emu__I_MOVE_IMMEDIATE_TO_REGISTER__tests, mov1, .init = default_setup2)
+Test(emu__I_MOVE_IMMEDIATE_TO_REGISTER__tests, mov1, .init = emu_mov_default_setup)
 {
     char* expected = "mov cx, 10\n";
     uint8_t input[] = { 0xb9, 0x0a, 0x00 }; // 0b10111001 0b00001010 0b00000000
     char output[32] = { 0x00 };
-    cr_assert(SUCCESS == emu_emulate_chunk(&g_decoder, input, sizeof(input)));
-    cr_assert(1 == g_decoder.instructions_count);
-    cr_assert(10 == g_decoder.registers.cx,
+    cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
+    cr_assert(1 == g_emulator.instructions_count);
+    cr_assert(3 == g_emulator.registers.ip);
+    cr_assert(10 == g_emulator.registers.cx,
         "expected:\n'%d'\n\nactual:\n'%d'\n",
-        10, g_decoder.registers.cx);
+        10, g_emulator.registers.cx);
 }
 
-Test(emu__I_MOVE_IMMEDIATE_TO_REGISTER__tests, mov2, .init = default_setup2)
+Test(emu__I_MOVE_IMMEDIATE_TO_REGISTER__tests, mov2, .init = emu_mov_default_setup)
 {
     char* expected = "mov cx, 502\n";
     uint8_t input[] = { 0xb9, 0xf6, 0x01 }; // 0b10111001 0b11110110 0b00000001
     char output[32] = { 0x00 };
-    cr_assert(SUCCESS == emu_emulate_chunk(&g_decoder, input, sizeof(input)));
-    cr_assert(1 == g_decoder.instructions_count);
-    cr_assert(502 == g_decoder.registers.cx,
+    cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
+    cr_assert(1 == g_emulator.instructions_count);
+    cr_assert(3 == g_emulator.registers.ip);
+    cr_assert(502 == g_emulator.registers.cx,
         "expected:\n'%d'\n\nactual:\n'%d'\n",
-        502, g_decoder.registers.cx);
+        502, g_emulator.registers.cx);
 }
 
 // MARK: 4. I_MOVE_TO_AX

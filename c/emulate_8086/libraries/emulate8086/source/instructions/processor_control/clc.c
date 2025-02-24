@@ -44,5 +44,6 @@ emu_result_t decode_clc(
 
 emu_result_t emu_clc(emulator_t* emulator, uint8_t byte1) {
     emu_reg_clear_flag(&emulator->registers.flags, FLAG_CF_MASK);
+    emulator->registers.ip += 1;
     return ER_SUCCESS;
 }

@@ -55,9 +55,10 @@ emu_result_t decode_compare(
     uint8_t reg = 0;
     uint8_t rm = 0;
     uint16_t displacement = 0;
+    uint8_t instruction_size = 0;
 
     emu_result_t result = emu_decode_common_standard_format(
-        emulator, byte1, &direction, &wide, &mod, &reg, &rm, &displacement
+        emulator, byte1, &direction, &wide, &mod, &reg, &rm, &displacement, &instruction_size
     );
 
     write__common_register_or_memory_with_register_or_memory(
@@ -74,10 +75,12 @@ emu_result_t emu_compare(emulator_t* emulator, uint8_t byte1) {
     uint8_t reg = 0;
     uint8_t rm = 0;
     uint16_t displacement = 0;
+    uint8_t instruction_size = 0;
 
     emu_result_t result = emu_decode_common_standard_format(
-        emulator, byte1, &direction, &wide, &mod, &reg, &rm, &displacement
+        emulator, byte1, &direction, &wide, &mod, &reg, &rm, &displacement, &instruction_size
     );
+    emulator->registers.ip += instruction_size;
 
     // TODO
 
@@ -99,9 +102,10 @@ emu_result_t decode_cmp_immediate(
     uint8_t rm = 0;
     uint16_t displacement = 0;
     uint16_t data = 0;
+    uint8_t instruction_size = 0;
 
     emu_result_t result = emu_decode_common_immediate_format(
-        emulator, byte1, &sign, &wide, &mod, &subcode, &rm, &displacement, &data
+        emulator, byte1, &sign, &wide, &mod, &subcode, &rm, &displacement, &data, &instruction_size
     );
 
     write__common_immediate_to_register_or_memory(
@@ -120,10 +124,12 @@ emu_result_t emu_cmp_immediate(emulator_t* emulator, uint8_t byte1) {
     uint8_t rm = 0;
     uint16_t displacement = 0;
     uint16_t immediate = 0;
+    uint8_t instruction_size = 0;
 
     emu_result_t result = emu_decode_common_immediate_format(
-        emulator, byte1, &sign, &wide, &mod, &subcode, &rm, &displacement, &immediate
+        emulator, byte1, &sign, &wide, &mod, &subcode, &rm, &displacement, &immediate, &instruction_size
     );
+    emulator->registers.ip += instruction_size;
 
     printf("sign: %d, wide: %d, mod: %d, rm: %d, displ: %d, immediate: %d\n",
         sign, wide, mod, rm, displacement, immediate);

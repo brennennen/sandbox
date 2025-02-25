@@ -28,7 +28,7 @@
 #include "libraries/emulate8086/include/decode_utils.h"
 #include "libraries/emulate8086/include/decode_shared.h"
 
-#include "libraries/emulate8086/include/instructions/mov.h"
+#include "libraries/emulate8086/include/instructions/data_transfer/mov.h"
 
 
 // MARK: 1. I_MOVE

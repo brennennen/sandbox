@@ -26,7 +26,7 @@
 #include "libraries/emulate8086/include/decode_utils.h"
 #include "libraries/emulate8086/include/decode_shared.h"
 
-#include "libraries/emulate8086/include/instructions/push.h"
+#include "libraries/emulate8086/include/instructions/data_transfer/push.h"
 
 // MARK: 1. I_PUSH
 

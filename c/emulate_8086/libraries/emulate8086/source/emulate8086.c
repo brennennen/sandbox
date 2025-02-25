@@ -20,6 +20,7 @@
 #include "libraries/emulate8086/include/instructions/push.h"
 #include "libraries/emulate8086/include/instructions/pop.h"
 #include "libraries/emulate8086/include/instructions/add.h"
+#include "libraries/emulate8086/include/instructions/arithmetic/inc.h"
 #include "libraries/emulate8086/include/instructions/sub.h"
 #include "libraries/emulate8086/include/instructions/cmp.h"
 
@@ -109,6 +110,13 @@ result_iter_t emu_decode_next(emulator_t* decoder, char* out_buffer, int* index,
             result = decode_add_immediate(decoder, byte1, out_buffer, index, out_buffer_size);
             break;
         // ADC
+        // MARK: INC
+        case I_INC:
+            result = decode_inc(decoder, byte1, out_buffer, index, out_buffer_size);
+            break;
+        case I_INC_REGISTER:
+            result = decode_inc_register(decoder, byte1, out_buffer, index, out_buffer_size);
+            break;
         // ...
         // MARK: SUB
         case I_SUB:
@@ -325,6 +333,13 @@ result_iter_t emu_next(emulator_t* emulator) {
         result = emu_add_immediate(emulator, byte1);
         break;
     // ADC
+    // MARK: INC
+    case I_INC:
+        result = emu_inc(emulator, byte1);
+        break;
+    case I_INC_REGISTER:
+        result = emu_inc_register(emulator, byte1);
+        break;
     // ...
     // MARK: SUB
     case I_SUB:

@@ -28,7 +28,7 @@ make config=release -C ./.build/
 ```
 
 Windows:
-```
+```sh
 premake5 vs2022
 MSBuild.exe ./.build/PremakeSandbox.sln
 ./bin/debug/sandbox.exe

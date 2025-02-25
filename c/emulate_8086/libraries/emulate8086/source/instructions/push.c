@@ -39,16 +39,12 @@ emu_result_t decode_push_register(
     size_t out_buffer_size
 ) {
     uint8_t reg = byte1 & 0b00000111;
-    char* reg_string = map_register_field_encoding(reg);;
-    int written = snprintf(out_buffer + *index,  out_buffer_size - *index, "push %s", reg_string);
+    char* reg_string = map_register_field_encoding(reg);
+    int written = snprintf(out_buffer + *index,  out_buffer_size - *index, "push %s\n", reg_string);
     if (written < 0) {
         return ER_FAILURE;
     }
-
     *index += written;
-    snprintf(out_buffer + *index, out_buffer_size - *index, "\n");
-    *index += 1;
-
     return ER_SUCCESS;
 }
 

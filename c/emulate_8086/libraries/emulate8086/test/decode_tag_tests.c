@@ -69,7 +69,7 @@ Test(dcd_decode_tag_tests, ADC) {
 
 // MARK: INC
 Test(dcd_decode_tag_tests, INC) {
-    cr_assert(I_INC_REGISTER_OR_MEMORY == dcd_decode_tag(0b11111110, 0));
+    cr_assert(I_INC == dcd_decode_tag(0b11111110, 0));
     cr_assert(I_INC_REGISTER == dcd_decode_tag(0b01000000, 0));
 }
 

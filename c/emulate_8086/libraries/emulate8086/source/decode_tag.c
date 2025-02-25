@@ -85,7 +85,7 @@ instruction_tag_t dcd_decode_tag(uint8_t byte1, uint8_t byte2) {
 
                 // INC 1
                 case 0b00000000:
-                    return I_INC_REGISTER_OR_MEMORY;
+                    return I_INC;
 
                 // DEC 1
                 case 0b00001000:
@@ -116,7 +116,7 @@ instruction_tag_t dcd_decode_tag(uint8_t byte1, uint8_t byte2) {
             switch(sub_opcode) {
                 // INC 1
                 case 0b00000000:
-                    return I_INC_REGISTER_OR_MEMORY;
+                    return I_INC;
 
                 // DEC 1
                 case 0b00001000:
@@ -359,7 +359,7 @@ instruction_tag_t dcd_decode_tag(uint8_t byte1, uint8_t byte2) {
             return I_ADC_IMMEDIATE_TO_AX;
 
         // MARK: INC
-        // INC 1 - I_INC_REGISTER_OR_MEMORY - handled by "COMMON 0b11111110" and "COMMON 0b11111111"
+        // INC 1 - I_INC - handled by "COMMON 0b11111110" and "COMMON 0b11111111"
         // INC 2 - 0b01000xxx
         case 0b01000000:
         case 0b01000001:

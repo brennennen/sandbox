@@ -4,17 +4,21 @@
 # that targets QEMU with busybox using yocto and a small "business logic" program.
 #
 # This script copies everything over to a destination directory and runs bitbake
-# from there instead (out of this repos tree) because of how much disk space
-# building images with yocto/oe can take up.
+# there to save disk space. The supplied destination directory needs to have +100GB
+# of free space (yocto is very disk space intensive)
+#
+# Example usage: ./build.bash /mnt/d_wsl/temp/simple_arm_yocto /mnt/d_wsl/yocto/
 #
 
-#set -x
-#set -e
+if [ "$#" -ne 2 ]; then
+	echo "Usage: $0 {build dir} {caches dir}"
+	exit 1
+fi
 
-OUT_DIR="/mnt/d_wsl/temp/simple_arm_yocto"
+OUT_DIR="$1"
+CACHES_DIR="$2"
 SCRIPT_PATH="$(realpath "$0")"
 SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
-EXTERNAL_DIR="${SCRIPT_DIR}/external"
 
 mkdir -p ${OUT_DIR}
 mkdir -p ${OUT_DIR}/build
@@ -44,6 +48,11 @@ fi
 
 cd ${OUT_DIR}
 source ./poky/oe-init-build-env # moves cwd to ./build dir, adds yocto tools to path, sets various env variables
+
+# Set cache directories to be shared with other yocto builds on the system (saves disk space).
+DL_DIR=${CACHES_DIR}/downloads
+SSTATE_DIR=${CACHES_DIR}/sstate
+TMPDIR=${CACHES_DIR}/tmp
 
 bitbake-layers show-layers | grep "meta-hello" > /dev/null
 layer_info=$?

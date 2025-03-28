@@ -7,7 +7,7 @@
 #set -x
 set -e
 
-OUT_DIR="/tmp/arm_buildroot"
+OUT_DIR="/tmp/simple_arm_buildroot"
 SCRIPT_PATH="$(realpath "$0")"
 SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 EXTERNAL_DIR="${SCRIPT_DIR}/external"
@@ -64,7 +64,6 @@ make BR2_EXTERNAL=${EXTERNAL_DIR} BR2_DEFCONFIG=${OUT_DIR}/my_arm_qemu_defconfig
 # business logic of the system.
 #make sdk
 
-# TODO: echo out qemu command
 cd ${OUT_DIR}
 
 echo "run the command below to start qemu and enter the vm:"

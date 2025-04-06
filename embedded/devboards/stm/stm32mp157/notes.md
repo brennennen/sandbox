@@ -23,9 +23,15 @@
 # Yocto Notes
 * OpenSTLinux distribution: openstlinux-6.6-yocto-scarthgap-mpu-v24.11.06
 * https://wiki.st.com/stm32mpu/wiki/STM32MPU_Distribution_Package#Installing_the_OpenSTLinux_distribution
-*
+## Yocto Debugging Notes
+* `bitbake -e {thing} > tmp.log` paired with grep seems to be the best way into getting visibility into how yocto works.
+  * for example, I didn't trust the syntax I added to add i2c-tools to my image:`CORE_IMAGE_EXTRA_INSTALL += "i2c-tools"`
+    * `bitbake -e core-image-mp157sandbox > tmp.log`
+    * `grep "IMAGE_INSTALL=" ./tmp.log` - showed it is properly there
+    *
 
 # DiscoveryKit
+ST32MP157D-DK1
 ## Ports/IO/Buttons
 * Front
   * Left

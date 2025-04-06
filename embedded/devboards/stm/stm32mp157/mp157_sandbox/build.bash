@@ -32,12 +32,17 @@ cd ${OUT_DIR}
 rsync -au --delete ${SCRIPT_DIR}/meta-mp157sandbox ${OUT_DIR}/
 # conf needs to be in the build folder
 cp ${SCRIPT_DIR}/conf/local.conf ${OUT_DIR}/build/conf/local.conf
+cp ${SCRIPT_DIR}/create_image.bash ${OUT_DIR}/create_image.bash
 
-# tar up the hello source, bitbake likes "md5" hashable things.
+# tar up any local source projects, bitbake likes hashable things (tarballs instead of directories).
 # bitbake also expects files to be in a "files" or double-up named project folder by convention
 cd ${OUT_DIR}
 mkdir -p ./meta-mp157sandbox/recipes-mp157sandbox/hello/files/
 cd ${OUT_DIR}/meta-mp157sandbox/recipes-mp157sandbox/hello/
+tar -cpf files/src.tar src
+cd ${OUT_DIR}
+mkdir -p ./meta-mp157sandbox/recipes-mp157sandbox/bmp180log/files/
+cd ${OUT_DIR}/meta-mp157sandbox/recipes-mp157sandbox/bmp180log/
 tar -cpf files/src.tar src
 cd ${OUT_DIR}
 
@@ -56,7 +61,8 @@ if [ ! -d ${OUT_DIR}/meta-st-stm32mp ] ; then
     git clone -b styhead https://github.com/STMicroelectronics/meta-st-stm32mp.git
 fi
 
-# TODO: consider adding OpenSTLinux too? "meta-st-openstlinux"
+# Decided not to use STLinux to keep this project as vendor agnostic as possible. 
+# Consider looking into "OpenSTLinux", with "meta-st-openstlinux"
 
 cd ${OUT_DIR}
 source ./poky/oe-init-build-env ./build # moves cwd to ./build dir, adds yocto tools to path, sets various env variables
@@ -101,13 +107,14 @@ bitbake core-image-mp157sandbox
 #bitbake core-image-mp157sandbox -c populate_sdk
 
 # Create the sd card flash image
-# STM provided image creation script creates the linux rootfs with 5GB of space, and `dd` takes forever.
-#./tmp/deploy/images/stm32mp1/scripts/create_sdcard_from_flashlayout.sh ./tmp/deploy/images/stm32mp1/flashlayout_core-image-mp157sandbox/opteemin/FlashLayout_sdcard_stm32mp157d-dk1-opteemin.tsv
-# TODO: create a separate script that involves a smaller rootfs to make iteration quicker
-# scp -P 9022 ./tmp/deploy/images/stm32mp1/FlashLayout_sdcard_stm32mp157d-dk1-opteemin.raw 192.168.1.144:~/FlashLayout_sdcard_stm32mp157d-dk1-opteemin.raw
-echo "Clone the image to an sd card (NOTE: set 'of=/dev/???' before running, check dmesg):"
-# sudo dd if=./tmp/deploy/images/stm32mp1/FlashLayout_sdcard_stm32mp157d-dk1-opteemin.raw of=/dev/sdc bs=32M conv=fdatasync status=progress
-echo "sudo dd if=./tmp/deploy/images/stm32mp1/FlashLayout_sdcard_stm32mp157d-dk1-opteemin.raw of=/dev/??? bs=32M conv=fdatasync status=progress"
+echo "1. Create a bootable image with the 'create_image.bash' script. (reference image creation: ./tmp/deploy/images/stm32mp1/scripts/create_sdcard_from_flashlayout.sh ./tmp/deploy/images/stm32mp1/flashlayout_core-image-mp157sandbox/opteemin/FlashLayout_sdcard_stm32mp157d-dk1-opteemin.tsv)"
+# example commands:
+# scp -P 9022 ./mp157_sandbox.img 192.168.1.144:~/mp157_sandbox.img
+# sudo dd if=./mp157_sandbox.img of=/dev/sdc bs=32M conv=fdatasync status=progress
+# scp -P 9022 ./tmp/deploy/images/stm32mp1/core-image-mp157sandbox-stm32mp1.rootfs.ext4 192.168.1.144:~/stm32mp1.rootfs.ext4
+# sudo dd if=./stm32mp1.rootfs.ext4 of=/dev/sdc10 bs=32M conv=fdatasync status=progress
+echo "2. Clone the image to an sd card (NOTE: set 'of=/dev/???' before running, check dmesg):"
+echo "example dd command: sudo dd if=./tmp/deploy/images/stm32mp1/FlashLayout_sdcard_stm32mp157d-dk1-opteemin.raw of=/dev/??? bs=32M conv=fdatasync status=progress"
 # Before installing the card, plug in the micro-usb STLink port for logs over the serial port.
-echo "Connect a micro usb the to STLink port and run a serial comm to see boot logs before powering on board:"
+echo "3. Connect a micro usb the to STLink port and run a serial comm to see boot logs before powering on board:"
 echo "sudo picocom -b 115200 /dev/ttyACM0"

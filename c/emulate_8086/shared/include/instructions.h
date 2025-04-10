@@ -32,7 +32,7 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_POP_SEGMENT_REGISTER,
     // XCHG
     I_EXCHANGE,
-    I_EXCHANGE_WITH_AX,
+    I_EXCHANGE_AX,
     // IN
     I_INPUT_FROM_FIXED_PORT,
     I_INPUT_FROM_VARIABLE_PORT,
@@ -271,7 +271,7 @@ static char instruction_tag_mnemonic[][8] = {
     "pop",      // I_POP_REGISTER
     "pop",      // I_POP_SEGMENT_REGISTER
     "xchg",     // I_EXCHANGE
-    "xchg",     // I_EXCHANGE_WITH_AX
+    "xchg",     // I_EXCHANGE_AX
     "in",       // I_INPUT_FROM_FIXED_PORT
     "in",       // I_INPUT_FROM_VARIABLE_PORT
     "out",      // I_OUTPUT_TO_FIXED_PORT
@@ -495,10 +495,5 @@ typedef enum {
     RM_BP,
     RM_BX,
 } rm_effective_address_calc_t;
-
-// MARK: COMMON
-typedef struct {
-    uint8_t byte1;
-} i_command_t;
 
 #endif // INSTRUCTIONS_H

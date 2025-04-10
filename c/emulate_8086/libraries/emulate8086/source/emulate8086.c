@@ -19,6 +19,7 @@
 #include "libraries/emulate8086/include/instructions/data_transfer/mov.h"
 #include "libraries/emulate8086/include/instructions/data_transfer/push.h"
 #include "libraries/emulate8086/include/instructions/data_transfer/pop.h"
+#include "libraries/emulate8086/include/instructions/data_transfer/xchg.h"
 #include "libraries/emulate8086/include/instructions/arithmetic/add.h"
 #include "libraries/emulate8086/include/instructions/arithmetic/inc.h"
 #include "libraries/emulate8086/include/instructions/arithmetic/sub.h"
@@ -35,7 +36,9 @@
  * Initializes the decoder.
  */
 void emu_init(emulator_t* emulator) {
-
+    emulator->stack_size = STACK_SIZE; // using a size here in case i want to make this dynamic/resizable later.
+    emulator->stack_top = 0;
+    memset(emulator->stack, 0, emulator->stack_size);
 }
 
 result_iter_t emu_decode_next(emulator_t* decoder, char* out_buffer, int* index, size_t out_buffer_size) {
@@ -99,6 +102,12 @@ result_iter_t emu_decode_next(emulator_t* decoder, char* out_buffer, int* index,
             break;
         // case I_POP_SEGMENT_REGISTER:
         // XCHNG
+        case I_EXCHANGE:
+            result = decode_exchange(decoder, byte1, out_buffer, index, out_buffer_size);
+            break;
+        case I_EXCHANGE_AX:
+            result = decode_exchange_ax(decoder, byte1, out_buffer, index, out_buffer_size);
+            break;
         // IN
         // OUT
         // ARITHMETIC

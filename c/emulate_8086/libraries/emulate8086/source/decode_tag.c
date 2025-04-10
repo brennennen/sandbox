@@ -202,7 +202,7 @@ instruction_tag_t dcd_decode_tag(uint8_t byte1, uint8_t byte2) {
         case 0b10010101:
         case 0b10010110:
         case 0b10010111:
-            return I_EXCHANGE_WITH_AX;
+            return I_EXCHANGE_AX;
 
         // MARK: IN
         // IN 1 - 0b1110010x

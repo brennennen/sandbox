@@ -224,6 +224,7 @@ emu_result_t read_move_immediate_to_register(
     }
     return ER_SUCCESS;
 }
+
 emu_result_t decode_move_immediate_to_register(
     emulator_t* emulator,
     uint8_t byte1,
@@ -358,7 +359,7 @@ emu_result_t read_move_ax(
     wide_t* wide,
     uint16_t* address
 ) {
-   *wide = byte1 & 0b00000001;
+    *wide = byte1 & 0b00000001;
     emu_result_t read_data_result = dcd_read_word(emulator, address);
     printf("address: %d\n", *address);
     if (read_data_result != ER_SUCCESS) {

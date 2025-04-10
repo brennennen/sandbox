@@ -36,7 +36,7 @@ Test(dcd_decode_tag_tests, POP) {
 // MARK: XCHG
 Test(dcd_decode_tag_tests, XCHG) {
     cr_assert(I_EXCHANGE == dcd_decode_tag(0b10000110, 0));
-    cr_assert(I_EXCHANGE_WITH_AX == dcd_decode_tag(0b10010000, 0));
+    cr_assert(I_EXCHANGE_AX == dcd_decode_tag(0b10010000, 0));
 }
 
 // MARK: IN

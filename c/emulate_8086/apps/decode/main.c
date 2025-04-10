@@ -1,3 +1,23 @@
+/**
+ * 8086 instruction stream decoder. Reads in a set of machine instructions and
+ * outputs assembly insutrctions.
+ *
+ * Example usage: `decode ./my_asm`
+ *
+ * Use NASM or a similar assembler to create assembly files. ex: `nasm my_file.asm`
+ * my_file.asm:
+```asm
+bits 16
+mov cx, 10
+add cx, 5
+```
+ * NASM or any other assembler will output bytecode, ex: 0b00000001 0b11011001 ...
+ * Running decode takes this bytecode and outputs back:
+```
+mov cx, 10
+add cx, 5
+```
+ */
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>

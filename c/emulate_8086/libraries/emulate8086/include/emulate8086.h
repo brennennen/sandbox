@@ -10,16 +10,21 @@
 #include "shared/include/instructions.h"
 #include "shared/include/registers.h"
 
+#define STACK_SIZE 4096
+
 typedef struct {
     uint8_t* buffer;
     size_t buffer_size;
     int buffer_index;
     int current_byte;
     registers_t registers;
-    //instruction_t* instructions;
     int instructions_count;
+    uint16_t stack_size; // using a size here in case i want to make this dynamic/resizable later.
+    uint16_t stack_top;
+    uint16_t stack[STACK_SIZE];
+    uint16_t memory[65536]; // 64KB (need to add segment register support to address more space)
+    //instruction_t* instructions;
     //int instructions_capacity;
-
     // callbacks?
 } emulator_t;
 

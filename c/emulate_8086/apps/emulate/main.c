@@ -1,3 +1,7 @@
+/**
+ * 8086 instruction stream decoder. Reads in a set of machine instructions, executes them,
+ * and then prints the emulated register and flag values.
+ */
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>

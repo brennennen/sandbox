@@ -86,8 +86,70 @@ emu_result_t emu_decode_common_standard_format(
     return SUCCESS;
 }
 
-
 emu_result_t emu_decode_common_immediate_format(
+    emulator_t* emulator,
+    uint8_t byte1,
+    wide_t* wide,
+    mod_t* mod,
+    uint8_t* subcode,
+    uint8_t* rm,
+    uint16_t* displacement,
+    uint16_t* data,
+    uint8_t* instruction_size
+) {
+    *instruction_size = 1;
+    *wide = byte1 & 0b00000001;
+    uint8_t byte2 = 0;
+    emu_result_t read_byte2_result = dcd_read_byte(emulator, (uint8_t*) &byte2);
+    if (read_byte2_result != ER_SUCCESS) {
+        return read_byte2_result;
+    }
+    *instruction_size += 1;
+
+    *mod = (byte2 & 0b11000000) >> 6;
+    *rm = byte2 & 0b00000111;
+    if (*mod == MOD_MEMORY) {
+        if (*rm == 0b00000110) {
+            emu_result_t read_displace_result = dcd_read_word(emulator, displacement);
+            if (read_displace_result != ER_SUCCESS) {
+                return read_displace_result;
+            }
+            *instruction_size += 2;
+        }
+    } else if (*mod == MOD_MEMORY_8BIT_DISPLACEMENT) {
+        emu_result_t read_displace_result = dcd_read_byte(emulator, (uint8_t*) displacement);
+        if (read_displace_result != ER_SUCCESS) {
+            return read_displace_result;
+        }
+        *instruction_size += 1;
+    } else if (*mod == MOD_MEMORY_16BIT_DISPLACEMENT) {
+        emu_result_t read_displace_result = dcd_read_word(emulator, displacement);
+        if (read_displace_result != ER_SUCCESS) {
+            return read_displace_result;
+        }
+        *instruction_size += 2;
+    } else { // MOD_REGISTER
+        // Don't have extra bytes for register to register movs. Nothing to do.
+    }
+
+    if (*wide == WIDE_BYTE) {
+        emu_result_t read_data_result = dcd_read_byte(emulator, (uint8_t*) data);
+        if (read_data_result != ER_SUCCESS) {
+            return read_data_result;
+        }
+        *instruction_size += 1;
+    } else {
+        emu_result_t read_data_result = dcd_read_word(emulator, data);
+        if (read_data_result != ER_SUCCESS) {
+            return read_data_result;
+        }
+        *instruction_size += 2;
+    }
+
+    return ER_SUCCESS;
+}
+
+emu_result_t emu_decode_common_signed_immediate_format(
     emulator_t* emulator,
     uint8_t byte1,
     uint8_t* sign,
@@ -117,19 +179,20 @@ emu_result_t emu_decode_common_immediate_format(
             if (read_displace_result != ER_SUCCESS) {
                 return read_displace_result;
             }
+            *instruction_size += 2;
         }
     } else if (*mod == MOD_MEMORY_8BIT_DISPLACEMENT) {
         emu_result_t read_displace_result = dcd_read_byte(emulator, (uint8_t*) displacement);
         if (read_displace_result != ER_SUCCESS) {
-            *instruction_size += 1;
             return read_displace_result;
         }
+        *instruction_size += 1;
     } else if (*mod == MOD_MEMORY_16BIT_DISPLACEMENT) {
         emu_result_t read_displace_result = dcd_read_word(emulator, displacement);
         if (read_displace_result != ER_SUCCESS) {
-            *instruction_size += 2;
             return read_displace_result;
         }
+        *instruction_size += 2;
     } else { // MOD_REGISTER
         // Don't have extra bytes for register to register movs. Nothing to do.
     }
@@ -140,9 +203,15 @@ emu_result_t emu_decode_common_immediate_format(
     } else {
         if (*sign == 0) {
             emu_result_t read_data_result = dcd_read_word(emulator, data);
+            if (read_data_result != ER_SUCCESS) {
+                return read_data_result;
+            }
             *instruction_size += 2;
         } else {
             emu_result_t read_data_result = dcd_read_byte(emulator, (uint8_t*) data);
+            if (read_data_result != ER_SUCCESS) {
+                return read_data_result;
+            }
             *instruction_size += 1;
         }
     }
@@ -426,6 +495,68 @@ uint16_t* emu_get_word_register(registers_t* registers, reg_t reg) {
         }
         case(REG_BH_DI): {
             return &registers->di;
+        }
+    }
+}
+
+uint32_t emu_get_effective_address(registers_t* registers, reg_t reg, mod_t mod, uint16_t displacement) {
+    switch(mod) {
+        case MOD_MEMORY: {
+            switch(reg) {
+                case(REG_AL_AX): {
+                    return registers->bx + registers->si;
+                }
+                case(REG_CL_CX): {
+                    return registers->bx + registers->di;
+                }
+                case(REG_DL_DX): {
+                    return registers->bp + registers->si;
+                }
+                case(REG_BL_BX): {
+                    return registers->bp + registers->di;
+                }
+                case(REG_AH_SP): {
+                    return registers->si;
+                }
+                case(REG_CH_BP): {
+                    return registers->di;
+                }
+                case(REG_DH_SI): {
+                    // DIRECT ACCESS - this shouldn't be reachable i believe.
+                }
+                case(REG_BH_DI): {
+                    return registers->bx;
+                }
+            }
+        }
+        case MOD_MEMORY_8BIT_DISPLACEMENT:
+        case MOD_MEMORY_16BIT_DISPLACEMENT: {
+            switch(reg) {
+                case(REG_AL_AX): {
+                    return registers->bx + registers->si + displacement;
+                }
+                case(REG_CL_CX): {
+                    return registers->bx + registers->di + displacement;
+                }
+                case(REG_DL_DX): {
+                    return registers->bp + registers->si + displacement;
+                }
+                case(REG_BL_BX): {
+                    return registers->bp + registers->di + displacement;
+                }
+                case(REG_AH_SP): {
+                    return registers->si + displacement;
+                }
+                case(REG_CH_BP): {
+                    return registers->di + displacement;
+                }
+                case(REG_DH_SI): {
+                    return registers->bp + displacement;
+                }
+                case(REG_BH_DI): {
+                    return registers->bx + displacement;
+                }
+            }
         }
     }
 }

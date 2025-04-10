@@ -11,6 +11,7 @@
 #include "shared/include/registers.h"
 
 #define STACK_SIZE 4096
+#define MEMORY_SIZE 65535 // 64KB (need to add segment register support to address more space)
 
 typedef struct {
     uint8_t* buffer;
@@ -22,7 +23,8 @@ typedef struct {
     uint16_t stack_size; // using a size here in case i want to make this dynamic/resizable later.
     uint16_t stack_top;
     uint16_t stack[STACK_SIZE];
-    uint16_t memory[65536]; // 64KB (need to add segment register support to address more space)
+    uint16_t memory_size;
+    uint8_t memory[MEMORY_SIZE];
     //instruction_t* instructions;
     //int instructions_capacity;
     // callbacks?
@@ -46,6 +48,12 @@ static char emulate_result_strings[][32] = {
 
 
 void emu_init(emulator_t* emulator);
+
+result_t emu_memory_set_byte(emulator_t* emulator, uint32_t address, uint8_t value);
+result_t emu_memory_set_uint16(emulator_t* emulator, uint32_t address, uint16_t value);
+
+result_t emu_memory_get_byte(emulator_t* emulator, uint32_t address, uint8_t* out_value);
+result_t emu_memory_get_uint16(emulator_t* emulator, uint32_t address, uint16_t* out_value);
 
 result_t emu_decode_file(emulator_t* emulator, char* input_path, char* out_buffer,
     size_t out_buffer_size);

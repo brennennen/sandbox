@@ -31,15 +31,42 @@ emu_result_t emu_decode_common_standard_format(
  *
  * Machine code instructions that use this pattern:
  * MOV 2 - I_MOVE_IMMEDIATE
+ * AND 2 - I_AND_IMMEDIATE
+ * TEST 2 - I_TEST_IMMEDIATE
+ * OR 2 - I_OR_IMMEDIATE
+ * XOR 2 - I_XOR_IMMEDIATE
+ *
+ * See table 4-12 8086 Family Users Manual, page 4-22, pdf page ~164.
+ *
+ * byte1: [opcode wide]
+ * byte2: [mod subcode r/m]
+ * byte3: [displacement low]
+ * byte4: [displacement high]
+ * byte5: [data low]
+ * byte6: [data high]
+ */
+emu_result_t emu_decode_common_immediate_format(
+    emulator_t* emulator,
+    uint8_t byte1,
+    wide_t* wide,
+    mod_t* mod,
+    uint8_t* subcode,
+    uint8_t* rm,
+    uint16_t* displacement,
+    uint16_t* data,
+    uint8_t* instruction_size
+);
+
+/**
+ * Decodes a common 8086 4 - 6 byte variable structure that's shared across
+ * many instructions.
+ *
+ * Machine code instructions that use this pattern:
  * ADD 2 - I_ADD_IMMEDIATE
  * ADC 2 - I_ADC_IMMEDIATE
  * SUB 2 - I_SUB_IMMEDIATE
  * SBB 2 - I_SBB_IMMEDIATE
  * CMP 2 - I_CMP_IMMEDIATE
- * AND 2 - I_AND_IMMEDIATE
- * TEST 2 - I_TEST_IMMEDIATE
- * OR 2 - I_OR_IMMEDIATE
- * XOR 2 - I_XOR_IMMEDIATE
  *
  * See table 4-12 8086 Family Users Manual, page 4-22, pdf page ~164.
  *
@@ -49,9 +76,8 @@ emu_result_t emu_decode_common_standard_format(
  * byte4: [displacement high]
  * byte5: [data low]
  * byte6: [data high]
- * decode__opcode_s_w__mod_subcode_rm__disp_lo__disp_hi__data_lo__data_hi
  */
-emu_result_t emu_decode_common_immediate_format(
+emu_result_t emu_decode_common_signed_immediate_format(
     emulator_t* emulator,
     uint8_t byte1,
     uint8_t* sign,
@@ -91,6 +117,7 @@ void build_effective_address(char* buffer, size_t buffer_size,
 
 uint8_t* emu_get_byte_register(registers_t* registers, reg_t reg);
 uint16_t* emu_get_word_register(registers_t* registers, reg_t reg);
+uint32_t emu_get_effective_address(registers_t* registers, reg_t reg, mod_t mod, uint16_t displacement);
 
 void write__common_register_or_memory_with_register_or_memory(
     direction_t direction,

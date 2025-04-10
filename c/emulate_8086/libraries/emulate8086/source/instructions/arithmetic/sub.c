@@ -122,7 +122,7 @@ emu_result_t decode_sub_immediate(
     uint16_t data = 0;
     uint8_t instruction_size = 0;
 
-    emu_result_t result = emu_decode_common_immediate_format(
+    emu_result_t result = emu_decode_common_signed_immediate_format(
         emulator, byte1, &sign, &wide, &mod, &subcode, &rm, &displacement, &data, &instruction_size
     );
 
@@ -144,7 +144,7 @@ emu_result_t emu_sub_immediate(emulator_t* emulator, uint8_t byte1) {
     uint16_t immediate = 0;
     uint8_t instruction_size = 0;
 
-    emu_result_t result = emu_decode_common_immediate_format(
+    emu_result_t result = emu_decode_common_signed_immediate_format(
         emulator, byte1, &sign, &wide, &mod, &subcode, &rm, &displacement, &immediate, &instruction_size
     );
     emulator->registers.ip += instruction_size;

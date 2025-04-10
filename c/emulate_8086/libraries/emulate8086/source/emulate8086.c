@@ -38,7 +38,42 @@
 void emu_init(emulator_t* emulator) {
     emulator->stack_size = STACK_SIZE; // using a size here in case i want to make this dynamic/resizable later.
     emulator->stack_top = 0;
+    emulator->memory_size = MEMORY_SIZE;
     memset(emulator->stack, 0, emulator->stack_size);
+}
+
+result_t emu_memory_set_byte(emulator_t* emulator, uint32_t address, uint8_t value) {
+    if (address < emulator->memory_size) {
+        emulator->memory[address] = value;
+        return ER_SUCCESS;
+    }
+    return ER_FAILURE;
+}
+
+result_t emu_memory_set_uint16(emulator_t* emulator, uint32_t address, uint16_t value) {
+    if (address + 1 < emulator->memory_size) {
+        // TODO: need to handle le/be shinanigans here? or will this just work?
+        emulator->memory[address] = value;
+        return ER_SUCCESS;
+    }
+    return ER_FAILURE;
+}
+
+result_t emu_memory_get_byte(emulator_t* emulator, uint32_t address, uint8_t* out_value) {
+    if (address < emulator->memory_size) {
+        *out_value = emulator->memory[address];
+        return ER_SUCCESS;
+    }
+    return ER_FAILURE;
+}
+
+result_t emu_memory_get_uint16(emulator_t* emulator, uint32_t address, uint16_t* out_value) {
+    if (address + 1 < emulator->memory_size) {
+        // TODO: need to handle le/be shinanigans here? or will this just work?
+        *out_value = emulator->memory[address];
+        return ER_SUCCESS;
+    }
+    return ER_FAILURE;
 }
 
 result_iter_t emu_decode_next(emulator_t* decoder, char* out_buffer, int* index, size_t out_buffer_size) {

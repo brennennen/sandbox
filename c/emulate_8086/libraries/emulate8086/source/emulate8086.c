@@ -101,7 +101,7 @@ result_iter_t emu_decode_next(emulator_t* decoder, char* out_buffer, int* index,
             result = decode_pop_register(decoder, byte1, out_buffer, index, out_buffer_size);
             break;
         // case I_POP_SEGMENT_REGISTER:
-        // XCHNG
+        // MARK: XCHG
         case I_EXCHANGE:
             result = decode_exchange(decoder, byte1, out_buffer, index, out_buffer_size);
             break;
@@ -330,7 +330,13 @@ result_iter_t emu_next(emulator_t* emulator) {
         result = emu_pop_register(emulator, byte1);
         break;
     // case I_POP_SEGMENT_REGISTER:
-    // XCHNG
+    // MARK: XCHG
+    case I_EXCHANGE:
+        result = emu_exchange(emulator, byte1);
+        break;
+    case I_EXCHANGE_AX:
+        result = emu_exchange_ax(emulator, byte1);
+        break;
     // IN
     // OUT
     // ARITHMETIC

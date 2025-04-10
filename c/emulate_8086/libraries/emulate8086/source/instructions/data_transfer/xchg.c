@@ -37,7 +37,7 @@ emu_result_t read_exchange(
     uint16_t* displacement,
     uint8_t* instruction_size
 ) {
-    *instruction_size = 1;
+    *instruction_size = 2;
     *wide = byte1 & 0b00000001;
     uint8_t byte2 = 0;
     if (dcd_read_byte(emulator, (uint8_t*) &byte2) == RI_FAILURE) {
@@ -48,6 +48,7 @@ emu_result_t read_exchange(
     *reg = (byte2 & 0b00111000) >> 3;
     *rm = byte2 & 0b00000111;
     // TODO: read displacement if mod is a certain value:
+    // TODO: also increment instruction size if a displacement is involved.
     // if (*wide == WIDE_BYTE) {
     //     emu_result_t read_data_result = dcd_read_byte(emulator, (uint8_t*)displacement);
     //     *instruction_size += 1;
@@ -63,6 +64,7 @@ emu_result_t read_exchange(
     // }
     return ER_SUCCESS;
 }
+
 emu_result_t decode_exchange(
     emulator_t* emulator,
     uint8_t byte1,
@@ -101,9 +103,13 @@ emu_result_t emu_exchange(emulator_t* emulator, uint8_t byte1) {
 
     emulator->registers.ip += instruction_size;
 
-    // TODO
+    uint16_t* reg_p = emu_get_word_register(&emulator->registers, reg);
+    uint16_t* rm_p = emu_get_word_register(&emulator->registers, rm);
+    uint16_t temp = *reg_p;
+    *reg_p = *rm_p;
+    *rm_p = temp;
 
-    return ER_FAILURE;
+    return ER_SUCCESS;
 }
 
 
@@ -130,9 +136,12 @@ emu_result_t emu_exchange_ax(emulator_t* emulator, uint8_t byte1) {
 
     emulator->registers.ip += 1;
 
-    // TODO
+    uint16_t* reg_p = emu_get_word_register(&emulator->registers, reg);
+    uint16_t temp = emulator->registers.ax;
+    emulator->registers.ax = *reg_p;
+    *reg_p = temp;
 
-    return ER_FAILURE;
+    return ER_SUCCESS;
 }
 
 // MARK: 3. I_PUSH_SEGMENT_REGISTER

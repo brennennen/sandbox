@@ -11,9 +11,8 @@
 
 #include "libraries/emulate8086/include/instructions/conditional_jumps.h"
 
-// Naming this "decode_conditional_jump" causes linker errors with criterion's unit test system
-// TODO: find a better name that works or change unit test libraries if more issues pop up.
-emu_result_t decode_conditional_jump2(
+
+emu_result_t decode_conditional_jump(
     emulator_t* emulator,
     instruction_tag_t tag,
     uint8_t byte1,
@@ -31,11 +30,22 @@ emu_result_t emu_conditional_jump(emulator_t* emulator, instruction_tag_t tag,  
     int8_t jump_offset = 0;
     emu_result_t result = dcd_read_byte(emulator, (uint8_t*) &jump_offset);
 
-    // TODO
-
     return ER_FAILURE;
 }
 
+emu_result_t emu_jne(emulator_t* emulator, uint8_t byte1) {
+    int8_t jump_offset = 0;
+    emu_result_t result = dcd_read_byte(emulator, (uint8_t*) &jump_offset);
+    printf("ip: %d\n", emulator->registers.ip);
+    if ((emulator->registers.flags & FLAG_ZF_MASK) == 0) {
+        // TODO: create safe function for moving index. don't want to jump out of bounds.
+        emulator->program_buffer_index += jump_offset;
+        emulator->registers.ip += jump_offset;
+    } else {
+        emulator->registers.ip += 2;
+    }
+    return ER_SUCCESS;
+}
 
 void write_conditional_jump(
     instruction_tag_t tag,

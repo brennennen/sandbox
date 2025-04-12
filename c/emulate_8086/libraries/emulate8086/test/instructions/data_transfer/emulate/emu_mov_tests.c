@@ -40,8 +40,7 @@ void emu_mov_default_setup(void) {
 // MARK: 1. I_MOVE
 Test(emu__I_MOVE__tests, mov1, .init = emu_mov_default_setup)
 {
-    char* expected = "mov cx, bx\n";
-    uint8_t input[] = { 0x89, 0xd9 };
+    uint8_t input[] = { 0x89, 0xd9 }; // mov cx, bx
     g_emulator.registers.bx = 5;
     cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.instructions_count);
@@ -52,19 +51,42 @@ Test(emu__I_MOVE__tests, mov1, .init = emu_mov_default_setup)
 Test(emu__I_MOVE__tests, mov2, .init = emu_mov_default_setup)
 {
     g_emulator.memory[1000] = 15;
-    char* expected = "mov bx, word [1000]\n";
-    uint8_t input[] = { 0x8b, 0x1e, 0xe8, 0x03 }; // 0b10001011 0b00011110
+    uint8_t input[] = { 0x8b, 0x1e, 0xe8, 0x03 }; // "mov bx, word [1000]" - 0b10001011 0b00011110
     cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.instructions_count);
     cr_assert(4 == g_emulator.registers.ip);
     cr_assert(15 == g_emulator.registers.bx);
 }
 
+Test(emu__I_MOVE__tests, mov3, .init = emu_mov_default_setup)
+{
+    g_emulator.registers.bp = 1000;
+    g_emulator.registers.si = 4;
+    uint8_t input[] = { 0x89, 0x32 }; // "mov word [bp + si], si" - 0b10001001 0b00110010
+    cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
+    cr_assert(1 == g_emulator.instructions_count);
+    cr_assert(2 == g_emulator.registers.ip);
+    cr_assert(4 == g_emulator.memory[1004]);
+    cr_assert(4 == g_emulator.registers.si);
+}
+
+// mov cx, word [bp + si]
+Test(emu__I_MOVE__tests, mov4, .init = emu_mov_default_setup)
+{
+    g_emulator.registers.bp = 1000;
+    g_emulator.registers.si = 4;
+    g_emulator.memory[1004] = 42;
+    uint8_t input[] = { 0x8b, 0x0a }; // "mov cx, word [bp + si]" - 0b10001001 0b00001010
+    cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
+    cr_assert(1 == g_emulator.instructions_count);
+    cr_assert(2 == g_emulator.registers.ip);
+    cr_assert(42 == g_emulator.registers.cx);
+}
+
 // MARK: 2. I_MOVE_IMMEDIATE
 Test(emu__I_MOVE_IMMEDIATE__tests, mov_immediate_1, .init = emu_mov_default_setup)
 {
-    char* expected = "mov word [1000], 1\n";
-    uint8_t input[] = { 0xc7, 0x06, 0xe8, 0x03, 0x01, 0x00 }; // 0b11000111 0b00000110
+    uint8_t input[] = { 0xc7, 0x06, 0xe8, 0x03, 0x01, 0x00 }; // "mov word [1000], 1" - 0b11000111 0b00000110
     cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.instructions_count);
     cr_assert(6 == g_emulator.registers.ip);
@@ -74,8 +96,7 @@ Test(emu__I_MOVE_IMMEDIATE__tests, mov_immediate_1, .init = emu_mov_default_setu
 Test(emu__I_MOVE_IMMEDIATE__tests, mov_immediate_2, .init = emu_mov_default_setup)
 {
     g_emulator.registers.bx = 1000;
-    char* expected = "mov word [bx + 4], 10\n";
-    uint8_t input[] = { 0xc7, 0x47, 0x04, 0x0a, 0x00 }; // 0b11000111 0b01000111
+    uint8_t input[] = { 0xc7, 0x47, 0x04, 0x0a, 0x00 }; // "mov word [bx + 4], 10" - 0b11000111 0b01000111
     cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.instructions_count);
     cr_assert(5 == g_emulator.registers.ip);
@@ -85,18 +106,16 @@ Test(emu__I_MOVE_IMMEDIATE__tests, mov_immediate_2, .init = emu_mov_default_setu
 // MARK: 3. I_MOVE_IMMEDIATE_TO_REGISTER
 Test(emu__I_MOVE_IMMEDIATE_TO_REGISTER__tests, mov_immediate_to_reg_1, .init = emu_mov_default_setup)
 {
-    char* expected = "mov cx, 10\n";
-    uint8_t input[] = { 0xb9, 0x0a, 0x00 }; // 0b10111001 0b00001010 0b00000000
+    uint8_t input[] = { 0xb9, 0x0a, 0x00 }; // "mov cx, 10" - 0b10111001 0b00001010 0b00000000
     cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.instructions_count);
     cr_assert(3 == g_emulator.registers.ip);
     cr_assert(10 == g_emulator.registers.cx);
 }
 
-Test(emu__I_MOVE_IMMEDIATE_TO_REGISTER__tests, mov2, .init = emu_mov_default_setup)
+Test(emu__I_MOVE_IMMEDIATE_TO_REGISTER__tests, mov_immediate_to_reg_2, .init = emu_mov_default_setup)
 {
-    char* expected = "mov cx, 502\n";
-    uint8_t input[] = { 0xb9, 0xf6, 0x01 }; // 0b10111001 0b11110110 0b00000001
+    uint8_t input[] = { 0xb9, 0xf6, 0x01 }; // "mov cx, 502" - 0b10111001 0b11110110 0b00000001
     cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.instructions_count);
     cr_assert(3 == g_emulator.registers.ip);

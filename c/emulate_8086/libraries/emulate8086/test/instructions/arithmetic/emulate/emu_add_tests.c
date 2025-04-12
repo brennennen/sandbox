@@ -25,7 +25,6 @@ Test(emu__I_ADD__tests, add1, .init = emu_add_default_setup)
 {
     // Arrange
     uint8_t input[] = { 0x01, 0xd9 }; // add cx, bx
-    char output[32] = { 0x00 };
     g_emulator.registers.cx = 3;
     g_emulator.registers.bx = 4;
 
@@ -41,10 +40,9 @@ Test(emu__I_ADD__tests, add1, .init = emu_add_default_setup)
 }
 
 // MARK: 2. I_ADD_IMMEDIATE
-Test(emu__I_ADD_IMMEDIATE__tests, add1, .init = emu_add_default_setup)
+Test(emu__I_ADD_IMMEDIATE__tests, add_immediate_1, .init = emu_add_default_setup)
 {
     uint8_t input[] = { 0x83, 0xc1, 0x05 }; // add cx, 5
-    char output[32] = { 0x00 };
     cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.instructions_count);
     cr_assert(3 == g_emulator.registers.ip);
@@ -53,16 +51,24 @@ Test(emu__I_ADD_IMMEDIATE__tests, add1, .init = emu_add_default_setup)
     // TODO: check carry, zero, parity, etc. flags?
 }
 
-Test(emu__I_ADD_IMMEDIATE__tests, add2, .init = emu_add_default_setup)
+Test(emu__I_ADD_IMMEDIATE__tests, add_immediate_2, .init = emu_add_default_setup)
 {
     uint8_t input[] = { 0x83, 0xc1, 0x00 }; // add cx, 0
-    char output[32] = { 0x00 };
-    printf("ip: %d\n", g_emulator.registers.ip);
     cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.instructions_count);
     cr_assert(3 == g_emulator.registers.ip);
     cr_assert(0 == g_emulator.registers.cx);
     cr_assert(FLAG_ZF_MASK == emu_reg_get_flag(g_emulator.registers.flags, FLAG_ZF_MASK));
+    // TODO: check carry, zero, parity, etc. flags?
+}
+
+Test(emu__I_ADD_IMMEDIATE__tests, add_immediate_3, .init = emu_add_default_setup)
+{
+    uint8_t input[] = { 0x83, 0xc6, 0x02 }; // add si, 2
+    cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
+    cr_assert(1 == g_emulator.instructions_count);
+    cr_assert(3 == g_emulator.registers.ip);
+    cr_assert(2 == g_emulator.registers.si);
     // TODO: check carry, zero, parity, etc. flags?
 }
 

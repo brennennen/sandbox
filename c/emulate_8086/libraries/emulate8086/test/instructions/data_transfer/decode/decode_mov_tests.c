@@ -123,6 +123,18 @@ Test(decode__I_MOVE__tests, mov5, .init = default_setup)
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
 
+Test(decode__I_MOVE__tests, mov6, .init = default_setup)
+{
+    char* expected = "mov [bp + si], si\n"; // "mov word [bp + si], si" same bytecode
+    uint8_t input[] = { 0x89, 0x32 }; // 0b10001001 0b00110010
+    char output[32] = { 0x00 };
+    cr_assert(SUCCESS == emu_decode_chunk(
+        &g_decoder, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_decoder.instructions_count);
+    cr_assert(strncmp(expected, output, sizeof(output)) == 0,
+        "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
+}
+
 // MARK: 2. I_MOVE_IMMEDIATE
 // 011000110
 // TODO

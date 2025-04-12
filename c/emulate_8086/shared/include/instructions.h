@@ -397,8 +397,8 @@ static char instruction_tag_mnemonic[][8] = {
  * 0 = the REG field identifies the source operand
  */
 typedef enum {
-    DIR_TO_REGISTER,
-    DIR_FROM_REGISTER,
+    DIR_REG_SOURCE,
+    DIR_REG_DEST,
 } direction_t;
 
 /**
@@ -428,6 +428,7 @@ static char mod_strings[][64] = {
     "Register Mode (no displacement)",
 };
 
+#define REG_DIRECT_ACCESS (0b110) // 6
 typedef enum {
     REG_AL_AX = 0,
     REG_CL_CX = 1,
@@ -438,8 +439,6 @@ typedef enum {
     REG_DH_SI = 6,
     REG_BH_DI = 7,
 } reg_t;
-
-
 
 typedef enum {
     REGB_AL = 0,

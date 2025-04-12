@@ -14,9 +14,9 @@
 #define MEMORY_SIZE 65535 // 64KB (need to add segment register support to address more space)
 
 typedef struct {
-    uint8_t* buffer;
-    size_t buffer_size;
-    int buffer_index;
+    uint8_t* program_buffer;
+    size_t program_buffer_size;
+    int program_buffer_index;
     int current_byte;
     registers_t registers;
     int instructions_count;

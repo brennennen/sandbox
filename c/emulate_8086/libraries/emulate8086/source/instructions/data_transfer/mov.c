@@ -73,26 +73,52 @@ emu_result_t emu_move(emulator_t* emulator, uint8_t byte1) {
     );
     emulator->registers.ip += instruction_size;
 
-    // TODO
-    printf("dir: %d, wide: %d, mode: %d, reg: %d, rm: %d, disp: %d\n",
-        direction, wide, mode, reg, rm, displacement);
     switch(mode) {
+    // TODO: can probably handle all 3 (MOD_MEMORY, MOD_MEMORY_8BIT_DISPLACEMENT, 16bit)
+    // in one case, setting displacement to 0 for MOD_MEMORY.
         case MOD_MEMORY: {
-            if (wide == WIDE_BYTE) {
-                uint8_t data = 0;
-                result_t res = emu_memory_get_byte(emulator, displacement, &data);
-                uint8_t* reg_p = emu_get_byte_register(&emulator->registers, reg);
-                *reg_p = data;
-                return res;
-            } else { // WIDE_WORD
-                uint16_t data = 0;
-                result_t res = emu_memory_get_uint16(emulator, displacement, &data);
-                uint16_t* reg_p = emu_get_word_register(&emulator->registers, reg);
-                *reg_p = data;
-                return res;
+            if (rm == REG_DIRECT_ACCESS) {
+                if (wide == WIDE_BYTE) {
+                    uint8_t source_data = 0;
+                    int res = emu_memory_get_byte(emulator, displacement, &source_data);
+                    uint8_t* dest = emu_get_byte_register(&emulator->registers, reg);
+                    *dest = source_data;
+                    return res;
+                } else { // WIDE_WORD
+                    uint16_t source_data = 0;
+                    int res = emu_memory_get_uint16(emulator, displacement, &source_data);
+                    uint16_t* dest = emu_get_word_register(&emulator->registers, reg);
+                    *dest = source_data;
+                    return res;
+                }
             }
-            printf("emu_move with memory move not implemented (WIP).");
-            return ER_FAILURE;
+            if (wide == WIDE_BYTE) {
+                if (direction == DIR_REG_SOURCE) {
+                    uint8_t* source = emu_get_byte_register(&emulator->registers, reg);
+                    uint32_t dest_address = emu_get_effective_address_mode_memory(&emulator->registers, rm);
+                    return emu_memory_set_byte(emulator, dest_address, *source);
+                } else { // DIR_REG_DEST
+                    uint32_t source_address = emu_get_effective_address_mode_memory(&emulator->registers, rm);
+                    uint8_t source = 0;
+                    result_t res = emu_memory_get_byte(emulator, source_address, &source);
+                    uint8_t* dest = emu_get_byte_register(&emulator->registers, reg);
+                    *dest = source;
+                    return res;
+                }
+            } else { // WIDE_WORD
+                if (direction == DIR_REG_SOURCE) {
+                    uint16_t* source = emu_get_word_register(&emulator->registers, reg);
+                    uint32_t dest_address = emu_get_effective_address_mode_memory(&emulator->registers, rm);
+                    return emu_memory_set_uint16(emulator, dest_address, *source);
+                } else { // DIR_REG_DEST
+                    uint32_t source_address = emu_get_effective_address_mode_memory(&emulator->registers, rm);
+                    uint16_t source = 0;
+                    result_t res = emu_memory_get_uint16(emulator, source_address, &source);
+                    uint16_t* dest = emu_get_word_register(&emulator->registers, reg);
+                    *dest = source;
+                    return res;
+                }
+            }
         }
         case MOD_REGISTER: {
             if (wide == WIDE_BYTE) {
@@ -108,7 +134,7 @@ emu_result_t emu_move(emulator_t* emulator, uint8_t byte1) {
         }
 
         default: {
-            printf("emu_move with non-register movs: not implemented.");
+            printf("emu_move displacement movs: not implemented.");
             return ER_FAILURE;
         }
     }
@@ -249,14 +275,12 @@ emu_result_t read_move_immediate_to_register(
     if (*wide == WIDE_BYTE) {
         emu_result_t read_data_result = dcd_read_byte(emulator, (uint8_t*)immediate);
         *instruction_size += 1;
-        printf("immed to reg data: %d\n", *immediate);
         if (read_data_result != ER_SUCCESS) {
             return FAILURE;
         }
     } else { // WIDE_WORD
         emu_result_t read_data_result = dcd_read_word(emulator, immediate);
         *instruction_size += 2;
-        printf("immed to reg (wide) data: %d\n", *immediate);
         if (read_data_result != ER_SUCCESS) {
             return FAILURE;
         }

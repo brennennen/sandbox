@@ -165,8 +165,6 @@ emu_result_t emu_add_immediate(emulator_t* emulator, uint8_t byte1) {
         // todo: error out?
     }
 
-    printf("sign: %d, wide: %d, mod: %d, rm: %d, displ: %d, immediate: %d\n",
-        sign, wide, mod, rm, displacement, immediate);
     switch(mod) {
         case MOD_REGISTER: {
             if (wide == WIDE_BYTE) {

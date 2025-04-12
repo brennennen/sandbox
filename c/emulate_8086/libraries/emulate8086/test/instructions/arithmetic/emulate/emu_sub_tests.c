@@ -25,7 +25,6 @@ void emu_sub_default_setup(void) {
 Test(emu__I_SUB__tests, sub_1, .init = emu_sub_default_setup)
 {
     uint8_t input[] = { 0x29, 0xd9 }; // sub cx, bx
-    char output[32] = { 0x00 };
     g_emulator.registers.cx = 10;
     g_emulator.registers.bx = 7;
     cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));

@@ -77,18 +77,18 @@ result_t emu_memory_get_uint16(emulator_t* emulator, uint32_t address, uint16_t*
 }
 
 result_iter_t emu_decode_next(emulator_t* decoder, char* out_buffer, int* index, size_t out_buffer_size) {
-    decoder->current_byte = decoder->buffer[decoder->buffer_index];
+    decoder->current_byte = decoder->program_buffer[decoder->program_buffer_index];
     uint8_t byte1 = decoder->current_byte;
-    decoder->buffer_index += 1;
-    if (decoder->buffer_index > decoder->buffer_size) {
+    decoder->program_buffer_index += 1;
+    if (decoder->program_buffer_index > decoder->program_buffer_size) {
         return RI_DONE;
     }
 
     //printf("next: "BYTE_TO_BINARY_PATTERN"\n", BYTE_TO_BINARY(byte1));
     instruction_tag_t instruction_tag = 0;
     uint8_t byte2 = 0;
-    if (decoder->buffer_index < decoder->buffer_size) {
-        byte2 = decoder->buffer[decoder->buffer_index];
+    if (decoder->program_buffer_index < decoder->program_buffer_size) {
+        byte2 = decoder->program_buffer[decoder->program_buffer_index];
     }
     instruction_tag = dcd_decode_tag(byte1, byte2);
 
@@ -196,7 +196,7 @@ result_iter_t emu_decode_next(emulator_t* decoder, char* out_buffer, int* index,
         case I_LOOP_WHILE_EQUAL:
         case I_LOOP_WHILE_NOT_EQUAL:
         case I_JUMP_ON_CX_ZERO:
-            result = decode_conditional_jump2(decoder, instruction_tag, byte1, out_buffer, index, out_buffer_size);
+            result = decode_conditional_jump(decoder, instruction_tag, byte1, out_buffer, index, out_buffer_size);
             break;
         case I_INTERRUPT_TYPE_SPECIFIED:
         case I_INTERRUPT_TYPE_3:
@@ -262,18 +262,18 @@ result_t emu_decode_file(
     fseek(file, 0, SEEK_END);
     int file_size = ftell(file);
     rewind(file);
-    emulator->buffer = (uint8_t*) malloc(file_size);
-    memset(emulator->buffer, 0, file_size);
-    emulator->buffer_index = 0;
-    emulator->buffer_size = file_size;
-    int read_result = fread(emulator->buffer, 1, file_size, file);
+    emulator->program_buffer = (uint8_t*) malloc(file_size);
+    memset(emulator->program_buffer, 0, file_size);
+    emulator->program_buffer_index = 0;
+    emulator->program_buffer_size = file_size;
+    int read_result = fread(emulator->program_buffer, 1, file_size, file);
     if (read_result != file_size) {
         fprintf(stderr, "Failed to read file!\n");
         return FAILURE;
     }
 
     result_t result = emu_decode(emulator, out_buffer, out_buffer_size);
-    free(emulator->buffer);
+    free(emulator->program_buffer);
     return result;
 }
 
@@ -284,15 +284,15 @@ result_t emu_decode_chunk(
     char* out_buffer,
     size_t out_buffer_size)
 {
-    emulator->buffer = in_buffer;
-    emulator->buffer_index = 0;
-    emulator->buffer_size = in_buffer_size;
+    emulator->program_buffer = in_buffer;
+    emulator->program_buffer_index = 0;
+    emulator->program_buffer_size = in_buffer_size;
     return emu_decode(emulator, out_buffer, out_buffer_size);
 }
 
 result_t emu_decode(emulator_t* emulator, char* out_buffer, size_t out_buffer_size) {
-    for (int i = 0; i < emulator->buffer_size; i++) {
-        printf("[%d] "BYTE_TO_BINARY_PATTERN"\n", i, BYTE_TO_BINARY(emulator->buffer[i]));
+    for (int i = 0; i < emulator->program_buffer_size; i++) {
+        printf("[%d] "BYTE_TO_BINARY_PATTERN"\n", i, BYTE_TO_BINARY(emulator->program_buffer[i]));
     }
 
     int index = 0;
@@ -309,23 +309,24 @@ result_t emu_decode(emulator_t* emulator, char* out_buffer, size_t out_buffer_si
 }
 
 result_iter_t emu_next(emulator_t* emulator) {
-    emulator->current_byte = emulator->buffer[emulator->buffer_index];
+    emulator->current_byte = emulator->program_buffer[emulator->program_buffer_index];
     uint8_t byte1 = emulator->current_byte;
-    emulator->buffer_index += 1;
-    if (emulator->buffer_index > emulator->buffer_size) {
+    emulator->program_buffer_index += 1;
+    if (emulator->program_buffer_index > emulator->program_buffer_size) {
         return RI_DONE;
     }
 
-    //printf("next: "BYTE_TO_BINARY_PATTERN"\n", BYTE_TO_BINARY(byte1));
+    if (emulator->instructions_count >= 8192) {
+        printf("hit sentinel limit! probably in an infinite loop!\n");
+        return RI_DONE;
+    }
+
     instruction_tag_t instruction_tag = 0;
     uint8_t byte2 = 0;
-    if (emulator->buffer_index < emulator->buffer_size) {
-        byte2 = emulator->buffer[emulator->buffer_index];
+    if (emulator->program_buffer_index < emulator->program_buffer_size) {
+        byte2 = emulator->program_buffer[emulator->program_buffer_index];
     }
     instruction_tag = dcd_decode_tag(byte1, byte2);
-
-    //instruction_t* instruction = &emulator->instructions[emulator->instructions_count];
-    //instruction->tag = instruction_tag;
     emulator->instructions_count += 1;
 
     emu_result_t result = RI_FAILURE;
@@ -405,15 +406,17 @@ result_iter_t emu_next(emulator_t* emulator) {
         break;
     // ...
     // MARK: CONDITIONAL JUMPS
-    case I_JUMP_ON_EQUAL:
-    case I_JUMP_ON_LESS:
-    case I_JUMP_ON_LESS_OR_EQUAL:
-    case I_JUMP_ON_BELOW:
-    case I_JUMP_ON_BELOW_OR_EQUAL:
-    case I_JUMP_ON_PARITY:
-    case I_JUMP_ON_OVERLFLOW:
-    case I_JUMP_ON_SIGN:
+    // case I_JUMP_ON_EQUAL:
+    // case I_JUMP_ON_LESS:
+    // case I_JUMP_ON_LESS_OR_EQUAL:
+    // case I_JUMP_ON_BELOW:
+    // case I_JUMP_ON_BELOW_OR_EQUAL:
+    // case I_JUMP_ON_PARITY:
+    // case I_JUMP_ON_OVERLFLOW:
+    // case I_JUMP_ON_SIGN:
     case I_JUMP_ON_NOT_EQUAL:
+        result = emu_jne(emulator, byte1);
+        break;
     case I_JUMP_ON_GREATER_OR_EQUAL:
     case I_JUMP_ON_GREATER:
     case I_JUMP_ON_ABOVE_OR_EQUAL:
@@ -485,18 +488,18 @@ result_t emu_emulate_file(emulator_t* emulator, char* input_path) {
     fseek(file, 0, SEEK_END);
     int file_size = ftell(file);
     rewind(file);
-    emulator->buffer = (uint8_t*) malloc(file_size);
-    memset(emulator->buffer, 0, file_size);
-    emulator->buffer_index = 0;
-    emulator->buffer_size = file_size;
-    int read_result = fread(emulator->buffer, 1, file_size, file);
+    emulator->program_buffer = (uint8_t*) malloc(file_size);
+    memset(emulator->program_buffer, 0, file_size);
+    emulator->program_buffer_index = 0;
+    emulator->program_buffer_size = file_size;
+    int read_result = fread(emulator->program_buffer, 1, file_size, file);
     if (read_result != file_size) {
         fprintf(stderr, "Failed to read file!\n");
         return FAILURE;
     }
 
     result_t result = emu_emulate(emulator);
-    free(emulator->buffer);
+    free(emulator->program_buffer);
     return result;
 }
 
@@ -505,15 +508,15 @@ result_t emu_emulate_chunk(
     char* in_buffer,
     size_t in_buffer_size
 ) {
-    emulator->buffer = in_buffer;
-    emulator->buffer_index = 0;
-    emulator->buffer_size = in_buffer_size;
+    emulator->program_buffer = in_buffer;
+    emulator->program_buffer_index = 0;
+    emulator->program_buffer_size = in_buffer_size;
     return emu_emulate(emulator);
 }
 
 result_t emu_emulate(emulator_t* emulator) {
-    for (int i = 0; i < emulator->buffer_size; i++) {
-        printf("[%d] "BYTE_TO_BINARY_PATTERN"\n", i, BYTE_TO_BINARY(emulator->buffer[i]));
+    for (int i = 0; i < emulator->program_buffer_size; i++) {
+        printf("[%d] "BYTE_TO_BINARY_PATTERN"\n", i, BYTE_TO_BINARY(emulator->program_buffer[i]));
     }
 
     result_t result = emu_next(emulator);

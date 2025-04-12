@@ -10,7 +10,7 @@
 #include "libraries/emulate8086/include/emulate8086.h"
 
 // MARK: JE
-emu_result_t decode_conditional_jump2(
+emu_result_t decode_conditional_jump(
     emulator_t* emulator,
     instruction_tag_t tag,
     uint8_t byte1,
@@ -20,6 +20,8 @@ emu_result_t decode_conditional_jump2(
 );
 
 emu_result_t emu_conditional_jump(emulator_t* emulator, instruction_tag_t tag, uint8_t byte1);
+
+emu_result_t emu_jne(emulator_t* emulator, uint8_t byte1);
 
 void write_conditional_jump(
     instruction_tag_t tag,

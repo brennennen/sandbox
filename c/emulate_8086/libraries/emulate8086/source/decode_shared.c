@@ -561,6 +561,36 @@ uint32_t emu_get_effective_address(registers_t* registers, reg_t reg, mod_t mod,
     }
 }
 
+uint32_t emu_get_effective_address_mode_memory(registers_t* registers, reg_t reg) {
+    switch(reg) {
+        case(REG_AL_AX): {
+            return registers->bx + registers->si;
+        }
+        case(REG_CL_CX): {
+            return registers->bx + registers->di;
+        }
+        case(REG_DL_DX): {
+            return registers->bp + registers->si;
+        }
+        case(REG_BL_BX): {
+            return registers->bp + registers->di;
+        }
+        case(REG_AH_SP): {
+            return registers->si;
+        }
+        case(REG_CH_BP): {
+            return registers->di;
+        }
+        case(REG_DH_SI): {
+            // DIRECT ACCESS - this shouldn't be reachable i believe.
+        }
+        case(REG_BH_DI): {
+            return registers->bx;
+        }
+    }
+    return 0; // TODO: known bad value?
+}
+
 void write__common_register_or_memory_with_register_or_memory(
     direction_t direction,
     wide_t wide,
@@ -581,7 +611,7 @@ void write__common_register_or_memory_with_register_or_memory(
         //uint8_t* right = (uint8_t*)&reg;
         uint8_t* right = &reg;
 
-        if (direction == DIR_FROM_REGISTER) {
+        if (direction == DIR_REG_DEST) {
             left = &reg;
             right = &rm;
         }
@@ -605,7 +635,7 @@ void write__common_register_or_memory_with_register_or_memory(
     } else {
         // Special hi-jacked case for immediate value address "direct loading"
         if (mod == MOD_MEMORY && rm == RM_BP) {
-            if (direction == DIR_TO_REGISTER) {
+            if (direction == DIR_REG_SOURCE) {
                 char* reg_string = regb_strings[reg];
                 if (wide == WIDE_WORD) {
                     reg_string = regw_strings[reg];
@@ -634,7 +664,7 @@ void write__common_register_or_memory_with_register_or_memory(
             }
 
         } else {
-            if (direction == DIR_TO_REGISTER) {
+            if (direction == DIR_REG_SOURCE) {
                 char* reg_string = regb_strings[reg];
                 if (wide == WIDE_WORD) {
                     reg_string = regw_strings[reg];
@@ -642,6 +672,7 @@ void write__common_register_or_memory_with_register_or_memory(
                 char effective_address_string[32] = { 0 };
                 build_effective_address(effective_address_string, sizeof(effective_address_string),
                                         wide, mod, rm, displacement);
+                printf("here? dir to reg\n");
                 int written = snprintf(buffer + *index,  buffer_size - *index, "%s %s, %s",
                                         mnemonic,
                                         effective_address_string,

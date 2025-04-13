@@ -18,7 +18,7 @@ void emu_not_default_setup(void) {
 }
 
 // MARK: 1. I_NOT
-Test(emu__I_NOT__tests, not__register__byte, .init = emu_not_default_setup)
+Test(emu__I_NOT__tests, not__register__m8, .init = emu_not_default_setup)
 {
     uint8_t input[] = { 0xf6, 0xd0 }; // "not al" - 0b11110110 0b11010000
     g_emulator.registers.ax = 5; // 0b0101
@@ -28,7 +28,7 @@ Test(emu__I_NOT__tests, not__register__byte, .init = emu_not_default_setup)
     cr_assert(0xFA == g_emulator.registers.ax);
 }
 
-Test(emu__I_NOT__tests, not__register__uint16, .init = emu_not_default_setup)
+Test(emu__I_NOT__tests, not__register__m16, .init = emu_not_default_setup)
 {
     uint8_t input[] = { 0xf7, 0xd0 }; // "not ax" - 0b11110111 0b11010000
     g_emulator.registers.ax = 5; // 0b0101
@@ -38,7 +38,7 @@ Test(emu__I_NOT__tests, not__register__uint16, .init = emu_not_default_setup)
     cr_assert(0xFFFA == g_emulator.registers.ax);
 }
 
-Test(emu__I_NOT__tests, not__direct_access__byte, .init = emu_not_default_setup)
+Test(emu__I_NOT__tests, not__direct_access__m8, .init = emu_not_default_setup)
 {
     uint8_t input[] = { 0xf6, 0x16, 0xe8, 0x03 }; // "not byte [1000]"
     g_emulator.memory[1000] = 10; // 0b1010
@@ -48,7 +48,7 @@ Test(emu__I_NOT__tests, not__direct_access__byte, .init = emu_not_default_setup)
     cr_assert(0xF5 == g_emulator.memory[1000]);
 }
 
-Test(emu__I_NOT__tests, not__direct_access__uint16, .init = emu_not_default_setup)
+Test(emu__I_NOT__tests, not__direct_access__m16, .init = emu_not_default_setup)
 {
     uint8_t input[] = { 0xf7, 0x16, 0xe8, 0x03 }; // "not word [1000]"
     emu_memory_set_uint16(&g_emulator, 1000, 513);
@@ -60,7 +60,7 @@ Test(emu__I_NOT__tests, not__direct_access__uint16, .init = emu_not_default_setu
     cr_assert(0xFDFE == memory_val);
 }
 
-Test(emu__I_NOT__tests, not__memory__byte, .init = emu_not_default_setup)
+Test(emu__I_NOT__tests, not__memory__m8, .init = emu_not_default_setup)
 {
     uint8_t input[] = { 0xf6, 0x17 }; // "not byte [bx]" - 0b11110110 0b00010111
     g_emulator.registers.bx = 1000;
@@ -71,7 +71,7 @@ Test(emu__I_NOT__tests, not__memory__byte, .init = emu_not_default_setup)
     cr_assert(0xF5 == g_emulator.memory[1000]); // 0b11110101
 }
 
-Test(emu__I_NOT__tests, not__memory__uint16, .init = emu_not_default_setup)
+Test(emu__I_NOT__tests, not__memory__m16, .init = emu_not_default_setup)
 {
     uint8_t input[] = { 0xf7, 0x17 }; // "not word [bx]"
     g_emulator.registers.bx = 1000;
@@ -84,7 +84,7 @@ Test(emu__I_NOT__tests, not__memory__uint16, .init = emu_not_default_setup)
     cr_assert(0xFDFE == memory_val);
 }
 
-Test(emu__I_NOT__tests, not__memory_and_displacement__byte, .init = emu_not_default_setup)
+Test(emu__I_NOT__tests, not__memory_and_displacement__m8, .init = emu_not_default_setup)
 {
     uint8_t input[] = { 0xf6, 0x97, 0xe8, 0x03 }; // "not byte [bx + 1000]"
     g_emulator.registers.bx = 500;
@@ -97,7 +97,7 @@ Test(emu__I_NOT__tests, not__memory_and_displacement__byte, .init = emu_not_defa
     cr_assert(0xF5 == g_emulator.memory[1500]);
 }
 
-Test(emu__I_NOT__tests, not__memory_and_displacement__uint16, .init = emu_not_default_setup)
+Test(emu__I_NOT__tests, not__memory_and_displacement__m16, .init = emu_not_default_setup)
 {
     uint8_t input[] = { 0xf7, 0x97, 0xe8, 0x03 }; // "not word [bx + 1000]"
     g_emulator.registers.bx = 500;

@@ -1,10 +1,44 @@
 /**
- * `NOT destination`
- * NOT inverts the bits (forms the one's complement) of the boyte or word operand (8086 Family
- * Users Manual, page 2-47, pdf page ~53).
+ * x64: (not implemented)
  *
- * NOT (invert) has 1 machine instruction on 8086. See datasheet table 4-12 (8086 Family
- * Users Manual, page 4-27, pdf page ~166).
+ * i386: (not implemented)
+ * NOT (Not) inverts the bits in the specified operand to form a one's
+ * complement of the operand. The NOT instruction is a unary operation that
+ * uses a single operand in a register or memory. NOT has no effect on the
+ * flags (Intel 80386 Programmer's Reference Manual, 3.1.2, page 46).
+ *
+ * NOT - One's Complement Negation
+ * | opcode | instruction | clocks | description                    |
+ * |--------|-------------|--------|--------------------------------|
+ * | F6 /2  | NOT r/m8    | 2/6    | Reverse each bit of r/m byte   |
+ * | F7 /2  | NOT r/m16   | 2/6    | Reverse each bit of r/m word   |
+ * | F7 /2  | NOT r/m32   | 2/6    | Reverse each bit of r/m dword  |
+ * Operation:
+ *      r/m <- NOT r/m
+ * Description:
+ *      NOT inverts the operand; every 1 becomes a 0, and vice versa.
+ * Flags Affected:
+ *      None
+ * Protected Mode Exceptions:
+ *      #GP(0) if the result is in a nonwritable segment; #GP(0) for an
+ *      illegal memory operand effective address in the CS, DS, ES, FS, or
+ *      GS segments; #SS(0) for an illegal address in the SS segment;
+ *      #PF(fault-code) for a page fault
+ * Real Address Mode Exceptions:
+ *      Interrupt 13 if any part of the operand would lie outside of the
+ *      effective address space from 0 to 0FFFFH
+ * Virtual 8086 Mode Exceptions:
+ *      Same exceptions as in real-address mode; #PF(fault-code) for a page
+ *      fault.
+ * (Intel 80386 Programmer's Reference Manual, 17.2.2.11, page 356).
+ *
+ * 8086: (fully implemented)
+ * `NOT destination`
+ * NOT inverts the bits (forms the one's complement) of the boyte or word
+ * operand (8086 Family Users Manual, page 2-47, pdf page ~53).
+ *
+ * NOT (invert) has 1 machine instruction on 8086. See datasheet table 4-12
+ * (8086 Family Users Manual, page 4-27, pdf page ~166).
  */
 
  #include <string.h>
@@ -23,17 +57,35 @@
 
 // MARK: NOT
 
-emu_result_t decode_not__direct_access(char* out_buffer, int* index, wide_t wide, uint16_t displacement) {
-    printf("decode_not__direct_access not implemented.\n");
-    return ER_FAILURE;
+// MARK: DECODE
+
+/**
+ * Decodes a `not` instruction on direct memory addresses.
+ * Examples:
+ * `not byte [1000]`
+ * `not word [1000]`
+ */
+static emu_result_t decode_not__direct_access(char* out_buffer, int* index, wide_t wide, uint16_t displacement) {
+    char* width_string = "";
+    if (wide == WIDE_BYTE) {
+        width_string = "byte";
+    } else { // WIDE_WORD
+        width_string = "word";
+    }
+    int written = sprintf(out_buffer + *index, "not %s [%u]", width_string, displacement);
+    *index += written;
+    if (written < 0) {
+        return ER_FAILURE;
+    }
+    return ER_SUCCESS;
 }
 
-emu_result_t decode_not__memory() {
+static emu_result_t decode_not__memory() {
     printf("decode_not__memory not implemented.\n");
     return ER_FAILURE;
 }
 
-emu_result_t decode_not__register(char* out_buffer, int* index, wide_t wide, uint16_t rm) {
+static emu_result_t decode_not__register(char* out_buffer, int* index, wide_t wide, uint16_t rm) {
     char* register_string = "";
     if (wide == WIDE_BYTE) {
         register_string = regb_strings[rm];
@@ -88,6 +140,8 @@ emu_result_t decode_not(
 
     return ER_FAILURE;
 }
+
+// MARK: EMULATE
 
 /**
  * Performs one's complement negation on direct memory addresses.

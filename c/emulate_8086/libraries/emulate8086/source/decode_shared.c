@@ -719,11 +719,29 @@ void write__common_immediate_to_register_or_memory(
     int* index,
     int buffer_size)
 {
-    printf("rm: %d, mod: %d\n", rm, mod);
+    if (mod == MOD_MEMORY && rm == REG_DIRECT_ACCESS) {
+        char* wide_string = "";
+        if (wide == WIDE_BYTE) {
+            wide_string = "byte";
+        } else { // WIDE_WORD
+            wide_string = "word";
+        }
+        int written = snprintf(buffer + *index,  buffer_size - *index, "%s %s [%d], %d\n",
+                                mnemonic,
+                                wide_string,
+                                displacement,
+                                immediate);
+        if (written < 0) {
+            // TODO: propogate error
+        }
+        *index += written;
+        return;
+    }
+
     char effective_address_string[32] = { 0 };
     build_effective_address(effective_address_string, sizeof(effective_address_string),
                             wide, mod, rm, displacement);
-    int written = snprintf(buffer + *index,  buffer_size - *index, "%s %s, %d",
+    int written = snprintf(buffer + *index,  buffer_size - *index, "%s %s, %d\n",
                             mnemonic,
                             effective_address_string,
                             immediate);
@@ -731,6 +749,4 @@ void write__common_immediate_to_register_or_memory(
         // TODO: propogate error
     }
     *index += written;
-    snprintf(buffer + *index, buffer_size - *index, "\n");
-    *index += 1;
 }

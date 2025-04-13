@@ -402,12 +402,15 @@ typedef enum {
 } direction_t;
 
 /**
- *
- * Table 4.7. Single Bit Field Encoding (page 160)
+ * 
+ * 8086: Table 4.7. Single Bit Field Encoding (page 160)
  */
 typedef enum {
-    WIDE_BYTE = 0, // Instruction operates on byte data
-    WIDE_WORD = 1, // Instruction operates on word data
+    WIDE_BYTE = 0, // Instruction operates on byte data (8 bit)
+    WIDE_WORD = 1, // Instruction operates on word data (16 bit)
+    // May expand the scope of this to i386 or x64
+    // WIDE_DWORD = 2, // Instruction operates on double word data (32 bit)
+    // WIDE_QWORD = 3, // Instruction operates on quad word data (64 bit)
 } wide_t;
 
 /**

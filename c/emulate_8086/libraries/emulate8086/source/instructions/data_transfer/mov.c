@@ -15,7 +15,6 @@
  * 5. I_MOVE_AX
  * 6. I_MOVE_TO_SEGMENT_REGISTER
  * 7. I_MOVE_SEGMENT_REGISTER
- *
  */
 
 #include <string.h>
@@ -59,6 +58,89 @@ emu_result_t decode_move(
     return decode_result;
 }
 
+/**
+ * Performs a move between a register and a direct memory address.
+ * Examples:
+ * `mov [1000], bx`
+ * `mov cx, [128]`
+ */
+static emu_result_t emu_move__direct_access(emulator_t* emulator, wide_t wide, uint8_t reg, uint16_t displacement) {
+    if (wide == WIDE_BYTE) {
+        uint8_t source_data = 0;
+        int res = emu_memory_get_byte(emulator, displacement, &source_data);
+        uint8_t* dest = emu_get_byte_register(&emulator->registers, reg);
+        *dest = source_data;
+        return res;
+    } else { // WIDE_WORD
+        uint16_t source_data = 0;
+        int res = emu_memory_get_uint16(emulator, displacement, &source_data);
+        uint16_t* dest = emu_get_word_register(&emulator->registers, reg);
+        *dest = source_data;
+        return res;
+    }
+}
+
+/**
+ * Performs a move between a register and an effective memory address.
+ * Examples:
+ * `mov [cx], bx`
+ * `mov bx, [bx + si + 16]`
+ */
+static emu_result_t emu_move__memory(emulator_t* emulator, direction_t direction, wide_t wide, mod_t mode, uint8_t reg, uint8_t rm, uint16_t displacement) {
+    uint32_t address = emu_get_effective_address(&emulator->registers, rm, mode, displacement);
+    if (wide == WIDE_BYTE) {
+        if (direction == DIR_REG_SOURCE) {
+            uint8_t* source = emu_get_byte_register(&emulator->registers, reg);
+            uint32_t dest_address = emu_get_effective_address(&emulator->registers, rm, mode, displacement);
+            return emu_memory_set_byte(emulator, dest_address, *source);
+        } else { // DIR_REG_DEST
+            uint32_t source_address = emu_get_effective_address(&emulator->registers, rm, mode, displacement);
+            uint8_t source = 0;
+            result_t res = emu_memory_get_byte(emulator, source_address, &source);
+            uint8_t* dest = emu_get_byte_register(&emulator->registers, reg);
+            *dest = source;
+            return res;
+        }
+    } else { // WIDE_WORD
+        if (direction == DIR_REG_SOURCE) {
+            uint16_t* source = emu_get_word_register(&emulator->registers, reg);
+            uint32_t dest_address = emu_get_effective_address(&emulator->registers, rm, mode, displacement);
+            return emu_memory_set_uint16(emulator, dest_address, *source);
+        } else { // DIR_REG_DEST
+            uint32_t source_address = emu_get_effective_address(&emulator->registers, rm, mode, displacement);
+            uint16_t source = 0;
+            result_t res = emu_memory_get_uint16(emulator, source_address, &source);
+            uint16_t* dest = emu_get_word_register(&emulator->registers, reg);
+            *dest = source;
+            return res;
+        }
+    }
+}
+
+/**
+ * Performs a move between 2 registers.
+ * Examples:
+ * `mov bx, cx`
+ * `mov cx, dx`
+ */
+static emu_result_t emu_move__register(emulator_t* emulator, wide_t wide, uint8_t reg, uint8_t rm) {
+    if (wide == WIDE_BYTE) {
+        uint8_t* left = emu_get_byte_register(&emulator->registers, rm);
+        uint8_t* right = emu_get_byte_register(&emulator->registers, reg);
+        *left = *right;
+    } else {
+        uint16_t* left = emu_get_word_register(&emulator->registers, rm);
+        uint16_t* right = emu_get_word_register(&emulator->registers, reg);
+        *left = *right;
+    }
+    return ER_SUCCESS;
+}
+
+/**
+ * Implements the 8086 `mov` instruction first opcode (I_MOVE). Moves an 8 bit or 16
+ * bit value between a source and destination (register to register, register to memory,
+ * or memory to register).
+ */
 emu_result_t emu_move(emulator_t* emulator, uint8_t byte1) {
     direction_t direction = 0;
     wide_t wide = 0;
@@ -73,69 +155,18 @@ emu_result_t emu_move(emulator_t* emulator, uint8_t byte1) {
     );
     emulator->registers.ip += instruction_size;
 
+    if (mode == MOD_MEMORY && rm == REG_DIRECT_ACCESS) {
+        return emu_move__direct_access(emulator, wide, reg, displacement);
+    }
+
     switch(mode) {
-    // TODO: can probably handle all 3 (MOD_MEMORY, MOD_MEMORY_8BIT_DISPLACEMENT, 16bit)
-    // in one case, setting displacement to 0 for MOD_MEMORY.
-        case MOD_MEMORY: {
-            if (rm == REG_DIRECT_ACCESS) {
-                if (wide == WIDE_BYTE) {
-                    uint8_t source_data = 0;
-                    int res = emu_memory_get_byte(emulator, displacement, &source_data);
-                    uint8_t* dest = emu_get_byte_register(&emulator->registers, reg);
-                    *dest = source_data;
-                    return res;
-                } else { // WIDE_WORD
-                    uint16_t source_data = 0;
-                    int res = emu_memory_get_uint16(emulator, displacement, &source_data);
-                    uint16_t* dest = emu_get_word_register(&emulator->registers, reg);
-                    *dest = source_data;
-                    return res;
-                }
-            }
-            if (wide == WIDE_BYTE) {
-                if (direction == DIR_REG_SOURCE) {
-                    uint8_t* source = emu_get_byte_register(&emulator->registers, reg);
-                    uint32_t dest_address = emu_get_effective_address_mode_memory(&emulator->registers, rm);
-                    return emu_memory_set_byte(emulator, dest_address, *source);
-                } else { // DIR_REG_DEST
-                    uint32_t source_address = emu_get_effective_address_mode_memory(&emulator->registers, rm);
-                    uint8_t source = 0;
-                    result_t res = emu_memory_get_byte(emulator, source_address, &source);
-                    uint8_t* dest = emu_get_byte_register(&emulator->registers, reg);
-                    *dest = source;
-                    return res;
-                }
-            } else { // WIDE_WORD
-                if (direction == DIR_REG_SOURCE) {
-                    uint16_t* source = emu_get_word_register(&emulator->registers, reg);
-                    uint32_t dest_address = emu_get_effective_address_mode_memory(&emulator->registers, rm);
-                    return emu_memory_set_uint16(emulator, dest_address, *source);
-                } else { // DIR_REG_DEST
-                    uint32_t source_address = emu_get_effective_address_mode_memory(&emulator->registers, rm);
-                    uint16_t source = 0;
-                    result_t res = emu_memory_get_uint16(emulator, source_address, &source);
-                    uint16_t* dest = emu_get_word_register(&emulator->registers, reg);
-                    *dest = source;
-                    return res;
-                }
-            }
+        case MOD_MEMORY:
+        case MOD_MEMORY_8BIT_DISPLACEMENT:
+        case MOD_MEMORY_16BIT_DISPLACEMENT: {
+            return emu_move__memory(emulator, direction, wide, mode, reg, rm, displacement);
         }
         case MOD_REGISTER: {
-            if (wide == WIDE_BYTE) {
-                uint8_t* left = emu_get_byte_register(&emulator->registers, rm);
-                uint8_t* right = emu_get_byte_register(&emulator->registers, reg);
-                *left = *right;
-            } else {
-                uint16_t* left = emu_get_word_register(&emulator->registers, rm);
-                uint16_t* right = emu_get_word_register(&emulator->registers, reg);
-                *left = *right;
-            }
-            return ER_SUCCESS;
-        }
-
-        default: {
-            printf("emu_move displacement movs: not implemented.");
-            return ER_FAILURE;
+            return emu_move__register(emulator, wide, reg, rm);
         }
     }
     return ER_FAILURE;
@@ -217,6 +248,26 @@ emu_result_t decode_move_immediate(
     return result;
 }
 
+/**
+ * Performs a move between an immediate and a direct memory address.
+ * Examples:
+ * `mov byte [1000], 42`
+ */
+emu_result_t emu_move_immediate__direct_access(emulator_t* emulator, wide_t wide,
+    uint16_t displacement, uint16_t data)
+{
+    if (wide == WIDE_BYTE) {
+        return emu_memory_set_byte(emulator, displacement, data);
+    } else { // WIDE_WORD
+        return emu_memory_set_uint16(emulator, displacement, data);
+    }
+}
+
+/**
+ * Implements the 8086 `mov` instruction first opcode (I_MOVE_IMMEDIATE). Moves
+ * an 8 bit or 16 bit value between a source/destination and an immediate value
+ * (immediate to register or immediate to memory).
+ */
 emu_result_t emu_move_immediate(emulator_t* emulator, uint8_t byte1) {
     wide_t wide = 0;
     mod_t mode = 0;
@@ -230,6 +281,11 @@ emu_result_t emu_move_immediate(emulator_t* emulator, uint8_t byte1) {
         emulator, byte1, &wide, &mode, &subcode, &rm, &displacement, &data, &instruction_size
     );
     emulator->registers.ip += instruction_size;
+
+    if (mode == MOD_MEMORY && rm == REG_DIRECT_ACCESS) {
+        return emu_move_immediate__direct_access(emulator, wide, displacement, data);
+    }
+
     switch(mode) {
         case MOD_MEMORY: {
             if (wide == WIDE_BYTE) {
@@ -307,6 +363,9 @@ emu_result_t decode_move_immediate_to_register(
     return result;
 }
 
+/**
+ *
+ */
 emu_result_t emu_move_immediate_to_register(emulator_t* emulator, uint8_t byte1) {
     wide_t wide = 0;
     uint8_t reg = 0;

@@ -1,7 +1,30 @@
 /**
- * Responsible for decoding the "mov" assembly instruction for the 8086. This instruction
- * can be mapped into 7 different opcode encodings. The order of these encodings will
- * follow the datasheet table 4-12.
+ *
+ * x64:
+ *
+ * i386:
+ * MOV (Move) transfers a byte, word, or doubleword from the source operand to
+ * the destination operand. The MOV instruction is useful for transferring data
+ * along any of these paths. There are also variants of MOV that operate on
+ * segment registers. These are covered in a later section of this chapter.:
+ * * To a register from memory
+ * * To memory from a register
+ * * Between general registers
+ * * Immediate data to a register
+ * * Immediate data to a memory
+ * The MOV instruction cannot move from memory to memory or from segment
+ * register to segment register are not allowed. Memory-to-memory moves can be
+ * performed, however, by the string move instruction MOVS (Intel 80386 Programmer's
+ * Reference Manual, 3.1.1, page 46).
+ *
+ * 8086:
+ * `MOV destination, source`
+ * MOV transfers a byte or a word from the source operand to the destination operand
+ * (Intel 80386 Programmer's Reference Manual, 3.1.2, page 46).
+ *
+ * This instruction can be mapped into 7 different opcode encodings. The order of these
+ * encodings will follow the datasheet table 4-12 (8086 Family Users Manual, page 4-22,
+ * pdf page ~165).
  *
  * 1. I_MOVE
  * 2. I_MOVE_IMMEDIATE

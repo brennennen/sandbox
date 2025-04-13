@@ -27,7 +27,7 @@ void decode_not_default_setup(void) {
 Test(decode__I_NOT__tests, not_1, .init = decode_not_default_setup)
 {
     char* expected = "not ax\n";
-    uint8_t input[] = { 0xf7, 0xd0 }; // 0b11110111 0b11010000
+    uint8_t input[] = { 0xf7, 0xd0 }; // 0b11110111 0b
     char output[32] = { 0x00 };
     cr_assert(SUCCESS == emu_decode_chunk(
         &g_decoder, input, sizeof(input), output, sizeof(output)));

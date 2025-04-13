@@ -32,13 +32,13 @@
 // after each test and has a large default instructions buffer.
 static emulator_t g_decoder;
 
-void default_setup(void) {
+void decode_mov_default_setup(void) {
     memset(&g_decoder, 0, sizeof(emulator_t));
     emu_init(&g_decoder);
 }
 
 // MARK: 1. I_MOVE
-Test(decode__I_MOVE__tests, mov1, .init = default_setup)
+Test(decode__I_MOVE__tests, mov1, .init = decode_mov_default_setup)
 {
     char* expected = "mov cx, bx\n";
     uint8_t input[] = { 0x89, 0xd9 };
@@ -50,7 +50,7 @@ Test(decode__I_MOVE__tests, mov1, .init = default_setup)
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
 
-Test(decode__I_MOVE__tests, mov2, .init = default_setup)
+Test(decode__I_MOVE__tests, mov2, .init = decode_mov_default_setup)
 {
     char* expected = "mov ch, ah\n";
     uint8_t input[] = { 0x88, 0xe5 };
@@ -62,7 +62,7 @@ Test(decode__I_MOVE__tests, mov2, .init = default_setup)
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
 
-Test(decode__I_MOVE__tests, mov3, .init = default_setup)
+Test(decode__I_MOVE__tests, mov3, .init = decode_mov_default_setup)
 {
     char* expected = "mov si, bx\n";
     uint8_t input[] = { 0x89, 0xde };
@@ -74,7 +74,7 @@ Test(decode__I_MOVE__tests, mov3, .init = default_setup)
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
 
-Test(decode__I_MOVE__tests, bulk_mov, .init = default_setup)
+Test(decode__I_MOVE__tests, bulk_mov, .init = decode_mov_default_setup)
 {
     char* expected = "mov cx, bx\n\
 mov ch, ah\n\
@@ -99,7 +99,7 @@ mov bp, ax\n";
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
 
-Test(decode__I_MOVE__tests, mov4, .init = default_setup)
+Test(decode__I_MOVE__tests, mov4, .init = decode_mov_default_setup)
 {
     char* expected = "mov bp, [5]\n";
     uint8_t input[] = { 0x8b, 0x2e, 0x05, 0x00 };
@@ -111,7 +111,7 @@ Test(decode__I_MOVE__tests, mov4, .init = default_setup)
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
 
-Test(decode__I_MOVE__tests, mov5, .init = default_setup)
+Test(decode__I_MOVE__tests, mov5, .init = decode_mov_default_setup)
 {
     char* expected = "mov [bp], ch\n";
     uint8_t input[] = { 0x88, 0x6e, 0x00 };
@@ -123,7 +123,7 @@ Test(decode__I_MOVE__tests, mov5, .init = default_setup)
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
 
-Test(decode__I_MOVE__tests, mov6, .init = default_setup)
+Test(decode__I_MOVE__tests, mov6, .init = decode_mov_default_setup)
 {
     char* expected = "mov [bp + si], si\n"; // "mov word [bp + si], si" same bytecode
     uint8_t input[] = { 0x89, 0x32 }; // 0b10001001 0b00110010
@@ -136,11 +136,20 @@ Test(decode__I_MOVE__tests, mov6, .init = default_setup)
 }
 
 // MARK: 2. I_MOVE_IMMEDIATE
-// 011000110
-// TODO
+Test(decode__I_MOVE_IMMEDIATE__tests, mov_immediate_1, .init = decode_mov_default_setup)
+{
+    char* expected = "mov byte [128], 42\n";
+    uint8_t input[] = { 0xc6, 0x06, 0x80, 0x00, 0x2a };
+    char output[32] = { 0x00 };
+    cr_assert(SUCCESS == emu_decode_chunk(
+            &g_decoder, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_decoder.instructions_count);
+    cr_assert(strncmp(expected, output, sizeof(output)) == 0,
+        "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
+}
 
 // MARK: 3. I_MOVE_IMMEDIATE_TO_REGISTER
-Test(decode__I_MOVE_IMMEDIATE_TO_REGISTER__tests, mov1, .init = default_setup)
+Test(decode__I_MOVE_IMMEDIATE_TO_REGISTER__tests, mov1, .init = decode_mov_default_setup)
 {
     char* expected = "mov cl, 12\n";
     uint8_t input[] = { 0xb1, 0x0c };
@@ -152,7 +161,7 @@ Test(decode__I_MOVE_IMMEDIATE_TO_REGISTER__tests, mov1, .init = default_setup)
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
 
-Test(decode__I_MOVE_IMMEDIATE_TO_REGISTER__tests, mov2, .init = default_setup)
+Test(decode__I_MOVE_IMMEDIATE_TO_REGISTER__tests, mov2, .init = decode_mov_default_setup)
 {
     char* expected = "mov ch, 244\n"; // mov cl, -12 ; cpu doesn't care about signedness until you do an arithmetic operation
     uint8_t input[] = { 0xb5, 0xf4 };
@@ -165,8 +174,7 @@ Test(decode__I_MOVE_IMMEDIATE_TO_REGISTER__tests, mov2, .init = default_setup)
 }
 
 // MARK: 4. I_MOVE_TO_AX
-Test(decode__I_MOVE_TO_AX__tests,
-     mov1, .init = default_setup)
+Test(decode__I_MOVE_TO_AX__tests, mov1, .init = decode_mov_default_setup)
 {
     char* expected = "mov ax, [2555]\n";
     uint8_t input[] = { 0xa1, 0xfb, 0x09 };
@@ -179,8 +187,7 @@ Test(decode__I_MOVE_TO_AX__tests,
 }
 
 // MARK: 5. I_MOVE_AX
-Test(decode__I_MOVE_AX__tests,
-     mov1, .init = default_setup)
+Test(decode__I_MOVE_AX__tests, mov1, .init = decode_mov_default_setup)
 {
     char* expected = "mov [2554], ax\n";
     uint8_t input[] = { 0xa3, 0xfa, 0x09 };
@@ -199,8 +206,7 @@ Test(decode__I_MOVE_AX__tests,
 
 // MARK: MISC
 
-Test(decode__mov_misc__tests,
-     bulk_mov, .init = default_setup)
+Test(decode__mov_misc__tests, bulk_mov, .init = decode_mov_default_setup)
 {
     char* expected = "mov si, bx\n\
 mov dh, al\n\

@@ -8,14 +8,24 @@
  * my_file.asm:
 ```asm
 bits 16
-mov cx, 10
+mov cx, 5
+my_label:
 add cx, 5
+sub cx, 10
+jne my_label
 ```
  * NASM or any other assembler will output bytecode, ex: 0b00000001 0b11011001 ...
- * Running decode takes this bytecode and outputs back:
+ * Running this decode program takes this bytecode as input and outputs back assembly.
+ * Don't always expect a 1 to 1 mapping, JNE and JNZ are the exact same opcode for example, so
+the decoder needs to just pick 1. You may pass a "JNE" instruction to NASM and get a "JNE" back
+from an opcode decoder for example. Also label names get lost when creating opcodes, rather than
+inputting made up label names, I chose to just use the relative offset syntax for decode output.
+ * Example output:
 ```
-mov cx, 10
+mov cx, 5
 add cx, 5
+sub cx, 10
+jne $-6
 ```
  */
 #include <stdio.h>

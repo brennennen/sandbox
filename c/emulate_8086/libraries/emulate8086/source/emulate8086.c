@@ -20,12 +20,16 @@
 #include "libraries/emulate8086/include/instructions/data_transfer/push.h"
 #include "libraries/emulate8086/include/instructions/data_transfer/pop.h"
 #include "libraries/emulate8086/include/instructions/data_transfer/xchg.h"
+
 #include "libraries/emulate8086/include/instructions/arithmetic/add.h"
 #include "libraries/emulate8086/include/instructions/arithmetic/inc.h"
 #include "libraries/emulate8086/include/instructions/arithmetic/sub.h"
 #include "libraries/emulate8086/include/instructions/arithmetic/cmp.h"
 
+#include "libraries/emulate8086/include/instructions/logic/not.h"
+
 #include "libraries/emulate8086/include/instructions/conditional_jumps.h"
+
 #include "libraries/emulate8086/include/instructions/processor_control/clc.h"
 #include "libraries/emulate8086/include/instructions/processor_control/cmc.h"
 #include "libraries/emulate8086/include/instructions/processor_control/stc.h"
@@ -52,8 +56,7 @@ result_t emu_memory_set_byte(emulator_t* emulator, uint32_t address, uint8_t val
 
 result_t emu_memory_set_uint16(emulator_t* emulator, uint32_t address, uint16_t value) {
     if (address + 1 < emulator->memory_size) {
-        // TODO: need to handle le/be shinanigans here? or will this just work?
-        emulator->memory[address] = value;
+        memcpy(&emulator->memory[address], &value, 2);
         return ER_SUCCESS;
     }
     return ER_FAILURE;
@@ -69,8 +72,7 @@ result_t emu_memory_get_byte(emulator_t* emulator, uint32_t address, uint8_t* ou
 
 result_t emu_memory_get_uint16(emulator_t* emulator, uint32_t address, uint16_t* out_value) {
     if (address + 1 < emulator->memory_size) {
-        // TODO: need to handle le/be shinanigans here? or will this just work?
-        *out_value = emulator->memory[address];
+        memcpy((uint8_t*)out_value, &emulator->memory[address], 2);
         return ER_SUCCESS;
     }
     return ER_FAILURE;
@@ -173,6 +175,11 @@ result_iter_t emu_decode_next(emulator_t* decoder, char* out_buffer, int* index,
         // CMP
         case I_COMPARE:
             result = decode_compare(decoder, byte1, out_buffer, index, out_buffer_size);
+            break;
+        // ...
+        // MARK: LOGIC
+        case I_NOT:
+            result = decode_not(decoder, byte1, out_buffer, index, out_buffer_size);
             break;
         // ...
         // MARK: CONDITIONAL JUMPS
@@ -403,6 +410,11 @@ result_iter_t emu_next(emulator_t* emulator) {
     // CMP
     case I_COMPARE:
         result = emu_compare(emulator, byte1);
+        break;
+    // ...
+    // MARK: LOGIC
+    case I_NOT:
+        result = emu_not(emulator, byte1);
         break;
     // ...
     // MARK: CONDITIONAL JUMPS

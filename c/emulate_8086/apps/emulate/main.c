@@ -38,7 +38,6 @@ int main(int argc, char* argv[]) {
     printf("Starting decode on: '%s'\n", input_path);
     emulator_t emulator;
     emu_init(&emulator);
-    char out_buffer[4096] = { 0x00 };
     result_t result = emu_emulate_file(&emulator, argv[1]);
     printf("Emulate result: %s, instructions: %d\n", result_strings[result], emulator.instructions_count);
 

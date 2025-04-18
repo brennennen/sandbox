@@ -14,8 +14,6 @@
 // MARK: NOT
 //
 
-// Use of this global "g_decoder" is to try and reduce the amount of code per test. It's reset
-// after each test and has a large default instructions buffer.
 static emulator_t g_decoder;
 
 void decode_not_default_setup(void) {

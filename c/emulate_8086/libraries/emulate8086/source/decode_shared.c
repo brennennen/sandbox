@@ -139,6 +139,7 @@ emu_result_t emu_decode_common_immediate_format(
         }
         *instruction_size += 1;
     } else {
+        // TODO: 
         emu_result_t read_data_result = dcd_read_word(emulator, data);
         if (read_data_result != ER_SUCCESS) {
             return read_data_result;
@@ -227,6 +228,14 @@ void write_uint8(char* buffer, int* index, size_t buffer_size, uint8_t num) {
 void write_uint16(char* buffer, int* index, size_t buffer_size, uint16_t num) {
     // TODO: write something optimized. just use sprintf for now
     snprintf(buffer + *index, buffer_size - *index, "%d", num);
+}
+
+char* get_wide_string(wide_t wide) {
+    if (wide == WIDE_BYTE) {
+        return "byte";
+    } else { // WIDE_WORD
+        return "word";
+    }
 }
 
 char* mod_memory_effective_address_lookup(uint8_t rm) {
@@ -672,7 +681,6 @@ void write__common_register_or_memory_with_register_or_memory(
                 char effective_address_string[32] = { 0 };
                 build_effective_address(effective_address_string, sizeof(effective_address_string),
                                         wide, mod, rm, displacement);
-                printf("here? dir to reg\n");
                 int written = snprintf(buffer + *index,  buffer_size - *index, "%s %s, %s",
                                         mnemonic,
                                         effective_address_string,
@@ -720,12 +728,7 @@ void write__common_immediate_to_register_or_memory(
     int buffer_size)
 {
     if (mod == MOD_MEMORY && rm == REG_DIRECT_ACCESS) {
-        char* wide_string = "";
-        if (wide == WIDE_BYTE) {
-            wide_string = "byte";
-        } else { // WIDE_WORD
-            wide_string = "word";
-        }
+        char* wide_string = get_wide_string(wide);
         int written = snprintf(buffer + *index,  buffer_size - *index, "%s %s [%d], %d\n",
                                 mnemonic,
                                 wide_string,
@@ -738,15 +741,38 @@ void write__common_immediate_to_register_or_memory(
         return;
     }
 
-    char effective_address_string[32] = { 0 };
-    build_effective_address(effective_address_string, sizeof(effective_address_string),
-                            wide, mod, rm, displacement);
-    int written = snprintf(buffer + *index,  buffer_size - *index, "%s %s, %d\n",
-                            mnemonic,
-                            effective_address_string,
-                            immediate);
-    if (written < 0) {
-        // TODO: propogate error
+    switch(mod) {
+        case MOD_MEMORY:
+        case MOD_MEMORY_8BIT_DISPLACEMENT:
+        case MOD_MEMORY_16BIT_DISPLACEMENT: {
+            char* wide_string = get_wide_string(wide);
+            char effective_address_string[32] = { 0 };
+            build_effective_address(effective_address_string, sizeof(effective_address_string),
+                                    wide, mod, rm, displacement);
+            int written = snprintf(buffer + *index,  buffer_size - *index, "%s %s %s, %d\n",
+                                    mnemonic,
+                                    wide_string,
+                                    effective_address_string,
+                                    immediate);
+            if (written < 0) {
+                // TODO: propogate error
+            }
+            *index += written;
+            break;
+        }
+        case MOD_REGISTER: {
+            char effective_address_string[32] = { 0 };
+            build_effective_address(effective_address_string, sizeof(effective_address_string),
+                                    wide, mod, rm, displacement);
+            int written = snprintf(buffer + *index,  buffer_size - *index, "%s %s, %d\n",
+                                    mnemonic,
+                                    effective_address_string,
+                                    immediate);
+            if (written < 0) {
+                // TODO: propogate error
+            }
+            *index += written;
+            break;
+        }
     }
-    *index += written;
 }

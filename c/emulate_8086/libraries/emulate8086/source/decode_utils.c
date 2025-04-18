@@ -7,7 +7,7 @@
 
 emu_result_t dcd_read_byte(emulator_t* emulator, uint8_t* out_byte) {
     if (emulator->program_buffer_index >= emulator->program_buffer_size) {
-        printf("dcd_read_byte: ER_OUT_OF_BOUNDS. i: %d >= s: %ld\n",
+        printf("dcd_read_byte: ER_OUT_OF_BOUNDS. index (+ read size): %d >= buffer size: %ld\n",
             emulator->program_buffer_index, emulator->program_buffer_size);
         return ER_OUT_OF_BOUNDS;
     }
@@ -18,7 +18,7 @@ emu_result_t dcd_read_byte(emulator_t* emulator, uint8_t* out_byte) {
 
 emu_result_t dcd_read_word(emulator_t* emulator, uint16_t* out_word) {
     if (emulator->program_buffer_index + 1 >= emulator->program_buffer_size) {
-        printf("dcd_read_word: ER_OUT_OF_BOUNDS. i: %d >= s: %ld\n",
+        printf("dcd_read_word: ER_OUT_OF_BOUNDS. index (+ read size): (%d + 1) >= buffer size: %ld\n",
             emulator->program_buffer_index, emulator->program_buffer_size);
         return ER_OUT_OF_BOUNDS;
     }

@@ -27,6 +27,7 @@
 #include "libraries/emulate8086/include/instructions/arithmetic/cmp.h"
 
 #include "libraries/emulate8086/include/instructions/logic/not.h"
+#include "libraries/emulate8086/include/instructions/logic/and.h"
 
 #include "libraries/emulate8086/include/instructions/conditional_jumps.h"
 
@@ -180,6 +181,17 @@ result_iter_t emu_decode_next(emulator_t* decoder, char* out_buffer, int* index,
         // MARK: LOGIC
         case I_NOT:
             result = decode_not(decoder, byte1, out_buffer, index, out_buffer_size);
+            break;
+        // ...
+        // MARK: AND
+        case I_AND:
+            result = decode_and(decoder, byte1, out_buffer, index, out_buffer_size);
+            break;
+        case I_AND_IMMEDIATE:
+            result = decode_and_immediate(decoder, byte1, out_buffer, index, out_buffer_size);
+            break;
+        case I_AND_IMMEDIATE_TO_AX:
+            result = decode_and_immediate_to_ax(decoder, byte1, out_buffer, index, out_buffer_size);
             break;
         // ...
         // MARK: CONDITIONAL JUMPS
@@ -415,6 +427,17 @@ result_iter_t emu_next(emulator_t* emulator) {
     // MARK: LOGIC
     case I_NOT:
         result = emu_not(emulator, byte1);
+        break;
+    // ...
+    // MARK: AND
+    case I_AND:
+        result = emu_and(emulator, byte1);
+        break;
+    case I_AND_IMMEDIATE:
+        result = emu_and_immediate(emulator, byte1);
+        break;
+    case I_AND_IMMEDIATE_TO_AX:
+        result = emu_and_immediate_to_ax(emulator, byte1);
         break;
     // ...
     // MARK: CONDITIONAL JUMPS

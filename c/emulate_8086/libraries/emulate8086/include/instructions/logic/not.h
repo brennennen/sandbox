@@ -35,10 +35,10 @@
  * 8086: (fully implemented)
  * `NOT destination`
  * NOT inverts the bits (forms the one's complement) of the boyte or word
- * operand (8086 Family Users Manual, page 2-47, pdf page ~53).
+ * operand (8086 Family Users Manual, page 2-38, pdf page ~53).
  *
  * NOT (invert) has 1 machine instruction on 8086. See datasheet table 4-12
- * (8086 Family Users Manual, page 4-27, pdf page ~166).
+ * (8086 Family Users Manual, page 4-24, pdf page ~166).
  */
 
 #ifndef EMU_NOT_H

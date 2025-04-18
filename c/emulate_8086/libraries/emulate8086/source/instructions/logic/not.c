@@ -35,24 +35,24 @@
  * 8086: (fully implemented)
  * `NOT destination`
  * NOT inverts the bits (forms the one's complement) of the boyte or word
- * operand (8086 Family Users Manual, page 2-47, pdf page ~53).
+ * operand (8086 Family Users Manual, page 2-38, pdf page ~53).
  *
  * NOT (invert) has 1 machine instruction on 8086. See datasheet table 4-12
- * (8086 Family Users Manual, page 4-27, pdf page ~166).
+ * (8086 Family Users Manual, page 4-24, pdf page ~166).
  */
 
- #include <string.h>
+#include <string.h>
 
- #include "shared/include/binary_utilities.h"
- #include "shared/include/instructions.h"
- #include "shared/include/result.h"
+#include "shared/include/binary_utilities.h"
+#include "shared/include/instructions.h"
+#include "shared/include/result.h"
 
- #include "libraries/emulate8086/include/emulate8086.h"
- #include "libraries/emulate8086/include/emu_registers.h"
- #include "libraries/emulate8086/include/decode_utils.h"
- #include "libraries/emulate8086/include/decode_shared.h"
+#include "libraries/emulate8086/include/emulate8086.h"
+#include "libraries/emulate8086/include/emu_registers.h"
+#include "libraries/emulate8086/include/decode_utils.h"
+#include "libraries/emulate8086/include/decode_shared.h"
 
- #include "libraries/emulate8086/include/instructions/logic/not.h"
+#include "libraries/emulate8086/include/instructions/logic/not.h"
 
 
 // MARK: NOT

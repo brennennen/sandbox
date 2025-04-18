@@ -283,10 +283,10 @@ instruction_tag_t dcd_decode_tag(uint8_t byte1, uint8_t byte2) {
                     return I_AND_IMMEDIATE;
                 // OR 2
                 case 0b00001000:
-                    return I_OR_IMMEDIATE_TO_ACCUMULATOR;
+                    return I_OR_IMMEDIATE;
                 // XOR 2
                 case 0b00110000:
-                    return I_XOR_IMMEDIATE_TO_REGISTER_OR_MEMORY;
+                    return I_XOR_IMMEDIATE;
                 default:
                     break;
             };
@@ -324,7 +324,7 @@ instruction_tag_t dcd_decode_tag(uint8_t byte1, uint8_t byte2) {
 
                 // TEST 2
                 case 0b00000000:
-                    return I_TEST_IMMEDIATE_DATA_AND_REGISTER_OR_MEMORY;
+                    return I_TEST_IMMEDIATE;
 
                 default:
                     break;
@@ -509,47 +509,47 @@ instruction_tag_t dcd_decode_tag(uint8_t byte1, uint8_t byte2) {
 
         // MARK: TEST
         // TODO: TEST1 opcodes overlap with ADC opcodes. Not sure how to differentiate.
-        // TEST 1 - I_TEST_REGISTER_OR_MEMORY_AND_REGISTER - 0b000100xx
+        // TEST 1 - I_TEST- 0b000100xx
         // case 0b00010000:
         // case 0b00010001:
         // case 0b00010010:
         // case 0b00010011:
-        //     return I_TEST_REGISTER_OR_MEMORY_AND_REGISTER;
-        // TEST 2 - I_TEST_IMMEDIATE_DATA_AND_REGISTER_OR_MEMORY - handled by "COMMON 0b1111011x"
-        // TEST 3 - I_TEST_IMMEDIATE_DATA_AND_ACCUMULATOR - 0b1010100x
+        //     return I_TEST;
+        // TEST 2 - I_TEST_IMMEDIATE - handled by "COMMON 0b1111011x"
+        // TEST 3 - I_TEST_IMMEDIATE_TO_AX - 0b1010100x
         case 0b10101000:
         case 0b10101001:
-            return I_TEST_IMMEDIATE_DATA_AND_ACCUMULATOR;
+            return I_TEST_IMMEDIATE_TO_AX;
 
         // MARK: OR
-        // OR 1 - I_OR_REGISTER_OR_MEMORY_AND_REGISTER_TO_EITHER - 0b000010xx
+        // OR 1 - I_OR - 0b000010xx
         case 0b00001000:
         case 0b00001001:
         case 0b00001010:
         case 0b00001011:
-            return I_OR_REGISTER_OR_MEMORY_AND_REGISTER_TO_EITHER;
-        // OR 2 - I_OR_IMMEDIATE_TO_REGISTER_OR_MEMORY - handled by "COMMON 0b100000xx"
-        // OR 3 - I_OR_IMMEDIATE_TO_ACCUMULATOR - 0b0000110x
+            return I_OR;
+        // OR 2 - I_OR_IMMEDIATE - handled by "COMMON 0b100000xx"
+        // OR 3 - I_OR_IMMEDIATE_TO_AX - 0b0000110x
         case 0b00001100:
         case 0b00001101:
-            return I_OR_IMMEDIATE_TO_ACCUMULATOR;
+            return I_OR_IMMEDIATE_TO_AX;
 
         // MARK: XOR
-        // XOR 1 - I_XOR_REGISTER_OR_MEMORY_AND_REGISTER_TO_EITHER - 0b001100xx
+        // XOR 1 - I_XOR - 0b001100xx
         case 0b00110000:
         case 0b00110001:
         case 0b00110010:
         case 0b00110011:
-            return I_XOR_REGISTER_OR_MEMORY_AND_REGISTER_TO_EITHER;
-        // XOR 2 - I_XOR_IMMEDIATE_TO_REGISTER_OR_MEMORY - handled by "COMMON 0b100000xx"
+            return I_XOR;
+        // XOR 2 - I_XOR_IMMEDIATE - handled by "COMMON 0b100000xx"
         // NOTE: typo in data sheet. I'm assuming the first byte field should
         // be "1000000w", and second byte field should be: "mod ??? r/m". This matches
         // "OR 2"s pattern. Found the sub-opcode "110" and verified above with NASM.
         // nasm "mov bl, 12" -> 0b10000000 0b11110011 0b00001100
-        // XOR 3 - I_XOR_IMMEDIATE_TO_ACCUMULATOR - 0b0011010x
+        // XOR 3 - I_XOR_IMMEDIATE_TO_AX - 0b0011010x
         case 0b00110100:
         case 0b00110101:
-            return I_XOR_IMMEDIATE_TO_ACCUMULATOR;
+            return I_XOR_IMMEDIATE_TO_AX;
 
         //
         // MARK: STRING MANIPULATION

@@ -115,7 +115,75 @@ Test(dcd_decode_tag_tests, CMP) {
     cr_assert(I_COMPARE_IMMEDIATE_WITH_AX == dcd_decode_tag(0b00111100, 0));
 }
 
-// LOGIC
+// MARK: LOGIC
+// MARK: NOT
+Test(dcd_decode_tag_tests, NOT) {
+    cr_assert(I_NOT == dcd_decode_tag(0b11110110, 0b00010000));
+}
+
+// MARK: SHL
+Test(dcd_decode_tag_tests, SHL) {
+    cr_assert(I_SHIFT_LOGICAL_LEFT == dcd_decode_tag(0b11010000, 0b00100000));
+}
+
+// MARK: SHR
+Test(dcd_decode_tag_tests, SHR) {
+    cr_assert(I_SHIFT_LOGICAL_RIGHT == dcd_decode_tag(0b11010000, 0b00101000));
+}
+
+// MARK: SAR
+Test(dcd_decode_tag_tests, SAR) {
+    cr_assert(I_SHIFT_ARITHMETIC_RIGHT == dcd_decode_tag(0b11010000, 0b00111000));
+}
+
+// MARK: ROL
+Test(dcd_decode_tag_tests, ROL) {
+    cr_assert(I_ROTATE_LEFT == dcd_decode_tag(0b11010000, 0b00000000));
+}
+
+// MARK: ROR
+Test(dcd_decode_tag_tests, ROR) {
+    cr_assert(I_ROTATE_RIGHT == dcd_decode_tag(0b11010000, 0b00001000));
+}
+
+// MARK: RCL
+Test(dcd_decode_tag_tests, RCL) {
+    cr_assert(I_ROTATE_LEFT_CARRY == dcd_decode_tag(0b11010000, 0b00010000));
+}
+
+// MARK: RCR
+Test(dcd_decode_tag_tests, RCR) {
+    cr_assert(I_ROTATE_RIGHT_CARRY == dcd_decode_tag(0b11010000, 0b00011000));
+}
+
+// MARK: AND
+Test(dcd_decode_tag_tests, AND) {
+    cr_assert(I_AND == dcd_decode_tag(0b00100000, 0));
+    cr_assert(I_AND_IMMEDIATE == dcd_decode_tag(0b10000000, 0b00100000));
+    cr_assert(I_AND_IMMEDIATE_TO_AX == dcd_decode_tag(0b00100100, 0));
+}
+
+// MARK: TEST
+Test(dcd_decode_tag_tests, TEST) {
+    // TODO: TEST datasheet opcodes overlap with ADC opcodes, probably a typo.
+    //cr_assert(I_TEST == dcd_decode_tag(0b00100000, 0));
+    cr_assert(I_TEST_IMMEDIATE == dcd_decode_tag(0b11110110, 0b00000000));
+    cr_assert(I_TEST_IMMEDIATE_TO_AX == dcd_decode_tag(0b10101000, 0));
+}
+
+// MARK: OR
+Test(dcd_decode_tag_tests, OR) {
+    cr_assert(I_OR == dcd_decode_tag(0b00001000, 0));
+    cr_assert(I_OR_IMMEDIATE == dcd_decode_tag(0b10000000, 0b00001000));
+    cr_assert(I_OR_IMMEDIATE_TO_AX == dcd_decode_tag(0b00001100, 0));
+}
+
+// MARK: XOR
+Test(dcd_decode_tag_tests, XOR) {
+    cr_assert(I_XOR == dcd_decode_tag(0b00110000, 0));
+    cr_assert(I_XOR_IMMEDIATE == dcd_decode_tag(0b10000000, 0b00110000));
+    cr_assert(I_XOR_IMMEDIATE_TO_AX == dcd_decode_tag(0b00110100, 0));
+}
 
 // STRING MANIPULATION
 

@@ -15,6 +15,7 @@
 #include "libraries/emulate8086/include/emu_registers.h"
 #include "libraries/emulate8086/include/decode_utils.h"
 #include "libraries/emulate8086/include/decode_tag.h"
+#include "libraries/emulate8086/include/logger.h"
 
 #include "libraries/emulate8086/include/instructions/data_transfer/mov.h"
 #include "libraries/emulate8086/include/instructions/data_transfer/push.h"
@@ -44,6 +45,7 @@ void emu_init(emulator_t* emulator) {
     emulator->stack_size = STACK_SIZE; // using a size here in case i want to make this dynamic/resizable later.
     emulator->stack_top = 0;
     emulator->memory_size = MEMORY_SIZE;
+    emulator->bits_mode = BITS_16;
     memset(emulator->stack, 0, emulator->stack_size);
 }
 
@@ -80,23 +82,21 @@ result_t emu_memory_get_uint16(emulator_t* emulator, uint32_t address, uint16_t*
 }
 
 result_iter_t emu_decode_next(emulator_t* decoder, char* out_buffer, int* index, size_t out_buffer_size) {
-    decoder->current_byte = decoder->program_buffer[decoder->program_buffer_index];
-    uint8_t byte1 = decoder->current_byte;
-    decoder->program_buffer_index += 1;
-    if (decoder->program_buffer_index > decoder->program_buffer_size) {
+    uint8_t byte1 = decoder->memory[decoder->registers.ip];
+    decoder->registers.ip += 1;
+    LOGD("ip: %d, byte1: %x", decoder->registers.ip, byte1);
+
+    // If we reach an empty byte, assume we've hit the end of the program.
+    if (byte1 == 0x00) {
         return RI_DONE;
     }
 
-    //printf("next: "BYTE_TO_BINARY_PATTERN"\n", BYTE_TO_BINARY(byte1));
     instruction_tag_t instruction_tag = 0;
     uint8_t byte2 = 0;
-    if (decoder->program_buffer_index < decoder->program_buffer_size) {
-        byte2 = decoder->program_buffer[decoder->program_buffer_index];
+    if (decoder->registers.ip < decoder->memory_size) {
+        byte2 = decoder->memory[decoder->registers.ip];
     }
     instruction_tag = dcd_decode_tag(byte1, byte2);
-
-    //instruction_t* instruction = &decoder->instructions[decoder->instructions_count];
-    //instruction->tag = instruction_tag;
     decoder->instructions_count += 1;
 
     emu_result_t result = RI_FAILURE;
@@ -266,6 +266,10 @@ result_iter_t emu_decode_next(emulator_t* decoder, char* out_buffer, int* index,
         fprintf(stderr, "Failed to parse instruction! decode_result = %s (%d)\n", emulate_result_strings[result], result);
         return RI_FAILURE;
     }
+
+    snprintf(out_buffer + *index, out_buffer_size - *index, "\n");
+    *index += 1;
+
     return RI_CONTINUE;
 }
 
@@ -275,24 +279,18 @@ result_t emu_decode_file(
     char* out_buffer,
     size_t out_buffer_size)
 {
-    printf("Starting decode file...\n");
+    LOG(LOG_INFO, "Starting decode file: '%s'", input_path);
     FILE* file = fopen(input_path, "r");
-
     fseek(file, 0, SEEK_END);
     int file_size = ftell(file);
     rewind(file);
-    emulator->program_buffer = (uint8_t*) malloc(file_size);
-    memset(emulator->program_buffer, 0, file_size);
-    emulator->program_buffer_index = 0;
-    emulator->program_buffer_size = file_size;
-    int read_result = fread(emulator->program_buffer, 1, file_size, file);
+    int read_result = fread(emulator->memory + PROGRAM_START, 1, file_size, file);
     if (read_result != file_size) {
-        fprintf(stderr, "Failed to read file!\n");
+        LOG(LOG_ERROR, "Failed to read file!\n");
         return FAILURE;
     }
-
+    emulator->registers.ip = PROGRAM_START;
     result_t result = emu_decode(emulator, out_buffer, out_buffer_size);
-    free(emulator->program_buffer);
     return result;
 }
 
@@ -303,17 +301,12 @@ result_t emu_decode_chunk(
     char* out_buffer,
     size_t out_buffer_size)
 {
-    emulator->program_buffer = in_buffer;
-    emulator->program_buffer_index = 0;
-    emulator->program_buffer_size = in_buffer_size;
+    memcpy(emulator->memory + PROGRAM_START, in_buffer, in_buffer_size);
+    emulator->registers.ip = PROGRAM_START;
     return emu_decode(emulator, out_buffer, out_buffer_size);
 }
 
 result_t emu_decode(emulator_t* emulator, char* out_buffer, size_t out_buffer_size) {
-    for (int i = 0; i < emulator->program_buffer_size; i++) {
-        printf("[%d] "BYTE_TO_BINARY_PATTERN"\n", i, BYTE_TO_BINARY(emulator->program_buffer[i]));
-    }
-
     int index = 0;
     result_t result = emu_decode_next(emulator, out_buffer, &index, out_buffer_size);
     while(result == RI_CONTINUE) {
@@ -328,10 +321,11 @@ result_t emu_decode(emulator_t* emulator, char* out_buffer, size_t out_buffer_si
 }
 
 result_iter_t emu_next(emulator_t* emulator) {
-    emulator->current_byte = emulator->program_buffer[emulator->program_buffer_index];
-    uint8_t byte1 = emulator->current_byte;
-    emulator->program_buffer_index += 1;
-    if (emulator->program_buffer_index > emulator->program_buffer_size) {
+    uint8_t byte1 = emulator->memory[emulator->registers.ip];
+    emulator->registers.ip += 1;
+
+    if (byte1 == 0x00) {
+        LOGD("hit 0x00, assuming this is end of program. ip: %d", emulator->registers.ip);
         return RI_DONE;
     }
 
@@ -342,9 +336,10 @@ result_iter_t emu_next(emulator_t* emulator) {
 
     instruction_tag_t instruction_tag = 0;
     uint8_t byte2 = 0;
-    if (emulator->program_buffer_index < emulator->program_buffer_size) {
-        byte2 = emulator->program_buffer[emulator->program_buffer_index];
+    if (emulator->registers.ip < emulator->memory_size) {
+        byte2 = emulator->memory[emulator->registers.ip];
     }
+
     instruction_tag = dcd_decode_tag(byte1, byte2);
     emulator->instructions_count += 1;
 
@@ -517,24 +512,22 @@ result_iter_t emu_next(emulator_t* emulator) {
 }
 
 result_t emu_emulate_file(emulator_t* emulator, char* input_path) {
-    printf("Starting emulate file...\n");
+    LOG(LOG_INFO, "Starting emulate file: %s\n", input_path);
     FILE* file = fopen(input_path, "r");
 
     fseek(file, 0, SEEK_END);
     int file_size = ftell(file);
     rewind(file);
-    emulator->program_buffer = (uint8_t*) malloc(file_size);
-    memset(emulator->program_buffer, 0, file_size);
-    emulator->program_buffer_index = 0;
-    emulator->program_buffer_size = file_size;
-    int read_result = fread(emulator->program_buffer, 1, file_size, file);
+    int read_result = fread(emulator->memory + PROGRAM_START, 1, file_size, file);
     if (read_result != file_size) {
         fprintf(stderr, "Failed to read file!\n");
         return FAILURE;
     }
-
+    printf("byte1: %02X\n", emulator->memory[PROGRAM_START]);
+    emulator->registers.ip = PROGRAM_START;
+    LOGMEM(LOG_INFO, emulator->memory, emulator->registers.ip, sizeof(emulator->memory),
+        "emulator->memory[emulator->registers->ip]");
     result_t result = emu_emulate(emulator);
-    free(emulator->program_buffer);
     return result;
 }
 
@@ -543,17 +536,18 @@ result_t emu_emulate_chunk(
     char* in_buffer,
     size_t in_buffer_size
 ) {
-    emulator->program_buffer = in_buffer;
-    emulator->program_buffer_index = 0;
-    emulator->program_buffer_size = in_buffer_size;
+    memcpy(emulator->memory + PROGRAM_START, in_buffer, in_buffer_size);
+    emulator->registers.ip = PROGRAM_START;
+    LOGD("ip: %d", emulator->registers.ip);
+    LOGMEM(LOG_INFO, emulator->memory, emulator->registers.ip, sizeof(emulator->memory),
+        "emulator->memory[emulator->registers->ip]");
+    emulator->memory[emulator->registers.ip + in_buffer_size] = 0x00;
+    emulator->memory[emulator->registers.ip + in_buffer_size + 1] = 0x00;
+
     return emu_emulate(emulator);
 }
 
 result_t emu_emulate(emulator_t* emulator) {
-    for (int i = 0; i < emulator->program_buffer_size; i++) {
-        printf("[%d] "BYTE_TO_BINARY_PATTERN"\n", i, BYTE_TO_BINARY(emulator->program_buffer[i]));
-    }
-
     result_t result = emu_next(emulator);
     while(result == RI_CONTINUE) {
         result = emu_next(emulator);

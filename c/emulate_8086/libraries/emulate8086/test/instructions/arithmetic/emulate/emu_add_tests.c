@@ -34,7 +34,7 @@ Test(emu__I_ADD__tests, add1, .init = emu_add_default_setup)
     // Assert
     cr_assert(SUCCESS == result);
     cr_assert(1 == g_emulator.instructions_count);
-    cr_assert(2 == g_emulator.registers.ip);
+    cr_assert(PROGRAM_START + 3 == g_emulator.registers.ip);
     cr_assert(7 == g_emulator.registers.cx);
     cr_assert(0 == emu_reg_get_flag(g_emulator.registers.flags, FLAG_ZF_MASK));
 }
@@ -45,7 +45,7 @@ Test(emu__I_ADD_IMMEDIATE__tests, add_immediate_1, .init = emu_add_default_setup
     uint8_t input[] = { 0x83, 0xc1, 0x05 }; // add cx, 5
     cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.instructions_count);
-    cr_assert(3 == g_emulator.registers.ip);
+    cr_assert(PROGRAM_START + 4 == g_emulator.registers.ip);
     cr_assert(5 == g_emulator.registers.cx);
     cr_assert(0 == emu_reg_get_flag(g_emulator.registers.flags, FLAG_ZF_MASK));
     // TODO: check carry, zero, parity, etc. flags?
@@ -56,7 +56,7 @@ Test(emu__I_ADD_IMMEDIATE__tests, add_immediate_2, .init = emu_add_default_setup
     uint8_t input[] = { 0x83, 0xc1, 0x00 }; // add cx, 0
     cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.instructions_count);
-    cr_assert(3 == g_emulator.registers.ip);
+    cr_assert(PROGRAM_START + 4 == g_emulator.registers.ip);
     cr_assert(0 == g_emulator.registers.cx);
     cr_assert(FLAG_ZF_MASK == emu_reg_get_flag(g_emulator.registers.flags, FLAG_ZF_MASK));
     // TODO: check carry, zero, parity, etc. flags?
@@ -67,7 +67,7 @@ Test(emu__I_ADD_IMMEDIATE__tests, add_immediate_3, .init = emu_add_default_setup
     uint8_t input[] = { 0x83, 0xc6, 0x02 }; // add si, 2
     cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.instructions_count);
-    cr_assert(3 == g_emulator.registers.ip);
+    cr_assert(PROGRAM_START + 4 == g_emulator.registers.ip);
     cr_assert(2 == g_emulator.registers.si);
     // TODO: check carry, zero, parity, etc. flags?
 }

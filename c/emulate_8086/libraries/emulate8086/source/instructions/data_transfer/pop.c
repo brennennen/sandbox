@@ -44,18 +44,14 @@ emu_result_t decode_pop_register(
     if (written < 0) {
         return ER_FAILURE;
     }
-
     *index += written;
-    snprintf(out_buffer + *index, out_buffer_size - *index, "\n");
-    *index += 1;
-
     return ER_SUCCESS;
 }
 
 emu_result_t emu_pop_register(emulator_t* emulator, uint8_t byte1) {
     uint8_t reg = byte1 & 0b00000111;
 
-    emulator->registers.ip += 1;
+    //emulator->registers.ip += 1;
 
     return ER_FAILURE;
 }

@@ -134,7 +134,7 @@ emu_result_t decode_and_immediate_to_ax(
         }
     }
 
-    int written = snprintf(out_buffer + *index,  out_buffer_size - *index, "and %s, %d\n",
+    int written = snprintf(out_buffer + *index,  out_buffer_size - *index, "and %s, %d",
         reg_string,
         immediate);
     if (written < 0) {

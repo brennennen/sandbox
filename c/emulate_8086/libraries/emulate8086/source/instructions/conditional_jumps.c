@@ -8,6 +8,7 @@
 #include "libraries/emulate8086/include/emulate8086.h"
 #include "libraries/emulate8086/include/decode_utils.h"
 #include "libraries/emulate8086/include/decode_shared.h"
+#include "libraries/emulate8086/include/logger.h"
 
 #include "libraries/emulate8086/include/instructions/conditional_jumps.h"
 
@@ -36,14 +37,18 @@ emu_result_t emu_conditional_jump(emulator_t* emulator, instruction_tag_t tag,  
 emu_result_t emu_jne(emulator_t* emulator, uint8_t byte1) {
     int8_t jump_offset = 0;
     emu_result_t result = dcd_read_byte(emulator, (uint8_t*) &jump_offset);
-    printf("ip: %d\n", emulator->registers.ip);
     if ((emulator->registers.flags & FLAG_ZF_MASK) == 0) {
         // TODO: create safe function for moving index. don't want to jump out of bounds.
-        emulator->program_buffer_index += jump_offset;
         emulator->registers.ip += jump_offset;
     } else {
-        emulator->registers.ip += 2;
+        //emulator->registers.ip += 2;
     }
+#ifdef DEBUG
+    int index = 0;
+    char buffer[32];
+    write_conditional_jump(I_JUMP_ON_NOT_EQUAL, jump_offset, buffer, &index, sizeof(buffer));
+    LOGDI("%s", buffer);
+#endif
     return ER_SUCCESS;
 }
 
@@ -79,6 +84,4 @@ void write_conditional_jump(
         // TODO: propogate error
     }
     *index += written;
-    snprintf(buffer + *index, buffer_size - *index, "\n");
-    *index += 1;
 }

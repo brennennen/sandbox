@@ -24,6 +24,7 @@
 #include "libraries/emulate8086/include/emu_registers.h"
 #include "libraries/emulate8086/include/decode_utils.h"
 #include "libraries/emulate8086/include/decode_shared.h"
+#include "libraries/emulate8086/include/logger.h"
 
 #include "libraries/emulate8086/include/instructions/arithmetic/add.h"
 
@@ -91,7 +92,11 @@ emu_result_t emu_add(emulator_t* emulator, uint8_t byte1) {
     emu_result_t result = emu_decode_common_standard_format(
         emulator, byte1, &direction, &wide, &mode, &reg, &rm, &displacement, &instruction_size
     );
-    emulator->registers.ip += instruction_size;
+    if (result != ER_SUCCESS) {
+        LOG(LOG_ERROR, "Failed to decode add. ip: %d", emulator->registers.ip);
+        return(result);
+    }
+
 
     switch(mode) {
         case MOD_REGISTER: {
@@ -104,16 +109,23 @@ emu_result_t emu_add(emulator_t* emulator, uint8_t byte1) {
                 uint16_t* source = emu_get_word_register(&emulator->registers, reg);
                 emu_internal_add_16bit(emulator, destination, *source);
             }
-            return ER_SUCCESS;
+            result = ER_SUCCESS;
             break;
         }
         default: {
-            printf("emu_sub with non-register sub: not implemented.");
-            return ER_FAILURE;
+            printf("emu_add with non-register add: not implemented.");
+            result = ER_FAILURE;
             break;
         }
     }
-    return ER_FAILURE;
+#ifdef DEBUG
+    int index = 0;
+    char buffer[32];
+    write__common_register_or_memory_with_register_or_memory(direction, wide, mode,
+        reg, rm, displacement,"add", 3, buffer, &index, sizeof(buffer));
+    LOGD("%s", buffer);
+#endif
+    return result;
 }
 
 // MARK: ADD 2 - I_ADD_IMMEDIATE
@@ -159,7 +171,6 @@ emu_result_t emu_add_immediate(emulator_t* emulator, uint8_t byte1) {
     emu_result_t result = emu_decode_common_signed_immediate_format(
         emulator, byte1, &sign, &wide, &mod, &subcode, &rm, &displacement, &immediate, &instruction_size
     );
-    emulator->registers.ip += instruction_size;
 
     if (result != ER_SUCCESS) {
         // todo: error out?
@@ -174,16 +185,24 @@ emu_result_t emu_add_immediate(emulator_t* emulator, uint8_t byte1) {
                 uint16_t* destination = emu_get_word_register(&emulator->registers, rm);
                 emu_internal_add_16bit(emulator, destination, immediate);
             }
-            return ER_SUCCESS;
+            result = ER_SUCCESS;
             break;
         }
         default: {
             printf("emu_add_immediate: feature not implemented.");
-            return ER_FAILURE;
+            result = ER_FAILURE;
             break;
         }
     }
-    return ER_FAILURE;
+
+#ifdef DEBUG
+    int index = 0;
+    char buffer[32];
+    write__common_immediate_to_register_or_memory(sign, wide, mod, rm, displacement,
+        immediate, "add", 3, buffer, &index, sizeof(buffer));
+    LOGDI("%s", buffer);
+#endif
+    return(result);
 }
 
 // MARK: ADD 3 - I_ADD_IMMEDIATE_TO_AX

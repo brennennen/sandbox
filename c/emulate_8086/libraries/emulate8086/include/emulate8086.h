@@ -12,12 +12,19 @@
 
 #define STACK_SIZE 4096
 #define MEMORY_SIZE 65535 // 64KB (need to add segment register support to address more space)
+#define PROGRAM_START 0x100 // address '0' is usually a forced segfault, write program to some
+                            // offset above and leave bytes around 0 for error detection.
+
+#define DEBUG 1
+
+typedef enum {
+    BITS_16, // 8086 (partially implemented)
+    BITS_32, // i386, x86 (not implemented)
+    BITS_64, // x64 (not implemented)
+} bits_mode_t;
 
 typedef struct {
-    uint8_t* program_buffer;
-    size_t program_buffer_size;
-    int program_buffer_index;
-    int current_byte;
+    bits_mode_t bits_mode;
     registers_t registers;
     int instructions_count;
     uint16_t stack_size; // using a size here in case i want to make this dynamic/resizable later.

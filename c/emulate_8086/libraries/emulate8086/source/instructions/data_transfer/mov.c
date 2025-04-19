@@ -26,6 +26,7 @@
 #include "libraries/emulate8086/include/emulate8086.h"
 #include "libraries/emulate8086/include/decode_utils.h"
 #include "libraries/emulate8086/include/decode_shared.h"
+#include "libraries/emulate8086/include/logger.h"
 
 #include "libraries/emulate8086/include/instructions/data_transfer/mov.h"
 
@@ -37,8 +38,8 @@ emu_result_t decode_move(
     uint8_t byte1,
     char* out_buffer,
     int* index,
-    size_t out_buffer_size)
-{
+    size_t out_buffer_size
+) {
     direction_t direction = 0;
     wide_t wide = 0;
     mod_t mod = 0;
@@ -153,7 +154,7 @@ emu_result_t emu_move(emulator_t* emulator, uint8_t byte1) {
     emu_result_t decode_result = emu_decode_common_standard_format(
         emulator, byte1, &direction, &wide, &mode, &reg, &rm, &displacement, &instruction_size
     );
-    emulator->registers.ip += instruction_size;
+    //emulator->registers.ip += instruction_size;
 
     if (mode == MOD_MEMORY && rm == REG_DIRECT_ACCESS) {
         return emu_move__direct_access(emulator, wide, reg, displacement);
@@ -280,7 +281,6 @@ emu_result_t emu_move_immediate(emulator_t* emulator, uint8_t byte1) {
     emu_result_t result = emu_decode_common_immediate_format(
         emulator, byte1, &wide, &mode, &subcode, &rm, &displacement, &data, &instruction_size
     );
-    emulator->registers.ip += instruction_size;
 
     if (mode == MOD_MEMORY && rm == REG_DIRECT_ACCESS) {
         return emu_move_immediate__direct_access(emulator, wide, displacement, data);
@@ -374,8 +374,6 @@ emu_result_t emu_move_immediate_to_register(emulator_t* emulator, uint8_t byte1)
 
     emu_result_t result = read_move_immediate_to_register(
         emulator, byte1, &wide, &reg, &immediate, &instruction_size);
-    emulator->registers.ip += instruction_size;
-
     if (wide == WIDE_BYTE) {
         uint8_t* left = emu_get_byte_register(&emulator->registers, reg);
         *left = immediate;
@@ -383,6 +381,12 @@ emu_result_t emu_move_immediate_to_register(emulator_t* emulator, uint8_t byte1)
         uint16_t* left = emu_get_word_register(&emulator->registers, reg);
         *left = immediate;
     }
+#ifdef DEBUG
+    int index = 0;
+    char buffer[32];
+    write_move_immediate_to_register(wide, reg, immediate, buffer, &index, sizeof(buffer));
+    LOGDI("%s", buffer);
+#endif
     return ER_SUCCESS;
 }
 
@@ -406,8 +410,6 @@ void write_move_immediate_to_register(
         // TODO: propogate error
     }
     *index += written;
-    snprintf(buffer + *index, buffer_size - *index, "\n");
-    *index += 1;
 }
 
 // MARK: 4. I_MOVE_TO_AX
@@ -470,8 +472,6 @@ void write_move_to_ax(
         // TODO: propogate error
     }
     *index += written;
-    snprintf(buffer + *index, buffer_size - *index, "\n");
-    *index += 1;
 }
 
 // MARK: 5. I_MOVE_AX
@@ -533,6 +533,4 @@ void write_move_ax(
         // TODO: propogate error
     }
     *index += written;
-    snprintf(buffer + *index, buffer_size - *index, "\n");
-    *index += 1;
 }

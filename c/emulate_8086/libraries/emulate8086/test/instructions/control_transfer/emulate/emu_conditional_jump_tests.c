@@ -29,7 +29,7 @@ Test(emulate__conditional_jump__tests, jnz, .init = emulate_conditional_jump_def
     uint8_t input[] = { 0x75, 0xfe }; // "jne $+0"
     cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.instructions_count);
-    cr_assert(2 == g_emulator.registers.ip);
+    cr_assert(PROGRAM_START + 3 == g_emulator.registers.ip);
 }
 
 Test(emulate__conditional_jump__tests, jnz2, .init = emulate_conditional_jump_default_setup)
@@ -61,6 +61,7 @@ Test(emulate__conditional_jump__tests, jnz3, .init = emulate_conditional_jump_de
         0xf9
     };
     cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
+    print_registers_condensed(&g_emulator);
     cr_assert(6 == g_emulator.registers.si);
 }
 

@@ -41,6 +41,6 @@ int main(int argc, char* argv[]) {
     result_t result = emu_emulate_file(&emulator, argv[1]);
     printf("Emulate result: %s, instructions: %d\n", result_strings[result], emulator.instructions_count);
 
-    print_registers(&emulator);
-    print_flags(emulator.registers.flags);
+    print_registers_condensed(&emulator);
+    print_flags_condensed(emulator.registers.flags);
 }

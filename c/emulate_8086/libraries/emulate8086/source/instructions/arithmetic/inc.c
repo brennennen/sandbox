@@ -52,7 +52,7 @@ emu_result_t decode_inc_register(
 ) {
     uint8_t reg = byte1 & 0b00000111;
     char* reg_string = map_register_field_encoding(reg);
-    int written = snprintf(out_buffer + *index,  out_buffer_size - *index, "inc %s\n", reg_string);
+    int written = snprintf(out_buffer + *index,  out_buffer_size - *index, "inc %s", reg_string);
     if (written < 0) {
         return ER_FAILURE;
     }

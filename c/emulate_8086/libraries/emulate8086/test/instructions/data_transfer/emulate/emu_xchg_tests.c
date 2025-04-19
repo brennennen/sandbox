@@ -35,7 +35,7 @@ Test(emu__I_EXCHANGE__tests, xchg1, .init = emu_xchg_default_setup)
     // Assert
     cr_assert(SUCCESS == result);
     cr_assert(1 == g_emulator.instructions_count);
-    cr_assert(2 == g_emulator.registers.ip);
+    cr_assert(PROGRAM_START + 3 == g_emulator.registers.ip);
     cr_assert(2 == g_emulator.registers.bx);
     cr_assert(1 == g_emulator.registers.cx);
 }
@@ -55,7 +55,8 @@ Test(emu__I_EXCHANGE__tests, xchg_ax_1, .init = emu_xchg_default_setup)
     // Assert
     cr_assert(SUCCESS == result);
     cr_assert(1 == g_emulator.instructions_count);
-    cr_assert(1 == g_emulator.registers.ip);
+    printf("ip: %d\n", g_emulator.registers.ip);
+    cr_assert(PROGRAM_START + 2 == g_emulator.registers.ip);
     cr_assert(2 == g_emulator.registers.ax);
     cr_assert(1 == g_emulator.registers.cx);
 }

@@ -10,6 +10,7 @@
 
 #include "libraries/emulate8086/include/emulate8086.h"
 #include "libraries/emulate8086/include/emu_registers.h"
+#include "libraries/emulate8086/include/logger.h"
 
 static emulator_t g_emulator;
 void emu_not_default_setup(void) {
@@ -89,11 +90,13 @@ Test(emu__I_NOT__tests, not__memory_and_displacement__m8, .init = emu_not_defaul
     uint8_t input[] = { 0xf6, 0x97, 0xe8, 0x03 }; // "not byte [bx + 1000]"
     g_emulator.registers.bx = 500;
     g_emulator.memory[1500] = 10;
+    LOGMEM(LOG_INFO, g_emulator.memory, 1500, sizeof(g_emulator.memory), "[1500] before");
     emu_result_t result = emu_emulate_chunk(&g_emulator, input, sizeof(input));
     cr_assert(SUCCESS == result);
     cr_assert(1 == g_emulator.instructions_count);
-    cr_assert(4 == g_emulator.registers.ip);
+    cr_assert(PROGRAM_START + 5 == g_emulator.registers.ip);
     uint16_t memory_val = 0;
+    LOGMEM(LOG_INFO, g_emulator.memory, 1500, sizeof(g_emulator.memory), "[1500] after");
     cr_assert(0xF5 == g_emulator.memory[1500]);
 }
 
@@ -105,7 +108,7 @@ Test(emu__I_NOT__tests, not__memory_and_displacement__m16, .init = emu_not_defau
     emu_result_t result = emu_emulate_chunk(&g_emulator, input, sizeof(input));
     cr_assert(SUCCESS == result);
     cr_assert(1 == g_emulator.instructions_count);
-    cr_assert(4 == g_emulator.registers.ip);
+    cr_assert(PROGRAM_START + 5 == g_emulator.registers.ip); // 5
     uint16_t memory_val = 0;
     emu_memory_get_uint16(&g_emulator, 1500, &memory_val);
     cr_assert(0xFDFE == memory_val);

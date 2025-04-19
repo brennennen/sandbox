@@ -29,6 +29,6 @@ Test(emu__CLC__tests, clc1, .init = emu_clc_default_setup)
     char output[32] = { 0x00 };
     emu_reg_set_flag(&g_emulator.registers.flags, FLAG_CF_MASK);
     cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
-    cr_assert(1 == g_emulator.registers.ip);
+    cr_assert(PROGRAM_START + 2 == g_emulator.registers.ip);
     cr_assert(0 == emu_reg_get_flag(g_emulator.registers.flags, FLAG_CF_MASK));
 }

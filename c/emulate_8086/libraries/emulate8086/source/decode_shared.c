@@ -139,7 +139,7 @@ emu_result_t emu_decode_common_immediate_format(
         }
         *instruction_size += 1;
     } else {
-        // TODO: 
+        // TODO:
         emu_result_t read_data_result = dcd_read_word(emulator, data);
         if (read_data_result != ER_SUCCESS) {
             return read_data_result;
@@ -709,9 +709,6 @@ void write__common_register_or_memory_with_register_or_memory(
             //snprintf(buffer, buffer_size, "NOT IMPLEMENTED!");
         }
     }
-    // TODO: bounds safety checks
-    snprintf(buffer + *index, buffer_size - *index, "\n");
-    *index += 1;
 }
 
 void write__common_immediate_to_register_or_memory(
@@ -729,7 +726,7 @@ void write__common_immediate_to_register_or_memory(
 {
     if (mod == MOD_MEMORY && rm == REG_DIRECT_ACCESS) {
         char* wide_string = get_wide_string(wide);
-        int written = snprintf(buffer + *index,  buffer_size - *index, "%s %s [%d], %d\n",
+        int written = snprintf(buffer + *index,  buffer_size - *index, "%s %s [%d], %d",
                                 mnemonic,
                                 wide_string,
                                 displacement,
@@ -749,7 +746,7 @@ void write__common_immediate_to_register_or_memory(
             char effective_address_string[32] = { 0 };
             build_effective_address(effective_address_string, sizeof(effective_address_string),
                                     wide, mod, rm, displacement);
-            int written = snprintf(buffer + *index,  buffer_size - *index, "%s %s %s, %d\n",
+            int written = snprintf(buffer + *index,  buffer_size - *index, "%s %s %s, %d",
                                     mnemonic,
                                     wide_string,
                                     effective_address_string,
@@ -764,7 +761,7 @@ void write__common_immediate_to_register_or_memory(
             char effective_address_string[32] = { 0 };
             build_effective_address(effective_address_string, sizeof(effective_address_string),
                                     wide, mod, rm, displacement);
-            int written = snprintf(buffer + *index,  buffer_size - *index, "%s %s, %d\n",
+            int written = snprintf(buffer + *index,  buffer_size - *index, "%s %s, %d",
                                     mnemonic,
                                     effective_address_string,
                                     immediate);

@@ -53,6 +53,7 @@
 #include "libraries/emulate8086/include/decode_shared.h"
 
 #include "libraries/emulate8086/include/instructions/logic/not.h"
+#include "libraries/emulate8086/include/logger.h"
 
 
 // MARK: NOT
@@ -181,6 +182,7 @@ static emu_result_t emu_not__memory(emulator_t* emulator, wide_t wide, uint8_t r
         if (res != ER_SUCCESS) {
             return res;
         }
+        LOGD("~%d = %d", source_data, ~source_data);
         return emu_memory_set_byte(emulator, address, ~source_data);
     } else { // WIDE_WORD
         uint16_t source_data = 0;
@@ -226,7 +228,7 @@ emu_result_t emu_not(emulator_t* emulator, uint8_t byte1) {
     emu_result_t result = emu_decode_common_standard_format(
         emulator, byte1, &direction, &wide, &mod, &reg, &rm, &displacement, &instruction_size
     );
-    emulator->registers.ip += instruction_size;
+    //emulator->registers.ip += instruction_size;
 
     if (mod == MOD_MEMORY && rm == REG_DIRECT_ACCESS) {
         return emu_not__direct_access(emulator, wide, displacement);

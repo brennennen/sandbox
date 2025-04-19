@@ -5,24 +5,26 @@
 
 #include "libraries/emulate8086/include/emulate8086.h"
 
+// TODO: move these back to emulate8086 after they work with emulator->memory
+
 emu_result_t dcd_read_byte(emulator_t* emulator, uint8_t* out_byte) {
-    if (emulator->program_buffer_index >= emulator->program_buffer_size) {
-        printf("dcd_read_byte: ER_OUT_OF_BOUNDS. index (+ read size): %d >= buffer size: %ld\n",
-            emulator->program_buffer_index, emulator->program_buffer_size);
+    if (emulator->registers.ip >= emulator->memory_size) {
+        printf("dcd_read_byte: ER_OUT_OF_BOUNDS. ip (+ read size): %d >= memory size: %d\n",
+            emulator->registers.ip, emulator->memory_size);
         return ER_OUT_OF_BOUNDS;
     }
-    *out_byte = emulator->program_buffer[emulator->program_buffer_index];
-    emulator->program_buffer_index += 1;
+    *out_byte = emulator->memory[emulator->registers.ip];
+    emulator->registers.ip += 1;
     return ER_SUCCESS;
 }
 
 emu_result_t dcd_read_word(emulator_t* emulator, uint16_t* out_word) {
-    if (emulator->program_buffer_index + 1 >= emulator->program_buffer_size) {
-        printf("dcd_read_word: ER_OUT_OF_BOUNDS. index (+ read size): (%d + 1) >= buffer size: %ld\n",
-            emulator->program_buffer_index, emulator->program_buffer_size);
+    if (emulator->registers.ip + 1 >= emulator->memory_size) {
+        printf("dcd_read_word: ER_OUT_OF_BOUNDS. ip (+ read size): (%d + 1) >= memory size: %d\n",
+            emulator->registers.ip, emulator->memory_size);
         return ER_OUT_OF_BOUNDS;
     }
-    *out_word = emulator->program_buffer[emulator->program_buffer_index] | (emulator->program_buffer[emulator->program_buffer_index + 1] << 8);
-    emulator->program_buffer_index += 2;
+    *out_word = emulator->memory[emulator->registers.ip] | (emulator->memory[emulator->registers.ip + 1] << 8);
+    emulator->registers.ip += 2;
     return ER_SUCCESS;
 }

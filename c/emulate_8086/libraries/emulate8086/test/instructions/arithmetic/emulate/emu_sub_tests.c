@@ -30,7 +30,7 @@ Test(emu__I_SUB__tests, sub_1, .init = emu_sub_default_setup)
     cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.instructions_count);
     cr_assert(3 == g_emulator.registers.cx);
-    cr_assert(2 == g_emulator.registers.ip);
+    cr_assert(PROGRAM_START + 3 == g_emulator.registers.ip);
 }
 
 // MARK: I_SUB_IMMEDIATE Tests

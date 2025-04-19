@@ -13,6 +13,7 @@
 #include "libraries/emulate8086/include/emu_registers.h"
 #include "libraries/emulate8086/include/decode_utils.h"
 #include "libraries/emulate8086/include/decode_shared.h"
+#include "libraries/emulate8086/include/logger.h"
 
 #include "libraries/emulate8086/include/instructions/arithmetic/sub.h"
 
@@ -80,7 +81,6 @@ emu_result_t emu_sub(emulator_t* emulator, uint8_t byte1) {
     emu_result_t result = emu_decode_common_standard_format(
         emulator, byte1, &direction, &wide, &mode, &reg, &rm, &displacement, &instruction_size
     );
-    emulator->registers.ip += instruction_size;
 
     switch(mode) {
         case MOD_REGISTER: {
@@ -147,7 +147,9 @@ emu_result_t emu_sub_immediate(emulator_t* emulator, uint8_t byte1) {
     emu_result_t result = emu_decode_common_signed_immediate_format(
         emulator, byte1, &sign, &wide, &mod, &subcode, &rm, &displacement, &immediate, &instruction_size
     );
-    emulator->registers.ip += instruction_size;
+    if (result != ER_SUCCESS) {
+        return result;
+    }
 
     switch(mod) {
         case MOD_REGISTER: {
@@ -158,16 +160,23 @@ emu_result_t emu_sub_immediate(emulator_t* emulator, uint8_t byte1) {
                 uint16_t* destination = emu_get_word_register(&emulator->registers, rm);
                 emu_internal_sub_16bit(emulator, destination, immediate);
             }
-            return ER_SUCCESS;
+            result = ER_SUCCESS;
             break;
         }
         default: {
             printf("emu_sub_immediate: feature not implemented.");
-            return ER_FAILURE;
+            result = ER_FAILURE;
             break;
         }
     }
 
+#ifdef DEBUG
+    int index = 0;
+    char buffer[32];
+    write__common_immediate_to_register_or_memory(sign, wide, mod, rm, displacement,
+        immediate, "sub", 3, buffer, &index, sizeof(buffer));
+    LOGDI("%s", buffer);
+#endif
     return result;
 }
 

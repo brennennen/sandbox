@@ -101,7 +101,7 @@ emu_result_t emu_exchange(emulator_t* emulator, uint8_t byte1) {
     emu_result_t result = read_exchange(
         emulator, byte1, &wide, &mod, &reg, &rm, &displacement, &instruction_size);
 
-    emulator->registers.ip += instruction_size;
+    //emulator->registers.ip += instruction_size;
 
     uint16_t* reg_p = emu_get_word_register(&emulator->registers, reg);
     uint16_t* rm_p = emu_get_word_register(&emulator->registers, rm);
@@ -123,7 +123,7 @@ emu_result_t decode_exchange_ax(
 ) {
     uint8_t reg = byte1 & 0b00000111;
     char* reg_string = map_register_field_encoding(reg);
-    int written = snprintf(out_buffer + *index,  out_buffer_size - *index, "xchg %s, ax\n", reg_string);
+    int written = snprintf(out_buffer + *index,  out_buffer_size - *index, "xchg %s, ax", reg_string);
     if (written < 0) {
         return ER_FAILURE;
     }
@@ -133,9 +133,6 @@ emu_result_t decode_exchange_ax(
 
 emu_result_t emu_exchange_ax(emulator_t* emulator, uint8_t byte1) {
     uint8_t reg = byte1 & 0b00000111;
-
-    emulator->registers.ip += 1;
-
     uint16_t* reg_p = emu_get_word_register(&emulator->registers, reg);
     uint16_t temp = emulator->registers.ax;
     emulator->registers.ax = *reg_p;

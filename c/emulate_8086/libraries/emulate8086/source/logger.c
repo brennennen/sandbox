@@ -19,6 +19,8 @@ void log_message(log_level_t level, const char* format, ...) {
     va_list args;
     va_start(args, format);
     vsnprintf(message, sizeof(message), format, args);
+    // TODO: check size against MAX_LOG_MESSAGE_LENGTH to see if we've printed the whole thing?
+    // TODO: assert != MAX_LOG_MESSAGE_LENGTH if in debug mode?
     va_end(args);
 
     fprintf(stdout, "[%s][%s] %s\n", timestamp, log_level_names[level], message);
@@ -44,7 +46,7 @@ void log_debug_message(const char* func, const char* format, ...) {
 
 void log_debug_instruction(const char* func, const char* format, ...) {
     char message[MAX_LOG_MESSAGE_LENGTH];
-    
+
     va_list args;
     va_start(args, format);
     vsnprintf(message, sizeof(message), format, args);
@@ -54,7 +56,7 @@ void log_debug_instruction(const char* func, const char* format, ...) {
 }
 
 
-void log_memory(log_level_t level, char* data, int data_start, int data_size, const char* func, const char* format, ...) {
+void log_memory(char* data, int data_start, int data_size, const char* format, ...) {
     time_t now;
     struct tm timeinfo;
     char timestamp[20];
@@ -69,7 +71,7 @@ void log_memory(log_level_t level, char* data, int data_start, int data_size, co
     vsnprintf(message, sizeof(message), format, args);
     va_end(args);
 
-    fprintf(stdout, "[%s][%s][%s] %s\n", timestamp, log_level_names[level], func, message);
+    fprintf(stdout, "[%s][%s][%s] %s\n", timestamp,  message);
 
     int count = 0;
     int data_address = data_start;

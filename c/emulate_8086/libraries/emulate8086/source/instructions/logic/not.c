@@ -32,7 +32,7 @@
  *      fault.
  * (Intel 80386 Programmer's Reference Manual, 17.2.2.11, page 356).
  *
- * 8086: (fully implemented)
+ * 8086: (mostly implemented)
  * `NOT destination`
  * NOT inverts the bits (forms the one's complement) of the boyte or word
  * operand (8086 Family Users Manual, page 2-38, pdf page ~53).
@@ -66,7 +66,7 @@
  * `not byte [1000]`
  * `not word [1000]`
  */
-static emu_result_t decode_not__direct_access(char* out_buffer, int* index, wide_t wide, uint16_t displacement) {
+static emu_result_t write_not__direct_access(char* out_buffer, int* index, wide_t wide, uint16_t displacement) {
     char* width_string = "";
     if (wide == WIDE_BYTE) {
         width_string = "byte";
@@ -81,12 +81,12 @@ static emu_result_t decode_not__direct_access(char* out_buffer, int* index, wide
     return ER_SUCCESS;
 }
 
-static emu_result_t decode_not__memory() {
-    printf("decode_not__memory not implemented.\n");
+static emu_result_t write_not__memory() {
+    printf("TODO decode_not__memory not implemented.\n");
     return ER_FAILURE;
 }
 
-static emu_result_t decode_not__register(char* out_buffer, int* index, wide_t wide, uint16_t rm) {
+static emu_result_t write_not__register(char* out_buffer, int* index, wide_t wide, uint16_t rm) {
     char* register_string = "";
     if (wide == WIDE_BYTE) {
         register_string = regb_strings[rm];
@@ -102,6 +102,36 @@ static emu_result_t decode_not__register(char* out_buffer, int* index, wide_t wi
     return ER_SUCCESS;
 }
 
+static emu_result_t write_not(
+    direction_t direction,
+    wide_t wide,
+    mod_t mod,
+    uint8_t reg,
+    uint8_t rm,
+    uint16_t displacement,
+    char* out_buffer,
+    int* index,
+    size_t out_buffer_size
+) {
+    if (mod == MOD_MEMORY && rm == REG_DIRECT_ACCESS) {
+        return write_not__direct_access(out_buffer, index, wide, displacement);
+    }
+
+    switch (mod) {
+        case MOD_MEMORY:
+        case MOD_MEMORY_8BIT_DISPLACEMENT:
+        case MOD_MEMORY_16BIT_DISPLACEMENT: {
+            return write_not__memory();
+        }
+        case MOD_REGISTER: {
+            return write_not__register(out_buffer, index, wide, rm);
+        }
+    }
+
+    return ER_FAILURE;
+}
+
+
 /**
  * Decodes the 8086 `not` encoded byte code instruction.
  */
@@ -110,8 +140,8 @@ emu_result_t decode_not(
     uint8_t byte1,
     char* out_buffer,
     int* index,
-    size_t out_buffer_size)
-{
+    size_t out_buffer_size
+) {
     direction_t direction = 0;
     wide_t wide = 0;
     mod_t mod = 0;
@@ -124,22 +154,7 @@ emu_result_t decode_not(
         emulator, byte1, &direction, &wide, &mod, &reg, &rm, &displacement, &instruction_size
     );
 
-    if (mod == MOD_MEMORY && rm == REG_DIRECT_ACCESS) {
-        return decode_not__direct_access(out_buffer, index, wide, displacement);
-    }
-
-    switch (mod) {
-        case MOD_MEMORY:
-        case MOD_MEMORY_8BIT_DISPLACEMENT:
-        case MOD_MEMORY_16BIT_DISPLACEMENT: {
-            return decode_not__memory();
-        }
-        case MOD_REGISTER: {
-            return decode_not__register(out_buffer, index, wide, rm);
-        }
-    }
-
-    return ER_FAILURE;
+    return write_not(direction, wide, mod, reg, rm, displacement, out_buffer, index, out_buffer_size);
 }
 
 // MARK: EMULATE
@@ -228,7 +243,11 @@ emu_result_t emu_not(emulator_t* emulator, uint8_t byte1) {
     emu_result_t result = emu_decode_common_standard_format(
         emulator, byte1, &direction, &wide, &mod, &reg, &rm, &displacement, &instruction_size
     );
-    //emulator->registers.ip += instruction_size;
+    if (result != ER_SUCCESS) {
+        return(result);
+    }
+
+    LOGDIW(write_not, direction, wide, mod, reg, rm, displacement);
 
     if (mod == MOD_MEMORY && rm == REG_DIRECT_ACCESS) {
         return emu_not__direct_access(emulator, wide, displacement);

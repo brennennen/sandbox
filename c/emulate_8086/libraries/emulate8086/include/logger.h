@@ -37,9 +37,17 @@ void log_debug_instruction(const char* func, const char* format, ...);
     #ifdef DO_DEBUG_LOG
         #define LOGD(format, ...) log_debug_message(__func__, format, ##__VA_ARGS__)
         #define LOGDI(format, ...) log_debug_instruction(__func__, format, ##__VA_ARGS__)
+        #define LOGDIW(write_func, ...) \
+            do { \
+                int logdiw_index = 0; \
+                char logdiw_buffer[64]; \
+                write_func(__VA_ARGS__, logdiw_buffer, &logdiw_index, sizeof(logdiw_buffer)); \
+                LOGDI("%s", logdiw_buffer); \
+            } while (0)
     #else
         #define LOGD(format, ...)
         #define LOGDI(format, ...)
+        #define LOGDI2(write_func, ...)
     #endif
 #endif
 

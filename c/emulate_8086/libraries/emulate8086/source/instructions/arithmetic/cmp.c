@@ -80,7 +80,6 @@ emu_result_t emu_compare(emulator_t* emulator, uint8_t byte1) {
     emu_result_t result = emu_decode_common_standard_format(
         emulator, byte1, &direction, &wide, &mode, &reg, &rm, &displacement, &instruction_size
     );
-    //emulator->registers.ip += instruction_size;
 
     switch(mode) {
         case MOD_REGISTER: {
@@ -148,7 +147,6 @@ emu_result_t emu_cmp_immediate(emulator_t* emulator, uint8_t byte1) {
     emu_result_t result = emu_decode_common_signed_immediate_format(
         emulator, byte1, &sign, &wide, &mod, &subcode, &rm, &displacement, &immediate, &instruction_size
     );
-    //emulator->registers.ip += instruction_size;
 
     switch(mod) {
         case MOD_REGISTER: {

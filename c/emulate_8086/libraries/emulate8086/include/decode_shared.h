@@ -8,6 +8,25 @@
 
 #include "libraries/emulate8086/include/decode_utils.h"
 
+
+static inline uint16_t emu_sign_extend_m8_to_m16(int8_t data) {
+    // Performs a "signed extension" by taking advantage of c's 2 complement
+    // implementation and casting.
+    //
+    // To save bytes, all 1 or all 0 leading immediates may truncate upper bytes.
+    // That is, 0xFFF0 turns into 0xF0 in the machine code with the sign extension
+    // and wide bits set. This (double) cast performs signed extension, so passing
+    // in 0xF0 to this function turns it into 0xFFF0 (double cast assuming you pass
+    // in a uint16_t, which is casted down to an int8_t).
+    //
+    // Example of what this function does:
+    // Goal: turn 0xF0 back into 0xFFF0
+    // uint16_t data = 0xF0 // 0xF0
+    // int8_t temp = (int8_t) data; // 0xF0
+    // uint16_t data = (uint16_t) temp; // 0xFFF0
+    return (uint16_t)data;
+}
+
 emu_result_t read_displacement(
     emulator_t* emulator, mod_t mod,
     uint8_t rm, uint16_t* displacement,

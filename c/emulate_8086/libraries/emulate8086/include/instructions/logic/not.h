@@ -32,7 +32,7 @@
  *      fault.
  * (Intel 80386 Programmer's Reference Manual, 17.2.2.11, page 356).
  *
- * 8086: (fully implemented)
+ * 8086: (partially implemented)
  * `NOT destination`
  * NOT inverts the bits (forms the one's complement) of the boyte or word
  * operand (8086 Family Users Manual, page 2-38, pdf page ~53).

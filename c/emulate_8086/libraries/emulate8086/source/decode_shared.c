@@ -159,7 +159,7 @@ emu_result_t emu_decode_common_signed_immediate_format(
     uint8_t* subcode,
     uint8_t* rm,
     uint16_t* displacement,
-    uint16_t* data,
+    uint16_t* immediate,
     uint8_t* instruction_size
 ) {
     *instruction_size = 1;
@@ -168,7 +168,7 @@ emu_result_t emu_decode_common_signed_immediate_format(
     uint8_t byte2 = 0;
     emu_result_t read_byte2_result = dcd_read_byte(emulator, (uint8_t*) &byte2);
     if (read_byte2_result != ER_SUCCESS) {
-        return read_byte2_result;
+        return(read_byte2_result);
     }
     *instruction_size += 1;
 
@@ -178,7 +178,7 @@ emu_result_t emu_decode_common_signed_immediate_format(
         if (*rm == 0b00000110) {
             emu_result_t read_displace_result = dcd_read_word(emulator, displacement);
             if (read_displace_result != ER_SUCCESS) {
-                return read_displace_result;
+                return(read_displace_result);
             }
             *instruction_size += 2;
         }
@@ -191,7 +191,7 @@ emu_result_t emu_decode_common_signed_immediate_format(
     } else if (*mod == MOD_MEMORY_16BIT_DISPLACEMENT) {
         emu_result_t read_displace_result = dcd_read_word(emulator, displacement);
         if (read_displace_result != ER_SUCCESS) {
-            return read_displace_result;
+            return(read_displace_result);
         }
         *instruction_size += 2;
     } else { // MOD_REGISTER
@@ -199,25 +199,32 @@ emu_result_t emu_decode_common_signed_immediate_format(
     }
 
     if (*wide == WIDE_BYTE) {
-        emu_result_t read_data_result = dcd_read_byte(emulator, (uint8_t*) data);
+        emu_result_t read_immediate_result = dcd_read_byte(emulator, (uint8_t*) immediate);
+        if (read_immediate_result != ER_SUCCESS) {
+            return(read_immediate_result);
+        }
         *instruction_size += 1;
     } else {
         if (*sign == 0) {
-            emu_result_t read_data_result = dcd_read_word(emulator, data);
-            if (read_data_result != ER_SUCCESS) {
-                return read_data_result;
+            emu_result_t read_immediate_result = dcd_read_word(emulator, immediate);
+            if (read_immediate_result != ER_SUCCESS) {
+                return(read_immediate_result);
             }
             *instruction_size += 2;
         } else {
-            emu_result_t read_data_result = dcd_read_byte(emulator, (uint8_t*) data);
-            if (read_data_result != ER_SUCCESS) {
-                return read_data_result;
+            emu_result_t read_immediate_result = dcd_read_byte(emulator, (uint8_t*) immediate);
+            if (read_immediate_result != ER_SUCCESS) {
+                return(read_immediate_result);
             }
             *instruction_size += 1;
         }
     }
 
-    return ER_SUCCESS;
+    if (*sign && *wide == WIDE_WORD) {
+        *immediate = emu_sign_extend_m8_to_m16(*immediate);
+    }
+
+    return(ER_SUCCESS);
 }
 
 void write_uint8(char* buffer, int* index, size_t buffer_size, uint8_t num) {

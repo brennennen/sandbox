@@ -154,7 +154,8 @@ emu_result_t emu_move(emulator_t* emulator, uint8_t byte1) {
     emu_result_t decode_result = emu_decode_common_standard_format(
         emulator, byte1, &direction, &wide, &mode, &reg, &rm, &displacement, &instruction_size
     );
-    //emulator->registers.ip += instruction_size;
+
+    LOGDIW(write__common_register_or_memory_with_register_or_memory, direction, wide, mode, reg, rm, displacement, "mov", 3);
 
     if (mode == MOD_MEMORY && rm == REG_DIRECT_ACCESS) {
         return emu_move__direct_access(emulator, wide, reg, displacement);
@@ -381,13 +382,10 @@ emu_result_t emu_move_immediate_to_register(emulator_t* emulator, uint8_t byte1)
         uint16_t* left = emu_get_word_register(&emulator->registers, reg);
         *left = immediate;
     }
-#ifdef DEBUG
-    int index = 0;
-    char buffer[32];
-    write_move_immediate_to_register(wide, reg, immediate, buffer, &index, sizeof(buffer));
-    LOGDI("%s", buffer);
-#endif
-    return ER_SUCCESS;
+
+    LOGDIW(write_move_immediate_to_register, wide, reg, immediate);
+
+    return(ER_SUCCESS);
 }
 
 void write_move_immediate_to_register(
@@ -450,7 +448,9 @@ emu_result_t emu_move_to_ax(emulator_t* emulator, uint8_t byte1) {
 
     // TODO
 
-    return ER_FAILURE;
+    LOGDIW(write_move_to_ax, wide, address);
+
+    return(ER_FAILURE);
 }
 
 void write_move_to_ax(
@@ -510,6 +510,8 @@ emu_result_t emu_move_ax(emulator_t* emulator, uint8_t byte1) {
     emu_result_t result = read_move_ax(emulator, byte1, &wide, &address);
 
     // TODO
+
+    LOGDIW(write_move_ax, wide, address);
 
     return ER_FAILURE;
 }

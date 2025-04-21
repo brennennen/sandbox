@@ -97,7 +97,6 @@ emu_result_t emu_add(emulator_t* emulator, uint8_t byte1) {
         return(result);
     }
 
-
     switch(mode) {
         case MOD_REGISTER: {
             if (wide == WIDE_BYTE) {
@@ -118,13 +117,7 @@ emu_result_t emu_add(emulator_t* emulator, uint8_t byte1) {
             break;
         }
     }
-#ifdef DEBUG
-    int index = 0;
-    char buffer[32];
-    write__common_register_or_memory_with_register_or_memory(direction, wide, mode,
-        reg, rm, displacement,"add", 3, buffer, &index, sizeof(buffer));
-    LOGD("%s", buffer);
-#endif
+    LOGDIW(write__common_register_or_memory_with_register_or_memory, direction, wide, mode, reg, rm, displacement,"add", 3);
     return result;
 }
 
@@ -173,7 +166,7 @@ emu_result_t emu_add_immediate(emulator_t* emulator, uint8_t byte1) {
     );
 
     if (result != ER_SUCCESS) {
-        // todo: error out?
+        return(result);
     }
 
     switch(mod) {
@@ -189,19 +182,12 @@ emu_result_t emu_add_immediate(emulator_t* emulator, uint8_t byte1) {
             break;
         }
         default: {
-            printf("emu_add_immediate: feature not implemented.");
+            printf("todo - emu_add_immediate: feature not implemented.");
             result = ER_FAILURE;
             break;
         }
     }
-
-#ifdef DEBUG
-    int index = 0;
-    char buffer[32];
-    write__common_immediate_to_register_or_memory(sign, wide, mod, rm, displacement,
-        immediate, "add", 3, buffer, &index, sizeof(buffer));
-    LOGDI("%s", buffer);
-#endif
+    LOGDIW(write__common_immediate_to_register_or_memory, sign, wide, mod, rm, displacement, immediate, "add", 3);
     return(result);
 }
 

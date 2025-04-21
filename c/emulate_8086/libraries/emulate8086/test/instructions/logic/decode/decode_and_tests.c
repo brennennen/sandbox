@@ -55,6 +55,19 @@ Test(decode__I_AND_IMMEDIATE__tests, and_immediate_2, .init = decode_and_default
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
 
+Test(decode__I_AND_IMMEDIATE__tests, and_immediate_3_signed_extension, .init = decode_and_default_setup)
+{
+    char* expected = "and cx, 65408\n"; // "and cx, 0xFF80\n";
+    uint8_t input[] = { 0x83, 0xe1, 0x80 };
+    char output[32] = { 0x00 };
+    cr_assert(SUCCESS == emu_decode_chunk(
+        &g_decoder, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_decoder.instructions_count);
+    cr_assert(strncmp(expected, output, sizeof(output)) == 0,
+        "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
+}
+
+
 // MARK: I_AND_IMMEDIATE_TO_AX
 Test(decode__I_AND_IMMEDIATE_TO_AX__tests, and_immediate_to_ax_1, .init = decode_and_default_setup)
 {

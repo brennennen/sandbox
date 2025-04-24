@@ -7,7 +7,7 @@ project "emulate_intel"
     language "C"
     targetdir "bin/%{cfg.buildcfg}"
     files { "./libraries/emulate_intel/include/**.h", "./libraries/emulate_intel/source/**.c" }
-    includedirs { "./librares/emulate_intel/include", "./shared/include", "." }
+    includedirs { "./libraries/emulate_intel/include", "./shared/include", "." }
     filter "configurations:Debug"
         defines { "DEBUG" }
         symbols "On"

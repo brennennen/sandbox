@@ -10,7 +10,7 @@
 #include "shared/include/instructions.h"
 #include "shared/include/registers.h"
 
-#include "../emulate.h"
+#include "emulate.h"
 
 result_t emu_i386_decode(emulator_t* decoder, char* out_buffer, size_t out_buffer_size);
 

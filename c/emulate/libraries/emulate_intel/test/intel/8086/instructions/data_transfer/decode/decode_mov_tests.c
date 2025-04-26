@@ -20,21 +20,21 @@
 
 #include <criterion/criterion.h>
 
-#include "shared/include/instructions.h"
+#include "8086/instruction_tags_8086.h"
 
-#include "libraries/emulate_intel/include/emulate.h"
+#include "8086/emulate_8086.h"
 
 //
 // MARK: MOV
 //
 
-// Use of this global "g_decoder" is to try and reduce the amount of code per test. It's reset
+// Use of this global "g_emulator" is to try and reduce the amount of code per test. It's reset
 // after each test and has a large default instructions buffer.
-static emulator_t g_decoder;
+static emulator_8086_t g_emulator;
 
 void decode_mov_default_setup(void) {
-    memset(&g_decoder, 0, sizeof(emulator_t));
-    emu_init(&g_decoder);
+    memset(&g_emulator, 0, sizeof(emulator_8086_t));
+    emu_8086_init(&g_emulator);
 }
 
 // MARK: 1. I_MOVE
@@ -43,9 +43,9 @@ Test(decode__I_MOVE__tests, mov1, .init = decode_mov_default_setup)
     char* expected = "mov cx, bx\n";
     uint8_t input[] = { 0x89, 0xd9 };
     char output[32] = { 0x00 };
-    cr_assert(SUCCESS == emu_decode_chunk(
-        &g_decoder, input, sizeof(input), output, sizeof(output)));
-    cr_assert(1 == g_decoder.instructions_count);
+    cr_assert(SUCCESS == emu_8086_decode_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
     cr_assert(strncmp(expected, output, sizeof(output)) == 0,
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
@@ -55,9 +55,9 @@ Test(decode__I_MOVE__tests, mov2, .init = decode_mov_default_setup)
     char* expected = "mov ch, ah\n";
     uint8_t input[] = { 0x88, 0xe5 };
     char output[16] = { 0x00 };
-    cr_assert(SUCCESS == emu_decode_chunk(
-        &g_decoder, input, sizeof(input), output, sizeof(output)));
-    cr_assert(1 == g_decoder.instructions_count);
+    cr_assert(SUCCESS == emu_8086_decode_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
     cr_assert(strncmp(expected, output, sizeof(output)) == 0,
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
@@ -67,9 +67,9 @@ Test(decode__I_MOVE__tests, mov3, .init = decode_mov_default_setup)
     char* expected = "mov si, bx\n";
     uint8_t input[] = { 0x89, 0xde };
     char output[16] = { 0x00 };
-    cr_assert(SUCCESS == emu_decode_chunk(
-        &g_decoder, input, sizeof(input), output, sizeof(output)));
-    cr_assert(1 == g_decoder.instructions_count);
+    cr_assert(SUCCESS == emu_8086_decode_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
     cr_assert(strncmp(expected, output, sizeof(output)) == 0,
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
@@ -92,9 +92,9 @@ mov bp, ax\n";
         0x88, 0xed, 0x89, 0xc3, 0x89, 0xf3, 0x89, 0xfc, 0x89, 0xc5
     };
     char output[256] = { 0x00 };
-    cr_assert(SUCCESS == emu_decode_chunk(
-        &g_decoder, input, sizeof(input), output, sizeof(output)));
-    cr_assert(11 == g_decoder.instructions_count);
+    cr_assert(SUCCESS == emu_8086_decode_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(11 == g_emulator.instructions_count);
     cr_assert(strncmp(expected, output, sizeof(output)) == 0,
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
@@ -104,9 +104,9 @@ Test(decode__I_MOVE__tests, mov4, .init = decode_mov_default_setup)
     char* expected = "mov bp, [5]\n";
     uint8_t input[] = { 0x8b, 0x2e, 0x05, 0x00 };
     char output[16] = { 0x00 };
-    cr_assert(SUCCESS == emu_decode_chunk(
-        &g_decoder, input, sizeof(input), output, sizeof(output)));
-    cr_assert(1 == g_decoder.instructions_count);
+    cr_assert(SUCCESS == emu_8086_decode_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
     cr_assert(strncmp(expected, output, sizeof(output)) == 0,
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
@@ -116,9 +116,9 @@ Test(decode__I_MOVE__tests, mov5, .init = decode_mov_default_setup)
     char* expected = "mov [bp], ch\n";
     uint8_t input[] = { 0x88, 0x6e, 0x00 };
     char output[32] = { 0x00 };
-    cr_assert(SUCCESS == emu_decode_chunk(
-        &g_decoder, input, sizeof(input), output, sizeof(output)));
-    cr_assert(1 == g_decoder.instructions_count);
+    cr_assert(SUCCESS == emu_8086_decode_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
     cr_assert(strncmp(expected, output, sizeof(output)) == 0,
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
@@ -128,9 +128,9 @@ Test(decode__I_MOVE__tests, mov6, .init = decode_mov_default_setup)
     char* expected = "mov [bp + si], si\n"; // "mov word [bp + si], si" same bytecode
     uint8_t input[] = { 0x89, 0x32 }; // 0b10001001 0b00110010
     char output[32] = { 0x00 };
-    cr_assert(SUCCESS == emu_decode_chunk(
-        &g_decoder, input, sizeof(input), output, sizeof(output)));
-    cr_assert(1 == g_decoder.instructions_count);
+    cr_assert(SUCCESS == emu_8086_decode_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
     cr_assert(strncmp(expected, output, sizeof(output)) == 0,
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
@@ -141,9 +141,9 @@ Test(decode__I_MOVE_IMMEDIATE__tests, mov_immediate_1, .init = decode_mov_defaul
     char* expected = "mov byte [128], 42\n";
     uint8_t input[] = { 0xc6, 0x06, 0x80, 0x00, 0x2a };
     char output[32] = { 0x00 };
-    cr_assert(SUCCESS == emu_decode_chunk(
-            &g_decoder, input, sizeof(input), output, sizeof(output)));
-    cr_assert(1 == g_decoder.instructions_count);
+    cr_assert(SUCCESS == emu_8086_decode_chunk(
+            &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
     cr_assert(strncmp(expected, output, sizeof(output)) == 0,
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
@@ -154,9 +154,9 @@ Test(decode__I_MOVE_IMMEDIATE_TO_REGISTER__tests, mov1, .init = decode_mov_defau
     char* expected = "mov cl, 12\n";
     uint8_t input[] = { 0xb1, 0x0c };
     char output[16] = { 0x00 };
-    cr_assert(SUCCESS == emu_decode_chunk(
-            &g_decoder, input, sizeof(input), output, sizeof(output)));
-    cr_assert(1 == g_decoder.instructions_count);
+    cr_assert(SUCCESS == emu_8086_decode_chunk(
+            &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
     cr_assert(strncmp(expected, output, sizeof(output)) == 0,
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
@@ -166,9 +166,9 @@ Test(decode__I_MOVE_IMMEDIATE_TO_REGISTER__tests, mov2, .init = decode_mov_defau
     char* expected = "mov ch, 244\n"; // mov cl, -12 ; cpu doesn't care about signedness until you do an arithmetic operation
     uint8_t input[] = { 0xb5, 0xf4 };
     char output[16] = { 0x00 };
-    cr_assert(SUCCESS == emu_decode_chunk(
-        &g_decoder, input, sizeof(input), output, sizeof(output)));
-    cr_assert(1 == g_decoder.instructions_count);
+    cr_assert(SUCCESS == emu_8086_decode_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
     cr_assert(strncmp(expected, output, sizeof(output)) == 0,
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
@@ -179,9 +179,9 @@ Test(decode__I_MOVE_TO_AX__tests, mov1, .init = decode_mov_default_setup)
     char* expected = "mov ax, [2555]\n";
     uint8_t input[] = { 0xa1, 0xfb, 0x09 };
     char output[16] = { 0x00 };
-    cr_assert(SUCCESS == emu_decode_chunk(
-        &g_decoder, input, sizeof(input), output, sizeof(output)));
-    cr_assert(1 == g_decoder.instructions_count);
+    cr_assert(SUCCESS == emu_8086_decode_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
     cr_assert(strncmp(expected, output, sizeof(output)) == 0,
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
@@ -192,9 +192,9 @@ Test(decode__I_MOVE_AX__tests, mov1, .init = decode_mov_default_setup)
     char* expected = "mov [2554], ax\n";
     uint8_t input[] = { 0xa3, 0xfa, 0x09 };
     char output[16] = { 0x00 };
-    cr_assert(SUCCESS == emu_decode_chunk(
-        &g_decoder, input, sizeof(input), output, sizeof(output)));
-    cr_assert(1 == g_decoder.instructions_count);
+    cr_assert(SUCCESS == emu_8086_decode_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
     cr_assert(strncmp(expected, output, sizeof(output)) == 0,
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
@@ -231,9 +231,9 @@ mov [bp], ch\n";
         0x88, 0x0a, 0x88, 0x6e, 0x00
     };
     char output[512] = { 0x00 };
-    cr_assert(SUCCESS == emu_decode_chunk(
-        &g_decoder, input, sizeof(input), output, sizeof(output)));
-    cr_assert(16 == g_decoder.instructions_count);
+    cr_assert(SUCCESS == emu_8086_decode_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(16 == g_emulator.instructions_count);
     cr_assert(strncmp(expected, output, sizeof(output)) == 0,
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
@@ -258,9 +258,9 @@ mov [bp], ch\n";
 //         0x1e, 0x82, 0x0d, 0xa1, 0xfb, 0x09, 0xa1, 0x10, 0x00, 0xa3, 0xfa, 0x09,
 //         0xa3, 0x0f, 0x00
 //     };
-//     cr_assert(SUCCESS == emu_decode_chunk(&g_decoder, input, sizeof(input)));
-//     cr_assert(11 == g_decoder.instructions_count);
+//     cr_assert(SUCCESS == emu_8086_decode_chunk(&g_emulator, input, sizeof(input)));
+//     cr_assert(11 == g_emulator.instructions_count);
 //     uint8_t output[512] = { 0x00 };
-//     dcd_write_all_assembly(g_decoder.instructions, g_decoder.instructions_count, output, sizeof(output));
+//     dcd_write_all_assembly(g_emulator.instructions, g_emulator.instructions_count, output, sizeof(output));
 //     cr_assert(strncmp(expected, output, sizeof(output)) == 0, "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 // }

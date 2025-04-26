@@ -6,19 +6,19 @@
 
 #include <criterion/criterion.h>
 
-#include "shared/include/instructions.h"
+#include "8086/instruction_tags_8086.h"
 
-#include "libraries/emulate_intel/include/emulate.h"
+#include "8086/emulate_8086.h"
 
 //
 // MARK: JNZ/JNE
 //
 
-static emulator_t g_decoder;
+static emulator_8086_t g_emulator;
 
 void decode_conditional_jump_default_setup(void) {
-    memset(&g_decoder, 0, sizeof(emulator_t));
-    emu_init(&g_decoder);
+    memset(&g_emulator, 0, sizeof(emulator_8086_t));
+    emu_8086_init(&g_emulator);
 }
 
 Test(decode__I_JE__tests, je_1, .init = decode_conditional_jump_default_setup)
@@ -30,9 +30,9 @@ je label
     char* expected = "je $+0\n";
     uint8_t input[] = { 0x74, 0xfe }; // 0b00101001 0b11011001
     char output[32] = { 0x00 };
-    cr_assert(SUCCESS == emu_decode_chunk(
-        &g_decoder, input, sizeof(input), output, sizeof(output)));
-    cr_assert(1 == g_decoder.instructions_count);
+    cr_assert(SUCCESS == emu_8086_decode_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
     cr_assert(strncmp(expected, output, sizeof(output)) == 0,
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
@@ -94,7 +94,7 @@ loopz $-34\n\
 loopnz $-36\n\
 jcxz $-38\n\
 ";
-    //printf("g_decoder.instructions_cap: %d\n", g_decoder.instructions_capacity);
+    //printf("g_emulator.instructions_cap: %d\n", g_emulator.instructions_capacity);
     uint8_t input[] = {
         0x75, 0x02, 0x75, 0xfc, 0x75, 0xfa, 0x75, 0xfc, 0x74, 0xfe, 0x7c, 0xfc,
         0x7e, 0xfa, 0x72, 0xf8, 0x76, 0xf6, 0x7a, 0xf4, 0x70, 0xf2, 0x78, 0xf0,
@@ -102,10 +102,10 @@ jcxz $-38\n\
         0x71, 0xe2, 0x79, 0xe0, 0xe2, 0xde, 0xe1, 0xdc, 0xe0, 0xda, 0xe3, 0xd8
     };
     char output[512] = { 0x00 };
-    cr_assert(SUCCESS == emu_decode_chunk(
-        &g_decoder, input, sizeof(input), output, sizeof(output)));
-    cr_assert(24 == g_decoder.instructions_count,
-        "expected: '%d', actual:'%d'\n", 24, g_decoder.instructions_count);
+    cr_assert(SUCCESS == emu_8086_decode_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(24 == g_emulator.instructions_count,
+        "expected: '%d', actual:'%d'\n", 24, g_emulator.instructions_count);
 
     cr_assert(strncmp(expected, output, sizeof(output)) == 0,
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
@@ -118,9 +118,9 @@ Test(decode__conditional_jump__tests, jnz, .init = decode_conditional_jump_defau
     char* expected = "jne $+0\n";
     uint8_t input[] = { 0x75, 0xfe };
     char output[256] = { 0x00 };
-    cr_assert(SUCCESS == emu_decode_chunk(
-        &g_decoder, input, sizeof(input), output, sizeof(output)));
-    cr_assert(1 == g_decoder.instructions_count);
+    cr_assert(SUCCESS == emu_8086_decode_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
     cr_assert(strncmp(expected, output, sizeof(output)) == 0,
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
@@ -143,9 +143,9 @@ jne $-6\n";
         0x75, 0xf8
     };
     char output[256] = { 0x00 };
-    cr_assert(SUCCESS == emu_decode_chunk(
-        &g_decoder, input, sizeof(input), output, sizeof(output)));
-    cr_assert(5 == g_decoder.instructions_count);
+    cr_assert(SUCCESS == emu_8086_decode_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(5 == g_emulator.instructions_count);
     cr_assert(strncmp(expected, output, sizeof(output)) == 0,
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }
@@ -191,9 +191,9 @@ jne $-9\n\
         0x8b, 0x0a, 0x01, 0xcb, 0x83, 0xc6, 0x02, 0x39, 0xd6, 0x75, 0xf5
     };
     char output[256] = { 0x00 };
-    cr_assert(SUCCESS == emu_decode_chunk(
-        &g_decoder, input, sizeof(input), output, sizeof(output)));
-    cr_assert(14 == g_decoder.instructions_count);
+    cr_assert(SUCCESS == emu_8086_decode_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(14 == g_emulator.instructions_count);
     cr_assert(strncmp(expected, output, sizeof(output)) == 0,
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
 }

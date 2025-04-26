@@ -4,22 +4,20 @@
 #include <string.h>
 
 #include "shared/include/binary_utilities.h"
-//#include "shared/include/instructions.h"
+//#include "8086/instruction_tags_8086.h"
 //#include "shared/include/registers.h"
 #include "shared/include/result.h"
 
 #include "libraries/emulate_intel/include/emulate.h"
-#include "libraries/emulate_intel/include/emu_registers.h"
-#include "libraries/emulate_intel/include/decode_utils.h"
-//#include "libraries/emulate_intel/include/decode_tag.h"
 #include "logger.h"
 
-#include "i386/i386_instruction_tags.h"
+#include "i386/instruction_tags_i386.h"
 #include "i386/decode_i386_common.h"
 #include "i386/decode_i386_tag.h"
+#include "i386/decode_i386.h"
 
 
-static result_iter_t emu_i386_decode_next(emulator_t* emulator, char* out_buffer, int* index, size_t out_buffer_size) {
+static result_iter_t emu_i386_decode_next(emulator_i386_t* emulator, char* out_buffer, int* index, size_t out_buffer_size) {
     uint8_t byte1 = emulator->memory[emulator->registers.ip];
     emulator->registers.ip += 1;
     LOGD("ip: %d, byte1: %x", emulator->registers.ip, byte1);
@@ -29,7 +27,7 @@ static result_iter_t emu_i386_decode_next(emulator_t* emulator, char* out_buffer
         return(RI_DONE);
     }
 
-    instruction_tag_t instruction_tag = 0;
+    instruction_tag_i386_t instruction_tag = 0;
     uint8_t byte2 = 0;
     if (emulator->registers.ip < emulator->memory_size) {
         byte2 = emulator->memory[emulator->registers.ip];
@@ -66,7 +64,19 @@ static result_iter_t emu_i386_decode_next(emulator_t* emulator, char* out_buffer
     return(RI_CONTINUE);
 }
 
-result_t emu_i386_decode(emulator_t* emulator, char* out_buffer, size_t out_buffer_size) {
+result_t emu_i386_decode_chunk(
+    emulator_i386_t* emulator,
+    char* in_buffer,
+    size_t in_buffer_size,
+    char* out_buffer,
+    size_t out_buffer_size)
+{
+    memcpy(emulator->memory + PROGRAM_START, in_buffer, in_buffer_size);
+    emulator->registers.ip = PROGRAM_START;
+    return(emu_i386_decode(emulator, out_buffer, out_buffer_size));
+}
+
+result_t emu_i386_decode(emulator_i386_t* emulator, char* out_buffer, size_t out_buffer_size) {
     int index = 0;
     result_t result = emu_i386_decode_next(emulator, out_buffer, &index, out_buffer_size);
     while(result == RI_CONTINUE) {

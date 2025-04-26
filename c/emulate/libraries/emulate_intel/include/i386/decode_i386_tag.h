@@ -3,9 +3,9 @@
 
 #include <stdint.h>
 
-#include "i386/i386_instruction_tags.h"
+#include "i386/instruction_tags_i386.h"
 
-i386_instruction_tag_t emu_i386_decode_tag(uint8_t byte1, uint8_t byte2);
+instruction_tag_i386_t emu_i386_decode_tag(uint8_t byte1, uint8_t byte2);
 
 #endif // DECODE_i386_TAG_H
 

@@ -8,7 +8,7 @@
 #include "logger.h"
 
 emu_result_t emu_i386_decode_and(
-    emulator_t* emulator,
+    emulator_i386_t* emulator,
     uint8_t byte1,
     char* out_buffer,
     int* index,

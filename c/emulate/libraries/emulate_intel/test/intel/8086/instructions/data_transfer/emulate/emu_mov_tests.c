@@ -20,9 +20,9 @@
 
 #include <criterion/criterion.h>
 
-#include "shared/include/instructions.h"
+#include "8086/instruction_tags_8086.h"
 
-#include "libraries/emulate_intel/include/emulate.h"
+#include "8086/emulate_8086.h"
 
 //
 // MARK: MOV
@@ -30,11 +30,11 @@
 
 // Use of this global "g_emulator" is to try and reduce the amount of code per test. It's reset
 // after each test and has a large default instructions buffer.
-static emulator_t g_emulator;
+static emulator_8086_t g_emulator;
 
 void emu_mov_default_setup(void) {
-    memset(&g_emulator, 0, sizeof(emulator_t));
-    emu_init(&g_emulator);
+    memset(&g_emulator, 0, sizeof(emulator_8086_t));
+    emu_8086_init(&g_emulator);
 }
 
 // MARK: 1. I_MOVE
@@ -42,7 +42,7 @@ Test(emu__I_MOVE__tests, mov1, .init = emu_mov_default_setup)
 {
     uint8_t input[] = { 0x89, 0xd9 }; // mov cx, bx
     g_emulator.registers.bx = 5;
-    cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
+    cr_assert(SUCCESS == emu_8086_emulate_chunk(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.instructions_count);
     cr_assert(PROGRAM_START + 3 == g_emulator.registers.ip);
     cr_assert(g_emulator.registers.bx == g_emulator.registers.cx);
@@ -52,7 +52,7 @@ Test(emu__I_MOVE__tests, mov2, .init = emu_mov_default_setup)
 {
     g_emulator.memory[1000] = 15;
     uint8_t input[] = { 0x8b, 0x1e, 0xe8, 0x03 }; // "mov bx, word [1000]" - 0b10001011 0b00011110
-    cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
+    cr_assert(SUCCESS == emu_8086_emulate_chunk(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.instructions_count);
     cr_assert(PROGRAM_START + 5 == g_emulator.registers.ip);
     cr_assert(15 == g_emulator.registers.bx);
@@ -63,7 +63,7 @@ Test(emu__I_MOVE__tests, mov3, .init = emu_mov_default_setup)
     g_emulator.registers.bp = 1000;
     g_emulator.registers.si = 4;
     uint8_t input[] = { 0x89, 0x32 }; // "mov word [bp + si], si" - 0b10001001 0b00110010
-    cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
+    cr_assert(SUCCESS == emu_8086_emulate_chunk(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.instructions_count);
     cr_assert(PROGRAM_START + 3 == g_emulator.registers.ip);
     cr_assert(4 == g_emulator.memory[1004]);
@@ -77,7 +77,7 @@ Test(emu__I_MOVE__tests, mov4, .init = emu_mov_default_setup)
     g_emulator.registers.si = 4;
     g_emulator.memory[1004] = 42;
     uint8_t input[] = { 0x8b, 0x0a }; // "mov cx, word [bp + si]" - 0b10001001 0b00001010
-    cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
+    cr_assert(SUCCESS == emu_8086_emulate_chunk(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.instructions_count);
     cr_assert(PROGRAM_START + 3 == g_emulator.registers.ip);
     cr_assert(42 == g_emulator.registers.cx);
@@ -87,7 +87,7 @@ Test(emu__I_MOVE__tests, mov4, .init = emu_mov_default_setup)
 Test(emu__I_MOVE_IMMEDIATE__tests, mov_immediate_1, .init = emu_mov_default_setup)
 {
     uint8_t input[] = { 0xc7, 0x06, 0xe8, 0x03, 0x01, 0x00 }; // "mov word [1000], 1" - 0b11000111 0b00000110
-    cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
+    cr_assert(SUCCESS == emu_8086_emulate_chunk(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.instructions_count);
     cr_assert(PROGRAM_START + 7 == g_emulator.registers.ip);
     cr_assert(1 == g_emulator.memory[1000]);
@@ -97,7 +97,7 @@ Test(emu__I_MOVE_IMMEDIATE__tests, mov_immediate_2, .init = emu_mov_default_setu
 {
     g_emulator.registers.bx = 1000;
     uint8_t input[] = { 0xc7, 0x47, 0x04, 0x0a, 0x00 }; // "mov word [bx + 4], 10" - 0b11000111 0b01000111
-    cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
+    cr_assert(SUCCESS == emu_8086_emulate_chunk(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.instructions_count);
     cr_assert(PROGRAM_START + 6 == g_emulator.registers.ip);
     cr_assert(10 == g_emulator.memory[1004]);
@@ -107,7 +107,7 @@ Test(emu__I_MOVE_IMMEDIATE__tests, mov_immediate_2, .init = emu_mov_default_setu
 Test(emu__I_MOVE_IMMEDIATE_TO_REGISTER__tests, mov_immediate_to_reg_1, .init = emu_mov_default_setup)
 {
     uint8_t input[] = { 0xb9, 0x0a, 0x00 }; // "mov cx, 10" - 0b10111001 0b00001010 0b00000000
-    cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
+    cr_assert(SUCCESS == emu_8086_emulate_chunk(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.instructions_count);
     cr_assert(PROGRAM_START + 4 == g_emulator.registers.ip);
     cr_assert(10 == g_emulator.registers.cx);
@@ -116,7 +116,7 @@ Test(emu__I_MOVE_IMMEDIATE_TO_REGISTER__tests, mov_immediate_to_reg_1, .init = e
 Test(emu__I_MOVE_IMMEDIATE_TO_REGISTER__tests, mov_immediate_to_reg_2, .init = emu_mov_default_setup)
 {
     uint8_t input[] = { 0xb9, 0xf6, 0x01 }; // "mov cx, 502" - 0b10111001 0b11110110 0b00000001
-    cr_assert(SUCCESS == emu_emulate_chunk(&g_emulator, input, sizeof(input)));
+    cr_assert(SUCCESS == emu_8086_emulate_chunk(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.instructions_count);
     cr_assert(PROGRAM_START + 4 == g_emulator.registers.ip);
     cr_assert(502 == g_emulator.registers.cx);

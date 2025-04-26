@@ -56,9 +56,9 @@ int main(int argc, char* argv[]) {
     char* input_path = argv[1];
     printf("Starting decode on: '%s'\n", input_path);
     emulator_t emulator;
-    emu_init(&emulator);
+    emu_init(&emulator, ARCH_8086);
     char out_buffer[4096] = { 0x00 };
     result_t result = emu_decode_file(&emulator, argv[1], out_buffer, sizeof(out_buffer));
-    printf("Decode result: %s, instructions: %d\n", result_strings[result], emulator.instructions_count);
+    printf("Decode result: %s, instructions: %d\n", result_strings[result], emulator.emulator_8086.instructions_count);
     printf("Assembly:\n%s\n", out_buffer);
 }

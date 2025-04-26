@@ -3,24 +3,21 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "logger.h"
 #include "shared/include/binary_utilities.h"
-#include "shared/include/instructions.h"
-#include "shared/include/registers.h"
 #include "shared/include/result.h"
 
-#include "libraries/emulate_intel/include/emulate.h"
-#include "libraries/emulate_intel/include/emu_registers.h"
-#include "libraries/emulate_intel/include/decode_utils.h"
-#include "libraries/emulate_intel/include/decode_tag.h"
-#include "libraries/emulate_intel/include/logger.h"
+#include "i386/emulate_i386.h"
+#include "i386/instruction_tags_i386.h"
+#include "i386/decode_i386_common.h"
+#include "i386/emu_i386_utils.h"
 
-#include "libraries/emulate_intel/include/i386/decode_i386_common.h"
 
 /**
  *
  */
 emu_result_t emu_i386_read_displacement(
-    emulator_t* emulator,
+    emulator_i386_t* emulator,
     mod_t mod,
     uint8_t rm_id,
     uint16_t* displacement,
@@ -28,20 +25,20 @@ emu_result_t emu_i386_read_displacement(
 ) {
     if (mod == MOD_MEMORY) {
         if (rm_id == 0b00000110) {
-            emu_result_t read_displace_result = dcd_read_word(emulator, displacement);
+            emu_result_t read_displace_result = emu_i386_read_m16(emulator, displacement);
             *displacement_byte_size = 2;
             if (read_displace_result != ER_SUCCESS) {
                 return read_displace_result;
             }
         }
     } else if (mod == MOD_MEMORY_8BIT_DISPLACEMENT) {
-        emu_result_t read_displace_result = dcd_read_byte(emulator, (uint8_t*) displacement);
+        emu_result_t read_displace_result = emu_i386_read_m8(emulator, (uint8_t*) displacement);
         *displacement_byte_size = 1;
         if (read_displace_result != ER_SUCCESS) {
             return read_displace_result;
         }
     } else if (mod == MOD_MEMORY_16BIT_DISPLACEMENT) {
-        emu_result_t read_displace_result = dcd_read_word(emulator, displacement);
+        emu_result_t read_displace_result = emu_i386_read_m16(emulator, displacement);
         *displacement_byte_size = 2;
         if (read_displace_result != ER_SUCCESS) {
             return read_displace_result;
@@ -53,7 +50,7 @@ emu_result_t emu_i386_read_displacement(
 }
 
 emu_result_t emu_i386_decode_common_standard_format(
-    emulator_t* emulator,
+    emulator_i386_t* emulator,
     uint8_t byte1,
     direction_t* direction,
     wide_t* wide,
@@ -68,7 +65,7 @@ emu_result_t emu_i386_decode_common_standard_format(
     *wide = byte1 & 0b00000001;
 
     uint8_t byte2 = 0;
-    emu_result_t read_byte2_result = dcd_read_byte(emulator, &byte2);
+    emu_result_t read_byte2_result = emu_i386_read_m8(emulator, &byte2);
     if (read_byte2_result != ER_SUCCESS) {
         return read_byte2_result;
     }
@@ -206,7 +203,7 @@ emu_result_t emu_i386_write_common_standard_format(
 }
 
 emu_result_t emu_i386_decode_and_write_common_standard_format(
-    emulator_t* emulator,
+    emulator_i386_t* emulator,
     uint8_t byte1,
     char* mnemonic,
     uint8_t mnemonic_size,

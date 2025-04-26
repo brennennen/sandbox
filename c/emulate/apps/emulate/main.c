@@ -9,8 +9,8 @@
 #include "shared/include/binary_utilities.h"
 #include "shared/include/result.h"
 
-#include "libraries/emulate_intel/include/emulate.h"
-#include "libraries/emulate_intel/include/emu_registers.h"
+#include "emulate.h"
+#include "8086/emu_8086_registers.h"
 
 void print_help() {
     printf("Decodes an assembled x86 program to standard out.\n");
@@ -37,10 +37,10 @@ int main(int argc, char* argv[]) {
     char* input_path = argv[1];
     printf("Starting decode on: '%s'\n", input_path);
     emulator_t emulator;
-    emu_init(&emulator);
+    emu_init(&emulator, ARCH_8086);
     result_t result = emu_emulate_file(&emulator, argv[1]);
-    printf("Emulate result: %s, instructions: %d\n", result_strings[result], emulator.instructions_count);
+    printf("Emulate result: %s, instructions: %d\n", result_strings[result], emulator.emulator_8086.instructions_count);
 
-    print_registers_condensed(&emulator);
-    print_flags_condensed(emulator.registers.flags);
+    print_registers_condensed(&emulator.emulator_8086);
+    print_flags_condensed(emulator.emulator_8086.registers.flags);
 }

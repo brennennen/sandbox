@@ -50,9 +50,11 @@
 
 #include "emulate.h"
 
+#include "i386/emulate_i386.h"
+
 // MARK: I_i386_AND
 emu_result_t emu_i386_decode_and(
-    emulator_t* emulator,
+    emulator_i386_t* emulator,
     uint8_t byte1,
     char* out_buffer,
     int* index,

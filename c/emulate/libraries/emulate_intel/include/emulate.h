@@ -4,11 +4,12 @@
 #ifndef EMULATE_H
 #define EMULATE_H
 
+#include <stdint.h>
 #include <stdio.h>
 
 #include "shared/include/result.h"
-#include "shared/include/instructions.h"
-#include "shared/include/registers.h"
+
+#include "8086/emulate_8086.h"
 
 #define STACK_SIZE 4096
 #define MEMORY_SIZE 65535 // 64KB (need to add segment register support to address more space)
@@ -18,6 +19,12 @@
 #define DEBUG 1
 
 typedef enum {
+    ARCH_8086, // 8086 (partially implemented)
+    ARCH_I386, // i386, x86 (not implemented)
+    ARCH_X64, // x64 (not implemented)
+} emu_arch_t;
+
+typedef enum {
     BITS_16, // 8086 (partially implemented)
     BITS_32, // i386, x86 (not implemented)
     BITS_64, // x64 (not implemented)
@@ -25,25 +32,9 @@ typedef enum {
 
 typedef struct {
     bits_mode_t bits_mode;
-    registers_t registers;
-    int instructions_count;
-    uint16_t stack_size; // using a size here in case i want to make this dynamic/resizable later.
-    uint16_t stack_top;
-    uint16_t stack[STACK_SIZE];
-    uint16_t memory_size;
-    uint8_t memory[MEMORY_SIZE];
-    //instruction_t* instructions;
-    //int instructions_capacity;
-    // callbacks?
+    emu_arch_t arch;
+    emulator_8086_t emulator_8086;
 } emulator_t;
-
-typedef enum {
-    ER_SUCCESS,
-    ER_FAILURE,
-    ER_OUT_OF_BOUNDS,
-    ER_UNKNOWN_OPCODE,
-    ER_UNIMPLEMENTED_INSTRUCTION,
-} emu_result_t;
 
 static char emulate_result_strings[][32] = {
     "Success",
@@ -54,13 +45,9 @@ static char emulate_result_strings[][32] = {
 };
 
 
-void emu_init(emulator_t* emulator);
+void emu_init(emulator_t* emulator, emu_arch_t arch);
 
-result_t emu_memory_set_byte(emulator_t* emulator, uint32_t address, uint8_t value);
-result_t emu_memory_set_uint16(emulator_t* emulator, uint32_t address, uint16_t value);
 
-result_t emu_memory_get_byte(emulator_t* emulator, uint32_t address, uint8_t* out_value);
-result_t emu_memory_get_uint16(emulator_t* emulator, uint32_t address, uint16_t* out_value);
 
 result_t emu_decode_file(emulator_t* emulator, char* input_path, char* out_buffer,
     size_t out_buffer_size);

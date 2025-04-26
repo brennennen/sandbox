@@ -23,7 +23,7 @@ project "test_emulate_intel"
     language "C"
     targetdir "bin/%{cfg.buildcfg}"
     files { "./libraries/emulate_intel/test/**.h", "./libraries/emulate_intel/test/**.c" }
-    includedirs { "./librares/emulate_intel/include", "./shared/include", "." }
+    includedirs { "./libraries/emulate_intel/include", "./shared/include", "." }
     links { "emulate_intel", "criterion" }
     sanitize { "Address" }
     symbols "On"
@@ -36,7 +36,7 @@ project "decode"
     language "C"
     targetdir "bin/%{cfg.buildcfg}"
     files { "./apps/decode/**.h", "./apps/decode/**.c" }
-    includedirs { "./libraries", "./shared", "." }
+    includedirs { "./libraries/emulate_intel/include", "./shared/include", "." }
     links { "emulate_intel" }
     sanitize { "Address" }
     filter "configurations:Debug"
@@ -54,7 +54,7 @@ project "emulate"
     language "C"
     targetdir "bin/%{cfg.buildcfg}"
     files { "./apps/emulate/**.h", "./apps/emulate/**.c" }
-    includedirs { "./libraries", "./shared", "." }
+    includedirs { "./libraries/emulate_intel/include", "./shared/include", "." }
     links { "emulate_intel" }
     sanitize { "Address" }
     filter "configurations:Debug"

@@ -7,13 +7,16 @@
 #include <stdio.h>
 
 #include "shared/include/result.h"
-#include "shared/include/instructions.h"
-#include "shared/include/registers.h"
+#include "i386/instruction_tags_i386.h"
+#include "i386/emulate_i386.h"
+
+#include "8086/instruction_tags_8086.h"
+
 
 #include "emulate.h"
 
 emu_result_t emu_i386_read_displacement(
-    emulator_t* emulator,
+    emulator_i386_t* emulator,
     mod_t mod,
     uint8_t rm_id,
     uint16_t* displacement,
@@ -21,7 +24,7 @@ emu_result_t emu_i386_read_displacement(
 );
 
 emu_result_t emu_i386_decode_common_standard_format(
-    emulator_t* emulator,
+    emulator_i386_t* emulator,
     uint8_t byte1,
     direction_t* direction,
     wide_t* wide,
@@ -47,7 +50,7 @@ emu_result_t emu_i386_write_common_standard_format(
 );
 
 emu_result_t emu_i386_decode_and_write_common_standard_format(
-    emulator_t* emulator,
+    emulator_i386_t* emulator,
     uint8_t byte1,
     char* mnemonic,
     uint8_t mnemonic_size,

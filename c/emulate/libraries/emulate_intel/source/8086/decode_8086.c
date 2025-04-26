@@ -4,37 +4,36 @@
 #include <string.h>
 
 #include "shared/include/binary_utilities.h"
-#include "shared/include/instructions.h"
-#include "shared/include/registers.h"
 #include "shared/include/result.h"
 
-#include "libraries/emulate_intel/include/emulate.h"
-#include "libraries/emulate_intel/include/emu_registers.h"
-#include "libraries/emulate_intel/include/decode_utils.h"
-#include "libraries/emulate_intel/include/decode_tag.h"
-#include "libraries/emulate_intel/include/logger.h"
+#include "emulate.h"
+#include "logger.h"
 
-#include "libraries/emulate_intel/include/instructions/data_transfer/mov.h"
-#include "libraries/emulate_intel/include/instructions/data_transfer/push.h"
-#include "libraries/emulate_intel/include/instructions/data_transfer/pop.h"
-#include "libraries/emulate_intel/include/instructions/data_transfer/xchg.h"
+#include "8086/emu_8086_registers.h"
+#include "8086/decode_8086_utils.h"
+#include "8086/decode_8086_tag.h"
 
-#include "libraries/emulate_intel/include/instructions/arithmetic/add.h"
-#include "libraries/emulate_intel/include/instructions/arithmetic/inc.h"
-#include "libraries/emulate_intel/include/instructions/arithmetic/sub.h"
-#include "libraries/emulate_intel/include/instructions/arithmetic/cmp.h"
+#include "8086/instructions/data_transfer/mov.h"
+#include "8086/instructions/data_transfer/push.h"
+#include "8086/instructions/data_transfer/pop.h"
+#include "8086/instructions/data_transfer/xchg.h"
 
-#include "libraries/emulate_intel/include/instructions/logic/not.h"
-#include "libraries/emulate_intel/include/instructions/logic/and.h"
+#include "8086/instructions/arithmetic/add.h"
+#include "8086/instructions/arithmetic/inc.h"
+#include "8086/instructions/arithmetic/sub.h"
+#include "8086/instructions/arithmetic/cmp.h"
 
-#include "libraries/emulate_intel/include/instructions/conditional_jumps.h"
+#include "8086/instructions/logic/not.h"
+#include "8086/instructions/logic/and.h"
 
-#include "libraries/emulate_intel/include/instructions/processor_control/clc.h"
-#include "libraries/emulate_intel/include/instructions/processor_control/cmc.h"
-#include "libraries/emulate_intel/include/instructions/processor_control/stc.h"
+#include "8086/instructions/conditional_jumps.h"
+
+#include "8086/instructions/processor_control/clc.h"
+#include "8086/instructions/processor_control/cmc.h"
+#include "8086/instructions/processor_control/stc.h"
 
 
-static result_iter_t emu_8086_decode_next(emulator_t* decoder, char* out_buffer, int* index, size_t out_buffer_size) {
+static result_iter_t emu_8086_decode_next(emulator_8086_t* decoder, char* out_buffer, int* index, size_t out_buffer_size) {
     uint8_t byte1 = decoder->memory[decoder->registers.ip];
     decoder->registers.ip += 1;
     LOGD("ip: %d, byte1: %x", decoder->registers.ip, byte1);
@@ -44,12 +43,12 @@ static result_iter_t emu_8086_decode_next(emulator_t* decoder, char* out_buffer,
         return RI_DONE;
     }
 
-    instruction_tag_t instruction_tag = 0;
+    instruction_tag_8086_t instruction_tag = 0;
     uint8_t byte2 = 0;
     if (decoder->registers.ip < decoder->memory_size) {
         byte2 = decoder->memory[decoder->registers.ip];
     }
-    instruction_tag = dcd_decode_tag(byte1, byte2);
+    instruction_tag = emu_8086_decode_tag(byte1, byte2);
     decoder->instructions_count += 1;
 
     emu_result_t result = RI_FAILURE;
@@ -225,7 +224,40 @@ static result_iter_t emu_8086_decode_next(emulator_t* decoder, char* out_buffer,
     return RI_CONTINUE;
 }
 
-result_t emu_8086_decode(emulator_t* emulator, char* out_buffer, size_t out_buffer_size) {
+result_t emu_8086_decode_file(
+    emulator_8086_t* emulator,
+    char* input_path,
+    char* out_buffer,
+    size_t out_buffer_size)
+{
+    LOG(LOG_INFO, "Starting decode file: '%s'", input_path);
+    FILE* file = fopen(input_path, "r");
+    fseek(file, 0, SEEK_END);
+    int file_size = ftell(file);
+    rewind(file);
+    int read_result = fread(emulator->memory + PROGRAM_START, 1, file_size, file);
+    if (read_result != file_size) {
+        LOG(LOG_ERROR, "Failed to read file!\n");
+        return FAILURE;
+    }
+    emulator->registers.ip = PROGRAM_START;
+    result_t result = emu_8086_decode(emulator, out_buffer, out_buffer_size);
+    return result;
+}
+
+result_t emu_8086_decode_chunk(
+    emulator_8086_t* emulator,
+    char* in_buffer,
+    size_t in_buffer_size,
+    char* out_buffer,
+    size_t out_buffer_size)
+{
+    memcpy(emulator->memory + PROGRAM_START, in_buffer, in_buffer_size);
+    emulator->registers.ip = PROGRAM_START;
+    return emu_8086_decode(emulator, out_buffer, out_buffer_size);
+}
+
+result_t emu_8086_decode(emulator_8086_t* emulator, char* out_buffer, size_t out_buffer_size) {
     int index = 0;
     result_t result = emu_8086_decode_next(emulator, out_buffer, &index, out_buffer_size);
     while(result == RI_CONTINUE) {

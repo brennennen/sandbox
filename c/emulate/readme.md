@@ -1,5 +1,5 @@
-# 8086 Emulator
-Toy single program partial 8086 emulator to review and deeper learn x86/x64 architecture.
+# Emulator
+Toy single program emulator to review and deeper learn popular processors and their ISAs. 
 
 ## Build
 Currently uses some c23 features when available. Expects at least gcc-14 or later to use

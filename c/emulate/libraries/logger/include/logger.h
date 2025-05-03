@@ -5,8 +5,13 @@
 #include <stdarg.h>
 #include <time.h>
 
-#define DO_LOG 1
-#define DO_DEBUG_LOG 1
+/**
+ * Control "DO_LOG", "DO_DEBUG_LOG" through your build system. As of writing this,
+ * using premake, which is controlled through the "defines" keyword.
+ * ex: `defines { "DO_LOG" }`
+ */
+// #define DO_LOG 1
+// #define DO_DEBUG_LOG 1
 
 /**
  * Standard log levels. Tightly coupled with `log_level_names` static string array.
@@ -69,7 +74,7 @@ void log_memory(char* data, int data_start, int data_size, const char* format, .
     #define LOGMEM(data, start, size, format, ...) log_memory(data, start, size, format, ##__VA_ARGS__)
 #else
     #define LOG(level, format, ...)
-    #define LOGMEM(level, data, start, size, format, ...)
+    #define LOGMEM(data, start, size, format, ...)
 #endif
 
 /**
@@ -114,8 +119,12 @@ void log_debug_instruction(const char* func, const char* format, ...);
     #else
         #define LOGD(format, ...)
         #define LOGDI(format, ...)
-        #define LOGDI2(write_func, ...)
+        #define LOGDIW(write_func, ...)
     #endif
+#else
+    #define LOGD(format, ...)
+    #define LOGDI(format, ...)
+    #define LOGDIW(write_func, ...)
 #endif
 
 #endif

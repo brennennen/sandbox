@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <time.h>
 
-#include "libraries/emulate_intel/include/logger.h"
+#include "logger.h"
 
 void log_message(log_level_t level, const char* format, ...) {
     time_t now;

@@ -10,7 +10,7 @@
 
 #include "8086/emulate_8086.h"
 #include "8086/emu_8086_registers.h"
-#include "libraries/emulate_intel/include/logger.h"
+#include "logger.h"
 
 static emulator_8086_t g_emulator;
 void emu_and_default_setup(void) {

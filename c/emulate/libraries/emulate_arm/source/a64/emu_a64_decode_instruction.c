@@ -117,14 +117,14 @@ static instruction_tag_a64_t emu_a65_decode_instruction_tag_add_subtract_immedia
     // TODO: create different tags for 32 bit and 64 bit modes? if not, can cut off "sf" and
     // cut this down to 4 cases.
     switch(sf_op_s) {
-        case 0b000: { return(I_ADD_IMMEDIATE); }
-        case 0b001: { return(I_ADDS_IMMEDIATE); }
-        case 0b010: { return(I_SUB_IMMEDIATE); }
-        case 0b011: { return(I_SUBS_IMMEDIATE); }
-        case 0b100: { return(I_ADD_IMMEDIATE); }
-        case 0b101: { return(I_ADDS_IMMEDIATE); }
-        case 0b110: { return(I_SUB_IMMEDIATE); }
-        case 0b111: { return(I_SUBS_IMMEDIATE); }
+        case 0b000: { return(I_A64_ADD_IMMEDIATE); }
+        case 0b001: { return(I_A64_ADDS_IMMEDIATE); }
+        case 0b010: { return(I_A64_SUB_IMMEDIATE); }
+        case 0b011: { return(I_A64_SUBS_IMMEDIATE); }
+        case 0b100: { return(I_A64_ADD_IMMEDIATE); }
+        case 0b101: { return(I_A64_ADDS_IMMEDIATE); }
+        case 0b110: { return(I_A64_SUB_IMMEDIATE); }
+        case 0b111: { return(I_A64_SUBS_IMMEDIATE); }
     }
     return(I_INVALID);
 }

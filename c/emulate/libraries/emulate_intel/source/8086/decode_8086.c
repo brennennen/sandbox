@@ -259,10 +259,11 @@ result_t emu_8086_decode_chunk(
 
 result_t emu_8086_decode(emulator_8086_t* emulator, char* out_buffer, size_t out_buffer_size) {
     int index = 0;
-    result_t result = emu_8086_decode_next(emulator, out_buffer, &index, out_buffer_size);
-    while(result == RI_CONTINUE) {
+    result_iter_t result = RI_CONTINUE;
+
+    do {
         result = emu_8086_decode_next(emulator, out_buffer, &index, out_buffer_size);
-    }
+    } while (result == RI_CONTINUE);
 
     if (result == RI_DONE) {
         return(SUCCESS);

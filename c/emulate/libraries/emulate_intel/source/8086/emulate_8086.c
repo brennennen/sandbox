@@ -299,14 +299,14 @@ result_t emu_8086_emulate_chunk(
 }
 
 result_t emu_8086_emulate(emulator_8086_t* emulator) {
-    result_t result = emu_8086_next(emulator);
-    while(result == RI_CONTINUE) {
+    result_iter_t result = RI_CONTINUE;
+    do {
         result = emu_8086_next(emulator);
-    }
+    } while (result == RI_CONTINUE);
 
     if (result == RI_DONE) {
-        return SUCCESS;
+        return(SUCCESS);
     } else {
-        return FAILURE;
+        return(FAILURE);
     }
 }

@@ -56,6 +56,17 @@ typedef enum {
     ER_UNIMPLEMENTED_INSTRUCTION,
 } emu_result_t;
 
+/**
+ * NOTE: Parallel static array with "emu_result_t"!
+ */
+static char emulate_result_strings[][32] = {
+    "Success",
+    "Failure",
+    "Out-Of-Bounds",
+    "Unknown Opcode",
+    "Unimplemented Instruction",
+};
+
 
 
 #endif // RESULT_H

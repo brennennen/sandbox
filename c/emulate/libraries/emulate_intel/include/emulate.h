@@ -36,13 +36,7 @@ typedef struct {
     emulator_8086_t emulator_8086;
 } emulator_t;
 
-static char emulate_result_strings[][32] = {
-    "Success",
-    "Failure",
-    "Out-Of-Bounds",
-    "Unknown Opcode",
-    "Unimplemented Instruction",
-};
+
 
 
 void emu_init(emulator_t* emulator, emu_arch_t arch);

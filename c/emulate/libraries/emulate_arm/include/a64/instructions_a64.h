@@ -42,13 +42,13 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     //  Data-Processing (1 source immediate)
     //  PC-rel. addressing
     //  Add/subtract (immediate)
-    I_ADD_IMMEDIATE,
-    I_ADDS_IMMEDIATE,
-    I_SUB_IMMEDIATE,
-    I_SUBS_IMMEDIATE,
+    I_A64_ADD_IMMEDIATE,
+    I_A64_ADDS_IMMEDIATE,
+    I_A64_SUB_IMMEDIATE,
+    I_A64_SUBS_IMMEDIATE,
     //  Add/subtract (immediate, with tags)
-    I_ADDG,
-    I_SUBG,
+    I_A64_ADDG,
+    I_A64_SUBG,
     //  Min/max (immediate)
     //  Logical (immediate)
     //  Move wide (immediate)

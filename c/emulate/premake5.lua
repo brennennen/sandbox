@@ -62,6 +62,24 @@ project "emulate_arm"
     }
     links { "logger" }
 
+project "emulate_riscv"
+    kind "StaticLib"
+    language "C"
+    targetdir "bin/%{cfg.buildcfg}"
+    files {
+        "./libraries/emulate_riscv/include/**.h",
+        "./libraries/emulate_riscv/source/**.c"
+    }
+    includedirs {
+        "./libraries/emulate_riscv/include",
+        "./libraries/logger/include",
+        "./shared/include",
+        "."
+    }
+    links { "logger" }
+
+
+
 -- MARK: Applications
 
 project "test_emulate_intel"
@@ -104,6 +122,25 @@ project "test_emulate_arm"
         "criterion"
     }
 
+project "test_emulate_riscv"
+    kind "ConsoleApp"
+    language "C"
+    targetdir "bin/%{cfg.buildcfg}"
+    files {
+        "./libraries/emulate_riscv/test/**.h",
+        "./libraries/emulate_riscv/test/**.c"
+    }
+    includedirs {
+        "./libraries/logger/include",
+        "./libraries/emulate_riscv/include",
+        "./shared/include",
+        "."
+    }
+    links {
+        "emulate_riscv",
+        "logger",
+        "criterion"
+    }
 
 project "decode"
     kind "ConsoleApp"

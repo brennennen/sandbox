@@ -26,10 +26,6 @@ typedef enum ENUM_PACK_ATTRIBUTE {
 } instruction_group_a64_t;
 
 // MARK: Instructions
-/**
- * All Instructions for the 8086 processor as defined in the "8086 family users manual".
- * See Table 4-12. "8086 Instruction Encoding" (~page 164).
- */
 typedef enum ENUM_PACK_ATTRIBUTE {
     I_INVALID,
     // Reserved

@@ -95,7 +95,6 @@ result_t emu_a64_decode_chunk(
     memcpy(emulator->memory + PROGRAM_START, in_buffer, in_buffer_size);
     emulator->registers.r15.x = PROGRAM_START;
     return emu_a64_decode(emulator, out_buffer, out_buffer_size);
-    return(FAILURE);
 }
 
 result_t emu_a64_decode(

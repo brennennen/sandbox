@@ -50,6 +50,8 @@ apt-get install libcriterion-dev
 # intel: nasm, web based install: https://www.nasm.us/, `nasm` and `xxd -i`
 # arm: gnu `as` and `objdump -d`
 apt-get install binutils-arm-none-eabi
+# riscv: gnu `as` and `objdump -d`
+# install from source (see readme): https://github.com/riscv-collab/riscv-gnu-toolchain
 ```
 
 ## References
@@ -57,8 +59,26 @@ apt-get install binutils-arm-none-eabi
   * Intel developer manuals - https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html
   * Intel 8086 datasheet (16 bit) - https://edge.edx.org/c4x/BITSPilani/EEE231/asset/8086_family_Users_Manual_1_.pdf
   * Intel x86/80386 (32 bit) - https://css.csail.mit.edu/6.858/2014/readings/i386.pdf
-  * Intel x86-64 (64 bit) -
+  * Intel x86-64 (64 bit) - TODO
+  * Assembling and exploring test programs:
+    * nasm, web based install: https://www.nasm.us/, `nasm my_program.asm`
+    * use `xxd` to see assembled machine code bytes to use as test input for decoding (`xxd -i` provides a nice copy pastable c array syntax to plop into unit tests).
+    * why not gnu? gnu married itself to the at&t syntax for intel's ISAs. This project just implements the intel spec to keep things simple.
 * ARM
   * https://developer.arm.com/documentation/ddi0602/2025-03/Base-Instructions?lang=en
     * Much better docs than intel, intel just provides a 1000+ page image pdf and says goodluck, arm provides hyper text with links with actual technical writing (concise bullet lists vs pages of wordy paragrpahs).
-
+  * Assembling and exploring test programs:
+    * gnu `as` and `objdump -d`
+      * ubuntu install: `apt-get install binutils-arm-none-eabi`
+      * Examples:
+        * `aarch64-none-linux-gnu-as -o add.o add.s`
+        * `aarch64-none-linux-gnu-objdump -d add.o`
+* RISCV
+  * todo: docs?
+  * Assembling and exploring test programs:
+    * gnu `as` and `objdump -d`
+      * install from source (4+ hour build): https://github.com/riscv-collab/riscv-gnu-toolchain
+      * aur pre-built binaries: https://aur.archlinux.org/packages/riscv-gnu-toolchain-bin
+      * Examples:
+        * `riscv64-unknown-elf-as -o add.o add.s`
+        * `riscv64-unknown-elf-objdump -d add.o`

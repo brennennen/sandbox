@@ -1,5 +1,5 @@
 /**
- * Emulator for 8086 assembly per the "8086 family users manual 1".
+ * Emulator for RV64I
  */
 #ifndef EMULATE_RV64I_H
 #define EMULATE_RV64I_H
@@ -9,7 +9,7 @@
 
 #include "shared/include/result.h"
 
-#include "rv64i/registers_rv64i.h"
+#include "rv64i/rv64i_registers.h"
 
 // TODO: probably best to make this on the heap
 #define MEMORY_SIZE 65535 // 64KB,
@@ -30,11 +30,11 @@ emu_result_t emu_rv64i_init(emulator_rv64i_t* emulator);
 
 char* emu_rv64i_map_register_name(uint8_t reg_id);
 
-result_t emu_rv64i_decode_file(emulator_rv64i_t* emulator, char* input_path, char* out_buffer,
+result_t emu_rv64i_disassemble_file(emulator_rv64i_t* emulator, char* input_path, char* out_buffer,
     size_t out_buffer_size);
-result_t emu_rv64i_decode_chunk(emulator_rv64i_t* emulator, char* in_buffer, size_t in_buffer_size,
+result_t emu_rv64i_disassemble_chunk(emulator_rv64i_t* emulator, char* in_buffer, size_t in_buffer_size,
     char* out_buffer, size_t out_buffer_size);
-result_t emu_rv64i_decode(emulator_rv64i_t* emulator, char* out_buffer, size_t out_buffer_size);
+result_t emu_rv64i_disassemble(emulator_rv64i_t* emulator, char* out_buffer, size_t out_buffer_size);
 
 
 

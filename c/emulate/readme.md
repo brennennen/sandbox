@@ -23,7 +23,9 @@ make config=release -C ./.build/
 
 # Run/Test
 ./bin/Debug/sandbox
-./bin/Debug/test_emulate8086
+./bin/Debug/test_emulate_intel
+./bin/Debug/test_emulate_arm
+./bin/Debug/test_emulate_riscv
 ./bin/Debug/test
 ```
 
@@ -74,7 +76,8 @@ apt-get install binutils-arm-none-eabi
         * `aarch64-none-linux-gnu-as -o add.o add.s`
         * `aarch64-none-linux-gnu-objdump -d add.o`
 * RISCV
-  * todo: docs?
+  * Ratified docs: https://riscv.org/specifications/ratified/
+    * Docs deep dive into design decisions and trade-offs, which is greatly appreciated. They get a bit academic/bike sheddy stuff going on at times (ex: defining "hart" vs just using "thread" like everyone else...), but are generally a great resource (intel/older architectures have had sales/business people speak creep into over time).
   * Assembling and exploring test programs:
     * gnu `as` and `objdump -d`
       * install from source (4+ hour build): https://github.com/riscv-collab/riscv-gnu-toolchain

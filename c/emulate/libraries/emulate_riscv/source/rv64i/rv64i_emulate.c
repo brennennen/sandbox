@@ -5,11 +5,12 @@
 
 #include "logger.h"
 
-#include "rv64i/instructions_rv64i.h"
-#include "rv64i/emulate_rv64i.h"
-#include "rv64i/emu_rv64i_decode_instruction.h"
+#include "rv64i/rv64i_instructions.h"
+#include "rv64i/rv64i_emulate.h"
+#include "rv64i/rv64i_decode_instruction.h"
 
-#include "rv64i/instructions/arithmetic/add.h"
+#include "rv64i/instructions/rv64i_register_immediate.h"
+#include "rv64i/instructions/rv64i_register_register.h"
 
 
 emu_result_t emu_rv64i_init(emulator_rv64i_t* emulator) {
@@ -69,7 +70,7 @@ emu_result_t emu_rv64i_read_m32(emulator_rv64i_t* emulator, uint32_t* out_data) 
     return(ER_SUCCESS);
 }
 
-static result_iter_t emu_rv64i_decode_next(
+static result_iter_t emu_rv64i_disassemble_next(
     emulator_rv64i_t* emulator,
     char* out_buffer,
     int* index,
@@ -85,16 +86,41 @@ static result_iter_t emu_rv64i_decode_next(
     }
 
     instruction_tag_rv64i_t instruction_tag = I_RV64I_INVALID;
-    instruction_tag = emu_rv64i_decode_instruction_tag(raw_instruction);
+    instruction_tag = rv64i_decode_instruction_tag(raw_instruction);
     emulator->instructions_count += 1;
 
     emu_result_t result = RI_FAILURE;
     switch(instruction_tag) {
-        // ...
-        case I_RV64I_ADD_IMMEDIATE: {
-            result = emu_rv64i_decode_add_immediate(emulator, raw_instruction, out_buffer, index, out_buffer_size);
+        // Core Format "I" - "register-immediate"
+        case I_RV64I_JALR:
+        case I_RV64I_LB:
+        case I_RV64I_LH:
+        case I_RV64I_LW:
+        case I_RV64I_LBU:
+        case I_RV64I_LHU:
+        case I_RV64I_ADDI:
+        case I_RV64I_SLTI:
+        case I_RV64I_SLTUI:
+        case I_RV64I_XORI:
+        case I_RV64I_ORI:
+        case I_RV64I_ANDI: {
+            result = rv64i_disassemble_register_immediate(emulator, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
             break;
         }
+        // Core Format "R" - "register-register"
+        case I_RV64I_ADD:
+        case I_RV64I_SUB:
+        case I_RV64I_SLL:
+        case I_RV64I_SLT:
+        case I_RV64I_SLTU:
+        case I_RV64I_XOR:
+        case I_RV64I_SRL:
+        case I_RV64I_OR:
+        case I_RV64I_AND: {
+            result = rv64i_disassemble_register_register(emulator, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
+            break;
+        }
+        // TODO: other core formats
         // ...
     }
     if (result != ER_SUCCESS) {
@@ -108,7 +134,7 @@ static result_iter_t emu_rv64i_decode_next(
     return(RI_CONTINUE);
 }
 
-result_t emu_rv64i_decode_file(
+result_t emu_rv64i_disassemble_file(
     emulator_rv64i_t* emulator,
     char* input_path,
     char* out_buffer,
@@ -119,17 +145,17 @@ result_t emu_rv64i_decode_file(
     return(ER_FAILURE);
 }
 
-result_t emu_rv64i_decode_chunk(
+result_t emu_rv64i_disassemble_chunk(
     emulator_rv64i_t* emulator,
     char* in_buffer, size_t in_buffer_size,
     char* out_buffer, size_t out_buffer_size
 ) {
     memcpy(emulator->memory + PROGRAM_START, in_buffer, in_buffer_size);
     emulator->registers.pc = PROGRAM_START;
-    return emu_rv64i_decode(emulator, out_buffer, out_buffer_size);
+    return(emu_rv64i_disassemble(emulator, out_buffer, out_buffer_size));
 }
 
-result_t emu_rv64i_decode(
+result_t emu_rv64i_disassemble(
     emulator_rv64i_t* emulator,
     char* out_buffer,
     size_t out_buffer_size
@@ -138,7 +164,7 @@ result_t emu_rv64i_decode(
     result_iter_t result = RI_CONTINUE;
 
     do {
-        result = emu_rv64i_decode_next(emulator, out_buffer, &index, out_buffer_size);
+        result = emu_rv64i_disassemble_next(emulator, out_buffer, &index, out_buffer_size);
     } while(result == RI_CONTINUE);
 
     if (result == RI_DONE) {

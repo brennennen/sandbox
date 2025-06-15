@@ -61,7 +61,7 @@ instruction_tag_rv64i_t rv64i_decode_instruction_tag(uint32_t instruction) {
             switch(funct3) {
                 case 0b000: return(I_RV64I_ADDI);
                 case 0b010: return(I_RV64I_SLTI);
-                case 0b011: return(I_RV64I_SLTUI);
+                case 0b011: return(I_RV64I_SLTIU);
                 case 0b100: return(I_RV64I_XORI);
                 case 0b110: return(I_RV64I_ORI);
                 case 0b111: return(I_RV64I_ANDI);

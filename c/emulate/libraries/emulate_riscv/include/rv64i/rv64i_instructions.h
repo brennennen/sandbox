@@ -22,15 +22,21 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_RV64I_BGEU,
     I_RV64I_LB,
     I_RV64I_LH,
+    /** Load Word? */
     I_RV64I_LW,
     I_RV64I_LBU,
     I_RV64I_LHU,
     I_RV64I_SB,
     I_RV64I_SH,
+    /** Store Word? */
     I_RV64I_SW,
+    /** Add Immediate */
     I_RV64I_ADDI,
+    /** Set Less Than Immediate */
     I_RV64I_SLTI,
-    I_RV64I_SLTUI,
+    /** Set Less Than Immediate Unsigned */
+    I_RV64I_SLTIU,
+    /** XOR Immediate */
     I_RV64I_XORI,
     I_RV64I_ORI,
     I_RV64I_ANDI,

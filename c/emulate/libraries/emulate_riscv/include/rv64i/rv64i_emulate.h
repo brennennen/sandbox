@@ -30,12 +30,16 @@ emu_result_t emu_rv64i_init(emulator_rv64i_t* emulator);
 
 char* emu_rv64i_map_register_name(uint8_t reg_id);
 
+void debug_print_registers(emulator_rv64i_t* emulator);
+
 result_t emu_rv64i_disassemble_file(emulator_rv64i_t* emulator, char* input_path, char* out_buffer,
     size_t out_buffer_size);
 result_t emu_rv64i_disassemble_chunk(emulator_rv64i_t* emulator, char* in_buffer, size_t in_buffer_size,
     char* out_buffer, size_t out_buffer_size);
 result_t emu_rv64i_disassemble(emulator_rv64i_t* emulator, char* out_buffer, size_t out_buffer_size);
 
-
+result_t emu_rv64i_emulate_file(emulator_rv64i_t* emulator, char* input_path);
+result_t emu_rv64i_emulate_chunk(emulator_rv64i_t* emulator, char* in_buffer, size_t in_buffer_size);
+result_t emu_rv64i_emulate(emulator_rv64i_t* emulator);
 
 #endif // EMULATE_RV64I_H

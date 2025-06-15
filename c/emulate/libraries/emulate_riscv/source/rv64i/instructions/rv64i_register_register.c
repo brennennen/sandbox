@@ -35,3 +35,12 @@ emu_result_t rv64i_disassemble_register_register(
     *index += written;
     return(ER_SUCCESS);
 }
+
+emu_result_t rv64i_emulate_register_register(
+    emulator_rv64i_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64i_t tag
+) {
+    // TODO
+    return(ER_FAILURE);
+}

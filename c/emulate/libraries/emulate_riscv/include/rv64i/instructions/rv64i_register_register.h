@@ -24,5 +24,12 @@ emu_result_t rv64i_disassemble_register_register(
     size_t buffer_size
 );
 
+emu_result_t rv64i_emulate_register_register(
+    emulator_rv64i_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64i_t tag
+);
+
+
 #endif // EMU_RV64I_REGISTER_REGISTER_H
 

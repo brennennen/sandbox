@@ -150,9 +150,24 @@ result_t emu_rv64i_disassemble_file(
     char* out_buffer,
     size_t out_buffer_size
 ) {
+    LOG(LOG_INFO, "Starting disassemble file: '%s'", input_path);
+    FILE* file = fopen(input_path, "r");
+    if (file == NULL) {
+        LOG(LOG_ERROR, "Failed to open file: %s\n", input_path);
+        return FAILURE;
+    }
 
-    // TODO
-    return(ER_FAILURE);
+    fseek(file, 0, SEEK_END);
+    int file_size = ftell(file);
+    rewind(file);
+    int read_result = fread(emulator->memory + PROGRAM_START, 1, file_size, file);
+    if (read_result != file_size) {
+        LOG(LOG_ERROR, "Failed to read file!\n");
+        return FAILURE;
+    }
+    emulator->registers.pc = PROGRAM_START;
+    result_t result = emu_rv64i_disassemble(emulator, out_buffer, out_buffer_size);
+    return result;
 }
 
 result_t emu_rv64i_disassemble_chunk(

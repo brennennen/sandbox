@@ -27,7 +27,7 @@ Test(decode__I_POP_REGISTER__tests, pop_register_1, .init = decode_pop_default_s
     char* expected = "pop cx\n";
     uint8_t input[] = { 0x59 }; // 0b01011001
     char output[32] = { 0x00 };
-    cr_assert(SUCCESS == emu_8086_decode_chunk(
+    cr_assert(SUCCESS == emu_8086_disassemble_chunk(
         &g_emulator, input, sizeof(input), output, sizeof(output)));
     cr_assert(1 == g_emulator.instructions_count,
         "expected:\n'%d'\n\nactual:\n'%d'\n", 1, g_emulator.instructions_count);

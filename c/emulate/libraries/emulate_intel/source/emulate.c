@@ -18,35 +18,35 @@
 /**
  * Initializes the decoder.
  */
-void emu_init(emulator_t* emulator, emu_arch_t arch) {
+void emu_init(emulator_t* emulator,arch_t arch) {
     switch(arch) {
-        case ARCH_8086: {
+        case ARCH_I8086: {
             emu_8086_init(&emulator->emulator_8086);
         }
         default: {
-            LOGD("NOT IMPLEMENTED!");
+            LOGD("ARCH not implemented");
         }
     }
 }
 
-result_t emu_decode_file(
+result_t emu_disassemble_file(
     emulator_t* emulator,
     char* input_path,
     char* out_buffer,
     size_t out_buffer_size)
 {
     switch(emulator->arch) {
-        case ARCH_8086: {
-            return(emu_8086_decode_file(&emulator->emulator_8086, input_path, out_buffer, out_buffer_size));
+        case ARCH_I8086: {
+            return(emu_8086_disassemble_file(&emulator->emulator_8086, input_path, out_buffer, out_buffer_size));
         }
         default: {
-            LOGD("i386 and x64 (32 and 64 bit modes) are not implemented");
+            LOGD("ARCH not implemented");
             return(FAILURE);
         }
     }
 }
 
-result_t emu_decode_chunk(
+result_t emu_disassemble_chunk(
     emulator_t* emulator,
     char* in_buffer,
     size_t in_buffer_size,
@@ -54,23 +54,23 @@ result_t emu_decode_chunk(
     size_t out_buffer_size)
 {
     switch(emulator->arch) {
-        case ARCH_8086: {
-            return(emu_8086_decode_chunk(&emulator->emulator_8086, in_buffer, in_buffer_size, out_buffer, out_buffer_size));
+        case ARCH_I8086: {
+            return(emu_8086_disassemble_chunk(&emulator->emulator_8086, in_buffer, in_buffer_size, out_buffer, out_buffer_size));
         }
         default: {
-            LOGD("i386 and x64 (32 and 64 bit modes) are not implemented");
+            LOGD("ARCH not implemented");
             return(FAILURE);
         }
     }
 }
 
-result_t emu_decode(emulator_t* emulator, char* out_buffer, size_t out_buffer_size) {
+result_t emu_disassemble(emulator_t* emulator, char* out_buffer, size_t out_buffer_size) {
     switch(emulator->arch) {
-        case ARCH_8086: {
-            return(emu_8086_decode(&emulator->emulator_8086, out_buffer, out_buffer_size));
+        case ARCH_I8086: {
+            return(emu_8086_disassemble(&emulator->emulator_8086, out_buffer, out_buffer_size));
         }
         default: {
-            LOGD("i386 and x64 (32 and 64 bit modes) are not implemented");
+            LOGD("ARCH not implemented");
             return(FAILURE);
         }
     }
@@ -79,11 +79,11 @@ result_t emu_decode(emulator_t* emulator, char* out_buffer, size_t out_buffer_si
 result_t emu_emulate_file(emulator_t* emulator, char* input_path) {
     LOG(LOG_INFO, "Starting emulate file: %s\n", input_path);
     switch(emulator->arch) {
-        case ARCH_8086: {
+        case ARCH_I8086: {
             return(emu_8086_emulate_file(&emulator->emulator_8086, input_path));
         }
         default: {
-            LOGD("i386 and x64 (32 and 64 bit modes) are not implemented");
+            LOGD("ARCH not implemented");
             return(FAILURE);
         }
     }
@@ -95,11 +95,11 @@ result_t emu_emulate_chunk(
     size_t in_buffer_size
 ) {
     switch(emulator->arch) {
-        case ARCH_8086: {
+        case ARCH_I8086: {
             return(emu_8086_emulate_chunk(&emulator->emulator_8086, in_buffer, in_buffer_size));
         }
         default: {
-            LOGD("i386 and x64 (32 and 64 bit modes) are not implemented");
+            LOGD("ARCH not implemented");
             return(FAILURE);
         }
     }
@@ -112,7 +112,7 @@ result_t emu_emulate(emulator_t* emulator) {
             return(emu_8086_emulate(&emulator->emulator_8086));
         }
         default: {
-            LOGD("i386 and x64 (32 and 64 bit modes) are not implemented");
+            LOGD("ARCH not implemented");
             return(FAILURE);
         }
     }

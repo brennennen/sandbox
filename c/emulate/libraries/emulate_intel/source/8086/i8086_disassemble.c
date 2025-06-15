@@ -33,7 +33,7 @@
 #include "8086/instructions/processor_control/stc.h"
 
 
-static result_iter_t emu_8086_decode_next(emulator_8086_t* decoder, char* out_buffer, int* index, size_t out_buffer_size) {
+static result_iter_t emu_8086_disassemble_next(emulator_8086_t* decoder, char* out_buffer, int* index, size_t out_buffer_size) {
     uint8_t byte1 = decoder->memory[decoder->registers.ip];
     decoder->registers.ip += 1;
     LOGD("ip: %d, byte1: %x", decoder->registers.ip, byte1);
@@ -214,7 +214,7 @@ static result_iter_t emu_8086_decode_next(emulator_8086_t* decoder, char* out_bu
 
     }
     if (result != ER_SUCCESS) {
-        fprintf(stderr, "Failed to parse instruction! decode_result = %s (%d)\n", emulate_result_strings[result], result);
+        fprintf(stderr, "Failed to parse instruction! result = %s (%d)\n", emulate_result_strings[result], result);
         return RI_FAILURE;
     }
 
@@ -224,14 +224,19 @@ static result_iter_t emu_8086_decode_next(emulator_8086_t* decoder, char* out_bu
     return RI_CONTINUE;
 }
 
-result_t emu_8086_decode_file(
+result_t emu_8086_disassemble_file(
     emulator_8086_t* emulator,
     char* input_path,
     char* out_buffer,
     size_t out_buffer_size)
 {
-    LOG(LOG_INFO, "Starting decode file: '%s'", input_path);
+    LOG(LOG_INFO, "Starting disassemble file: '%s'", input_path);
     FILE* file = fopen(input_path, "r");
+    if (file == NULL) {
+        LOG(LOG_ERROR, "Failed to open file: %s\n", input_path);
+        return FAILURE;
+    }
+
     fseek(file, 0, SEEK_END);
     int file_size = ftell(file);
     rewind(file);
@@ -241,11 +246,11 @@ result_t emu_8086_decode_file(
         return FAILURE;
     }
     emulator->registers.ip = PROGRAM_START;
-    result_t result = emu_8086_decode(emulator, out_buffer, out_buffer_size);
+    result_t result = emu_8086_disassemble(emulator, out_buffer, out_buffer_size);
     return result;
 }
 
-result_t emu_8086_decode_chunk(
+result_t emu_8086_disassemble_chunk(
     emulator_8086_t* emulator,
     char* in_buffer,
     size_t in_buffer_size,
@@ -254,15 +259,15 @@ result_t emu_8086_decode_chunk(
 {
     memcpy(emulator->memory + PROGRAM_START, in_buffer, in_buffer_size);
     emulator->registers.ip = PROGRAM_START;
-    return emu_8086_decode(emulator, out_buffer, out_buffer_size);
+    return emu_8086_disassemble(emulator, out_buffer, out_buffer_size);
 }
 
-result_t emu_8086_decode(emulator_8086_t* emulator, char* out_buffer, size_t out_buffer_size) {
+result_t emu_8086_disassemble(emulator_8086_t* emulator, char* out_buffer, size_t out_buffer_size) {
     int index = 0;
     result_iter_t result = RI_CONTINUE;
 
     do {
-        result = emu_8086_decode_next(emulator, out_buffer, &index, out_buffer_size);
+        result = emu_8086_disassemble_next(emulator, out_buffer, &index, out_buffer_size);
     } while (result == RI_CONTINUE);
 
     if (result == RI_DONE) {

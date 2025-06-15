@@ -26,7 +26,7 @@ Test(decode__I_ADD__tests, add_1, .init = decode_add_default_setup)
     char* expected = "add cx, bx\n";
     uint8_t input[] = { 0x01, 0xd9 };
     char output[32] = { 0x00 };
-    cr_assert(SUCCESS == emu_8086_decode_chunk(
+    cr_assert(SUCCESS == emu_8086_disassemble_chunk(
         &g_emulator, input, sizeof(input), output, sizeof(output)));
     cr_assert(1 == g_emulator.instructions_count);
     cr_assert(strncmp(expected, output, sizeof(output)) == 0,
@@ -39,7 +39,7 @@ Test(decode__I_ADD_IMMEDIATE__tests, add_immediate_1, .init = decode_add_default
     char* expected = "add cx, 8\n";
     uint8_t input[] = { 0x83, 0xc1, 0x08 }; // 0b10000011 11000001 00001000
     char output[32] = { 0x00 };
-    cr_assert(SUCCESS == emu_8086_decode_chunk(
+    cr_assert(SUCCESS == emu_8086_disassemble_chunk(
         &g_emulator, input, sizeof(input), output, sizeof(output)));
     cr_assert(1 == g_emulator.instructions_count);
     cr_assert(strncmp(expected, output, sizeof(output)) == 0,
@@ -85,7 +85,7 @@ Test(decode__I_ADD_IMMEDIATE__tests, add_immediate_1, .init = decode_add_default
 //         0xe8, 0x03, 0x1d, 0x03, 0x46, 0x00, 0x02, 0x00, 0x01, 0xd8, 0x00, 0xe0,
 //         0x05, 0xe8, 0x03, 0x04, 0xe2, 0x04, 0x09
 //     };
-//     cr_assert(SUCCESS == emu_8086_decode_chunk(&g_emulator, input, sizeof(input), output, sizeof(output)));
+//     cr_assert(SUCCESS == emu_8086_disassemble_chunk(&g_emulator, input, sizeof(input), output, sizeof(output)));
 //     cr_assert(1 == g_emulator.instructions_count);
 //     uint8_t output[32] = { 0x00 };
 //     dcd_write_all_assembly(g_emulator.instructions, g_emulator.instructions_count, output, sizeof(output));

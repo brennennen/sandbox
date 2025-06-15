@@ -8,6 +8,7 @@
 #include <stdio.h>
 
 #include "shared/include/result.h"
+#include "shared/include/arch.h"
 
 #include "8086/emulate_8086.h"
 
@@ -18,11 +19,11 @@
 
 #define DEBUG 1
 
-typedef enum {
-    ARCH_8086, // 8086 (partially implemented)
-    ARCH_I386, // i386, x86 (not implemented)
-    ARCH_X64, // x64 (not implemented)
-} emu_arch_t;
+// typedef enum {
+//     ARCH_8086, // 8086 (partially implemented)
+//     ARCH_I386, // i386, x86 (not implemented)
+//     ARCH_X64, // x64 (not implemented)
+// } emu_arch_t;
 
 typedef enum {
     BITS_16, // 8086 (partially implemented)
@@ -32,22 +33,22 @@ typedef enum {
 
 typedef struct {
     bits_mode_t bits_mode;
-    emu_arch_t arch;
+    arch_t arch;
     emulator_8086_t emulator_8086;
 } emulator_t;
 
 
 
 
-void emu_init(emulator_t* emulator, emu_arch_t arch);
+void emu_init(emulator_t* emulator, arch_t arch);
 
 
 
-result_t emu_decode_file(emulator_t* emulator, char* input_path, char* out_buffer,
+result_t emu_disassemble_file(emulator_t* emulator, char* input_path, char* out_buffer,
     size_t out_buffer_size);
-result_t emu_decode_chunk(emulator_t* emulator, char* in_buffer, size_t in_buffer_size,
+result_t emu_disassemble_chunk(emulator_t* emulator, char* in_buffer, size_t in_buffer_size,
     char* out_buffer, size_t out_buffer_size);
-result_t emu_decode(emulator_t* emulator, char* out_buffer, size_t out_buffer_size);
+result_t emu_disassemble(emulator_t* emulator, char* out_buffer, size_t out_buffer_size);
 
 result_t emu_emulate_file(emulator_t* emulator, char* input_path);
 result_t emu_emulate_chunk(emulator_t* emulator, char* in_buffer, size_t in_buffer_size);

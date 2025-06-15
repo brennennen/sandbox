@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
     char* input_path = argv[1];
     printf("Starting decode on: '%s'\n", input_path);
     emulator_t emulator;
-    emu_init(&emulator, ARCH_8086);
+    emu_init(&emulator, ARCH_I8086);
     result_t result = emu_emulate_file(&emulator, argv[1]);
     printf("Emulate result: %s, instructions: %d\n", result_strings[result], emulator.emulator_8086.instructions_count);
 

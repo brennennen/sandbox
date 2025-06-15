@@ -29,11 +29,11 @@ typedef struct {
 
 emu_result_t emu_8086_init(emulator_8086_t* emulator);
 
-result_t emu_8086_decode_file(emulator_8086_t* emulator, char* input_path, char* out_buffer,
+result_t emu_8086_disassemble_file(emulator_8086_t* emulator, char* input_path, char* out_buffer,
     size_t out_buffer_size);
-result_t emu_8086_decode_chunk(emulator_8086_t* emulator, char* in_buffer, size_t in_buffer_size,
+result_t emu_8086_disassemble_chunk(emulator_8086_t* emulator, char* in_buffer, size_t in_buffer_size,
     char* out_buffer, size_t out_buffer_size);
-result_t emu_8086_decode(emulator_8086_t* emulator, char* out_buffer, size_t out_buffer_size);
+result_t emu_8086_disassemble(emulator_8086_t* emulator, char* out_buffer, size_t out_buffer_size);
 
 result_t emu_8086_emulate(emulator_8086_t* emulator);
 result_t emu_8086_emulate_file(emulator_8086_t* emulator, char* input_path);

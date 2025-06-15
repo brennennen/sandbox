@@ -27,7 +27,7 @@ Test(decode__I_NOT__tests, not_1, .init = decode_not_default_setup)
     char* expected = "not ax\n";
     uint8_t input[] = { 0xf7, 0xd0 }; // 0b11110111 0b
     char output[32] = { 0x00 };
-    cr_assert(SUCCESS == emu_8086_decode_chunk(
+    cr_assert(SUCCESS == emu_8086_disassemble_chunk(
         &g_emulator, input, sizeof(input), output, sizeof(output)));
     cr_assert(1 == g_emulator.instructions_count);
     cr_assert(strncmp(expected, output, sizeof(output)) == 0,

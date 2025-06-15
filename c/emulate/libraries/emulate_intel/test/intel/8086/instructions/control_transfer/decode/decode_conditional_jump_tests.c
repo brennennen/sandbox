@@ -30,7 +30,7 @@ je label
     char* expected = "je $+0\n";
     uint8_t input[] = { 0x74, 0xfe }; // 0b00101001 0b11011001
     char output[32] = { 0x00 };
-    cr_assert(SUCCESS == emu_8086_decode_chunk(
+    cr_assert(SUCCESS == emu_8086_disassemble_chunk(
         &g_emulator, input, sizeof(input), output, sizeof(output)));
     cr_assert(1 == g_emulator.instructions_count);
     cr_assert(strncmp(expected, output, sizeof(output)) == 0,
@@ -102,7 +102,7 @@ jcxz $-38\n\
         0x71, 0xe2, 0x79, 0xe0, 0xe2, 0xde, 0xe1, 0xdc, 0xe0, 0xda, 0xe3, 0xd8
     };
     char output[512] = { 0x00 };
-    cr_assert(SUCCESS == emu_8086_decode_chunk(
+    cr_assert(SUCCESS == emu_8086_disassemble_chunk(
         &g_emulator, input, sizeof(input), output, sizeof(output)));
     cr_assert(24 == g_emulator.instructions_count,
         "expected: '%d', actual:'%d'\n", 24, g_emulator.instructions_count);
@@ -118,7 +118,7 @@ Test(decode__conditional_jump__tests, jnz, .init = decode_conditional_jump_defau
     char* expected = "jne $+0\n";
     uint8_t input[] = { 0x75, 0xfe };
     char output[256] = { 0x00 };
-    cr_assert(SUCCESS == emu_8086_decode_chunk(
+    cr_assert(SUCCESS == emu_8086_disassemble_chunk(
         &g_emulator, input, sizeof(input), output, sizeof(output)));
     cr_assert(1 == g_emulator.instructions_count);
     cr_assert(strncmp(expected, output, sizeof(output)) == 0,
@@ -143,7 +143,7 @@ jne $-6\n";
         0x75, 0xf8
     };
     char output[256] = { 0x00 };
-    cr_assert(SUCCESS == emu_8086_decode_chunk(
+    cr_assert(SUCCESS == emu_8086_disassemble_chunk(
         &g_emulator, input, sizeof(input), output, sizeof(output)));
     cr_assert(5 == g_emulator.instructions_count);
     cr_assert(strncmp(expected, output, sizeof(output)) == 0,
@@ -191,7 +191,7 @@ jne $-9\n\
         0x8b, 0x0a, 0x01, 0xcb, 0x83, 0xc6, 0x02, 0x39, 0xd6, 0x75, 0xf5
     };
     char output[256] = { 0x00 };
-    cr_assert(SUCCESS == emu_8086_decode_chunk(
+    cr_assert(SUCCESS == emu_8086_disassemble_chunk(
         &g_emulator, input, sizeof(input), output, sizeof(output)));
     cr_assert(14 == g_emulator.instructions_count);
     cr_assert(strncmp(expected, output, sizeof(output)) == 0,

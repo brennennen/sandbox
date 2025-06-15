@@ -27,7 +27,7 @@ Test(decode__I_PUSH_REGISTER__tests, push_register_1, .init = decode_push_defaul
     char* expected = "push cx\n";
     uint8_t input[] = { 0x51 }; // 0b01010001
     char output[32] = { 0x00 };
-    cr_assert(SUCCESS == emu_8086_decode_chunk(
+    cr_assert(SUCCESS == emu_8086_disassemble_chunk(
         &g_emulator, input, sizeof(input), output, sizeof(output)));
     cr_assert(1 == g_emulator.instructions_count,
         "expected:\n'%d'\n\nactual:\n'%d'\n", 1, g_emulator.instructions_count);

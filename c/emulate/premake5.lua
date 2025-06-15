@@ -142,17 +142,19 @@ project "test_emulate_riscv"
         "criterion"
     }
 
-project "decode"
+project "disassemble"
     kind "ConsoleApp"
     language "C"
     targetdir "bin/%{cfg.buildcfg}"
-    files { "./apps/decode/**.h", "./apps/decode/**.c" }
+    files { "./apps/disassemble/**.h", "./apps/disassemble/**.c" }
     includedirs {
         "./libraries/logger/include",
+        "./libraries/emulate_riscv/include",
+        "./libraries/emulate_arm/include",
         "./libraries/emulate_intel/include",
         "./shared/include",
         "." }
-    links { "emulate_intel", "logger" }
+    links { "emulate_intel", "emulate_arm", "emulate_riscv", "logger" }
 
 project "emulate"
     kind "ConsoleApp"
@@ -161,8 +163,10 @@ project "emulate"
     files { "./apps/emulate/**.h", "./apps/emulate/**.c" }
     includedirs {
         "./libraries/logger/include",
+        "./libraries/emulate_riscv/include",
+        "./libraries/emulate_arm/include",
         "./libraries/emulate_intel/include",
         "./shared/include",
         "."
     }
-    links { "emulate_intel", "logger" }
+    links { "emulate_intel", "emulate_arm", "emulate_riscv", "logger" }

@@ -1,5 +1,5 @@
-#ifndef INSTRUCTIONS_RV64I_H
-#define INSTRUCTIONS_RV64I_H
+#ifndef INSTRUCTIONS_RV64_H
+#define INSTRUCTIONS_RV64_H
 
 #include <stdint.h>
 #include <inttypes.h>
@@ -8,12 +8,14 @@
 
 // MARK: Instructions
 typedef enum ENUM_PACK_ATTRIBUTE {
-    // RV32I Base Instructions
     I_RV64I_INVALID,
-    I_RV64I_LUI,
-    I_RV64I_AUIPC,
-    I_RV64I_JAL,
-    I_RV64I_JALR,
+
+    // MARK: RV64I - Integer
+
+    I_RV64I_LUI, /** Load Upper Immediate */
+    I_RV64I_AUIPC, /** Add Upper Immediate to pc */
+    I_RV64I_JAL, /** Jump and Link */
+    I_RV64I_JALR, /** Jump and Link and Return */
     I_RV64I_BEQ,
     I_RV64I_BNE,
     I_RV64I_BLT,
@@ -22,22 +24,16 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_RV64I_BGEU,
     I_RV64I_LB,
     I_RV64I_LH,
-    /** Load Word? */
-    I_RV64I_LW,
+    I_RV64I_LW, /** Load Word */
     I_RV64I_LBU,
     I_RV64I_LHU,
     I_RV64I_SB,
     I_RV64I_SH,
-    /** Store Word? */
-    I_RV64I_SW,
-    /** Add Immediate */
-    I_RV64I_ADDI,
-    /** Set Less Than Immediate */
-    I_RV64I_SLTI,
-    /** Set Less Than Immediate Unsigned */
-    I_RV64I_SLTIU,
-    /** XOR Immediate */
-    I_RV64I_XORI,
+    I_RV64I_SW, /** Store Word */
+    I_RV64I_ADDI, /** Add Immediate */
+    I_RV64I_SLTI, /** Set Less Than Immediate */
+    I_RV64I_SLTIU, /** Set Less Than Immediate Unsigned */
+    I_RV64I_XORI, /** XOR Immediate */
     I_RV64I_ORI,
     I_RV64I_ANDI,
     I_RV64I_SLLI,
@@ -58,8 +54,6 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_RV64I_PAUSE,
     I_RV64I_ECALL,
     I_RV64I_EBREAK,
-
-    // RV64I Extra Instructions
     I_RV64I_LWU,
     I_RV64I_LD,
     I_RV64I_SD,
@@ -72,15 +66,34 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_RV64I_SLLW,
     I_RV64I_SRLW,
     I_RV64I_SRAW,
-} instruction_tag_rv64i_t;
+
+    // MARK: RV64M - Multiplication
+    I_RV64M_MUL,
+    I_RV64M_MULH,
+    I_RV64M_MULHSU,
+    I_RV64M_MULHU,
+    I_RV64M_DIV,
+    I_RV64M_DIVU,
+    I_RV64M_REM,
+    I_RV64M_REMU,
+    I_RV64M_MULW,
+    I_RV64M_DIVW,
+    I_RV64M_DIVUW,
+    I_RV64M_REMW,
+    I_RV64M_REMUW,
+
+    // MARK: RV64A - Atomic
+
+} instruction_tag_rv64_t;
 
 /**
  * Lookup table for machine instructions to their associated assembly instruction
  * mnemonics.
- * WARNING: Parallal array with "instruction_tag_rv64i_t".
+ * WARNING: Parallal array with "instruction_tag_rv64_t".
  */
-static char rv64i_instruction_tag_mnemonic[][16] = {
+static char rv64_instruction_tag_mnemonic[][16] = {
     "invalid",
+    // RV64I
     "lui",
     "auipc",
     "jal",
@@ -135,6 +148,20 @@ static char rv64i_instruction_tag_mnemonic[][16] = {
     "sllw",
     "srlw",
     "sraw",
+    // RV64M
+    "mul",
+    "mulh",
+    "mulhsu",
+    "mulhu",
+    "div",
+    "divu",
+    "rem",
+    "remu",
+    "mulw",
+    "divw",
+    "divuw",
+    "remw",
+    "remuw",
 };
 
 #endif // INSTRUCTIONS_RV64I_H

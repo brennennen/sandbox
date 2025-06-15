@@ -5,8 +5,8 @@
 
 #include "logger.h"
 
-#include "rv64i/rv64i_instructions.h"
-#include "rv64i/rv64i_decode_instruction.h"
+#include "rv64/rv64_instructions.h"
+#include "rv64/rv64_decode_instruction.h"
 
 
 /**
@@ -14,7 +14,7 @@
  * in the specification under the "RV32/64G Instruction Set Listings" table ("RISC-V
  * Instruction Set Manual Volume 1", Chapter 35, page 608).
  */
-instruction_tag_rv64i_t rv64i_decode_instruction_tag(uint32_t instruction) {
+instruction_tag_rv64_t rv64_decode_instruction_tag(uint32_t instruction) {
     uint8_t opcode = instruction & 0b01111111;
     switch(opcode) {
         case 0b0110111: return(I_RV64I_LUI);

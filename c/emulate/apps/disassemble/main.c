@@ -48,7 +48,7 @@ jne $-6
 #include "shared/include/arch.h"
 
 #include "libraries/emulate_intel/include/8086/emulate_8086.h"
-#include "libraries/emulate_riscv/include/rv64i/rv64i_emulate.h"
+#include "libraries/emulate_riscv/include/rv64/rv64_emulate.h"
 
 void print_help() {
     printf("Disassembles a program to standard out.\n");
@@ -88,10 +88,10 @@ int main(int argc, char* argv[]) {
             break;
         }
         case ARCH_RV64I: {
-            emulator_rv64i_t emulator_rv64i;
-            emu_rv64i_init(&emulator_rv64i);
-            result_t result = emu_rv64i_disassemble_file(&emulator_rv64i, input_path, out_buffer, sizeof(out_buffer));
-            printf("Disassemble result: %s, instructions: %d\n", result_strings[result], emulator_rv64i.instructions_count);
+            emulator_rv64_t emulator_rv64;
+            emu_rv64_init(&emulator_rv64);
+            result_t result = emu_rv64_disassemble_file(&emulator_rv64, input_path, out_buffer, sizeof(out_buffer));
+            printf("Disassemble result: %s, instructions: %d\n", result_strings[result], emulator_rv64.instructions_count);
             break;
         }
         default: {

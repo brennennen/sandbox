@@ -1,10 +1,10 @@
 
-#ifndef RV64I_DECODE_H
-#define RV64I_DECODE_H
+#ifndef RV64_DECODE_H
+#define RV64_DECODE_H
 
 #include <stdint.h>
 
-static inline void rv64i_decode_register_immediate(
+static inline void rv64_decode_register_immediate(
     uint32_t raw_instruction,
     int16_t* imm12,
     uint8_t* rs1,
@@ -15,7 +15,7 @@ static inline void rv64i_decode_register_immediate(
     *rd = (raw_instruction >> 7) & 0b11111;
 }
 
-static inline void rv64i_decode_register_register(
+static inline void rv64_decode_register_register(
     uint32_t raw_instruction,
     uint8_t* rs2,
     uint8_t* rs1,

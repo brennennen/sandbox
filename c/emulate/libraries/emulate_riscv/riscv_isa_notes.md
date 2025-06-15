@@ -8,7 +8,7 @@ Compiled HTML Link:
 Compiled PDF Link: https://drive.google.com/file/d/1uviu1nH-tScFfgrovvFCrj7Omv8tFtkp/view
  * If link is dead, start here and click around: https://riscv.org/specifications/ratified/
 
-TODO: pickup on page 31, section: 2.6 load nad store instructions
+TODO: pickup on page 31, section: 2.6 load and store instructions
 
 ## Terminology
 * RISC-V Hardware Platform - A single core microcontroller to a many-thousand-node cluster of shared-memory manycore server nodes.
@@ -73,4 +73,4 @@ TODO: pickup on page 31, section: 2.6 load nad store instructions
 * Section 2.4.1 (page 26) has the definition for "ADDI" and is the start of instruction definitions.
 * register-register and register-immediate use `rd` as the detination register.
 * No special instructions for overflow checking (no overflow flag like intel). You instead do checks in software by adding branch instructions and checking.
-*
+* 

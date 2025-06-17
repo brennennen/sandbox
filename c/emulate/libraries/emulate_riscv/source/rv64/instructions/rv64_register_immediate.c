@@ -37,9 +37,12 @@ emu_result_t rv64_disassemble_register_immediate(
 }
 
 static inline void rv64_jalr(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    emulator->registers.regs[rd] = emulator->registers.regs[rs1] + imm12;
+    // TODO
 }
 
+/**
+ * NOTE: NOP is encoded as `ADDI x0, x0, 0`.
+ */
 static inline void rv64_addi(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
     emulator->registers.regs[rd] = emulator->registers.regs[rs1] + imm12;
 }
@@ -72,15 +75,30 @@ static inline void rv64_andi(emulator_rv64_t* emulator, int16_t imm12, uint8_t r
     emulator->registers.regs[rd] = emulator->registers.regs[rs1] & imm12;
 }
 
+/**
+ * SLLI - Shift Logical Left with Immediate.
+ * Zeros are shifted into the lower bits.
+ * (Section 2.4.1. Integer Register-Immediate Instructions)
+ */
 static inline void rv64_slli(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
     emulator->registers.regs[rd] = emulator->registers.regs[rs1] << imm12;
 }
 
+/**
+ * SRLI - Shift Right Logical with Immediate.
+ * Zeros are shifted into the upper bits.
+ * (Section 2.4.1. Integer Register-Immediate Instructions)
+ */
 static inline void rv64_srli(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
     // TODO: lookup arithmetic vs logical shift
     // emulator->registers.regs[rd] = emulator->registers.regs[rs1] >> imm12;
 }
 
+/**
+ * SRAI - Shift Right Arithmetic with Immediate.
+ * The original sign bit is copied into the vacated upper bits.
+ * (Section 2.4.1. Integer Register-Immediate Instructions)
+ */
 static inline void rv64_srai(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
     // TODO: lookup arithmetic vs logical shift
     // emulator->registers.regs[rd] = emulator->registers.regs[rs1] >> imm12;

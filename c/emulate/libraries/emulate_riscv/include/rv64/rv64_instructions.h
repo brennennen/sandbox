@@ -22,13 +22,13 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_RV64I_BGE,
     I_RV64I_BLTU,
     I_RV64I_BGEU,
-    I_RV64I_LB,
-    I_RV64I_LH,
-    I_RV64I_LW, /** Load Word */
-    I_RV64I_LBU,
-    I_RV64I_LHU,
-    I_RV64I_SB,
-    I_RV64I_SH,
+    I_RV64I_LB, /** Load Byte - Loads 8 bit value, then sign-extends to 32-bits before storing in rd.*/
+    I_RV64I_LH, /** Load Half Word - Loads 16 bit value, then sign-extends to 32-bits before storing in rd. */
+    I_RV64I_LW, /** Load Word - Loads a 32-bit value from memory into rd. */
+    I_RV64I_LBU, /** Load Byte Unsigned - Loads 8 bit value, then 0 extends to 32-bits before storing in rd.*/
+    I_RV64I_LHU, /** Load Half Word Unsigned - Loads 16 bit value, then 0 extends to 32-bits before storing in rd. */
+    I_RV64I_SB, /** Store Byte */
+    I_RV64I_SH, /** Store Half Word*/
     I_RV64I_SW, /** Store Word */
     I_RV64I_ADDI, /** Add Immediate */
     I_RV64I_SLTI, /** Set Less Than Immediate */

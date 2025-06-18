@@ -42,4 +42,7 @@ result_t emu_rv64_emulate_file(emulator_rv64_t* emulator, char* input_path);
 result_t emu_rv64_emulate_chunk(emulator_rv64_t* emulator, char* in_buffer, size_t in_buffer_size);
 result_t emu_rv64_emulate(emulator_rv64_t* emulator);
 
+void emu_rv64_print_registers(emulator_rv64_t* emulator);
+void emu_rv64_print_registers_condensed(emulator_rv64_t* emulator);
+
 #endif // EMULATE_RV64I_H

@@ -18,5 +18,16 @@ Test(emu_rv64_decode_tag_tests, I_ADD_IMMEDIATE) {
     cr_assert(I_RV64I_XORI == rv64_decode_instruction_tag(0x01034293)); // xori t0, t1, 16
     cr_assert(I_RV64I_ORI == rv64_decode_instruction_tag(0x020fef13)); // ori t5, t6, 32
     cr_assert(I_RV64I_ANDI == rv64_decode_instruction_tag(0x040efe13)); // andi t3, t4, 64
+    // "R" Type
+    cr_assert(I_RV64I_ADD == rv64_decode_instruction_tag(0x007302b3)); // add t0, t1, t2
+    cr_assert(I_RV64I_SUB == rv64_decode_instruction_tag(0x41ff0eb3)); // sub t4, t5, t6
+    cr_assert(I_RV64I_SLL == rv64_decode_instruction_tag(0x00629fb3)); // sll t6, t0, t1
+    cr_assert(I_RV64I_SLT == rv64_decode_instruction_tag(0x007322b3)); // slt t0, t1, t2
+    cr_assert(I_RV64I_SLTU == rv64_decode_instruction_tag(0x00c5b533)); // sltu a0, a1, a2
+    cr_assert(I_RV64I_XOR == rv64_decode_instruction_tag(0x0093c533)); // xor a0, t2, s1
+
+
+
+
     // ...
 }

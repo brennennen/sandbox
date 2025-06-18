@@ -12,11 +12,11 @@
 
 void print_registers(emulator_8086_t* emulator);
 
-void print_registers_condensed(emulator_8086_t* emulator);
+void emu_8086_print_registers_condensed(emulator_8086_t* emulator);
 
 void print_flags(uint16_t flags);
 
-void print_flags_condensed(uint16_t flags);
+void emu_8086_print_flags_condensed(uint16_t flags);
 
 static inline void emu_reg_set_flag(uint16_t* flags, uint16_t mask) {
     *flags = *flags | mask;

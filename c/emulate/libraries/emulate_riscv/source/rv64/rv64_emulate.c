@@ -216,6 +216,11 @@ static result_iter_t emu_rv64_emulate_next(emulator_rv64_t* emulator) {
 
     emu_result_t result = ER_SUCCESS; //RI_FAILURE;
     switch(instruction_tag) {
+        case I_RV64I_LUI: {
+            // TODO
+            result = ER_FAILURE;
+            break;
+        }
         // Core Format "I" - "register-immediate"
         case I_RV64I_JALR:
         case I_RV64I_LB:
@@ -260,7 +265,24 @@ static result_iter_t emu_rv64_emulate_next(emulator_rv64_t* emulator) {
 }
 
 result_t emu_rv64_emulate_file(emulator_rv64_t* emulator, char* input_path) {
+    LOG(LOG_INFO, "Starting emulate file: '%s'", input_path);
+    FILE* file = fopen(input_path, "r");
+    if (file == NULL) {
+        LOG(LOG_ERROR, "Failed to open file: %s\n", input_path);
+        return FAILURE;
+    }
 
+    fseek(file, 0, SEEK_END);
+    int file_size = ftell(file);
+    rewind(file);
+    int read_result = fread(emulator->memory + PROGRAM_START, 1, file_size, file);
+    if (read_result != file_size) {
+        LOG(LOG_ERROR, "Failed to read file!\n");
+        return FAILURE;
+    }
+    emulator->registers.pc = PROGRAM_START;
+    result_t result = emu_rv64_emulate(emulator);
+    return result;
 }
 
 result_t emu_rv64_emulate_chunk(emulator_rv64_t* emulator, char* in_buffer, size_t in_buffer_size) {
@@ -282,4 +304,22 @@ result_t emu_rv64_emulate(emulator_rv64_t* emulator) {
     } else {
         return(FAILURE);
     }
+}
+
+void emu_rv64_print_registers(emulator_rv64_t* emulator) {
+    printf("registers: [pc: %d] ", emulator->registers.pc);
+    for (int i = 0; i < 32; i++) {
+        printf("%s: %lu\n", emu_rv64_map_register_name(i), emulator->registers.regs[i]);
+    }
+}
+
+void emu_rv64_print_registers_condensed(emulator_rv64_t* emulator) {
+    printf("registers: [pc: %d] ", emulator->registers.pc);
+    for (int i = 0; i < 32; i++) {
+
+        if (emulator->registers.regs[i] != 0) {
+            printf("%s: %lu, ", emu_rv64_map_register_name(i), emulator->registers.regs[i]);
+        }
+    }
+    printf("\n");
 }

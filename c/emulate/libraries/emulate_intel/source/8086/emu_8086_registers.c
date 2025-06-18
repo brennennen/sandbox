@@ -42,7 +42,7 @@ ip: %d\n\
 );
 }
 
-void print_registers_condensed(emulator_8086_t* emulator) {
+void emu_8086_print_registers_condensed(emulator_8086_t* emulator) {
     printf("registers: [ip: %d] ", emulator->registers.ip);
     if (emulator->registers.ax) { printf("ax: %d, ", emulator->registers.ax); }
     if (emulator->registers.bx) { printf("bx: %d, ", emulator->registers.bx); }
@@ -82,7 +82,7 @@ cf: %d\n\
 );
 }
 
-void print_flags_condensed(uint16_t flags) {
+void emu_8086_print_flags_condensed(uint16_t flags) {
     printf("flags: ");
     if (emu_reg_get_flag(flags, FLAG_OF_MASK)) { printf("o"); }
     if (emu_reg_get_flag(flags, FLAG_DF_MASK)) { printf("d"); }

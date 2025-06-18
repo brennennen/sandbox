@@ -87,7 +87,7 @@ int main(int argc, char* argv[]) {
             printf("Disassemble result: %s, instructions: %d\n", result_strings[result], emulator_8086.instructions_count);
             break;
         }
-        case ARCH_RV64I: {
+        case ARCH_RV64: {
             emulator_rv64_t emulator_rv64;
             emu_rv64_init(&emulator_rv64);
             result_t result = emu_rv64_disassemble_file(&emulator_rv64, input_path, out_buffer, sizeof(out_buffer));

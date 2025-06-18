@@ -61,7 +61,7 @@ Test(emulate__conditional_jump__tests, jnz3, .init = emulate_conditional_jump_de
         0xf9
     };
     cr_assert(SUCCESS == emu_8086_emulate_chunk(&g_emulator, input, sizeof(input)));
-    print_registers_condensed(&g_emulator);
+    emu_8086_print_registers_condensed(&g_emulator);
     cr_assert(6 == g_emulator.registers.si);
 }
 

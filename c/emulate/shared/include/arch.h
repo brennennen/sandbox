@@ -8,14 +8,14 @@ typedef enum {
     ARCH_INVALID = -1,
     ARCH_I8086,
     ARCH_I386,
-    ARCH_RV64I,
+    ARCH_RV64,
     ARCH_COUNT
 } arch_t;
 
 static char arch_names[][16] = {
     "i8086",
     "i386",
-    "rv64i"
+    "rv64"
 };
 
 static inline arch_t arch_get_by_name(char* name) {

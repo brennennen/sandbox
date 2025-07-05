@@ -13,6 +13,9 @@
  * A full listing of opcodes and the mnemonic they associate with can be found
  * in the specification under the "RV32/64G Instruction Set Listings" table ("RISC-V
  * Instruction Set Manual Volume 1", Chapter 35, page 608).
+ *
+ * TODO: Could "flatten" out this jump table a bit. Combine opcode, funct3, and
+ * funct7 into a single 32 bit int and lookup on that.
  */
 instruction_tag_rv64_t rv64_decode_instruction_tag(uint32_t instruction) {
     uint8_t opcode = instruction & 0b01111111;
@@ -78,30 +81,67 @@ instruction_tag_rv64_t rv64_decode_instruction_tag(uint32_t instruction) {
             }
         }
         case 0b0110011: {
-            uint8_t sub_opcode = (instruction >> 12) & 0b111;
-             switch(sub_opcode) {
+            uint8_t funct3 = (instruction >> 12) & 0b111;
+            uint8_t func7 = (instruction >> 25) & 0b1111111;
+            switch(funct3) {
                 case 0b000: {
-                    uint8_t func7 = (instruction >> 25) & 0b1111111;
                     switch(func7) {
                         case 0b0000000: return(I_RV64I_ADD);
                         case 0b0100000: return(I_RV64I_SUB);
+                        case 0b0000001: return(I_RV64M_MUL);
                         default: return(I_RV64I_INVALID);
                     }
                 }
-                case 0b001: return(I_RV64I_SLL);
-                case 0b010: return(I_RV64I_SLT);
-                case 0b011: return(I_RV64I_SLTU);
-                case 0b100: return(I_RV64I_XOR);
+                case 0b001: {
+                    switch (func7) {
+                        case 0b0000000: return(I_RV64I_SLL);
+                        case 0b0000001: return(I_RV64M_MULH);
+                        default: return(I_RV64I_INVALID);
+                    }
+                }
+                case 0b010: {
+                    switch (func7) {
+                        case 0b0000000: return(I_RV64I_SLT);
+                        case 0b0000001: return(I_RV64M_MULHSU);
+                        default: return(I_RV64I_INVALID);
+                    }
+                }
+                case 0b011: {
+                    switch (func7) {
+                        case 0b0000000: return(I_RV64I_SLTU);
+                        case 0b0000001: return(I_RV64M_MULHU);
+                        default: return(I_RV64I_INVALID);
+                    }
+                }
+                case 0b100: {
+                    switch (func7) {
+                        case 0b0000000: return(I_RV64I_XOR);
+                        case 0b0000001: return(I_RV64M_DIV);
+                        default: return(I_RV64I_INVALID);
+                    }
+                }
                 case 0b101: {
-                    uint8_t func7 = (instruction >> 25) & 0b1111111;
                     switch (func7) {
                         case 0b0000000: return(I_RV64I_SRL);
                         case 0b0100000: return(I_RV64I_SRA);
+                        case 0b0000001: return(I_RV64M_DIVU);
                         default: return(I_RV64I_INVALID);
                     }
                 }
-                case 0b110: return(I_RV64I_OR);
-                case 0b111: return(I_RV64I_AND);
+                case 0b110: {
+                    switch (func7) {
+                        case 0b0000000: return(I_RV64I_OR);
+                        case 0b0000001: return(I_RV64M_REM);
+                        default: return(I_RV64I_INVALID);
+                    }
+                }
+                case 0b111: {
+                    switch (func7) {
+                        case 0b0000000: return(I_RV64I_AND);
+                        case 0b0000001: return(I_RV64M_REMU);
+                        default: return(I_RV64I_INVALID);
+                    }
+                }
                 // No default needed, all cases covered.
             }
         }
@@ -124,27 +164,32 @@ instruction_tag_rv64_t rv64_decode_instruction_tag(uint32_t instruction) {
         }
         case 0b0111011: {
             uint8_t funct3 = (instruction >> 12) & 0b111;
+            uint8_t func7 = (instruction >> 25) & 0b1111111;
             switch(funct3) {
                 case 0b000: {
-                    uint8_t func7 = (instruction >> 25) & 0b1111111;
                     switch(func7) {
                         case 0b0000000: return(I_RV64I_ADDW);
                         case 0b0100000: return(I_RV64I_SUBW);
+                        case 0b0000001: return(I_RV64M_MULW);
                         default: return(I_RV64I_INVALID);
                     }
                 }
                 case 0b001: return(I_RV64I_SLLW);
+                case 0b100: return(I_RV64M_DIVW);
                 case 0b101: {
-                    uint8_t func7 = (instruction >> 25) & 0b1111111;
                     switch(func7) {
                         case 0b0000000: return(I_RV64I_SRLW);
                         case 0b0100000: return(I_RV64I_SRAW);
+                        case 0b0000001: return(I_RV64M_DIVUW);
                         default: return(I_RV64I_INVALID);
                     }
                 }
+                case 0b110: return(I_RV64M_REMW);
+                case 0b111: return(I_RV64M_REMUW);
                 default: return(I_RV64I_INVALID);
             }
         }
     }
+
     return(I_RV64I_INVALID);
 }

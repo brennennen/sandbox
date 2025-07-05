@@ -9,6 +9,7 @@
 // MARK: Instructions
 // Data Processing -- Immediate
 Test(emu_rv64_decode_tag_tests, I_ADD_IMMEDIATE) {
+    // RV64I
     // ...
     // "I" Type
     cr_assert(I_RV64I_ADDI == rv64_decode_instruction_tag(0x00550593)); // addi a1, a0, 5
@@ -25,9 +26,28 @@ Test(emu_rv64_decode_tag_tests, I_ADD_IMMEDIATE) {
     cr_assert(I_RV64I_SLT == rv64_decode_instruction_tag(0x007322b3)); // slt t0, t1, t2
     cr_assert(I_RV64I_SLTU == rv64_decode_instruction_tag(0x00c5b533)); // sltu a0, a1, a2
     cr_assert(I_RV64I_XOR == rv64_decode_instruction_tag(0x0093c533)); // xor a0, t2, s1
+    // ...
+    // RV64I Extensions
+    // RV64I Zifencei
+    // RV64I Zicsr
 
-
-
-
+    // RV64M
+    cr_assert(I_RV64M_MUL == rv64_decode_instruction_tag(0x027302b3)); // mul t0, t1, t2
+    cr_assert(I_RV64M_MULH == rv64_decode_instruction_tag(0x027312b3)); // mulh t0, t1, t2
+    cr_assert(I_RV64M_MULHSU == rv64_decode_instruction_tag(0x027322b3)); // mulhsu t0, t1, t2
+    cr_assert(I_RV64M_MULHU == rv64_decode_instruction_tag(0x027332b3)); // mulhu t0, t1, t2
+    cr_assert(I_RV64M_DIV == rv64_decode_instruction_tag(0x027342b3)); // div t0, t1, t2
+    cr_assert(I_RV64M_DIVU == rv64_decode_instruction_tag(0x027352b3)); // divu t0, t1, t2
+    cr_assert(I_RV64M_REM == rv64_decode_instruction_tag(0x027362b3)); // rem t0, t1, t2
+    cr_assert(I_RV64M_REMU == rv64_decode_instruction_tag(0x027372b3)); // remu t0, t1, t2
+    cr_assert(I_RV64M_MULW == rv64_decode_instruction_tag(0x027302bb)); // mulw t0, t1, t2
+    cr_assert(I_RV64M_DIVW == rv64_decode_instruction_tag(0x027342bb)); // divw t0, t1, t2
+    cr_assert(I_RV64M_DIVUW == rv64_decode_instruction_tag(0x027352bb)); // divuw t0, t1, t2
+    cr_assert(I_RV64M_REMW == rv64_decode_instruction_tag(0x027362bb)); // remw t0, t1, t2
+    cr_assert(I_RV64M_REMUW == rv64_decode_instruction_tag(0x027372bb)); // remuw t0, t1, t2
+    // RV64A
+    // RV64F
+    // RV64D
+    // RV64Q
     // ...
 }

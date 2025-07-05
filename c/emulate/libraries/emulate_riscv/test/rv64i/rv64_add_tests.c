@@ -18,9 +18,7 @@ Test(emu_rv64_emulate__I_RV64I_ADD__tests, addi_1, .init = rv64_emu_add_default_
 {
     g_emulator.registers.regs[RV64_REG_T1] = 3;
     g_emulator.registers.regs[RV64_REG_T3] = 5; // 3 + 5 = 8
-    char* expected = "add t0, t1, t3\n";
-    uint8_t input[] = { 0x00, 0x53, 0x02, 0x93 };
-    char output[32] = { '\0' };
+    uint8_t input[] = { 0x00, 0x53, 0x02, 0x93 }; // add t0, t1, t3
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);
     cr_assert(1 == g_emulator.instructions_count);

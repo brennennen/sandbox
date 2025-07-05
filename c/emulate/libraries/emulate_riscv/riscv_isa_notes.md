@@ -8,6 +8,10 @@ Compiled HTML Link:
 Compiled PDF Link: https://drive.google.com/file/d/1uviu1nH-tScFfgrovvFCrj7Omv8tFtkp/view
  * If link is dead, start here and click around: https://riscv.org/specifications/ratified/
 
+## Quick References
+* `2.4. Integer Computational Instructions` - https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_computational_instructions
+* `35. RV32/64G Instruction Set Listings` - https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#rv32-64g
+
 ## Terminology
 * RISC-V Hardware Platform - A single core microcontroller to a many-thousand-node cluster of shared-memory manycore server nodes.
 * Component -

@@ -16,9 +16,7 @@ void rv64_emu_addi_default_setup(void) {
 // MARK: I_RV64I_ADDI Tests
 Test(emu_rv64_emulate__I_RV64I_ADDI__tests, addi_1, .init = rv64_emu_addi_default_setup)
 {
-    char* expected = "addi t0, t1, 5\n";
-    uint8_t input[] = { 0x00, 0x53, 0x02, 0x93 };
-    char output[32] = { '\0' };
+    uint8_t input[] = { 0x00, 0x53, 0x02, 0x93 }; // addi t0, t1, 5
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);
     cr_assert(1 == g_emulator.instructions_count);

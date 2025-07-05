@@ -126,7 +126,20 @@ static result_iter_t emu_rv64_disassemble_next(
         case I_RV64I_XOR:
         case I_RV64I_SRL:
         case I_RV64I_OR:
-        case I_RV64I_AND: {
+        case I_RV64I_AND:
+        case I_RV64M_MUL:
+        case I_RV64M_MULH:
+        case I_RV64M_MULHSU:
+        case I_RV64M_MULHU:
+        case I_RV64M_DIV:
+        case I_RV64M_DIVU:
+        case I_RV64M_REM:
+        case I_RV64M_REMU:
+        case I_RV64M_MULW:
+        case I_RV64M_DIVW:
+        case I_RV64M_DIVUW:
+        case I_RV64M_REMW:
+        case I_RV64M_REMUW: {
             result = rv64_disassemble_register_register(emulator, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
             break;
         }
@@ -246,7 +259,20 @@ static result_iter_t emu_rv64_emulate_next(emulator_rv64_t* emulator) {
         case I_RV64I_XOR:
         case I_RV64I_SRL:
         case I_RV64I_OR:
-        case I_RV64I_AND: {
+        case I_RV64I_AND:
+        case I_RV64M_MUL:
+        case I_RV64M_MULH:
+        case I_RV64M_MULHSU:
+        case I_RV64M_MULHU:
+        case I_RV64M_DIV:
+        case I_RV64M_DIVU:
+        case I_RV64M_REM:
+        case I_RV64M_REMU:
+        case I_RV64M_MULW:
+        case I_RV64M_DIVW:
+        case I_RV64M_DIVUW:
+        case I_RV64M_REMW:
+        case I_RV64M_REMUW: {
             result = rv64_emulate_register_register(emulator, raw_instruction, instruction_tag);
             break;
         }

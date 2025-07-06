@@ -70,7 +70,7 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_RV64M_MUL, /** Multiply - Multiply 2 64-bit values together. */
     I_RV64M_MULH, /** Multiply High - Multiply 2 64-bit values together, interprets the results of 128 bits and returns the upper/high 64 bits. */
     I_RV64M_MULHSU, /** ??? */
-    I_RV64M_MULHU, 
+    I_RV64M_MULHU,
     I_RV64M_DIV,
     I_RV64M_DIVU,
     I_RV64M_REM,
@@ -82,9 +82,9 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_RV64M_REMUW,
 
     // MARK: RV64A - Atomic
-    I_RV64A_LR_W,
-    I_RV64A_SC_W,
-    I_RV64A_AMOSWAP_W,
+    I_RV64A_LR_W, /** Load-Reserved Word */
+    I_RV64A_SC_W, /** Store-Conditional */
+    I_RV64A_AMOSWAP_W, /** Atomic Swap */
     I_RV64A_AMOADD_W,
     I_RV64A_AMOXOR_W,
     I_RV64A_AMOAND_W,

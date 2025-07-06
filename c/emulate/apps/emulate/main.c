@@ -17,8 +17,8 @@
 #include "8086/emu_8086_registers.h"
 
 void print_help() {
-    printf("Disassembles a program to standard out.\n");
-    printf("usage: decode {arch} {my_assembled_file}\n");
+    printf("Emulate a program.\n");
+    printf("usage: emulate {arch} {my_assembled_file}\n");
     printf("architectures: ");
     for (int i = 0; i < ARCH_COUNT; i++) {
         printf("%s, ", arch_names[i]);

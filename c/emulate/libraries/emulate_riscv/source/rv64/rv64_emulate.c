@@ -95,7 +95,7 @@ static result_iter_t emu_rv64_disassemble_next(
         return RI_DONE;
     }
 
-    instruction_tag_rv64_t instruction_tag = I_RV64I_INVALID;
+    instruction_tag_rv64_t instruction_tag = I_RV64_INVALID;
     instruction_tag = rv64_decode_instruction_tag(raw_instruction);
     emulator->instructions_count += 1;
 
@@ -222,7 +222,7 @@ static result_iter_t emu_rv64_emulate_next(emulator_rv64_t* emulator) {
         return RI_DONE;
     }
 
-    instruction_tag_rv64_t instruction_tag = I_RV64I_INVALID;
+    instruction_tag_rv64_t instruction_tag = I_RV64_INVALID;
     instruction_tag = rv64_decode_instruction_tag(raw_instruction);
     printf("tag: %d\n", instruction_tag);
     emulator->instructions_count += 1;

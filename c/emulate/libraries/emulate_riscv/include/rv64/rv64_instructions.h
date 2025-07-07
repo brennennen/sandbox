@@ -8,7 +8,7 @@
 
 // MARK: Instructions
 typedef enum ENUM_PACK_ATTRIBUTE {
-    I_RV64I_INVALID,
+    I_RV64_INVALID,
 
     // MARK: RV64I - Integer
     I_RV64I_LUI, /** Load Upper Immediate */
@@ -106,36 +106,36 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_RV64A_AMOMAXU_D,
 
     // MARK: RV64F - Floating Point Arithmetic
-    I_RV64F_FLW,
-    I_RV64F_FSW,
-    I_RV64F_FMADD_S,
-    I_RV64F_FMSUB_S,
-    I_RV64F_FNMSUB_S,
+    I_RV64F_FLW, /** Float Load Word */
+    I_RV64F_FSW, /** Float Store Word */
+    I_RV64F_FMADD_S, /** Float Fused Multiply Add Single-Precision */
+    I_RV64F_FMSUB_S, /** Float Fused Multiply Subtract Single-Precision */
+    I_RV64F_FNMSUB_S, /** Float Fused Negative Multiply Subtract Single-Precision - Multiplies two numbers, subtracts a third, then negates the final result. */
     I_RV64F_FNMADD_S,
-    I_RV64F_FADD_S,
-    I_RV64F_FSUB_S,
-    I_RV64F_FMUL_S,
-    I_RV64F_FDIV_S,
-    I_RV64F_FSQRT_S,
-    I_RV64F_FSGNJ_S,
-    I_RV64F_FSGNJN_S,
-    I_RV64F_FSGNJX_S,
+    I_RV64F_FADD_S, /** Float Add Single-Precision */
+    I_RV64F_FSUB_S, /** Float Subtract Single-Precision */
+    I_RV64F_FMUL_S, /** Float Multiply Single-Precision */
+    I_RV64F_FDIV_S, /** Float Divide Single-Precision */
+    I_RV64F_FSQRT_S, /** Float Square Root Single-Precision */
+    I_RV64F_FSGNJ_S, /** Float SiGN inJect Single-Precision - Copies sign of one float to another float (cstd: copysignf).*/
+    I_RV64F_FSGNJN_S, /** Float SiGN inJect Negated Single-Precision */
+    I_RV64F_FSGNJX_S, /** Float SiGN inJect Xor Single-Precision */
     I_RV64F_FMIN_S,
     I_RV64F_FMAX_S,
-    I_RV64F_FCVT_W_S,
-    I_RV64F_FCVT_WU_S,
-    I_RV64F_FMV_X_W,
-    I_RV64F_FEQ_S,
-    I_RV64F_FLT_S,
-    I_RV64F_FLE_S,
-    I_RV64F_FCLASS_S,
-    I_RV64F_FCVT_S_W,
-    I_RV64F_FCVT_S_WU,
-    I_RV64F_FMV_W_X,
-    I_RV64F_FCVT_L_S,
-    I_RV64F_FCVT_LU_S,
-    I_RV64F_FCVT_S_L,
-    I_RV64F_FCVT_S_LU,
+    I_RV64F_FCVT_W_S, /** Float ConVerT Word Single-Precision - Converts a float to a 32-bit signed int. */
+    I_RV64F_FCVT_WU_S, /** Float ConVerT Word Single-Precision - Converts a float to a 32-bit unsigned int. */
+    I_RV64F_FMV_X_W, /** Float Move Word to "X" Single-Precision */
+    I_RV64F_FEQ_S, /** Float EQuals Single-Precision - Checks if two floats are equal or not. */
+    I_RV64F_FLT_S, /** Float Less Than Single-Precision */
+    I_RV64F_FLE_S, /** Float Less Than or Equal To Single-Precision */
+    I_RV64F_FCLASS_S, /** Float CLASSify Single-Precision */
+    I_RV64F_FCVT_S_W, /** Float ConVerT Single-Precision to Word */
+    I_RV64F_FCVT_S_WU, /** Float ConVerT Single-Precision to Word Unsigned */
+    I_RV64F_FMV_W_X, /** Float Move "X" Single-Precision to Word */
+    I_RV64F_FCVT_L_S, /** Float ConVerT Long to Single-Precision */
+    I_RV64F_FCVT_LU_S, /** Float ConVerT Long Unsigned to Single-Precision */
+    I_RV64F_FCVT_S_L, /** Float ConVerT Single-Precision to Long */
+    I_RV64F_FCVT_S_LU, /** Float ConVerT Single-Precision to Long Unsigned */
 
     // MARK: RV64D - Double
     // MARK: RV64Q - Quad?

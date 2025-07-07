@@ -7,8 +7,7 @@
 #include "rv64/rv64_decode_instruction.h"
 
 // MARK: Instructions
-// Data Processing -- Immediate
-Test(emu_rv64_decode_tag_tests, I_ADD_IMMEDIATE) {
+Test(emu_rv64_decode_tag_tests, decode_instruction_tests) {
     // RV64I
     // ...
     // "I" Type
@@ -51,6 +50,36 @@ Test(emu_rv64_decode_tag_tests, I_ADD_IMMEDIATE) {
     cr_assert(I_RV64A_AMOSWAP_W == rv64_decode_instruction_tag(0x0805202f)); // amoswap.w x0, x0, (a0)
     // ...
     // RV64F
+    cr_assert(I_RV64F_FLW == rv64_decode_instruction_tag(0x0009a187)); // flw ft3, (s3)
+    cr_assert(I_RV64F_FSW == rv64_decode_instruction_tag(0x0039a027)); // fsw ft3, (s3)
+    cr_assert(I_RV64F_FMADD_S == rv64_decode_instruction_tag(0x60b57543)); // fmadd.s fa0, fa0, fa1, fa2
+    cr_assert(I_RV64F_FMSUB_S == rv64_decode_instruction_tag(0x60b57547)); // fmsub.s fa0, fa0, fa1, fa2
+    cr_assert(I_RV64F_FNMSUB_S == rv64_decode_instruction_tag(0x60b5754b)); // fnmsub.s fa0, fa0, fa1, fa2
+    cr_assert(I_RV64F_FNMADD_S == rv64_decode_instruction_tag(0x60b5754f)); // fnmadd.s fa0, fa0, fa1, fa2
+    cr_assert(I_RV64F_FADD_S == rv64_decode_instruction_tag(0x00b57553)); // fadd.s fa0, fa0, fa1
+    cr_assert(I_RV64F_FSUB_S == rv64_decode_instruction_tag(0x08b57553)); // fsub.s fa0, fa0, fa1
+    cr_assert(I_RV64F_FMUL_S == rv64_decode_instruction_tag(0x10b57553)); // fmul.s fa0, fa0, fa1
+    cr_assert(I_RV64F_FDIV_S == rv64_decode_instruction_tag(0x18b57553)); // fdiv.s fa0, fa0, fa1
+    cr_assert(I_RV64F_FSQRT_S == rv64_decode_instruction_tag(0x58057553)); // fsqrt.s fa0, fa0
+    cr_assert(I_RV64F_FSGNJ_S == rv64_decode_instruction_tag(0x20b50553)); // fsgnj.s fa0, fa0, fa1
+    cr_assert(I_RV64F_FSGNJN_S == rv64_decode_instruction_tag(0x20b51553)); // fsgnjn.s fa0, fa0, fa1
+    cr_assert(I_RV64F_FSGNJX_S == rv64_decode_instruction_tag(0x20b52553)); // fsgnjx.s fa0, fa0, fa1
+    cr_assert(I_RV64F_FMIN_S == rv64_decode_instruction_tag(0x28b50553)); // fmin.s fa0, fa0, fa1
+    cr_assert(I_RV64F_FMAX_S == rv64_decode_instruction_tag(0x28b51553)); // fmax.s fa0, fa0, fa1
+    cr_assert(I_RV64F_FCVT_W_S == rv64_decode_instruction_tag(0xc0057553)); // fcvt.w.s a0, fa0
+    cr_assert(I_RV64F_FCVT_WU_S == rv64_decode_instruction_tag(0xc0157553)); // fcvt.wu.s a0, fa0
+    cr_assert(I_RV64F_FMV_X_W == rv64_decode_instruction_tag(0xe0050553)); // fmv.x.w a0, fa0
+    cr_assert(I_RV64F_FEQ_S == rv64_decode_instruction_tag(0xa0b52553)); // feq.s a0, fa0, fa1
+    cr_assert(I_RV64F_FLT_S == rv64_decode_instruction_tag(0xa0b51553)); // flt.s a0, fa0, fa1
+    cr_assert(I_RV64F_FLE_S == rv64_decode_instruction_tag(0xa0b50553)); // fle.s a0, fa0, fa1
+    cr_assert(I_RV64F_FCLASS_S == rv64_decode_instruction_tag(0xe0051553)); // fclass.s a0, fa0
+    cr_assert(I_RV64F_FCVT_S_W == rv64_decode_instruction_tag(0xd0057553)); // fcvt.s.w fa0, a0
+    cr_assert(I_RV64F_FCVT_S_WU == rv64_decode_instruction_tag(0xd0157553)); // fcvt.s.wu fa0, a0
+    cr_assert(I_RV64F_FMV_W_X == rv64_decode_instruction_tag(0xf0050553)); // fmv.w.x fa0, a0
+    cr_assert(I_RV64F_FCVT_L_S == rv64_decode_instruction_tag(0xc0257553)); // fcvt.l.s a0, fa0
+    cr_assert(I_RV64F_FCVT_LU_S == rv64_decode_instruction_tag(0xc0357553)); // fcvt.lu.s a0, fa0
+    cr_assert(I_RV64F_FCVT_S_L == rv64_decode_instruction_tag(0xd0257553)); // fcvt.s.l fa0, a0
+    cr_assert(I_RV64F_FCVT_S_LU == rv64_decode_instruction_tag(0xd0357553)); // fcvt.s.lu fa0, a0
     // RV64D
     // RV64Q
     // ...

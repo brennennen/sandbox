@@ -49,6 +49,7 @@ jne $-6
 
 #include "libraries/emulate_intel/include/8086/emulate_8086.h"
 #include "libraries/emulate_riscv/include/rv64/rv64_emulate.h"
+#include "libraries/emulate_riscv/include/rv64/rv64_disassemble.h"
 
 void print_help() {
     printf("Disassembles a program to standard out.\n");

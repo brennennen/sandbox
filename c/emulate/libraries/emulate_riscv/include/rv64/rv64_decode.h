@@ -26,5 +26,4 @@ static inline void rv64_decode_register_register(
     *rd = (raw_instruction >> 7) & 0b11111;
 }
 
-
 #endif // RV64I_DECODE_INSTRUCTION_H

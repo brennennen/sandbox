@@ -7,6 +7,11 @@
 #include "shared/include/binary_utilities.h"
 
 // MARK: Instructions
+/**
+ * All riscv5 instructions supported by this emulator.
+ *
+ * @warning: Parallal array with "rv64_instruction_tag_mnemonic".
+ */
 typedef enum ENUM_PACK_ATTRIBUTE {
     I_RV64_INVALID,
 
@@ -48,7 +53,7 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_RV64I_SRA,
     I_RV64I_OR,
     I_RV64I_AND,
-    I_RV64I_FENCE,
+    I_RV64I_FENCE, /** Memory/Core Fencing - TODO: is this part of RV64I or in it's own Zifencei? */
     I_RV64I_FENCE_TSO,
     I_RV64I_PAUSE,
     I_RV64I_ECALL,
@@ -65,6 +70,23 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_RV64I_SLLW,
     I_RV64I_SRLW,
     I_RV64I_SRAW,
+
+    /*
+     * MARK: RV64Zifencei
+     * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zifencei
+     */
+    I_RV64ZIFENCEI_FENCE_I,
+
+    /*
+     * MARK: RV64Zicsr
+     * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#csrinsts
+     */
+    I_RV64ZICSR_CSRRW,
+    I_RV64ZICSR_CSRRS,
+    I_RV64ZICSR_CSRRC,
+    I_RV64ZICSR_CSRRWI,
+    I_RV64ZICSR_CSRRSI,
+    I_RV64ZICSR_CSRRCI,
 
     // MARK: RV64M - Multiplication
     I_RV64M_MUL, /** Multiply - Multiply 2 64-bit values together. */
@@ -105,7 +127,7 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_RV64A_AMOMINU_D,
     I_RV64A_AMOMAXU_D,
 
-    // MARK: RV64F - Floating Point Arithmetic
+    // MARK: RV64F - Floating Point Arithmetic (single word, 32 bit)
     I_RV64F_FLW, /** Float Load Word */
     I_RV64F_FSW, /** Float Store Word */
     I_RV64F_FMADD_S, /** Float Fused Multiply Add Single-Precision */
@@ -137,16 +159,127 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_RV64F_FCVT_S_L, /** Float ConVerT Single-Precision to Long */
     I_RV64F_FCVT_S_LU, /** Float ConVerT Single-Precision to Long Unsigned */
 
-    // MARK: RV64D - Double
-    // MARK: RV64Q - Quad?
-    // MARK: RV64Zfh
+    // MARK: RV64D - Double-Word (64 bit)
+    I_RV64D_FLD,
+    I_RV64D_FSD,
+    I_RV64D_FMADD_D,
+    I_RV64D_FMSUB_D,
+    I_RV64D_FNMSUB_D,
+    I_RV64D_FNMADD_D,
+    I_RV64D_FADD_D,
+    I_RV64D_FSUB_D,
+    I_RV64D_FMUL_D,
+    I_RV64D_FDIV_D,
+    I_RV64D_FSQRT_D,
+    I_RV64D_FSGNJ_D,
+    I_RV64D_FSGNJN_D,
+    I_RV64D_FSGNJX_D,
+    I_RV64D_FMIN_D,
+    I_RV64D_FMAX_D,
+    I_RV64D_FCVT_S_D,
+    I_RV64D_FCVT_D_S,
+    I_RV64D_FEQ_D,
+    I_RV64D_FLT_D,
+    I_RV64D_FLE_D,
+    I_RV64D_FCLASS_D,
+    I_RV64D_FCVT_W_D,
+    I_RV64D_FCVT_WU_D,
+    I_RV64D_FCVT_D_W,
+    I_RV64D_FCVT_D_WU,
+    I_RV64D_FCVT_L_D,
+    I_RV64D_FCVT_LU_D,
+    I_RV64D_FMV_X_D,
+    I_RV64D_FCVT_D_L,
+    I_RV64D_FCVT_D_LU,
+    I_RV64D_FMV_D_X,
+
+    // MARK: RV64Q - Quad-word (128 bit)
+    I_RV64Q_FLQ,
+    I_RV64Q_FSQ,
+    I_RV64Q_FMADD_Q,
+    I_RV64Q_FMSUB_Q,
+    I_RV64Q_FNMSUB_Q,
+    I_RV64Q_FNMADD_Q,
+    I_RV64Q_FADD_Q,
+    I_RV64Q_FSUB_Q,
+    I_RV64Q_FMUL_Q,
+    I_RV64Q_FDIV_Q,
+    I_RV64Q_FSQRT_Q,
+    I_RV64Q_FSGNJ_Q,
+    I_RV64Q_FSGNJN_Q,
+    I_RV64Q_FSGNJX_Q,
+    I_RV64Q_FMIN_Q,
+    I_RV64Q_FMAX_Q,
+    I_RV64Q_FCVT_S_Q,
+    I_RV64Q_FCVT_Q_S,
+    I_RV64Q_FCVT_D_Q,
+    I_RV64Q_FCVT_Q_D,
+    I_RV64Q_FEQ_Q,
+    I_RV64Q_FLT_Q,
+    I_RV64Q_FLE_Q,
+    I_RV64Q_FCLASS_Q,
+    I_RV64Q_FCVT_W_Q,
+    I_RV64Q_FCVT_WU_Q,
+    I_RV64Q_FCVT_Q_W,
+    I_RV64Q_FCVT_Q_WU,
+    I_RV64Q_FCVT_L_Q,
+    I_RV64Q_FCVT_LU_Q,
+    I_RV64Q_FCVT_Q_L,
+    I_RV64Q_FCVT_Q_LU,
+
+    // MARK: RV64Zfh - Half-word (16 bit)
+    I_RV64ZFH_FLH,
+    I_RV64ZFH_FSH,
+    I_RV64ZFH_FMADD_H,
+    I_RV64ZFH_FMSUB_H,
+    I_RV64ZFH_FNMSUB_H,
+    I_RV64ZFH_FNMADD_H,
+    I_RV64ZFH_FADD_H,
+    I_RV64ZFH_FSUB_H,
+    I_RV64ZFH_FMUL_H,
+    I_RV64ZFH_FDIV_H,
+    I_RV64ZFH_FSQRT_H,
+    I_RV64ZFH_FSGNJ_H,
+    I_RV64ZFH_FSGNJN_H,
+    I_RV64ZFH_FSGNJX_H,
+    I_RV64ZFH_FMIN_H,
+    I_RV64ZFH_FMAX_H,
+    I_RV64ZFH_FCVT_S_H,
+    I_RV64ZFH_FCVT_H_S,
+    I_RV64ZFH_FCVT_D_H,
+    I_RV64ZFH_FCVT_H_D,
+    I_RV64ZFH_Q_H,
+    I_RV64ZFH_H_Q,
+    I_RV64ZFH_FEQ_H,
+    I_RV64ZFH_FLT_H,
+    I_RV64ZFH_FLE_H,
+    I_RV64ZFH_FCLASS_H,
+    I_RV64ZFH_FCVT_W_H,
+    I_RV64ZFH_FCVT_WU_H,
+    I_RV64ZFH_X_H,
+    I_RV64ZFH_FCVT_H_W,
+    I_RV64ZFH_FCVT_H_WU,
+    I_RV64ZFH_FMV_H_X,
+    I_RV64ZFH_FCVT_L_H,
+    I_RV64ZFH_FCVT_LU_H,
+    I_RV64ZFH_FCVT_H_L,
+    I_RV64ZFH_FCVT_H_LU,
+
     // MARK: Zawrs
+    I_RV64ZAWRS_WRS_NTO,
+    I_RV64ZAWRS_WRS_STO,
+
+    // MARK: RV64Zv*. - Vector Computation
+    // MARK:
+    //I_RV64V_
+
+
 } instruction_tag_rv64_t;
 
 /**
  * Lookup table for machine instructions to their associated assembly instruction
  * mnemonics.
- * WARNING: Parallal array with "instruction_tag_rv64_t".
+ * @warning: Parallal array with "instruction_tag_rv64_t".
  */
 static char rv64_instruction_tag_mnemonic[][16] = {
     "invalid",
@@ -205,6 +338,15 @@ static char rv64_instruction_tag_mnemonic[][16] = {
     "sllw",
     "srlw",
     "sraw",
+    // RV64Zifencei
+    "fence.i",
+    // RV64Zicsr
+    "csrrw",
+    "csrrs",
+    "csrrc",
+    "csrrwi",
+    "csrrsi",
+    "csrrci",
     // RV64M
     "mul",
     "mulh",
@@ -274,9 +416,131 @@ static char rv64_instruction_tag_mnemonic[][16] = {
     "fcvt.s.l",
     "fcvt.s.lu",
     // RV64D
+    "fld",
+    "fsd",
+    "fmadd.d",
+    "fmsub.d",
+    "fnmsub.d",
+    "fnmadd.d",
+    "fadd.d",
+    "fsub.d",
+    "fmul.d",
+    "fdiv.d",
+    "fsqrt.d",
+    "fsgnj.d",
+    "fsgnjn.d",
+    "fsgnjx.d",
+    "fmin.d",
+    "fmax.d",
+    "fcvt.s.d",
+    "fcvt.d.s",
+    "feq.d",
+    "flt.d",
+    "fle.d",
+    "fclass.d",
+    "fcvt.w.d",
+    "fcvt.wu.d",
+    "fcvt.d.w",
+    "fcvt.d.wu",
+    "fcvt.l.d",
+    "fcvt.lu.d",
+    "fmv.x.d",
+    "fcvt.d.l",
+    "fcvt.d.lu",
+    "fmv.d.x",
     // RV64Q
+    "flq",
+    "fsq",
+    "fmadd.q",
+    "fmsub.q",
+    "fnmsub.q",
+    "fnmadd.q",
+    "fadd.q",
+    "fsub.q",
+    "fmul.q",
+    "fdiv.q",
+    "fsqrt.q",
+    "fsgnj.q",
+    "fsgnjn.q",
+    "fsgnjx.q",
+    "fmin.q",
+    "fmax.q",
+    "fcvt.s.q",
+    "fcvt.q.s",
+    "fcvt.d.q",
+    "fcvt.q.d",
+    "feq.q",
+    "flt.q",
+    "fle.q",
+    "fclass.q",
+    "fcvt.w.q",
+    "fcvt.wu.q",
+    "fcvt.q.w",
+    "fcvt.q.wu",
+    "fcvt.l.q",
+    "fcvt.lu.q",
+    "fcvt.q.l",
+    "fcvt.q.lu",
     // RV64Zfh
+    "flh",
+    "fsh",
+    "fmadd.h",
+    "fmsub.h",
+    "fnmsub.h",
+    "fnmadd.h",
+    "fadd.h",
+    "fsub.h",
+    "fmul.h",
+    "fdiv.h",
+    "fsqrt.h",
+    "fsgnj.h",
+    "fsgnjn.h",
+    "fsgnjx.h",
+    "fmin.h",
+    "fmax.h",
+    "fcvt.s.h",
+    "fcvt.h.s",
+    "fcvt.d.h",
+    "fcvt.h.d",
+    "fcvt.q.h",
+    "fcvt.h.q",
+    "feq.h",
+    "flt.h",
+    "fle.h",
+    "fclass.h",
+    "fcvt.w.h",
+    "fcvt.wu.h",
+    "fmv.x.h",
+    "fcvt.h.w",
+    "fcvt.h.wu",
+    "fmv.h.x",
+    "fcvt.l.h",
+    "fcvt.lu.h",
+    "fcvt.h.l",
+    "fcvt.h.lu",
     // Zawrs
+    "wrs.nto",
+    "wrs.sto"
+
+    // Vector?
 };
+
+
+
+/**
+ * 30.10.v Vector Arithmetic Instruction Encoding
+ */
+typedef enum ENUM_PACK_ATTRIBUTE {
+    C_RV64_OPIVV,
+    C_RV64_OPFVV,
+    C_RV64_OPMVV,
+    C_RV64_OPIVI,
+    C_RV64_OPIVX,
+    C_RV64_OPFVF,
+    C_RV64_OPMVX,
+    C_RV64_OPCFG
+} vector_category_rv64_t;
+
+
 
 #endif // INSTRUCTIONS_RV64I_H

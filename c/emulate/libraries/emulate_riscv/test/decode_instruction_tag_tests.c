@@ -26,8 +26,9 @@ Test(emu_rv64_decode_tag_tests, decode_instruction_tests) {
     cr_assert(I_RV64I_SLTU == rv64_decode_instruction_tag(0x00c5b533)); // sltu a0, a1, a2
     cr_assert(I_RV64I_XOR == rv64_decode_instruction_tag(0x0093c533)); // xor a0, t2, s1
     // ...
-    // RV64I Extensions
+    // I Extensions
     // RV64I Zifencei
+
     // RV64I Zicsr
 
     // RV64M

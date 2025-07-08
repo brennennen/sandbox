@@ -5,9 +5,18 @@
 #include <stdint.h>
 
 /**
- * The RISCV spec doesn't specify register names, they just use x0 - x31 in the spec and allow hardware
- * vendors to decide on ABI details that define which register is commonly used for what. The names below
- * are what the GNU folks are using and probably the most common convention.
+ * XLEN is the width of the registers in bits and the width of what most instructions use
+ * (if instructions operate on non-XLEN sized bits, they usually add an identifier that
+ * describes the width to the instruction mnemonic (ex: H, W, D, Q)).
+ * @see 2.1 Programmers' Model for Base Integer ISA (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_programmers_model_for_base_integer_isa)
+ */
+#define XLEN 64
+
+/**
+ * The RISCV spec doesn't specify register names, they just use x0 - x31 in the
+ * spec and allow hardware vendors to decide on ABI details that define which
+ * register is commonly used for what. The names below are what the GNU folks
+ * are using and probably the most common convention.
  */
 
 #define RV64_REG_ZERO 0
@@ -43,6 +52,10 @@
 #define RV64_REG_T5 30
 #define RV64_REG_T6 31
 
+/**
+ *
+ * @see 2.1 Programmers' Model for Base Integer ISA (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_programmers_model_for_base_integer_isa)
+ */
 typedef struct {
     uint64_t regs[32];
     uint32_t pc;
@@ -50,5 +63,7 @@ typedef struct {
 
 // TODO: provide accessor functions for aliased names (args = x0, x1, etc. temp/local
 // vars = t0, t1, etc.)
+
+// TODO: vector registers?
 
 #endif // REGISTERS_RV64I_H

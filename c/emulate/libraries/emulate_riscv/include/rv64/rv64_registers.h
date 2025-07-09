@@ -4,13 +4,7 @@
 
 #include <stdint.h>
 
-/**
- * XLEN is the width of the registers in bits and the width of what most instructions use
- * (if instructions operate on non-XLEN sized bits, they usually add an identifier that
- * describes the width to the instruction mnemonic (ex: H, W, D, Q)).
- * @see 2.1 Programmers' Model for Base Integer ISA (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_programmers_model_for_base_integer_isa)
- */
-#define XLEN 64
+
 
 /**
  * The RISCV spec doesn't specify register names, they just use x0 - x31 in the
@@ -59,6 +53,24 @@
 typedef struct {
     uint64_t regs[32];
     uint32_t pc;
+
+    // TODO: CSR registers? or put those in a different struct?
+
+    // RV64V
+    uint64_t vregs[64]; // faking 128 bit wide registers
+    uint8_t vta; // @see 30.3.4.3 Vector Tail Agnostic and Vector Mask Agnostic `vta` and `vma` (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#sec-agnostic)
+    uint8_t vma; // @see 30.3.4.3 Vector Tail Agnostic and Vector Mask Agnostic `vta` and `vma` (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#sec-agnostic)
+    uint8_t vill; // @see 30.3.4.4 Vector Type Illegal (vill) (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_type_illegal_vill)
+    uint16_t vl; // @see 30.3.5 Vector Length (vl) Register (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_length_vl_register)
+    uint64_t vlenb;
+    uint64_t vstart;
+    uint64_t vxrm;
+    uint8_t vxsat;
+    uint64_t vcsr;
+    // vtype, sew, lmul, vlmax?
+
+
+
 } registers_rv64_t;
 
 // TODO: provide accessor functions for aliased names (args = x0, x1, etc. temp/local

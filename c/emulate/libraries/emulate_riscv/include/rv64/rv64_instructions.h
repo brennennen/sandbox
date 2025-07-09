@@ -88,7 +88,68 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_RV64ZICSR_CSRRSI,
     I_RV64ZICSR_CSRRCI,
 
-    // MARK: RV64M - Multiplication
+    /*
+     * MARK: RV64Zicntr
+     * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#counters
+     */
+    I_RV64ZICNTR_RDCYCLE,
+    I_RV64ZICNTR_RDTIME,
+    I_RV64ZICNTR_RDINSTRET,
+
+    /*
+     * MARK: RV64Zihpm
+     * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#counters
+     * hpmcounter3 - hpmcounter31, not sure how to access them though. Maybe Zicntr instructions?
+     */
+
+    /*
+     * MARK: RV64Zihintntl
+     * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#chap:zihintntl
+     * No specific instructions? should each hint be a tag?
+     */
+
+    /*
+     * MARK: RV64Zihintpause
+     * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zihintpause
+     * No specific instructions? should each hint be a tag?
+     */
+
+    /*
+     * MARK: RV64Zimop
+     * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zimop
+     * * 32 MOP.R.n instructions (0 - 31, ex: mop.r.0, mop.r.1, ..., mop.r.31)
+     * * 8 MOP.RR.n instructions (0 - 7, ex: mop.rr.0, mop.rr.1, ..., mo.rr.7)
+     */
+    I_RV64ZIMOP_MOP_R_0,
+    I_RV64ZIMOP_MOP_R_1,
+    I_RV64ZIMOP_MOP_R_2,
+    // TODO: 3 - 31
+    I_RV64ZIMOP_MOP_RR_0,
+    I_RV64ZIMOP_MOP_RR_1,
+    I_RV64ZIMOP_MOP_RR_2,
+    // TODO: 3 - 7
+
+    /*
+     * MARK: RV64Zcmop (depends on "Zcmop")
+     * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zimop
+     * * Eight 16-bit C.MOP.n instructions (n = odds between 1 and 15, ex: c.mop.1, c.mop.3, ..., c.mop.15)
+     */
+    I_RV64ZCMOP_C_MOP_1,
+    I_RV64ZCMOP_C_MOP_3,
+    I_RV64ZCMOP_C_MOP_5,
+    // TODO: 7, 9, 11, 13, 15
+
+    /*
+     * MARK: RV64Zicond
+     * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#Zicond
+     */
+    I_RV64ZICOND_CZERO_EQZ,
+    I_RV64ZICOND_CZERO_NEZ,
+
+    /*
+     * MARK: RV64M - Multiplication
+     * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#mstandard
+     */
     I_RV64M_MUL, /** Multiply - Multiply 2 64-bit values together. */
     I_RV64M_MULH, /** Multiply High - Multiply 2 64-bit values together, interprets the results of 128 bits and returns the upper/high 64 bits. */
     I_RV64M_MULHSU, /** ??? */
@@ -103,29 +164,95 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_RV64M_REMW,
     I_RV64M_REMUW,
 
-    // MARK: RV64A - Atomic
-    I_RV64A_LR_W, /** Load-Reserved Word */
-    I_RV64A_SC_W, /** Store-Conditional */
-    I_RV64A_AMOSWAP_W, /** Atomic Swap */
-    I_RV64A_AMOADD_W,
-    I_RV64A_AMOXOR_W,
-    I_RV64A_AMOAND_W,
-    I_RV64A_AMOOR_W,
-    I_RV64A_AMOMIN_W,
-    I_RV64A_AMOMAX_W,
-    I_RV64A_AMOMINU_W,
-    I_RV64A_AMOMAXU_W,
-    I_RV64A_LR_D,
-    I_RV64A_SC_D,
-    I_RV64A_AMOSWAP_D,
-    I_RV64A_AMOADD_D,
-    I_RV64A_AMOXOR_D,
-    I_RV64A_AMOAND_D,
-    I_RV64A_AMOOR_D,
-    I_RV64A_AMOMIN_D,
-    I_RV64A_AMOMAX_D,
-    I_RV64A_AMOMINU_D,
-    I_RV64A_AMOMAXU_D,
+    /*
+     * MARK: Zmmul
+     * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_zmmul_extension_version_1_0
+     * Allows for only implementing the multiply and not division/remainder functions for low power embedded devices.
+     * No specific instructions added if RV64M is implemented.
+     */
+
+    /*
+     * MARK: RV64A - Atomic
+     * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#atomics
+     */
+
+    /*
+     * MARK: RV64Zalrsc
+     * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#sec:lrsc
+     */
+    I_RV64ZALRSC_LR_W, /** Load-Reserved Word */
+    I_RV64ZALRSC_SC_W, /** Store-Conditional */
+    I_RV64ZALRSC_LR_D,
+    I_RV64ZALRSC_SC_D,
+
+    /*
+     * MARK: RV64Zaamo
+     * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#sec:amo
+     */
+    I_RV64ZAWRS_AMOSWAP_W, /** Atomic Swap */
+    I_RV64ZAWRS_AMOADD_W,
+    I_RV64ZAWRS_AMOXOR_W,
+    I_RV64ZAWRS_AMOAND_W,
+    I_RV64ZAWRS_AMOOR_W,
+    I_RV64ZAWRS_AMOMIN_W,
+    I_RV64ZAWRS_AMOMAX_W,
+    I_RV64ZAWRS_AMOMINU_W,
+    I_RV64ZAWRS_AMOMAXU_W,
+    I_RV64ZAWRS_AMOSWAP_D,
+    I_RV64ZAWRS_AMOADD_D,
+    I_RV64ZAWRS_AMOXOR_D,
+    I_RV64ZAWRS_AMOAND_D,
+    I_RV64ZAWRS_AMOOR_D,
+    I_RV64ZAWRS_AMOMIN_D,
+    I_RV64ZAWRS_AMOMAX_D,
+    I_RV64ZAWRS_AMOMINU_D,
+    I_RV64ZAWRS_AMOMAXU_D,
+
+    /*
+     * MARK: Zawrs
+     * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_zawrs_extension_for_wait_on_reservation_set_instructions_version_1_01
+     */
+    I_RV64ZAWRS_WRS_NTO,
+    I_RV64ZAWRS_WRS_STO,
+
+    /*
+     * MARK: Zacas
+     * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_zacas_extension_for_atomic_compare_and_swap_cas_instructions_version_1_0_0
+     */
+    I_RV64ZACAS_AMOCAS_W,
+    I_RV64ZACAS_AMOCAS_D,
+    I_RV64ZACAS_AMOCAS_Q,
+
+    /*
+     * MARK: Zabha
+     * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_zabha_extension_for_byte_and_halfword_atomic_memory_operations_version_1_0
+     */
+    I_RV64ZABHA_AMOSWAP_B,
+    I_RV64ZABHA_AMOADD_B,
+    I_RV64ZABHA_AMOAND_B,
+    I_RV64ZABHA_AMOOR_B,
+    I_RV64ZABHA_AMOXOR_B,
+    I_RV64ZABHA_AMOMAX_B,
+    I_RV64ZABHA_AMOMAXU_B,
+    I_RV64ZABHA_AMOMIN_B,
+    I_RV64ZABHA_AMOMINU_B,
+    I_RV64ZABHA_AMOCAS_B,
+    I_RV64ZABHA_AMOSWAP_H,
+    I_RV64ZABHA_AMOADD_H,
+    I_RV64ZABHA_AMOAND_H,
+    I_RV64ZABHA_AMOOR_H,
+    I_RV64ZABHA_AMOXOR_H,
+    I_RV64ZABHA_AMOMAX_H,
+    I_RV64ZABHA_AMOMAXU_H,
+    I_RV64ZABHA_AMOMIN_H,
+    I_RV64ZABHA_AMOMINU_H,
+    I_RV64ZABHA_AMOCAS_H,
+
+    /*
+     * MARK: CMO
+     * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#cmo
+     */
+    // TODO
 
     // MARK: RV64F - Floating Point Arithmetic (single word, 32 bit)
     I_RV64F_FLW, /** Float Load Word */
@@ -264,15 +391,142 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_RV64ZFH_FCVT_LU_H,
     I_RV64ZFH_FCVT_H_L,
     I_RV64ZFH_FCVT_H_LU,
+    /*
+     * TODO: Zfbfmin, Zfbfwma, Zfa, Zfinx, Zdinx, Zhinx, Zhinxmin
+     */
 
-    // MARK: Zawrs
-    I_RV64ZAWRS_WRS_NTO,
-    I_RV64ZAWRS_WRS_STO,
+    /*
+     * MARK: RV64C - Compressed
+     * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#compressed
+     */
+    // I_RV64C_C_LWSP,
+    // I_RV64C_C_LDSP,
+    // I_RV64C_C_LQSP,
+    // I_RV64C_C_FLWSP,
+    // I_RV64C_C_FLDSP,
+    // I_RV64C_C_SWSP,
+    // I_RV64C_C_SDSP,
+    // I_RV64C_C_SQSP,
+    // I_RV64C_C_FSWSP,
+    // I_RV64C_C_FSDSP,
+    // I_RV64C_C_LW,
+    // I_RV64C_C_LD,
+    // I_RV64C_C_LQ,
+    // I_RV64C_C_FLW,
+    // I_RV64C_C_FLD,
+    // I_RV64C_C_SW,
+    // I_RV64C_C_SD,
+    // I_RV64C_C_SQ,
+    // I_RV64C_C_FSW,
+    // I_RV64C_C_FSD,
+    // I_RV64C_C_J,
+    // I_RV64C_C_JAL,
+    // I_RV64C_C_JR,
+    // I_RV64C_C_JALR,
+    // I_RV64C_C_BEQZ,
+    // I_RV64C_C_BNEZ,
+    // I_RV64C_C_LI,
+    // I_RV64C_C_LUI,
+    // I_RV64C_C_ADDI,
+    // I_RV64C_C_ADDIW,
+    // I_RV64C_C_ADDI16SP,
+    // I_RV64C_C_ADDI4SPN,
+    // I_RV64C_C_SSLI,
+    // I_RV64C_C_SRLI,
+    // I_RV64C_C_SRAI,
+    // I_RV64C_C_ANDI,
+    // I_RV64C_C_MV,
+    // I_RV64C_C_ADD,
+    // I_RV64C_C_AND,
+    // I_RV64C_C_OR,
+    // I_RV64C_C_XOR,
+    // I_RV64C_C_SUB,
+    // I_RV64C_C_ADDW,
+    // I_RV64C_C_SUBW,
+    // I_RV64C_C_NOP,
+    // I_RV64C_C_EBREAK,
+    // TODO: chapter 28. "Zc*", @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#Zc
 
-    // MARK: RV64Zv*. - Vector Computation
-    // MARK:
-    //I_RV64V_
+    /*
+     * MARK: RV64B - Bit Manipulation
+     * Comprised of Zba, Zbb, and Zbs.
+     * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#bits
+     */
+    // Zba - Address generation - @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zba
+    // Zbb - Basic bit-manipulation - @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zbb
+    // Zbc - Carry-less multiplication - @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zbc
+    // Zbs - Single-bit instructions - @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zbs
+    // Zbkb - Bit-manipulation for Cryptography - @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zbkb
+    // Zbkc - Carry-less multiplication for Cryptography - @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zbkc
+    // Zbkx - Crossbar permutations - @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zbkx
+    // TODO: 29.6 cool optimization guide code snippets related to RV64B that would make for good goalpost tests for this emulator - @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_software_optimization_guide
 
+    /*
+     * MARK: RV64V - Vector Operations
+     * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#vector
+     */
+    // TODO: vector load, vector store, vector arithmetic
+    I_RV64V_VSETVLI,
+    I_RV64V_VSETIVLI,
+    I_RV64V_VSETVL,
+    // @see 30.7.4 Vector Unit-Stride Instructions (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_unit_stride_instructions)
+    I_RV64V_VLE8_V,
+    I_RV64V_VLE16_V,
+    I_RV64V_VLE32_V,
+    I_RV64V_VLE64_V,
+    I_RV64V_VSE8_V,
+    I_RV64V_VSE16_V,
+    I_RV64V_VSE32_V,
+    I_RV64V_VSE64_V,
+    I_RV64V_VLM_V,
+    I_RV64V_VSM_V,
+    // @see 30.7.5 Vector Constant-Stride Instructions (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_constant_stride_instructions)
+    I_RV64V_VLSE8_V,
+    I_RV64V_VLSE16_V,
+    I_RV64V_VLSE32_V,
+    I_RV64V_VLSE64_V,
+    I_RV64V_VSSE8_V,
+    I_RV64V_VSSE16_V,
+    I_RV64V_VSSE32_V,
+    I_RV64V_VSSE64_V,
+    // @see 30.7.6 Vector Indexed Instructions (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_indexed_instructions)
+    I_RV64V_VLUXEI8_V, /** Vector index-unordered load instruction */
+    I_RV64V_VLUXEI16_V,
+    I_RV64V_VLUXEI32_V,
+    I_RV64V_VLUXEI64_V,
+    I_RV64V_VLOXEI8_V, /** Vector indexed-ordered load instruction */
+    I_RV64V_VLOXEI16_V,
+    I_RV64V_VLOXEI32_V,
+    I_RV64V_VLOXEI64_V,
+    I_RV64V_VSUXEI8_V, /** Vector indexed-unordered store instruction */
+    I_RV64V_VSUXEI16_V,
+    I_RV64V_VSUXEI32_V,
+    I_RV64V_VSUXEI64_V,
+    I_RV64V_VSOXEI8_V, /** Vector indexed-ordered store instruction */
+    I_RV64V_VSOXEI16_V,
+    I_RV64V_VSOXEI32_V,
+    I_RV64V_VSOXEI64_V,
+    // @see 30.7.7 Unit-stride Fault-Only-First Loads (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_unit_stride_fault_only_first_loads)
+    I_RV64V_VLE8FF_V, /** Vector unit-stride fault-only-first loads */
+    I_RV64V_VLE16FF_V,
+    I_RV64V_VLE32FF_V,
+    I_RV64V_VLE64FF_V,
+    // @see 30.7.8.1 Vector Unit-Stride Segment Loads and Stores
+    // TODO: vlseg<nf>e<eew>.v, vsseg<nf>e<eew>.v
+    // @see 30.7.8.2 Vector Constant-Stride Segment Loads and Stores
+    // TODO: vlsseg<nf>e<eew>.v, vssseg<nf>e<eew>.v
+    // @see 30.7.8.3 Vector Indexed Segment Loads and Stores
+    // TODO: vluxseg<nf>ei<eew>.v, vloxseg<nf>ei<eew>.v, vsuxseg<nf>ei<eew>.v, vsoxseg<nf>ei<eew>.v
+    // @see 30.7.9 Vector Load/Store Whole Register Instructions (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_loadstore_whole_register_instructions)
+    // TODO: VL*R*, VS*R*
+    // @see 30.10.1 Vector Arithmetic Instruction Encoding (@see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#sec-arithmetic-encoding)
+    I_RV64V_VOPVV, /** Assembly syntax pattern for vector binary arithmetic instructions, integer vector-vector */
+    I_RV64V_VOPVX, /** integer vector-scalar */
+    I_RV64V_VOPVI, /** integer vector-immediate */
+    I_RV64V_VFOP_VV, /** float vector-vector */
+    I_RV64V_VFOP_VF, /** float vector-scalar */
+    // @see 30.10.2 Widening Vector Arithmetic Instructions (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#sec-widening)
+    I_RV64V_VWOP_VV, /** in */
 
 } instruction_tag_rv64_t;
 
@@ -347,6 +601,27 @@ static char rv64_instruction_tag_mnemonic[][16] = {
     "csrrwi",
     "csrrsi",
     "csrrci",
+    // RV64Zicntr
+    "rdcycle",
+    "rdtime",
+    "rdinstret",
+    // RV64Zihpm
+    // RV64Zihintntl
+    // RV64Zihintpause
+    // RV64Zimop
+    "mop.r.0",
+    "mop.r.1",
+    "mop.r.2",
+    "mop.rr.0",
+    "mop.rr.1",
+    "mop.rr.2",
+    // RV64Zcmop
+    "c.mop.1",
+    "c.mop.3",
+    "c.mop.5",
+    // RV64Zicond
+    "czero.eqz",
+    "czero.nez",
     // RV64M
     "mul",
     "mulh",
@@ -362,8 +637,12 @@ static char rv64_instruction_tag_mnemonic[][16] = {
     "remw",
     "remuw",
     // RV64A
+    // RV64Zalrsc
     "lr.w",
     "sc.w",
+    "lr.d",
+    "sc.d",
+    // RV64Zaamo
     "amoswap.w",
     "amoadd.w",
     "amoxor.w",
@@ -373,8 +652,6 @@ static char rv64_instruction_tag_mnemonic[][16] = {
     "amomax.w",
     "amominu.w",
     "amomaxu.w",
-    "lr.d",
-    "sc.d",
     "amoswap.d",
     "amoadd.d",
     "amoxor.d",
@@ -384,6 +661,34 @@ static char rv64_instruction_tag_mnemonic[][16] = {
     "amomax.d",
     "amominu.d",
     "amomaxu.d",
+    // RV64Zawrs
+    "wrs.nto",
+    "wrs.sto",
+    // RV64Zacas
+    "amo.cas.w",
+    "amo.cas.d",
+    "amo.cas.q",
+    // RV64Zabha
+    "amoswap.b",
+    "amoadd.b",
+    "amoand.b",
+    "amoor.b",
+    "amoxor.b",
+    "amomax.b",
+    "amomaxu.b",
+    "amomin.b",
+    "amominu.b",
+    "amocas.b",
+    "amoswap.h",
+    "amoadd.h",
+    "amoand.h",
+    "amoor.h",
+    "amoxor.h",
+    "amomax.h",
+    "amomaxu.h",
+    "amomin.h",
+    "amominu.h",
+    "amocas.h",
     // RV64F
     "flw",
     "fsw",
@@ -517,12 +822,54 @@ static char rv64_instruction_tag_mnemonic[][16] = {
     "fcvt.l.h",
     "fcvt.lu.h",
     "fcvt.h.l",
-    "fcvt.h.lu",
-    // Zawrs
-    "wrs.nto",
-    "wrs.sto"
-
-    // Vector?
+    "fcvt.h.lu"
+    // RV64V
+    "vsetvli",
+    "vsetivli",
+    "vsetvl",
+    "vle8.v",
+    "vle16.v",
+    "vle32.v",
+    "vle64.v",
+    "vse8.v",
+    "vse16.v",
+    "vse32.v",
+    "vse64.v",
+    "vlm.v",
+    "vsm.v",
+    "vlse8.v",
+    "vlse16.v",
+    "vlse32.v",
+    "vlse64.v",
+    "vsse8.v",
+    "vsse16.v",
+    "vsse32.v",
+    "vsse64.v",
+    "vluxei8.v",
+    "vluxei16.v",
+    "vluxei32.v",
+    "vluxei64.v",
+    "vloxei8.v",
+    "vloxei16.v",
+    "vloxei32.v",
+    "vloxei64.v",
+    "vsuxei8.v",
+    "vsuxei16.v",
+    "vsuxei32.v",
+    "vsuxei64.v",
+    "vsoxei8.v",
+    "vsoxei16.v",
+    "vsoxei32.v",
+    "vsoxei64.v",
+    "vle8ff.v",
+    "vle16ff.v",
+    "vle32ff.v",
+    "vle64ff.v",
+    "vop.vv",
+    "vop.vx",
+    "vop.vi",
+    "vfop.vv",
+    "vfop.vf"
 };
 
 

@@ -195,33 +195,33 @@ instruction_tag_rv64_t rv64_decode_instruction_tag(uint32_t instruction) {
             switch(funct3) {
                 case 0b010: {
                     switch(funct5) {
-                        case 0b00010: return(I_RV64A_LR_W);
-                        case 0b00011: return(I_RV64A_SC_W);
-                        case 0b00001: return(I_RV64A_AMOSWAP_W);
-                        case 0b00000: return(I_RV64A_AMOADD_W);
-                        case 0b00100: return(I_RV64A_AMOXOR_W);
-                        case 0b01100: return(I_RV64A_AMOAND_W);
-                        case 0b01000: return(I_RV64A_AMOOR_W);
-                        case 0b10000: return(I_RV64A_AMOMIN_W);
-                        case 0b10100: return(I_RV64A_AMOMAX_W);
-                        case 0b11000: return(I_RV64A_AMOMINU_W);
-                        case 0b11100: return(I_RV64A_AMOMAXU_W);
+                        case 0b00010: return(I_RV64ZALRSC_LR_W);
+                        case 0b00011: return(I_RV64ZALRSC_SC_W);
+                        case 0b00001: return(I_RV64ZAWRS_AMOSWAP_W);
+                        case 0b00000: return(I_RV64ZAWRS_AMOADD_W);
+                        case 0b00100: return(I_RV64ZAWRS_AMOXOR_W);
+                        case 0b01100: return(I_RV64ZAWRS_AMOAND_W);
+                        case 0b01000: return(I_RV64ZAWRS_AMOOR_W);
+                        case 0b10000: return(I_RV64ZAWRS_AMOMIN_W);
+                        case 0b10100: return(I_RV64ZAWRS_AMOMAX_W);
+                        case 0b11000: return(I_RV64ZAWRS_AMOMINU_W);
+                        case 0b11100: return(I_RV64ZAWRS_AMOMAXU_W);
                         default: return(I_RV64_INVALID);
                     }
                 }
                 case 0b011: {
                     switch(funct5) {
-                        case 0b00010: return(I_RV64A_LR_D);
-                        case 0b00011: return(I_RV64A_SC_D);
-                        case 0b00001: return(I_RV64A_AMOSWAP_D);
-                        case 0b00000: return(I_RV64A_AMOADD_D);
-                        case 0b00100: return(I_RV64A_AMOXOR_D);
-                        case 0b01100: return(I_RV64A_AMOAND_D);
-                        case 0b01000: return(I_RV64A_AMOOR_D);
-                        case 0b10000: return(I_RV64A_AMOMIN_D);
-                        case 0b10100: return(I_RV64A_AMOMAX_D);
-                        case 0b11000: return(I_RV64A_AMOMINU_D);
-                        case 0b11100: return(I_RV64A_AMOMAXU_D);
+                        case 0b00010: return(I_RV64ZALRSC_LR_D);
+                        case 0b00011: return(I_RV64ZALRSC_SC_D);
+                        case 0b00001: return(I_RV64ZAWRS_AMOSWAP_D);
+                        case 0b00000: return(I_RV64ZAWRS_AMOADD_D);
+                        case 0b00100: return(I_RV64ZAWRS_AMOXOR_D);
+                        case 0b01100: return(I_RV64ZAWRS_AMOAND_D);
+                        case 0b01000: return(I_RV64ZAWRS_AMOOR_D);
+                        case 0b10000: return(I_RV64ZAWRS_AMOMIN_D);
+                        case 0b10100: return(I_RV64ZAWRS_AMOMAX_D);
+                        case 0b11000: return(I_RV64ZAWRS_AMOMINU_D);
+                        case 0b11100: return(I_RV64ZAWRS_AMOMAXU_D);
                         default: return(I_RV64_INVALID);
                     }
                 }
@@ -340,6 +340,11 @@ instruction_tag_rv64_t rv64_decode_instruction_tag(uint32_t instruction) {
                 case 0b1111000: return(I_RV64F_FMV_W_X);
                 default: return(I_RV64_INVALID);
             }
+        }
+        // RV64V
+        case 0b1010111: {
+            /* TODO: OPIVV, OPFVV, OPMVV, OPIVI, OPIVX, OPFVF, OPMVX */
+            break;
         }
     }
     return(I_RV64_INVALID);

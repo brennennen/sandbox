@@ -46,9 +46,9 @@ Test(emu_rv64_decode_tag_tests, decode_instruction_tests) {
     cr_assert(I_RV64M_REMW == rv64_decode_instruction_tag(0x027362bb)); // remw t0, t1, t2
     cr_assert(I_RV64M_REMUW == rv64_decode_instruction_tag(0x027372bb)); // remuw t0, t1, t2
     // RV64A
-    cr_assert(I_RV64A_LR_W == rv64_decode_instruction_tag(0x100522af)); // lr.w t0, (a0)
-    cr_assert(I_RV64A_SC_W == rv64_decode_instruction_tag(0x18c522af)); // sc.w t0, a2, (a0)
-    cr_assert(I_RV64A_AMOSWAP_W == rv64_decode_instruction_tag(0x0805202f)); // amoswap.w x0, x0, (a0)
+    cr_assert(I_RV64ZALRSC_LR_W == rv64_decode_instruction_tag(0x100522af)); // lr.w t0, (a0)
+    cr_assert(I_RV64ZALRSC_SC_W == rv64_decode_instruction_tag(0x18c522af)); // sc.w t0, a2, (a0)
+    cr_assert(I_RV64ZAWRS_AMOSWAP_W == rv64_decode_instruction_tag(0x0805202f)); // amoswap.w x0, x0, (a0)
     // ...
     // RV64F
     cr_assert(I_RV64F_FLW == rv64_decode_instruction_tag(0x0009a187)); // flw ft3, (s3)

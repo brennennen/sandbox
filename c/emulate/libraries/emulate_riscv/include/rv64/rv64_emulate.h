@@ -11,6 +11,36 @@
 
 #include "rv64/rv64_registers.h"
 
+/**
+ * XLEN is the width of the registers in bits and the width of what most instructions use
+ * (if instructions operate on non-XLEN sized bits, they usually add an identifier that
+ * describes the width to the instruction mnemonic (ex: H, W, D, Q)).
+ * @see 2.1 Programmers' Model for Base Integer ISA (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_programmers_model_for_base_integer_isa)
+ */
+#define XLEN 64
+
+/**
+ * ELEN (Vector Element Length) is the number of elements to be operated on at one time by
+ * vector operations. ELEN >= 8, and must be a power of 2. Part of the "V" extension.
+ * @see 30.2 Implementation-defined Constant Parameters (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_implementation_defined_constant_parameters)
+ */
+#define ELEN 8
+
+/**
+ * VLEN (Vector Length) is the number of bits in a single vector register. VLEN >= ELEN, and
+ * must be a power of 2, and must not be greater than 2^16. Part of the "V" extension.
+ * @see 30.2 Implementation-defined Constant Parameters (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_implementation_defined_constant_parameters)
+ */
+#define VLEN 128
+
+// TODO LMUL and SEW
+
+/**
+ * @see 30.3.4.2 Vector Register Grouping (`vlmul[2:0]`) (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#vector-register-grouping)
+ *
+ */
+//#define VLMAX ((LMUL*VLEN)/SEW)
+
 // TODO: probably best to make this on the heap
 #define MEMORY_SIZE 65535 // 64KB,
 #define PROGRAM_START 0x100 // address '0' is usually a forced segfault, write program to some

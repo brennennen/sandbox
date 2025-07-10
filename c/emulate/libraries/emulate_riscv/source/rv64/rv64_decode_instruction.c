@@ -1,6 +1,3 @@
-
-
-
 #include <stdint.h>
 
 #include "logger.h"
@@ -231,6 +228,9 @@ instruction_tag_rv64_t rv64_decode_instruction_tag(uint32_t instruction) {
             uint8_t funct3 = (instruction >> 12) & 0b111; // 15?
             switch(funct3) {
                 case 0b010: return(I_RV64F_FLW);
+                case 0b011: return(I_RV64D_FLD);
+                case 0b100: return(I_RV64Q_FLQ);
+                case 0b001: return(I_RV64ZFH_FLH);
                 default: return(I_RV64_INVALID);
             }
         }
@@ -238,6 +238,9 @@ instruction_tag_rv64_t rv64_decode_instruction_tag(uint32_t instruction) {
             uint8_t funct3 = (instruction >> 12) & 0b111; // 15?
             switch(funct3) {
                 case 0b010: return(I_RV64F_FSW);
+                case 0b011: return(I_RV64D_FSD);
+                case 0b100: return(I_RV64Q_FSQ);
+                case 0b001: return(I_RV64ZFH_FSH);
                 default: return(I_RV64_INVALID);
             }
         }
@@ -245,7 +248,9 @@ instruction_tag_rv64_t rv64_decode_instruction_tag(uint32_t instruction) {
             uint8_t funct2 = (instruction >> 25) & 0b11;
             switch(funct2) {
                 case 0b00: return(I_RV64F_FMADD_S);
-                //case 0b01: return(I_RV64D_FMADD_D);
+                case 0b01: return(I_RV64D_FMADD_D);
+                case 0b11: return(I_RV64Q_FMADD_Q);
+                case 0b10: return(I_RV64ZFH_FMADD_H);
                 default: return(I_RV64_INVALID);
             }
         }
@@ -253,7 +258,9 @@ instruction_tag_rv64_t rv64_decode_instruction_tag(uint32_t instruction) {
             uint8_t funct2 = (instruction >> 25) & 0b11;
             switch(funct2) {
                 case 0b00: return(I_RV64F_FMSUB_S);
-                //case 0b01: return(I_RV64F_FMSUB_D);
+                case 0b01: return(I_RV64D_FMSUB_D);
+                case 0b11: return(I_RV64Q_FMSUB_Q);
+                case 0b10: return(I_RV64ZFH_FMSUB_H);
                 default: return(I_RV64_INVALID);
             }
         }
@@ -261,7 +268,9 @@ instruction_tag_rv64_t rv64_decode_instruction_tag(uint32_t instruction) {
             uint8_t funct2 = (instruction >> 25) & 0b11;
             switch(funct2) {
                 case 0b00: return(I_RV64F_FNMSUB_S);
-                //case 0b01: return(I_RV64F_FMSUB_D);
+                case 0b01: return(I_RV64D_FNMSUB_D);
+                case 0b11: return(I_RV64Q_FNMSUB_Q);
+                case 0b10: return(I_RV64ZFH_FNMSUB_H);
                 default: return(I_RV64_INVALID);
             }
         }
@@ -269,7 +278,9 @@ instruction_tag_rv64_t rv64_decode_instruction_tag(uint32_t instruction) {
             uint8_t funct2 = (instruction >> 25) & 0b11;
             switch(funct2) {
                 case 0b00: return(I_RV64F_FNMADD_S);
-                //case 0b01: return(I_RV64F_FNMADD_D);
+                case 0b01: return(I_RV64D_FNMADD_D);
+                case 0b11: return(I_RV64Q_FNMADD_Q);
+                case 0b10: return(I_RV64ZFH_FNMADD_H);
                 default: return(I_RV64_INVALID);
             }
         }
@@ -277,10 +288,25 @@ instruction_tag_rv64_t rv64_decode_instruction_tag(uint32_t instruction) {
             uint8_t funct7 = (instruction >> 25) & 0b1111111;
             switch(funct7) {
                 case 0b0000000: return(I_RV64F_FADD_S);
+                case 0b0000001: return(I_RV64D_FADD_D);
+                case 0b0000011: return(I_RV64Q_FADD_Q);
+                case 0b0000010: return(I_RV64ZFH_FADD_H);
                 case 0b0000100: return(I_RV64F_FSUB_S);
+                case 0b0000101: return(I_RV64D_FSUB_D);
+                case 0b0000111: return(I_RV64Q_FSUB_Q);
+                case 0b0000110: return(I_RV64ZFH_FSUB_H);
                 case 0b0001000: return(I_RV64F_FMUL_S);
+                case 0b0001001: return(I_RV64D_FMUL_D);
+                case 0b0001011: return(I_RV64Q_FMUL_Q);
+                case 0b0001010: return(I_RV64ZFH_FMUL_H);
                 case 0b0001100: return(I_RV64F_FDIV_S);
+                case 0b0001101: return(I_RV64D_FDIV_D);
+                case 0b0001111: return(I_RV64Q_FDIV_Q);
+                case 0b0001110: return(I_RV64ZFH_FDIV_H);
                 case 0b0101100: return(I_RV64F_FSQRT_S);
+                case 0b0101101: return(I_RV64D_FSQRT_D);
+                case 0b0101111: return(I_RV64Q_FSQRT_Q);
+                case 0b0101110: return(I_RV64ZFH_FSQRT_H);
                 case 0b0010000: {
                     uint8_t funct3 = (instruction >> 12) & 0b111;
                     switch(funct3) {
@@ -289,7 +315,33 @@ instruction_tag_rv64_t rv64_decode_instruction_tag(uint32_t instruction) {
                         case 0b010: return(I_RV64F_FSGNJX_S);
                         default: return(I_RV64_INVALID);
                     }
-                    return(I_RV64F_FSGNJ_S);
+                }
+                case 0b0010001: {
+                    uint8_t funct3 = (instruction >> 12) & 0b111;
+                    switch(funct3) {
+                        case 0b000: return(I_RV64D_FSGNJ_D);
+                        case 0b001: return(I_RV64D_FSGNJN_D);
+                        case 0b010: return(I_RV64D_FSGNJX_D);
+                        default: return(I_RV64_INVALID);
+                    }
+                }
+                case 0b0010011: {
+                    uint8_t funct3 = (instruction >> 12) & 0b111;
+                    switch(funct3) {
+                        case 0b000: return(I_RV64Q_FSGNJ_Q);
+                        case 0b001: return(I_RV64Q_FSGNJN_Q);
+                        case 0b010: return(I_RV64Q_FSGNJX_Q);
+                        default: return(I_RV64_INVALID);
+                    }
+                }
+                case 0b0010010: {
+                    uint8_t funct3 = (instruction >> 12) & 0b111;
+                    switch(funct3) {
+                        case 0b000: return(I_RV64ZFH_FSGNJ_H);
+                        case 0b001: return(I_RV64ZFH_FSGNJN_H);
+                        case 0b010: return(I_RV64ZFH_FSGNJX_H);
+                        default: return(I_RV64_INVALID);
+                    }
                 }
                 case 0b0010100: {
                     uint8_t funct3 = (instruction >> 12) & 0b111;
@@ -299,14 +351,94 @@ instruction_tag_rv64_t rv64_decode_instruction_tag(uint32_t instruction) {
                         default: return(I_RV64_INVALID);
                     }
                 }
+                case 0b0010101: {
+                    uint8_t funct3 = (instruction >> 12) & 0b111;
+                    switch(funct3) {
+                        case 0b000: return(I_RV64D_FMIN_D);
+                        case 0b001: return(I_RV64D_FMAX_D);
+                        default: return(I_RV64_INVALID);
+                    }
+                }
+                case 0b0010111: {
+                    uint8_t funct3 = (instruction >> 12) & 0b111;
+                    switch(funct3) {
+                        case 0b000: return(I_RV64Q_FMIN_Q);
+                        case 0b001: return(I_RV64Q_FMAX_Q);
+                        default: return(I_RV64_INVALID);
+                    }
+                }
+                case 0b0010110: {
+                    uint8_t funct3 = (instruction >> 12) & 0b111;
+                    switch(funct3) {
+                        case 0b000: return(I_RV64ZFH_FMIN_H);
+                        case 0b001: return(I_RV64ZFH_FMAX_H);
+                        default: return(I_RV64_INVALID);
+                    }
+                }
                 case 0b1100000: {
-
                     uint8_t funct5 = (instruction >> 20) & 0b11111;
                     switch(funct5) {
                         case 0b00000: return(I_RV64F_FCVT_W_S);
                         case 0b00001: return(I_RV64F_FCVT_WU_S);
                         case 0b00010: return(I_RV64F_FCVT_L_S);
                         case 0b00011: return(I_RV64F_FCVT_LU_S);
+                        default: return(I_RV64_INVALID);
+                    }
+                }
+                case 0b1100001: {
+                    uint8_t funct5 = (instruction >> 20) & 0b11111;
+                    switch(funct5) {
+                        case 0b00000: return(I_RV64D_FCVT_W_D);
+                        case 0b00001: return(I_RV64D_FCVT_WU_D);
+                        case 0b00010: return(I_RV64D_FCVT_L_D);
+                        case 0b00011: return(I_RV64D_FCVT_LU_D);
+                        default: return(I_RV64_INVALID);
+                    }
+                }
+                case 0b0100000: {
+                    uint8_t funct5 = (instruction >> 20) & 0b11111;
+                    switch(funct5) {
+                        case 0b00001: return(I_RV64D_FCVT_S_D);
+                        case 0b00011: return(I_RV64Q_FCVT_S_Q);
+                        case 0b00010: return(I_RV64ZFH_FCVT_S_H);
+                        default: return(I_RV64_INVALID);
+                    }
+                }
+                case 0b0100010: {
+                    uint8_t funct5 = (instruction >> 20) & 0b11111;
+                    switch(funct5) {
+                        case 0b00000: return(I_RV64ZFH_FCVT_H_S);
+                        case 0b00001: return(I_RV64ZFH_FCVT_H_D);
+                        case 0b00011: return(I_RV64ZFH_FCVT_H_Q);
+                        default: return(I_RV64_INVALID);
+                    }
+                }
+
+                case 0b0100001: {
+                    uint8_t funct5 = (instruction >> 20) & 0b11111;
+                    switch(funct5) {
+                        case 0b00000: return(I_RV64D_FCVT_D_S);
+                        case 0b00011: return(I_RV64Q_FCVT_D_Q);
+                        case 0b00010: return(I_RV64ZFH_FCVT_D_H);
+                        default: return(I_RV64_INVALID);
+                    }
+                }
+                case 0b0100011: {
+                    uint8_t funct5 = (instruction >> 20) & 0b11111;
+                    switch(funct5) {
+                        case 0b00000: return(I_RV64Q_FCVT_Q_S);
+                        case 0b00001: return(I_RV64Q_FCVT_Q_D);
+                        case 0b00010: return(I_RV64ZFH_FCVT_Q_H);
+                        default: return(I_RV64_INVALID);
+                    }
+                }
+                case 0b1100010: {
+                    uint8_t funct5 = (instruction >> 20) & 0b11111;
+                    switch(funct5) {
+                        case 0b00000: return(I_RV64ZFH_FCVT_W_H);
+                        case 0b00001: return(I_RV64ZFH_FCVT_WU_H);
+                        case 0b00010: return(I_RV64ZFH_FCVT_L_H);
+                        case 0b00011: return(I_RV64ZFH_FCVT_LU_H);
                         default: return(I_RV64_INVALID);
                     }
                 }
@@ -318,12 +450,62 @@ instruction_tag_rv64_t rv64_decode_instruction_tag(uint32_t instruction) {
                         default: return(I_RV64_INVALID);
                     }
                 }
+                case 0b1110001: {
+                    uint8_t funct3 = (instruction >> 12) & 0b111;
+                    switch(funct3) {
+                        case 0b000: return(I_RV64D_FMV_X_D);
+                        case 0b001: return(I_RV64D_FCLASS_D);
+                        default: return(I_RV64_INVALID);
+                    }
+                }
+                case 0b1110011: {
+                    uint8_t funct3 = (instruction >> 12) & 0b111;
+                    switch(funct3) {
+                        case 0b001: return(I_RV64Q_FCLASS_Q);
+                        default: return(I_RV64_INVALID);
+                    }
+                }
+                case 0b1110010: {
+                    uint8_t funct3 = (instruction >> 12) & 0b111;
+                    switch(funct3) {
+                        case 0b001: return(I_RV64ZFH_FCLASS_H);
+                        case 0b000: return(I_RV64ZFH_FMV_X_H);
+                        default: return(I_RV64_INVALID);
+                    }
+                }
                 case 0b1010000: {
                     uint8_t funct3 = (instruction >> 12) & 0b111;
                     switch(funct3) {
                         case 0b010: return(I_RV64F_FEQ_S);
                         case 0b001: return(I_RV64F_FLT_S);
                         case 0b000: return(I_RV64F_FLE_S);
+                        default: return(I_RV64_INVALID);
+                    }
+                }
+                case 0b1010001: {
+                    uint8_t funct3 = (instruction >> 12) & 0b111;
+                    switch(funct3) {
+                        case 0b010: return(I_RV64D_FEQ_D);
+                        case 0b001: return(I_RV64D_FLT_D);
+                        case 0b000: return(I_RV64D_FLE_D);
+                        default: return(I_RV64_INVALID);
+                    }
+                }
+                case 0b1010011: {
+                    uint8_t funct3 = (instruction >> 12) & 0b111;
+                    switch(funct3) {
+                        case 0b010: return(I_RV64Q_FEQ_Q);
+                        case 0b001: return(I_RV64Q_FLT_Q);
+                        case 0b000: return(I_RV64Q_FLE_Q);
+                        default: return(I_RV64_INVALID);
+                    }
+                }
+                case 0b1010010: {
+                    uint8_t funct3 = (instruction >> 12) & 0b111;
+                    switch(funct3) {
+                        case 0b010: return(I_RV64ZFH_FEQ_H);
+                        case 0b001: return(I_RV64ZFH_FLT_H);
+                        case 0b000: return(I_RV64ZFH_FLE_H);
                         default: return(I_RV64_INVALID);
                     }
                 }
@@ -337,7 +519,49 @@ instruction_tag_rv64_t rv64_decode_instruction_tag(uint32_t instruction) {
                         default: return(I_RV64_INVALID);
                     }
                 }
+                case 0b1101001: {
+                    uint8_t funct5 = (instruction >> 20) & 0b11111;
+                    switch(funct5) {
+                        case 0b00000: return(I_RV64D_FCVT_D_W);
+                        case 0b00001: return(I_RV64D_FCVT_D_WU);
+                        case 0b00010: return(I_RV64D_FCVT_D_L);
+                        case 0b00011: return(I_RV64D_FCVT_D_LU);
+                        default: return(I_RV64_INVALID);
+                    }
+                }
+                case 0b1100011: {
+                    uint8_t funct5 = (instruction >> 20) & 0b11111;
+                    switch(funct5) {
+                        case 0b00000: return(I_RV64Q_FCVT_W_Q);
+                        case 0b00001: return(I_RV64Q_FCVT_WU_Q);
+                        case 0b00010: return(I_RV64Q_FCVT_L_Q);
+                        case 0b00011: return(I_RV64Q_FCVT_LU_Q);
+                        default: return(I_RV64_INVALID);
+                    }
+                }
+                case 0b1101011: {
+                    uint8_t funct5 = (instruction >> 20) & 0b11111;
+                    switch(funct5) {
+                        case 0b00000: return(I_RV64Q_FCVT_Q_W);
+                        case 0b00001: return(I_RV64Q_FCVT_Q_WU);
+                        case 0b00010: return(I_RV64Q_FCVT_Q_L);
+                        case 0b00011: return(I_RV64Q_FCVT_Q_LU);
+                        default: return(I_RV64_INVALID);
+                    }
+                }
+                case 0b1101010: {
+                    uint8_t funct5 = (instruction >> 20) & 0b11111;
+                    switch(funct5) {
+                        case 0b00000: return(I_RV64ZFH_FCVT_H_W);
+                        case 0b00001: return(I_RV64ZFH_FCVT_H_WU);
+                        case 0b00010: return(I_RV64ZFH_FCVT_H_L);
+                        case 0b00011: return(I_RV64ZFH_FCVT_H_LU);
+                        default: return(I_RV64_INVALID);
+                    }
+                }
+                case 0b1111010: return(I_RV64ZFH_FMV_H_X);
                 case 0b1111000: return(I_RV64F_FMV_W_X);
+                case 0b1111001: return(I_RV64D_FMV_D_X);
                 default: return(I_RV64_INVALID);
             }
         }

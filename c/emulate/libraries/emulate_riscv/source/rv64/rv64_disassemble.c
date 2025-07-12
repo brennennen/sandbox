@@ -16,6 +16,31 @@ emu_result_t rv64_disassemble_init(emulator_rv64_t* emulator) {
     return(ER_SUCCESS);
 }
 
+emu_result_t rv64_disassemble_upper_immediate(
+    emulator_rv64_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64_t tag,
+    char* buffer,
+    int* index,
+    size_t buffer_size
+) {
+    int32_t imm20 = 0;
+    uint8_t rd = 0;
+
+    rv64_decode_upper_immediate(raw_instruction, &imm20, &rd);
+
+    char* rd_name = emu_rv64_map_register_name(rd);
+    char* tag_name = rv64_instruction_tag_mnemonic[tag];
+
+    int written = snprintf(buffer + *index, buffer_size - *index,
+        "%s %s, %d", tag_name, rd_name, imm20);
+    if (written < 0) {
+        return(ER_FAILURE);
+    }
+    *index += written;
+    return(ER_SUCCESS);
+}
+
 emu_result_t rv64_disassemble_register_immediate(
     emulator_rv64_t* emulator,
     uint32_t raw_instruction,
@@ -109,6 +134,12 @@ static result_iter_t emu_rv64_disassemble_next(
     emu_result_t result = RI_FAILURE;
     switch(instruction_tag) {
         // RV64I
+        // Core Format "U" - Upper Immediate
+        case I_RV64I_LUI:
+        case I_RV64I_AUIPC: {
+            result = rv64_disassemble_upper_immediate(emulator, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
+            break;
+        }
         // Core Format "I" - "register-immediate"
         case I_RV64I_JALR:
         case I_RV64I_LB:

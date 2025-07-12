@@ -20,6 +20,35 @@ void rv64i_disassemble_default_setup(void) {
 
 /*
  *
+ * MARK: "U" (upper immediate)
+ *
+ */
+Test(emu_rv64_disassemble__I_RV64I_LUI__tests, lui_1, .init = rv64i_disassemble_default_setup)
+{
+    char* expected = "lui t0, 74565\n"; // lui t0, 0x12345
+    uint8_t input[] = { 0x12, 0x34, 0x52, 0xb7 };
+    char output[32] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+Test(emu_rv64_disassemble__I_RV64I_AUIPC__tests, auipc_1, .init = rv64i_disassemble_default_setup)
+{
+    char* expected = "auipc t0, 74565\n"; // auipc t0, 0x12345
+    uint8_t input[] = { 0x12, 0x34, 0x52, 0x97 };
+    char output[32] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+// TODO: jal - sw
+
+/*
+ *
  * MARK: "I" (register - immediate)
  *
  */

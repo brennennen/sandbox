@@ -9,6 +9,11 @@
 // MARK: Instructions
 Test(emu_rv64_decode_tag_tests, decode_instruction_tests) {
     // RV64I
+    cr_assert(I_RV64I_LUI == rv64_decode_instruction_tag(0x123452b7)); // lui t0, 0x12345
+    cr_assert(I_RV64I_AUIPC == rv64_decode_instruction_tag(0x12345297)); // auipc t0, 0x12345
+    cr_assert(I_RV64I_JAL == rv64_decode_instruction_tag(0xf71ff0ef)); // jal ra, symbol
+    cr_assert(I_RV64I_JALR == rv64_decode_instruction_tag(0x00008067)); // jalr zero, ra, 0
+    // TODO: beq - sw
     // ...
     // "I" Type
     cr_assert(I_RV64I_ADDI == rv64_decode_instruction_tag(0x00550593)); // addi a1, a0, 5

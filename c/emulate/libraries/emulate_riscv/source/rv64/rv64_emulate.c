@@ -98,11 +98,10 @@ static result_iter_t emu_rv64_emulate_next(emulator_rv64_t* emulator) {
 
     emu_result_t result = ER_SUCCESS; //RI_FAILURE;
     switch(instruction_tag) {
-        case I_RV64I_LUI: {
-            // TODO
-            result = ER_FAILURE;
-            break;
-        }
+        // Core Format "U" - "upper-immediate"
+        case I_RV64I_LUI:
+        case I_RV64I_AUIPC:
+        // TODO: jal - sw
         // Core Format "I" - "register-immediate"
         case I_RV64I_JALR:
         case I_RV64I_LB:

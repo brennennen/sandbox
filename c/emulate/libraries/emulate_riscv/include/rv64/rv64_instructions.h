@@ -15,8 +15,11 @@
 typedef enum ENUM_PACK_ATTRIBUTE {
     I_RV64_INVALID,
 
-    // MARK: RV64I - Integer
-    I_RV64I_LUI, /** Load Upper Immediate */
+    /**
+     * MARK: RV64I - Integer
+     * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#rv64
+     */
+    I_RV64I_LUI, /** Load Upper Immediate - loads an unsigned 20 bit number into the upper 20 bits of a 32 bit int, lower bits being all 0. Then sign extends to 64 bits. */
     I_RV64I_AUIPC, /** Add Upper Immediate to pc */
     I_RV64I_JAL, /** Jump and Link */
     I_RV64I_JALR, /** Jump and Link and Return */

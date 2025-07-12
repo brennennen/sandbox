@@ -10,7 +10,53 @@
 
 #include "rv64/instructions/rv64i_base_integer.h"
 
+/**
+ * LUI - Load Upper Immediate. Places the 32-bi9t U-immediate into register rd,
+ * filling the lowest 12 bits with zeros. The 32-bit result is sign-extended to
+ * 64 bits.
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions_2
+ */
+static inline void rv64i_lui(emulator_rv64_t* emulator, int32_t imm20, uint8_t rd) {
+    emulator->registers.regs[rd] = imm20 << 12;
+}
 
+/**
+ * AUIPC - Add Upper Immediate to `pc`. Used to build pc-relative addresses and uses
+ * the "U-Type" format. AUIPC forms a 32 bit offset from the U-immediate, filling in
+ * the lowest 12 bits with zeros, adds this offset to the address of the AUIPC
+ * instruction, then places the result in register rd.
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions_2
+ */
+static inline void rv64i_auipc(emulator_rv64_t* emulator, int32_t imm20, uint8_t rd) {
+    emulator->registers.regs[rd] = (imm20 << 12) + emulator->registers.pc;
+}
+
+emu_result_t rv64i_emulate_upper_immediate(
+    emulator_rv64_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64_t tag
+) {
+    int32_t imm20 = 0;
+    uint8_t rd = 0;
+
+    rv64_decode_upper_immediate(raw_instruction, &imm20, &rd);
+
+    switch(tag) {
+        case I_RV64I_LUI: {
+            rv64i_lui(emulator, imm20, rd);
+            break;
+        }
+        case I_RV64I_AUIPC: {
+            rv64i_auipc(emulator, imm20, rd);
+            break;
+        }
+        default: {
+            LOG(LOG_ERROR, "rv64i_emulate_upper_immediate: instruction not implemented");
+            return(ER_FAILURE);
+        }
+    }
+    return(ER_SUCCESS);
+}
 
 static inline void rv64_jalr(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
     // TODO
@@ -248,9 +294,10 @@ emu_result_t rv64i_base_integer_emulate(
 ) {
     emu_result_t result = ER_FAILURE;
     switch(tag) {
-        case I_RV64I_LUI: {
-            // TODO
-            result = ER_FAILURE;
+        // Core Format "U" - "upper-immediate"
+        case I_RV64I_LUI:
+        case I_RV64I_AUIPC: {
+            result = rv64i_emulate_upper_immediate(emulator, raw_instruction, tag);
             break;
         }
         // Core Format "I" - "register-immediate"

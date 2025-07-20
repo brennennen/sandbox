@@ -85,3 +85,21 @@ apt-get install binutils-arm-none-eabi
       * Examples:
         * `riscv64-unknown-elf-as -o add.o add.s`
         * `riscv64-unknown-elf-objdump -d add.o`
+    * link and test in qemu
+      * `riscv64-unknown-elf-as -o add.o add.s`
+      * `riscv64-unknown-elf-ld -Ttext=0x1000 -e _start -o add add.o`
+      * `qemu-system-riscv64 -M virt -nographic -S -s -bios none`
+      * `gdb-multiarch ./add`
+        * `target remote :1234`
+        * `load`
+        * `set $pc = 0x1000`
+        * `stepi`
+        * `info registers t0`
+        * `kill`
+        * `q`
+  * vector intrinsics in c: https://fprox.substack.com/p/risc-v-vector-programming-in-c-with
+   * vector instructions: https://godbolt.org/z/x1q8qvdhr
+   * for `riscv64-unknown-elf-as` instructions, need to add the 'v' extension `-march=rv64gcv`
+     * ex: `riscv64-unknown-elf-as -march=rv64gcv -o vector_misc.o vector_misc.asm`
+*
+

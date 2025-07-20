@@ -469,6 +469,7 @@ typedef enum ENUM_PACK_ATTRIBUTE {
      * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#vector
      */
     // TODO: vector load, vector store, vector arithmetic
+    // @see 30.6. Configuration-Setting Instructions (vsetvli/vsetivli/vsetvl) (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#sec-vector-config)
     I_RV64V_VSETVLI,
     I_RV64V_VSETIVLI,
     I_RV64V_VSETVL,
@@ -522,12 +523,23 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     // TODO: vluxseg<nf>ei<eew>.v, vloxseg<nf>ei<eew>.v, vsuxseg<nf>ei<eew>.v, vsoxseg<nf>ei<eew>.v
     // @see 30.7.9 Vector Load/Store Whole Register Instructions (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_loadstore_whole_register_instructions)
     // TODO: VL*R*, VS*R*
-    // @see 30.10.1 Vector Arithmetic Instruction Encoding (@see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#sec-arithmetic-encoding)
+    // @see 30.11.1 Vector Single-Width Integer Add and Subtract (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_single_width_integer_add_and_subtract)
+    I_RV64V_VADD_VV,
+    I_RV64V_VADD_VX,
+    I_RV64V_VADD_VI,
+    I_RV64V_VSUB_VV,
+    I_RV64V_VSUB_VX,
+    I_RV64V_VRSUB_VX,
+    I_RV64V_VRSUB_VI,
+    // 30.11.2 Vector Widening Integer Add/Subtract
+    // todo - next
+
     I_RV64V_VOPVV, /** Assembly syntax pattern for vector binary arithmetic instructions, integer vector-vector */
     I_RV64V_VOPVX, /** integer vector-scalar */
     I_RV64V_VOPVI, /** integer vector-immediate */
     I_RV64V_VFOP_VV, /** float vector-vector */
     I_RV64V_VFOP_VF, /** float vector-scalar */
+    I_RV64V_VADC_VMM, /** vector addition with carry */
     // @see 30.10.2 Widening Vector Arithmetic Instructions (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#sec-widening)
     I_RV64V_VWOP_VV, /** in */
 
@@ -868,11 +880,27 @@ static char rv64_instruction_tag_mnemonic[][16] = {
     "vle16ff.v",
     "vle32ff.v",
     "vle64ff.v",
+    // @see 30.11.1 Vector Single-Width Integer Add and Subtract (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_single_width_integer_add_and_subtract)
+    "vadd.vi",
+    "vadd.vx",
+    "vadd.vv",
+    "vsub.vx",
+    "vsub.vv",
+    "vrsub.vx",
+    "vrsub.vi",
+    // todo: 30.11.2
+
     "vop.vv",
     "vop.vx",
     "vop.vi",
     "vfop.vv",
-    "vfop.vf"
+    "vfop.vf",
+    // I_RV64V_VOPVV, /** Assembly syntax pattern for vector binary arithmetic instructions, integer vector-vector */
+    // I_RV64V_VOPVX, /** integer vector-scalar */
+    // I_RV64V_VOPVI, /** integer vector-immediate */
+    // I_RV64V_VFOP_VV, /** float vector-vector */
+    // I_RV64V_VFOP_VF, /** float vector-scalar */
+    // I_RV64V_VADC_VMM, /** vector addition with carry */
 };
 
 

@@ -225,22 +225,31 @@ instruction_tag_rv64_t rv64_decode_instruction_tag(uint32_t instruction) {
             }
         }
         case 0b0000111: {
-            uint8_t funct3 = (instruction >> 12) & 0b111; // 15?
+            uint8_t funct3 = (instruction >> 12) & 0b111;
             switch(funct3) {
                 case 0b010: return(I_RV64F_FLW);
                 case 0b011: return(I_RV64D_FLD);
                 case 0b100: return(I_RV64Q_FLQ);
                 case 0b001: return(I_RV64ZFH_FLH);
+                case 0b111: return(I_RV64V_VLE64_V);
+                case 0b110: return(I_RV64V_VLE32_V);
+                case 0b101: return(I_RV64V_VLE16_V);
+                case 0b000: return(I_RV64V_VLE8_V);
                 default: return(I_RV64_INVALID);
             }
         }
         case 0b0100111: {
-            uint8_t funct3 = (instruction >> 12) & 0b111; // 15?
+            uint8_t funct3 = (instruction >> 12) & 0b111;
             switch(funct3) {
                 case 0b010: return(I_RV64F_FSW);
                 case 0b011: return(I_RV64D_FSD);
                 case 0b100: return(I_RV64Q_FSQ);
                 case 0b001: return(I_RV64ZFH_FSH);
+
+                case 0b111: return(I_RV64V_VSE64_V);
+                case 0b110: return(I_RV64V_VSE32_V);
+                case 0b101: return(I_RV64V_VSE16_V);
+                case 0b000: return(I_RV64V_VSE8_V);
                 default: return(I_RV64_INVALID);
             }
         }
@@ -567,8 +576,51 @@ instruction_tag_rv64_t rv64_decode_instruction_tag(uint32_t instruction) {
         }
         // RV64V
         case 0b1010111: {
-            /* TODO: OPIVV, OPFVV, OPMVV, OPIVI, OPIVX, OPFVF, OPMVX */
-            break;
+            uint8_t funct3 = (instruction >> 12) & 0b111;
+            uint8_t funct6 = (instruction >> 26) & 0b111111;
+            switch(funct3) {
+                // 30.10
+                case 0b000: { // OPIVV
+                    switch(funct6) {
+                        case 0b000000: return(I_RV64V_VADD_VV);
+                        case 0b000010: return(I_RV64V_VSUB_VV);
+                        default: return(I_RV64_INVALID);
+                    }
+                }
+                case 0b001: return(I_RV64_INVALID); // OPFVV - TODO
+                case 0b010: return(I_RV64_INVALID); // OPMVV - TODO
+                case 0b011: { // OPIVI
+                    switch(funct6) {
+                        case 0b000000: return(I_RV64V_VADD_VI);
+                        case 0b000011: return(I_RV64V_VRSUB_VI);
+                        default: return(I_RV64_INVALID);
+                    }
+                    return(I_RV64_INVALID);
+                }
+                case 0b100: { // OPIVX
+                    switch(funct6) {
+                        case 0b000000: return(I_RV64V_VADD_VX);
+                        case 0b000010: return(I_RV64V_VSUB_VX);
+                        case 0b000011: return(I_RV64V_VRSUB_VX);
+                        default: return(I_RV64_INVALID);
+                    }
+                    return(I_RV64_INVALID);
+                }
+                case 0b101: return(I_RV64_INVALID); // OPFVF - TODO
+                case 0b110: { // OPMVX
+                    return(I_RV64_INVALID);
+                }
+                case 0b111: {
+                    uint8_t funct2 = (instruction >> 30) & 0b11; // last 2 bits
+                    switch(funct2) {
+                        case 0b00: return(I_RV64V_VSETVLI);
+                        case 0b11: return(I_RV64V_VSETIVLI);
+                        case 0b10: return(I_RV64V_VSETVL);
+                        default: return(I_RV64_INVALID);
+                    }
+                }
+                default: return(I_RV64_INVALID);
+            }
         }
     }
     return(I_RV64_INVALID);

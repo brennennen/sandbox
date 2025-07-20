@@ -89,4 +89,32 @@ Test(emu_rv64_decode_tag_tests, decode_instruction_tests) {
     // RV64D
     // RV64Q
     // ...
+    // RV64V
+    // vector load/store
+    cr_assert(I_RV64V_VSETVLI == rv64_decode_instruction_tag(0x0d06f757)); // vsetvli a4, a3, e32, m1, ta, ma
+    cr_assert(I_RV64V_VSETIVLI == rv64_decode_instruction_tag(0xc804f2d7)); // vsetivli t0, 9, e8, m1, tu, ma
+    cr_assert(I_RV64V_VSETVL == rv64_decode_instruction_tag(0x81fe7ed7)); // vsetvl t4, t3, t6
+    cr_assert(I_RV64V_VLE64_V == rv64_decode_instruction_tag(0x0205f087)); // vle64.v v0, (a0)
+    cr_assert(I_RV64V_VLE32_V == rv64_decode_instruction_tag(0x02056007)); // vle32.v v0, (a0)
+    cr_assert(I_RV64V_VLE16_V == rv64_decode_instruction_tag(0x0205d087)); // vle16.v v0, (a0)
+    cr_assert(I_RV64V_VLE8_V == rv64_decode_instruction_tag(0x02058087)); // vle8.v v0, (a0)
+    // todo: vls, vlx?
+    cr_assert(I_RV64V_VSE64_V == rv64_decode_instruction_tag(0x02057027)); // vse64.v v0, (a0)
+    cr_assert(I_RV64V_VSE32_V == rv64_decode_instruction_tag(0x02056027)); // vse32.v v0, (a0)
+    cr_assert(I_RV64V_VSE16_V == rv64_decode_instruction_tag(0x02055027)); // vse16.v v0, (a0)
+    cr_assert(I_RV64V_VSE8_V == rv64_decode_instruction_tag(0x02050027)); // vse8.v v0, (a0)
+    // todo: vss, vsx?
+    // vector arithmetic (add/sub/mul/div/rem/multiply-add)
+    cr_assert(I_RV64V_VADD_VV == rv64_decode_instruction_tag(0x02110057)); // vadd.vv v0, v1, v2
+    cr_assert(I_RV64V_VADD_VX == rv64_decode_instruction_tag(0x0215c057)); // vadd.vx v0, v1, a1
+    cr_assert(I_RV64V_VADD_VI == rv64_decode_instruction_tag(0x0213b057)); // vadd.vi v0, v1, 7
+    cr_assert(I_RV64V_VSUB_VV == rv64_decode_instruction_tag(0x0a110057)); // vsub.vv v0, v1, v2
+    cr_assert(I_RV64V_VSUB_VX == rv64_decode_instruction_tag(0x0a15c057)); // vsub.vx v0, v1, a1
+    cr_assert(I_RV64V_VRSUB_VX == rv64_decode_instruction_tag(0x0e15c057)); // vrsub.vx v0, v1, a1
+    cr_assert(I_RV64V_VRSUB_VI == rv64_decode_instruction_tag(0x0e13b057)); // vrsub.vi v0, v1, 7
+    // vector widening/narrowing
+    // vector boolean (and/or/xor/not)
+    //
+    // todo: add? sub? mul? etc?
+
 }

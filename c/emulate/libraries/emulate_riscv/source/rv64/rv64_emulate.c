@@ -54,6 +54,7 @@ char* rv64_map_register_name(uint8_t reg_id) {
         case(29): return("t4");
         case(30): return("t5");
         case(31): return("t6");
+        default: return("reg?");
     }
 }
 

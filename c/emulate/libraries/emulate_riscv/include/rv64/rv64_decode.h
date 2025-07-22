@@ -33,12 +33,16 @@ static inline void rv64_decode_jal(
     uint8_t imm1 = (raw_instruction >> 20) & 0b1;
     uint16_t imm8 = (raw_instruction >> 12) & 0b11111111;
     *offset = (sign_bit << 20) | (imm1 << 12) | (imm8 << 11) | (imm10 << 1);
+    // Sign extension trick. Shift the 21 bit immediate into the most significant bits, the sign
+    // bit being in the most significant place. Then arithmetic right shift back the bits to their
+    // correct place to extend/replicate the sign bit to all leading bits.
+    *offset = (*offset << (32 - 21)) >> (32 - 21);
     *rd = (raw_instruction >> 7) & 0b11111;
 }
 
 /**
  * Decode "B-Type" instruction format (branch instructions).
- * @see 2.5.2 Conditional Branches (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_conditional_branches)
+ * @see RISC-V Unprivileged ISA Manual, Section 2.5.2 Conditional Branches (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_conditional_branches)
  * Similar to J-Type, the offset is ~13 bits, spread out in a way to make hardware easier to
  * process them (also sign extended). See spec for exact bitmapping. Only even addresses are indexable,
  * so the least significant bit is left out.
@@ -47,17 +51,16 @@ static inline void rv64_decode_branch(
     uint32_t raw_instruction,
     int32_t* offset,
     uint8_t* rs1,
-    uint8_t* rs2,
-    uint8_t* rd
+    uint8_t* rs2
 ) {
     uint8_t sign_bit = (raw_instruction >> 31) & 0b1;
     uint8_t imm6 = (raw_instruction >> 25) & 0b111111;
     uint8_t imm4 = (raw_instruction >> 8) & 0b1111;
     uint8_t imm1 = (raw_instruction >> 7) & 0b1;
     *offset = (sign_bit << 12) | (imm1 << 11) | (imm6 << 5) | (imm4 << 1);
+    *offset = (*offset << (32 - 13)) >> (32 - 13); // Sign extend
     *rs1 = (raw_instruction >> 15) & 0b11111;
     *rs2 = (raw_instruction >> 20) & 0b11111;
-    *rd = (raw_instruction >> 7) & 0b11111;
 }
 
 /**

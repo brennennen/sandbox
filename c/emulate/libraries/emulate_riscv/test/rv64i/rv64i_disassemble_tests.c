@@ -73,7 +73,83 @@ Test(emu_rv64_disassemble__I_RV64I_JALR__tests, jalr_1, .init = rv64i_disassembl
     ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
 }
 
-// TODO: beq - sw
+/**
+ * MARK: "B" (branch)
+ */
+
+// MARK: beq tests
+Test(emu_rv64_disassemble__beq__tests, beq_1, .init = rv64i_disassemble_default_setup)
+{
+    char* expected = "beq a1, zero, . + -8\n"; // beq a1, x0, loop_start
+    uint8_t input[] = { 0xfe, 0x05, 0x8c, 0xe3 };
+    char output[32] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+// MARK: bne tests
+Test(emu_rv64_disassemble__bne__tests, beq_1, .init = rv64i_disassemble_default_setup)
+{
+    char* expected = "bne a1, zero, . + -12\n"; // bne a1, x0, loop_start
+    uint8_t input[] = { 0xfe, 0x05, 0x9a, 0xe3 };
+    char output[32] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+// MARK: blt tests
+Test(emu_rv64_disassemble__blt__tests, beq_1, .init = rv64i_disassemble_default_setup)
+{
+    char* expected = "blt a1, zero, . + -16\n"; // blt a1, x0, loop_start
+    uint8_t input[] = { 0xfe, 0x05, 0xc8, 0xe3 };
+    char output[32] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+// MARK: bge tests
+Test(emu_rv64_disassemble__bge__tests, beq_1, .init = rv64i_disassemble_default_setup)
+{
+    char* expected = "bge a1, zero, . + -24\n"; // bge a1, x0, loop_start
+    uint8_t input[] = { 0xfe, 0x05, 0xd4, 0xe3 };
+    char output[32] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+// MARK: bltu tests
+Test(emu_rv64_disassemble__bltu__tests, bltu_1, .init = rv64i_disassemble_default_setup)
+{
+    char* expected = "bltu a1, zero, . + -20\n"; // bltu a1, x0, loop_start
+    uint8_t input[] = { 0xfe, 0x05, 0xe6 ,0xe3 };
+    char output[32] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+// MARK: bgeu tests
+Test(emu_rv64_disassemble__bgeu__tests, bltu_1, .init = rv64i_disassemble_default_setup)
+{
+    char* expected = "bgeu a1, zero, . + -28\n"; // bgeu a1, x0, loop_start
+    uint8_t input[] = { 0xfe, 0x05, 0xf2, 0xe3 };
+    char output[32] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+// TODO: lb - sw
 
 
 
@@ -84,7 +160,7 @@ Test(emu_rv64_disassemble__I_RV64I_JALR__tests, jalr_1, .init = rv64i_disassembl
  */
 
 // MARK: addi tests
-Test(emu_rv64_disassemble__I_RV64I_ADDI__tests, addi_1, .init = rv64i_disassemble_default_setup)
+Test(emu_rv64_disassemble__addi__tests, addi_1, .init = rv64i_disassemble_default_setup)
 {
     char* expected = "addi t0, t1, 5\n";
     uint8_t input[] = { 0x00, 0x53, 0x02, 0x93 };
@@ -95,8 +171,8 @@ Test(emu_rv64_disassemble__I_RV64I_ADDI__tests, addi_1, .init = rv64i_disassembl
     ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
 }
 
-// MARK: I_RV64I_SLTI Tests
-Test(emu_rv64_disassemble__I_RV64I_SLTI__tests, slti_1, .init = rv64i_disassemble_default_setup)
+// MARK: slti Tests
+Test(emu_rv64_disassemble__slti__tests, slti_1, .init = rv64i_disassemble_default_setup)
 {
     char* expected = "slti t3, t2, 0\n";
     uint8_t input[] = { 0x00, 0x03, 0xae, 0x13 };
@@ -107,8 +183,8 @@ Test(emu_rv64_disassemble__I_RV64I_SLTI__tests, slti_1, .init = rv64i_disassembl
     ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
 }
 
-// MARK: I_RV64I_SLTIU Tests
-Test(emu_rv64_disassemble__I_RV64I_SLTIU__tests, sltiu_1, .init = rv64i_disassemble_default_setup)
+// MARK: sltui Tests
+Test(emu_rv64_disassemble__sltui__tests, sltiu_1, .init = rv64i_disassemble_default_setup)
 {
     char* expected = "sltui t0, t1, 255\n";
     uint8_t input[] = { 0x0f, 0xf3, 0x32, 0x93 };
@@ -119,8 +195,8 @@ Test(emu_rv64_disassemble__I_RV64I_SLTIU__tests, sltiu_1, .init = rv64i_disassem
     ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
 }
 
-// MARK: I_RV64I_XORI Tests
-Test(emu_rv64_disassemble__I_RV64I_XORI__tests, xori_1, .init = rv64i_disassemble_default_setup)
+// MARK: xori Tests
+Test(emu_rv64_disassemble__xori__tests, xori_1, .init = rv64i_disassemble_default_setup)
 {
     char* expected = "xori t0, t1, 16\n";
     uint8_t input[] = { 0x01, 0x03, 0x42, 0x93 };
@@ -131,8 +207,8 @@ Test(emu_rv64_disassemble__I_RV64I_XORI__tests, xori_1, .init = rv64i_disassembl
     ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
 }
 
-// MARK: I_RV64I_ORI Tests
-Test(emu_rv64_disassemble__I_RV64I_ORI__tests, ori_1, .init = rv64i_disassemble_default_setup)
+// MARK: ori Tests
+Test(emu_rv64_disassemble__ori__tests, ori_1, .init = rv64i_disassemble_default_setup)
 {
     char* expected = "ori t5, t6, 32\n";
     uint8_t input[] = { 0x02, 0x0f, 0xef, 0x13 };
@@ -143,8 +219,8 @@ Test(emu_rv64_disassemble__I_RV64I_ORI__tests, ori_1, .init = rv64i_disassemble_
     ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
 }
 
-// MARK: I_RV64I_ANDI Tests
-Test(emu_rv64_disassemble__I_RV64I_ANDI__tests, andi_1, .init = rv64i_disassemble_default_setup)
+// MARK: andi Tests
+Test(emu_rv64_disassemble__andi__tests, andi_1, .init = rv64i_disassemble_default_setup)
 {
     char* expected = "andi t3, t4, 64\n";
     uint8_t input[] = { 0x04, 0x0e, 0xfe, 0x13 };
@@ -161,8 +237,8 @@ Test(emu_rv64_disassemble__I_RV64I_ANDI__tests, andi_1, .init = rv64i_disassembl
  *
  */
 
-// MARK: I_RV64I_ADD Tests
-Test(emu_rv64_disassemble__I_RV64I_ADD__tests, add_1, .init = rv64i_disassemble_default_setup)
+// MARK: add Tests
+Test(emu_rv64_disassemble__add__tests, add_1, .init = rv64i_disassemble_default_setup)
 {
     char* expected = "add t0, t1, t2\n";
     uint8_t input[] = { 0x00, 0x73, 0x02, 0xb3 };
@@ -173,8 +249,8 @@ Test(emu_rv64_disassemble__I_RV64I_ADD__tests, add_1, .init = rv64i_disassemble_
     ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
 }
 
-// MARK: I_RV64I_SUB Tests
-Test(emu_rv64_disassemble__I_RV64I_SUB__tests, sub_1, .init = rv64i_disassemble_default_setup)
+// MARK: sub Tests
+Test(emu_rv64_disassemble__sub__tests, sub_1, .init = rv64i_disassemble_default_setup)
 {
     char* expected = "sub t4, t5, t6\n";
     uint8_t input[] = { 0x41, 0xff, 0x0e, 0xb3 };
@@ -185,8 +261,8 @@ Test(emu_rv64_disassemble__I_RV64I_SUB__tests, sub_1, .init = rv64i_disassemble_
     ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
 }
 
-// MARK: I_RV64I_SLL Tests
-Test(emu_rv64_disassemble__I_RV64I_SLL__tests, sll_1, .init = rv64i_disassemble_default_setup)
+// MARK: sll Tests
+Test(emu_rv64_disassemble__sll__tests, sll_1, .init = rv64i_disassemble_default_setup)
 {
     char* expected = "sll t6, t0, t1\n";
     uint8_t input[] = { 0x00, 0x62, 0x9f, 0xb3 };
@@ -197,8 +273,8 @@ Test(emu_rv64_disassemble__I_RV64I_SLL__tests, sll_1, .init = rv64i_disassemble_
     ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
 }
 
-// MARK: I_RV64I_SLT Tests
-Test(emu_rv64_disassemble__I_RV64I_SLT__tests, slt_1, .init = rv64i_disassemble_default_setup)
+// MARK: slt Tests
+Test(emu_rv64_disassemble__slt__tests, slt_1, .init = rv64i_disassemble_default_setup)
 {
     char* expected = "slt t0, t1, t2\n";
     uint8_t input[] = { 0x00, 0x73, 0x22, 0xb3 };
@@ -209,8 +285,8 @@ Test(emu_rv64_disassemble__I_RV64I_SLT__tests, slt_1, .init = rv64i_disassemble_
     ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
 }
 
-// MARK: I_RV64I_SLTU Tests
-Test(emu_rv64_disassemble__I_RV64I_SLTU__tests, sltu_1, .init = rv64i_disassemble_default_setup)
+// MARK: sltu Tests
+Test(emu_rv64_disassemble__sltu__tests, sltu_1, .init = rv64i_disassemble_default_setup)
 {
     char* expected = "sltu a0, a1, a2\n";
     uint8_t input[] = { 0x00, 0xc5, 0xb5, 0x33 };
@@ -221,8 +297,8 @@ Test(emu_rv64_disassemble__I_RV64I_SLTU__tests, sltu_1, .init = rv64i_disassembl
     ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
 }
 
-// MARK: I_RV64I_XOR Tests
-Test(emu_rv64_disassemble__I_RV64I_XOR__tests, xor_1, .init = rv64i_disassemble_default_setup)
+// MARK: xor Tests
+Test(emu_rv64_disassemble__xor__tests, xor_1, .init = rv64i_disassemble_default_setup)
 {
     char* expected = "xor a0, t2, s1\n";
     uint8_t input[] = { 0x00, 0x93, 0xc5, 0x33 };
@@ -233,8 +309,8 @@ Test(emu_rv64_disassemble__I_RV64I_XOR__tests, xor_1, .init = rv64i_disassemble_
     ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
 }
 
-// MARK: I_RV64I_SRL Tests
-Test(emu_rv64_disassemble__I_RV64I_SRL__tests, srl_1, .init = rv64i_disassemble_default_setup)
+// MARK: srl Tests
+Test(emu_rv64_disassemble__srl__tests, srl_1, .init = rv64i_disassemble_default_setup)
 {
     char* expected = "srl s1, s2, s3\n";
     uint8_t input[] = { 0x01, 0x39, 0x54, 0xb3 };

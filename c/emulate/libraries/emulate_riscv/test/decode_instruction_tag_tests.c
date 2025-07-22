@@ -17,7 +17,7 @@ Test(emu_rv64_decode_tag_tests, decode_instruction_tests) {
     cr_assert(I_RV64I_BEQ == rv64_decode_instruction_tag(0xfe058ce3)); // beq a1, x0, loop_start
     cr_assert(I_RV64I_BNE == rv64_decode_instruction_tag(0xfe059ae3)); // bne a1, x0, loop_start
     cr_assert(I_RV64I_BLT == rv64_decode_instruction_tag(0xfe05c8e3)); // blt a1, x0, loop_start
-    cr_assert(I_RV64I_BGE == rv64_decode_instruction_tag(0xfe05d4e3)); // blg a1, x0, loop_start
+    cr_assert(I_RV64I_BGE == rv64_decode_instruction_tag(0xfe05d4e3)); // bge a1, x0, loop_start
     cr_assert(I_RV64I_BLTU == rv64_decode_instruction_tag(0xfe05e6e3)); // bltu a1, x0, loop_start
     cr_assert(I_RV64I_BGEU == rv64_decode_instruction_tag(0xfe05f2e3)); // bgeu a1, x0, loop_start
     // TODO: LB - SW

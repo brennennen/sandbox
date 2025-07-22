@@ -84,23 +84,21 @@ emu_result_t rv64_disassemble_branch(
     int32_t offset = 0;
     uint8_t rs1 = 0;
     uint8_t rs2 = 0;
-    uint8_t rd = 0;
 
-    rv64_decode_branch(raw_instruction, &offset, &rs1, &rs2, &rd);
+    rv64_decode_branch(raw_instruction, &offset, &rs1, &rs2);
 
-    // char* rd_name = rv64_map_register_name(rd);
-    // char* tag_name = rv64_instruction_tag_mnemonic[tag];
+    char* rs1_name = rv64_map_register_name(rs1);
+    char* rs2_name = rv64_map_register_name(rs2);
+    char* tag_name = rv64_instruction_tag_mnemonic[tag];
 
-    // int written = snprintf(buffer + *index, buffer_size - *index,
-    //     "%s %s, %d", tag_name, rd_name, imm20);
-    // if (written < 0) {
-    //     return(ER_FAILURE);
-    // }
-    // *index += written;
-    // return(ER_SUCCESS);
+    int written = snprintf(buffer + *index, buffer_size - *index,
+        "%s %s, %s, . + %d", tag_name, rs1_name, rs2_name, offset);
+    if (written < 0) {
+        return(ER_FAILURE);
+    }
+    *index += written;
+    return(ER_SUCCESS);
 }
-
-
 
 emu_result_t rv64_disassemble_register_immediate(
     emulator_rv64_t* emulator,

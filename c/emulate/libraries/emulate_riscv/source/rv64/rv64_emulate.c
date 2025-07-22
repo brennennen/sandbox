@@ -19,7 +19,7 @@ emu_result_t emu_rv64_init(emulator_rv64_t* emulator) {
     return(ER_SUCCESS);
 }
 
-char* emu_rv64_map_register_name(uint8_t reg_id) {
+char* rv64_map_register_name(uint8_t reg_id) {
     // matching objdump -d decode names to make testing easier.
     switch(reg_id) {
         case(0): return("zero"); // always zero
@@ -57,6 +57,10 @@ char* emu_rv64_map_register_name(uint8_t reg_id) {
     }
 }
 
+char* rv64_map_instruction_tag_mnemonic(instruction_tag_rv64_t tag) {
+    return rv64_instruction_tag_mnemonic[tag];
+}
+
 emu_result_t emu_rv64_read_m32(emulator_rv64_t* emulator, uint32_t* out_data) {
     if (emulator->registers.pc + 1 >= emulator->memory_size) {
         LOG(LOG_ERROR, "read m32: ER_OUT_OF_BOUNDS. ip (+ read size): (%d + 4) >= memory size: %d\n",
@@ -75,7 +79,7 @@ void debug_print_registers(emulator_rv64_t* emulator) {
     printf("Registers:\n");
     for (int i = 0; i < 32; i++) {
         if (emulator->registers.regs[i] != 0) {
-            printf("%s (%d): %lu\n", emu_rv64_map_register_name(i), i, emulator->registers.regs[i]);
+            printf("%s (%d): %lu\n", rv64_map_register_name(i), i, emulator->registers.regs[i]);
         }
     }
     printf("PC: %d\n", emulator->registers.pc);
@@ -100,8 +104,27 @@ static result_iter_t emu_rv64_emulate_next(emulator_rv64_t* emulator) {
     switch(instruction_tag) {
         // Core Format "U" - "upper-immediate"
         case I_RV64I_LUI:
-        case I_RV64I_AUIPC:
-        // TODO: jal - sw
+        case I_RV64I_AUIPC: {
+            result = rv64i_base_integer_emulate(emulator, raw_instruction, instruction_tag);
+            break;
+        }
+        // Core Format "J" - Unconditional Jump
+        case I_RV64I_JAL: {
+            printf("todo jal\n");
+            return(RI_FAILURE);
+        }
+        // Core Format "B" - Branch
+        case I_RV64I_BEQ:
+        case I_RV64I_BNE:
+        case I_RV64I_BLT:
+        case I_RV64I_BGE:
+        case I_RV64I_BLTU:
+        case I_RV64I_BGEU: {
+            printf("todo branch instructions\n");
+            return(RI_FAILURE);
+        }
+
+        // TODO: lb - sw
         // Core Format "I" - "register-immediate"
         case I_RV64I_JALR:
         case I_RV64I_LB:
@@ -146,6 +169,13 @@ static result_iter_t emu_rv64_emulate_next(emulator_rv64_t* emulator) {
         }
         // RV64A
         // ...
+        // RV64V
+        case I_RV64V_VSETVLI:
+        case I_RV64V_VSETVL:
+        case I_RV64V_VSETIVLI:{
+            printf("todo set vector length/type config operations\n");
+            return(RI_FAILURE);
+        }
         default: {
             result = ER_FAILURE;
             break;
@@ -203,7 +233,7 @@ result_t emu_rv64_emulate(emulator_rv64_t* emulator) {
 void emu_rv64_print_registers(emulator_rv64_t* emulator) {
     printf("registers: [pc: %d] ", emulator->registers.pc);
     for (int i = 0; i < 32; i++) {
-        printf("%s: %lu\n", emu_rv64_map_register_name(i), emulator->registers.regs[i]);
+        printf("%s: %lu\n", rv64_map_register_name(i), emulator->registers.regs[i]);
     }
 }
 
@@ -212,7 +242,7 @@ void emu_rv64_print_registers_condensed(emulator_rv64_t* emulator) {
     for (int i = 0; i < 32; i++) {
 
         if (emulator->registers.regs[i] != 0) {
-            printf("%s: %lu, ", emu_rv64_map_register_name(i), emulator->registers.regs[i]);
+            printf("%s: %lu, ", rv64_map_register_name(i), emulator->registers.regs[i]);
         }
     }
     printf("\n");

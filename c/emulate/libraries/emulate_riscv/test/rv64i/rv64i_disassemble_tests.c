@@ -45,7 +45,37 @@ Test(emu_rv64_disassemble__I_RV64I_AUIPC__tests, auipc_1, .init = rv64i_disassem
     ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
 }
 
-// TODO: jal - sw
+/**
+ * MARK: "J" (jump type?)
+ */
+
+// MARK: JAL tests
+Test(emu_rv64_disassemble__I_RV64I_JAL__tests, jal_1, .init = rv64i_disassemble_default_setup)
+{
+    char* expected = "jal ra, . + 12\n"; // "jal ra, add_numbers" (where add_numbers is a symbol/tag a couple instructions (12 bytes) ahead)
+    uint8_t input[] = { 0x00, 0xc0, 0x00, 0xef };
+    char output[32] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+// MARK: jalr tests
+Test(emu_rv64_disassemble__I_RV64I_JALR__tests, jalr_1, .init = rv64i_disassemble_default_setup)
+{
+    char* expected = "jalr ra, t0, 0\n"; // jalr ra, t0, 0
+    uint8_t input[] = { 0x00, 0x02, 0x80, 0xe7 };
+    char output[32] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+// TODO: beq - sw
+
+
 
 /*
  *
@@ -53,7 +83,7 @@ Test(emu_rv64_disassemble__I_RV64I_AUIPC__tests, auipc_1, .init = rv64i_disassem
  *
  */
 
-// MARK: I_RV64I_ADDI Tests
+// MARK: addi tests
 Test(emu_rv64_disassemble__I_RV64I_ADDI__tests, addi_1, .init = rv64i_disassemble_default_setup)
 {
     char* expected = "addi t0, t1, 5\n";

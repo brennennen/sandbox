@@ -19,12 +19,12 @@ typedef enum ENUM_PACK_ATTRIBUTE {
      * MARK: RV64I - Integer
      * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#rv64
      */
-    I_RV64I_LUI, /** Load Upper Immediate - loads an unsigned 20 bit number into the upper 20 bits of a 32 bit int, lower bits being all 0. Then sign extends to 64 bits. */
-    I_RV64I_AUIPC, /** Add Upper Immediate to pc */
-    I_RV64I_JAL, /** Jump and Link */
-    I_RV64I_JALR, /** Jump and Link and Return */
-    I_RV64I_BEQ,
-    I_RV64I_BNE,
+    I_RV64I_LUI, /** lui - Load Upper Immediate - loads an unsigned 20 bit number into the upper 20 bits of a 32 bit int, lower bits being all 0. Then sign extends to 64 bits. */
+    I_RV64I_AUIPC, /** auipc - Add Upper Immediate to pc */
+    I_RV64I_JAL, /** jal - Jump and Link - Unconditionally jump to symbol and stores the next instruction (after the jal) into a register (usually `ra` abi return address).*/
+    I_RV64I_JALR, /** jalr - Jump and Link and Return - Unconditionally jump ... */
+    I_RV64I_BEQ, /** beq - Branch/Conditional Jump - Take branch if equal. */
+    I_RV64I_BNE, 
     I_RV64I_BLT,
     I_RV64I_BGE,
     I_RV64I_BLTU,
@@ -470,9 +470,9 @@ typedef enum ENUM_PACK_ATTRIBUTE {
      */
     // TODO: vector load, vector store, vector arithmetic
     // @see 30.6. Configuration-Setting Instructions (vsetvli/vsetivli/vsetvl) (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#sec-vector-config)
-    I_RV64V_VSETVLI,
-    I_RV64V_VSETIVLI,
-    I_RV64V_VSETVL,
+    I_RV64V_VSETVLI, /** Set Vector Length and Type Immediate. Sets the csr registers "vtype" and "vl". rs1 is written to vl, and vtype is parsed from the immediate. */
+    I_RV64V_VSETIVLI, /** Set Immediate Vector Length and Type Immediate. Sets the csr registers "vtype" and "vl", both from immediate values. */
+    I_RV64V_VSETVL, /** Set Vector Length. Sets the csr registers "vtype" and "vl" from register values. vl from rs1 and vtype from rs2. */
     // @see 30.7.4 Vector Unit-Stride Instructions (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_unit_stride_instructions)
     I_RV64V_VLE8_V,
     I_RV64V_VLE16_V,
@@ -837,7 +837,7 @@ static char rv64_instruction_tag_mnemonic[][16] = {
     "fcvt.l.h",
     "fcvt.lu.h",
     "fcvt.h.l",
-    "fcvt.h.lu"
+    "fcvt.h.lu",
     // RV64V
     "vsetvli",
     "vsetivli",

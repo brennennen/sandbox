@@ -13,7 +13,14 @@ Test(emu_rv64_decode_tag_tests, decode_instruction_tests) {
     cr_assert(I_RV64I_AUIPC == rv64_decode_instruction_tag(0x12345297)); // auipc t0, 0x12345
     cr_assert(I_RV64I_JAL == rv64_decode_instruction_tag(0xf71ff0ef)); // jal ra, symbol
     cr_assert(I_RV64I_JALR == rv64_decode_instruction_tag(0x00008067)); // jalr zero, ra, 0
-    // TODO: beq - sw
+    // "B" Type - Branch
+    cr_assert(I_RV64I_BEQ == rv64_decode_instruction_tag(0xfe058ce3)); // beq a1, x0, loop_start
+    cr_assert(I_RV64I_BNE == rv64_decode_instruction_tag(0xfe059ae3)); // bne a1, x0, loop_start
+    cr_assert(I_RV64I_BLT == rv64_decode_instruction_tag(0xfe05c8e3)); // blt a1, x0, loop_start
+    cr_assert(I_RV64I_BGE == rv64_decode_instruction_tag(0xfe05d4e3)); // blg a1, x0, loop_start
+    cr_assert(I_RV64I_BLTU == rv64_decode_instruction_tag(0xfe05e6e3)); // bltu a1, x0, loop_start
+    cr_assert(I_RV64I_BGEU == rv64_decode_instruction_tag(0xfe05f2e3)); // bgeu a1, x0, loop_start
+    // TODO: LB - SW
     // ...
     // "I" Type
     cr_assert(I_RV64I_ADDI == rv64_decode_instruction_tag(0x00550593)); // addi a1, a0, 5

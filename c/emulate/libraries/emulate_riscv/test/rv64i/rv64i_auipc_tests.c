@@ -14,7 +14,7 @@ void rv64_emu_auipc_default_setup(void) {
 }
 
 // MARK: I_RV64I_AUIPC Tests
-Test(emu_rv64_emulate__I_RV64I_AUIPC__tests, lui_1, .init = rv64_emu_auipc_default_setup)
+Test(emu_rv64_emulate__I_RV64I_AUIPC__tests, auipc_1, .init = rv64_emu_auipc_default_setup)
 {
     uint8_t input[] = { 0x12, 0x34, 0x52, 0x97 }; // auipc t0, 0x12345\n
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));

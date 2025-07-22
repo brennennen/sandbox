@@ -11,6 +11,8 @@
 
 #include "rv64/rv64_registers.h"
 
+#include "rv64/rv64_instructions.h"
+
 /**
  * XLEN is the width of the registers in bits and the width of what most instructions use
  * (if instructions operate on non-XLEN sized bits, they usually add an identifier that
@@ -58,7 +60,8 @@ typedef struct {
 
 emu_result_t emu_rv64_init(emulator_rv64_t* emulator);
 
-char* emu_rv64_map_register_name(uint8_t reg_id);
+char* rv64_map_register_name(uint8_t reg_id);
+char* rv64_map_instruction_tag_mnemonic(instruction_tag_rv64_t tag);
 
 void debug_print_registers(emulator_rv64_t* emulator);
 

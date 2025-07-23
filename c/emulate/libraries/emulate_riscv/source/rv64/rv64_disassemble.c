@@ -57,7 +57,7 @@ emu_result_t rv64_disassemble_jal(
     int32_t offset = 0;
     uint8_t rd = 0;
 
-    rv64_decode_jal(raw_instruction, &offset, &rd);
+    rv64_decode_j_type(raw_instruction, &offset, &rd);
 
     // TODO: pseudoinstruction "j" when rd is x0
     char* rd_name = rv64_map_register_name(rd);
@@ -402,6 +402,9 @@ static result_iter_t emu_rv64_disassemble_next(
         }
         // RV64A
         // RV64F
+        case I_RV64F_FLW: {
+            // todo: separate file?
+        }
         // RV64D
         // RV64Q
         // RV64V

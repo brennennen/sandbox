@@ -23,7 +23,7 @@ static inline void rv64_decode_upper_immediate(
  * also sign extended). See the spec for the exact bitmapping. Only even addresses are indexable,
  * so the least significant bit is left out.
  */
-static inline void rv64_decode_jal(
+static inline void rv64_decode_j_type(
     uint32_t raw_instruction,
     int32_t* offset,
     uint8_t* rd

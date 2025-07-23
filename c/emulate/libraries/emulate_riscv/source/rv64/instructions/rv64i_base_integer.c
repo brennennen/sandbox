@@ -31,7 +31,7 @@ static inline void rv64i_auipc(emulator_rv64_t* emulator, int32_t imm20, uint8_t
     emulator->registers.regs[rd] = (imm20 << 12) + emulator->registers.pc;
 }
 
-emu_result_t rv64i_emulate_upper_immediate(
+static emu_result_t rv64i_emulate_upper_immediate(
     emulator_rv64_t* emulator,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
@@ -58,9 +58,105 @@ emu_result_t rv64i_emulate_upper_immediate(
     return(ER_SUCCESS);
 }
 
-static inline void rv64_jalr(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    // TODO
+static inline void rv64i_jal(emulator_rv64_t* emulator, int32_t imm20, uint8_t rd) {
+    printf("todo: rv64i_jal\n");
 }
+
+static inline void rv64i_jalr(emulator_rv64_t* emulator, int32_t imm12, uint8_t rs1, uint8_t rd) {
+    printf("todo: rv64i_jalr\n");
+}
+
+static emu_result_t rv64i_emulate_j_type(
+    emulator_rv64_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64_t tag
+) {
+    int32_t offset = 0;
+    uint8_t rd = 0;
+
+    rv64_decode_j_type(raw_instruction, &offset, &rd);
+
+    switch(tag) {
+        case I_RV64I_JAL: {
+            rv64i_jal(emulator, offset, rd);
+            break;
+        }
+        default: {
+            LOG(LOG_ERROR, "rv64i_emulate_j_type: instruction not implemented");
+            return(ER_FAILURE);
+        }
+    }
+    return(ER_SUCCESS);
+}
+
+static inline void rv64i_beq(emulator_rv64_t* emulator, int32_t offset, uint8_t rs1, uint8_t rs2) {
+    printf("todo: rv64i_beq\n");
+}
+
+static inline void rv64i_bne(emulator_rv64_t* emulator, int32_t offset, uint8_t rs1, uint8_t rs2) {
+    printf("todo: rv64i_bne\n");
+}
+
+static inline void rv64i_blt(emulator_rv64_t* emulator, int32_t offset, uint8_t rs1, uint8_t rs2) {
+    printf("todo: rv64i_blt\n");
+}
+
+static inline void rv64i_bge(emulator_rv64_t* emulator, int32_t offset, uint8_t rs1, uint8_t rs2) {
+    printf("todo: rv64i_bge\n");
+}
+
+static inline void rv64i_bltu(emulator_rv64_t* emulator, int32_t offset, uint8_t rs1, uint8_t rs2) {
+    printf("todo: rv64i_bltu\n");
+}
+
+static inline void rv64i_bgeu(emulator_rv64_t* emulator, int32_t offset, uint8_t rs1, uint8_t rs2) {
+    printf("todo: rv64i_bgeu\n");
+}
+
+static emu_result_t rv64i_emulate_b_type(
+    emulator_rv64_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64_t tag
+) {
+    int32_t offset = 0;
+    uint8_t rs1 = 0;
+    uint8_t rs2 = 0;
+
+    rv64_decode_branch(raw_instruction, &offset, &rs1, &rs2);
+
+    switch(tag) {
+        case I_RV64I_BEQ: {
+            rv64i_beq(emulator, offset, rs1, rs2);
+            break;
+        }
+        case I_RV64I_BNE: {
+            rv64i_bne(emulator, offset, rs1, rs2);
+            break;
+        }
+        case I_RV64I_BLT: {
+            rv64i_blt(emulator, offset, rs1, rs2);
+            break;
+        }
+        case I_RV64I_BGE: {
+            rv64i_bge(emulator, offset, rs1, rs2);
+            break;
+        }
+        case I_RV64I_BLTU: {
+            rv64i_bltu(emulator, offset, rs1, rs2);
+            break;
+        }
+        case I_RV64I_BGEU: {
+            rv64i_bgeu(emulator, offset, rs1, rs2);
+            break;
+        }
+        default: {
+            LOG(LOG_ERROR, "rv64i_emulate_b_type: instruction not implemented");
+            return(ER_FAILURE);
+        }
+    }
+    return(ER_SUCCESS);
+}
+
 
 /**
  * NOTE: NOP is encoded as `ADDI x0, x0, 0`.
@@ -126,7 +222,7 @@ static inline void rv64_srai(emulator_rv64_t* emulator, int16_t imm12, uint8_t r
     // emulator->registers.regs[rd] = emulator->registers.regs[rs1] >> imm12;
 }
 
-emu_result_t rv64_emulate_register_immediate(
+static emu_result_t rv64_emulate_register_immediate(
     emulator_rv64_t* emulator,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
@@ -139,7 +235,7 @@ emu_result_t rv64_emulate_register_immediate(
 
     switch(tag) {
         case I_RV64I_JALR: {
-            rv64_jalr(emulator, imm12, rs1, rd);
+            rv64i_jalr(emulator, imm12, rs1, rd);
             break;
         }
         case I_RV64I_ADDI: {
@@ -227,7 +323,7 @@ static inline void rv64i_and(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2
     emulator->registers.regs[rd] = emulator->registers.regs[rs1] & emulator->registers.regs[rs2];
 }
 
-emu_result_t rv64_emulate_register_register(
+static emu_result_t rv64_emulate_register_register(
     emulator_rv64_t* emulator,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
@@ -298,6 +394,21 @@ emu_result_t rv64i_base_integer_emulate(
         case I_RV64I_LUI:
         case I_RV64I_AUIPC: {
             result = rv64i_emulate_upper_immediate(emulator, raw_instruction, tag);
+            break;
+        }
+        // Core Format "J" - "jump"
+        case I_RV64I_JAL: {
+            result = rv64i_emulate_j_type(emulator, raw_instruction, tag);
+            break;
+        }
+        // Core Format "B" - "branch"
+        case I_RV64I_BEQ:
+        case I_RV64I_BNE:
+        case I_RV64I_BLT:
+        case I_RV64I_BGE:
+        case I_RV64I_BLTU:
+        case I_RV64I_BGEU: {
+            result = rv64i_emulate_b_type(emulator, raw_instruction, tag);
             break;
         }
         // Core Format "I" - "register-immediate"

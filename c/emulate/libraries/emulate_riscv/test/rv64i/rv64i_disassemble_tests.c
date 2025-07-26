@@ -149,6 +149,66 @@ Test(emu_rv64_disassemble__bgeu__tests, bltu_1, .init = rv64i_disassemble_defaul
     ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
 }
 
+// MARK: lb tests
+Test(emu_rv64_disassemble__lb__tests, lb_1, .init = rv64i_disassemble_default_setup)
+{
+    char* expected = "lb t1, 0(t0)\n";
+    uint8_t input[] = { 0x00, 0x02, 0x83, 0x03 };
+    char output[32] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+// MARK: lh tests
+Test(emu_rv64_disassemble__lh__tests, lh_1, .init = rv64i_disassemble_default_setup)
+{
+    char* expected = "lh t1, 0(t0)\n";
+    uint8_t input[] = { 0x00, 0x02, 0x93, 0x03 };
+    char output[32] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+// MARK: lw tests
+Test(emu_rv64_disassemble__lw__tests, lw_1, .init = rv64i_disassemble_default_setup)
+{
+    char* expected = "lw t1, 0(t0)\n";
+    uint8_t input[] = { 0x00, 0x02, 0xa3, 0x03 };
+    char output[32] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+// MARK: lbu tests
+Test(emu_rv64_disassemble__lbu__tests, lbu_1, .init = rv64i_disassemble_default_setup)
+{
+    char* expected = "lbu t1, 0(t0)\n";
+    uint8_t input[] = { 0x00, 0x02, 0xc3, 0x03 };
+    char output[32] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+// MARK: lhu tests
+Test(emu_rv64_disassemble__lhu__tests, lhu_1, .init = rv64i_disassemble_default_setup)
+{
+    char* expected = "lhu t1, 0(t0)\n";
+    uint8_t input[] = { 0x00, 0x02, 0xd3, 0x03 };
+    char output[32] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
 // TODO: lb - sw
 
 

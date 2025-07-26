@@ -20,7 +20,13 @@ Test(emu_rv64_decode_tag_tests, decode_instruction_tests) {
     cr_assert(I_RV64I_BGE == rv64_decode_instruction_tag(0xfe05d4e3)); // bge a1, x0, loop_start
     cr_assert(I_RV64I_BLTU == rv64_decode_instruction_tag(0xfe05e6e3)); // bltu a1, x0, loop_start
     cr_assert(I_RV64I_BGEU == rv64_decode_instruction_tag(0xfe05f2e3)); // bgeu a1, x0, loop_start
-    // TODO: LB - SW
+
+    cr_assert(I_RV64I_LB == rv64_decode_instruction_tag(0x00028303)); // lb t1, 0(t0)
+    cr_assert(I_RV64I_LH == rv64_decode_instruction_tag(0x00029303)); // lh t1, 0(t0)
+    cr_assert(I_RV64I_LW == rv64_decode_instruction_tag(0x0002a303)); // lw t1, 0(t0)
+    cr_assert(I_RV64I_LBU == rv64_decode_instruction_tag(0x0002c303)); // lbu t1, 0(t0)
+    cr_assert(I_RV64I_LHU == rv64_decode_instruction_tag(0x0002d303)); // lhu t1, 0(t0)
+    // TODO: SB - SW
     // ...
     // "I" Type
     cr_assert(I_RV64I_ADDI == rv64_decode_instruction_tag(0x00550593)); // addi a1, a0, 5

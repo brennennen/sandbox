@@ -100,6 +100,33 @@ emu_result_t rv64_disassemble_branch(
     return(ER_SUCCESS);
 }
 
+emu_result_t rv64_disassemble_load(
+    emulator_rv64_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64_t tag,
+    char* buffer,
+    int* index,
+    size_t buffer_size
+) {
+    int16_t imm12 = 0;
+    uint8_t rs1 = 0;
+    uint8_t rd = 0;
+
+    rv64_decode_register_immediate(raw_instruction, &imm12, &rs1, &rd);
+
+    char* rs1_name = rv64_map_register_name(rs1);
+    char* rd_name = rv64_map_register_name(rd);
+    char* tag_name = rv64_instruction_tag_mnemonic[tag];
+
+    int written = snprintf(buffer + *index, buffer_size - *index,
+        "%s %s, %d(%s)", tag_name, rd_name, imm12, rs1_name);
+    if (written < 0) {
+        return(ER_FAILURE);
+    }
+    *index += written;
+    return(ER_SUCCESS);
+}
+
 emu_result_t rv64_disassemble_register_immediate(
     emulator_rv64_t* emulator,
     uint32_t raw_instruction,
@@ -340,6 +367,12 @@ static result_iter_t emu_rv64_disassemble_next(
             result = rv64_disassemble_jal(emulator, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
             break;
         }
+        // "I" format
+        case I_RV64I_JALR: {
+            result = rv64_disassemble_register_immediate(emulator, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
+            break;
+        }
+
         // Core Format "B" - Branch
         case I_RV64I_BEQ:
         case I_RV64I_BNE:
@@ -350,13 +383,19 @@ static result_iter_t emu_rv64_disassemble_next(
             result = rv64_disassemble_branch(emulator, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
             break;
         }
-        // Core Format "I" - "register-immediate"
-        case I_RV64I_JALR:
+
+        // Load ("I" format)
         case I_RV64I_LB:
         case I_RV64I_LH:
         case I_RV64I_LW:
         case I_RV64I_LBU:
-        case I_RV64I_LHU:
+        case I_RV64I_LHU: {
+            result = rv64_disassemble_load(emulator, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
+            break;
+        }
+        // todo: store
+
+        // Core Format "I" - "register-immediate"
         case I_RV64I_ADDI:
         case I_RV64I_SLTI:
         case I_RV64I_SLTIU:

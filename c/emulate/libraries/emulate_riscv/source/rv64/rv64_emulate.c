@@ -124,7 +124,6 @@ static result_iter_t emu_rv64_emulate_next(emulator_rv64_t* emulator) {
             printf("todo branch instructions\n");
             return(RI_FAILURE);
         }
-
         // TODO: lb - sw
         // Core Format "I" - "register-immediate"
         case I_RV64I_JALR:

@@ -157,6 +157,37 @@ static emu_result_t rv64i_emulate_b_type(
     return(ER_SUCCESS);
 }
 
+static inline void rv64i_lb(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
+    uint64_t address = emulator->registers.regs[rs1] + imm12;
+    emulator->registers.regs[rd] = (int8_t) emulator->memory[address];
+}
+
+static inline void rv64i_lh(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
+    uint64_t address = emulator->registers.regs[rs1] + imm12;
+    uint16_t halfword = (uint16_t)emulator->memory[address] |
+        ((uint16_t) emulator->memory[address + 1] << 8);
+    emulator->registers.regs[rd] = (int16_t) halfword;
+}
+
+static inline void rv64i_lw(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
+    uint64_t address = emulator->registers.regs[rs1] + imm12;
+    uint32_t word = (uint32_t)emulator->memory[address] |
+        ((uint32_t) emulator->memory[address + 1] << 24) |
+        ((uint32_t) emulator->memory[address + 2] << 16) |
+        ((uint32_t) emulator->memory[address + 3] << 8);
+    emulator->registers.regs[rd] = (int32_t) word;
+}
+
+static inline void rv64i_lbu(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
+    uint64_t address = emulator->registers.regs[rs1] + imm12;
+    emulator->registers.regs[rd] = emulator->memory[address];
+}
+
+static inline void rv64i_lhu(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
+    uint64_t address = emulator->registers.regs[rs1] + imm12;
+    emulator->registers.regs[rd] = (uint16_t)emulator->memory[address] |
+        ((uint16_t) emulator->memory[address + 1] << 8);
+}
 
 /**
  * NOTE: NOP is encoded as `ADDI x0, x0, 0`.
@@ -236,6 +267,26 @@ static emu_result_t rv64_emulate_register_immediate(
     switch(tag) {
         case I_RV64I_JALR: {
             rv64i_jalr(emulator, imm12, rs1, rd);
+            break;
+        }
+        case I_RV64I_LB: {
+            rv64i_lb(emulator, imm12, rs1, rd);
+            break;
+        }
+        case I_RV64I_LH: {
+            rv64i_lh(emulator, imm12, rs1, rd);
+            break;
+        }
+        case I_RV64I_LW: {
+            rv64i_lw(emulator, imm12, rs1, rd);
+            break;
+        }
+        case I_RV64I_LBU: {
+            rv64i_lbu(emulator, imm12, rs1, rd);
+            break;
+        }
+        case I_RV64I_LHU: {
+            rv64i_lhu(emulator, imm12, rs1, rd);
             break;
         }
         case I_RV64I_ADDI: {
@@ -411,6 +462,7 @@ emu_result_t rv64i_base_integer_emulate(
             result = rv64i_emulate_b_type(emulator, raw_instruction, tag);
             break;
         }
+
         // Core Format "I" - "register-immediate"
         case I_RV64I_JALR:
         case I_RV64I_LB:

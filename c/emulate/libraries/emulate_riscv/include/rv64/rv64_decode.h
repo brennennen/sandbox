@@ -64,6 +64,23 @@ static inline void rv64_decode_branch(
 }
 
 /**
+ * Decode "S-Type" instruction format (store instructions).
+ * @see RISC-V Unprivileged ISA Manual, Section 2.6. Load and Store Instructions (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#ldst)
+ */
+static inline void rv64_decode_store(
+    uint32_t raw_instruction,
+    uint16_t* offset,
+    uint8_t* rs1,
+    uint8_t* rs2
+) {
+    uint8_t imm7 = (raw_instruction >> 25) & 0b1111111;
+    uint8_t imm4 = (raw_instruction >> 7) & 0b1111;
+    *offset = (imm7 << 5) | imm4;
+    *rs1 = (raw_instruction >> 15) & 0b11111;
+    *rs2 = (raw_instruction >> 20) & 0b11111;
+}
+
+/**
  * Decodes the "I-type" instruction format.
  */
 static inline void rv64_decode_register_immediate(

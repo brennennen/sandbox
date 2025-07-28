@@ -157,6 +157,59 @@ static emu_result_t rv64i_emulate_b_type(
     return(ER_SUCCESS);
 }
 
+static inline void rv64i_sb(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rs2) {
+    uint64_t address = emulator->registers.regs[rs1] + imm12;
+    emulator->memory[address] = emulator->registers.regs[rs2] & 0xFF;
+}
+
+static inline void rv64i_sh(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rs2) {
+    uint64_t address = emulator->registers.regs[rs1] + imm12;
+    // todo: just use memcpy? uses host machine endieness?
+    emulator->memory[address] = (uint8_t) (emulator->registers.regs[rs2] & 0xFF);
+    emulator->memory[address + 1] = (uint8_t) ((emulator->registers.regs[rs2] >> 8) & 0xFF);
+}
+
+static inline void rv64i_sw(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rs2) {
+    uint64_t address = emulator->registers.regs[rs1] + imm12;
+    emulator->memory[address] = (uint8_t) (emulator->registers.regs[rs2] & 0xFF);
+    emulator->memory[address + 1] = (uint8_t) ((emulator->registers.regs[rs2] >> 8) & 0xFF);
+    emulator->memory[address + 2] = (uint8_t) ((emulator->registers.regs[rs2] >> 16) & 0xFF);
+    emulator->memory[address + 3] = (uint8_t) ((emulator->registers.regs[rs2] >> 24) & 0xFF);
+}
+
+static emu_result_t rv64i_emulate_s_type(
+    emulator_rv64_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64_t tag
+) {
+    uint16_t offset = 0;
+    uint8_t rs1 = 0;
+    uint8_t rs2 = 0;
+
+    rv64_decode_store(raw_instruction, &offset, &rs1, &rs2);
+
+    switch(tag) {
+        case I_RV64I_SB: {
+            rv64i_sb(emulator, offset, rs1, rs2);
+            break;
+        }
+        case I_RV64I_SH: {
+            rv64i_sh(emulator, offset, rs1, rs2);
+            break;
+        }
+        case I_RV64I_SW: {
+            rv64i_sw(emulator, offset, rs1, rs2);
+            break;
+        }
+        default: {
+            LOG(LOG_ERROR, "%s: instruction not implemented", __func__);
+            return(ER_FAILURE);
+        }
+    }
+    return(ER_SUCCESS);
+}
+
+
 static inline void rv64i_lb(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
     uint64_t address = emulator->registers.regs[rs1] + imm12;
     emulator->registers.regs[rd] = (int8_t) emulator->memory[address];
@@ -460,6 +513,14 @@ emu_result_t rv64i_base_integer_emulate(
         case I_RV64I_BLTU:
         case I_RV64I_BGEU: {
             result = rv64i_emulate_b_type(emulator, raw_instruction, tag);
+            break;
+        }
+
+        // Core Format "S" - "store"
+        case I_RV64I_SB:
+        case I_RV64I_SH:
+        case I_RV64I_SW: {
+            result = rv64i_emulate_s_type(emulator, raw_instruction, tag);
             break;
         }
 

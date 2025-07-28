@@ -66,7 +66,27 @@ Test(emu_rv64_decode_tag_tests, decode_instruction_tests) {
     // RV64A
     cr_assert(I_RV64ZALRSC_LR_W == rv64_decode_instruction_tag(0x100522af)); // lr.w t0, (a0)
     cr_assert(I_RV64ZALRSC_SC_W == rv64_decode_instruction_tag(0x18c522af)); // sc.w t0, a2, (a0)
-    cr_assert(I_RV64ZAWRS_AMOSWAP_W == rv64_decode_instruction_tag(0x0805202f)); // amoswap.w x0, x0, (a0)
+    cr_assert(I_RV64ZAWRS_AMOSWAP_W == rv64_decode_instruction_tag(0x0805202f)); // amoswap.w t0, t1, (t2)
+    cr_assert(I_RV64ZAWRS_AMOADD_W == rv64_decode_instruction_tag(0x0063a2af)); // amoadd.w t0, t1, (t2)
+    cr_assert(I_RV64ZAWRS_AMOXOR_W == rv64_decode_instruction_tag(0x2063a2af)); // amoxor.w t0, t1, (t2)
+    cr_assert(I_RV64ZAWRS_AMOAND_W == rv64_decode_instruction_tag(0x6063a2af)); // amoand.w t0, t1, (t2)
+    cr_assert(I_RV64ZAWRS_AMOOR_W == rv64_decode_instruction_tag(0x4063a2af)); // amoor.w t0, t1, (t2)
+    cr_assert(I_RV64ZAWRS_AMOMIN_W == rv64_decode_instruction_tag(0x8063a2af)); // amomin.w t0, t1, (t2)
+    cr_assert(I_RV64ZAWRS_AMOMAX_W == rv64_decode_instruction_tag(0xa063a2af)); // amomax.w t0, t1, (t2)
+    cr_assert(I_RV64ZAWRS_AMOMINU_W == rv64_decode_instruction_tag(0xc063a2af)); // amominu.w t0, t1, (t2)
+    cr_assert(I_RV64ZAWRS_AMOMAXU_W == rv64_decode_instruction_tag(0xe063a2af)); // amomaxu.w t0, t1, (t2)
+    cr_assert(I_RV64ZALRSC_LR_D == rv64_decode_instruction_tag(0x100532af)); // lr.d t0, (a0)
+    cr_assert(I_RV64ZALRSC_SC_D == rv64_decode_instruction_tag(0x18c532af)); // sc.d t0, a2, (a0)
+    cr_assert(I_RV64ZAWRS_AMOSWAP_D == rv64_decode_instruction_tag(0x0863b2af)); // amoswap.d t0, t1, (t2)
+    cr_assert(I_RV64ZAWRS_AMOADD_D == rv64_decode_instruction_tag(0x0063b2af)); // amoadd.d t0, t1, (t2)
+    cr_assert(I_RV64ZAWRS_AMOXOR_D == rv64_decode_instruction_tag(0x2063b2af)); // amoxor.d t0, t1, (t2)
+    cr_assert(I_RV64ZAWRS_AMOAND_D == rv64_decode_instruction_tag(0x6063b2af)); // amoand.d t0, t1, (t2)
+    cr_assert(I_RV64ZAWRS_AMOOR_D == rv64_decode_instruction_tag(0x4063b2af)); // amoor.d t0, t1, (t2)
+    cr_assert(I_RV64ZAWRS_AMOMIN_D == rv64_decode_instruction_tag(0x8063b2af)); // amomin.d t0, t1, (t2)
+    cr_assert(I_RV64ZAWRS_AMOMAX_D == rv64_decode_instruction_tag(0xa063b2af)); // amomax.d t0, t1, (t2)
+    cr_assert(I_RV64ZAWRS_AMOMINU_D == rv64_decode_instruction_tag(0xc063b2af)); // amominu.d t0, t1, (t2)
+    cr_assert(I_RV64ZAWRS_AMOMAXU_D == rv64_decode_instruction_tag(0xe063b2af)); // amomaxu.d t0, t1, (t2)
+
     // ...
     // RV64F
     cr_assert(I_RV64F_FLW == rv64_decode_instruction_tag(0x0009a187)); // flw ft3, (s3)

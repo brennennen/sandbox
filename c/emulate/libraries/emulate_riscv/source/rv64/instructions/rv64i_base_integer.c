@@ -28,7 +28,8 @@ static inline void rv64i_lui(emulator_rv64_t* emulator, int32_t imm20, uint8_t r
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions_2
  */
 static inline void rv64i_auipc(emulator_rv64_t* emulator, int32_t imm20, uint8_t rd) {
-    emulator->registers.regs[rd] = (imm20 << 12) + emulator->registers.pc;
+    // pc is incremented when the instruction is originally read, so need to decrement here.
+    emulator->registers.regs[rd] = (imm20 << 12) + emulator->registers.pc - 4;
 }
 
 static emu_result_t rv64i_emulate_upper_immediate(
@@ -59,11 +60,11 @@ static emu_result_t rv64i_emulate_upper_immediate(
 }
 
 static inline void rv64i_jal(emulator_rv64_t* emulator, int32_t imm20, uint8_t rd) {
-    printf("todo: rv64i_jal\n");
-}
-
-static inline void rv64i_jalr(emulator_rv64_t* emulator, int32_t imm12, uint8_t rs1, uint8_t rd) {
-    printf("todo: rv64i_jalr\n");
+    LOGD("%s: imm20: %d, rd: %d", __func__, imm20, rd);
+    // set pc to pc + imm20?
+    // TODO: what offset is it relative from? before the instruction's 4 bytes is the intel convention. could be after though (need to just add +4).
+    emulator->registers.pc = emulator->registers.pc + imm20 - 4;
+    emulator->registers.regs[rd] = emulator->registers.pc;
 }
 
 static emu_result_t rv64i_emulate_j_type(
@@ -87,6 +88,10 @@ static emu_result_t rv64i_emulate_j_type(
         }
     }
     return(ER_SUCCESS);
+}
+
+static inline void rv64i_jalr(emulator_rv64_t* emulator, int32_t imm12, uint8_t rs1, uint8_t rd) {
+    printf("todo: rv64i_jalr\n");
 }
 
 static inline void rv64i_beq(emulator_rv64_t* emulator, int32_t offset, uint8_t rs1, uint8_t rs2) {
@@ -249,30 +254,48 @@ static inline void rv64_addi(emulator_rv64_t* emulator, int16_t imm12, uint8_t r
     emulator->registers.regs[rd] = emulator->registers.regs[rs1] + imm12;
 }
 
+/**
+ * "Set Less Than Immediate" - Set rd to 1 if rs1 is less than the provided immediate when
+ * both numbers are treated as signed.
+ */
 static inline void rv64_slti(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    if (emulator->registers.regs[rs1] < imm12) {
+    if ((int64_t)emulator->registers.regs[rs1] < (int64_t)imm12) {
         emulator->registers.regs[rd] = 1;
     } else {
         emulator->registers.regs[rd] = 0;
     }
+    LOGD("%s: rs1: %d, imm: %d, rd: %d", __func__, emulator->registers.regs[rs1],
+         imm12, emulator->registers.regs[rd]);
 }
 
+/**
+ * "Set Less Than Immediate Unsigned" - Set rd to 1 if rs1 is less than the immedate when
+ * both numbers are treated as unsigned.
+ */
 static inline void rv64_sltiu(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
     if ((uint64_t)emulator->registers.regs[rs1] < (uint16_t) imm12) {
         emulator->registers.regs[rd] = 1;
     } else {
         emulator->registers.regs[rd] = 0;
     }
+    LOGD("%s: rs1: %d, imm: %d, rd: %d", __func__, emulator->registers.regs[rs1],
+         imm12, emulator->registers.regs[rd]);
 }
 
 static inline void rv64_xori(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
     emulator->registers.regs[rd] = emulator->registers.regs[rs1] ^ imm12;
 }
 
+/**
+ * "logical/bitwise OR" - Both numbers sign extended.
+ */
 static inline void rv64_ori(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
     emulator->registers.regs[rd] = emulator->registers.regs[rs1] | imm12;
 }
 
+/**
+ * "logical/bitwise AND" - Both numbers sign extended.
+ */
 static inline void rv64_andi(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
     emulator->registers.regs[rd] = emulator->registers.regs[rs1] & imm12;
 }
@@ -399,12 +422,28 @@ static inline void rv64i_sll(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2
 
 }
 
+/**
+ * "Set Less Than" - Set rd to 1 if rs1 is less than rs2 when both registers are treated
+ * as signed numbers.
+ */
 static inline void rv64i_slt(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-
+    if (emulator->registers.regs[rs1] < emulator->registers.regs[rs2]) {
+        emulator->registers.regs[rd] = 1;
+    } else {
+        emulator->registers.regs[rd] = 0;
+    }
 }
 
+/**
+ * "Set Less Than Unsigned" - Set rd to 1 if rs1 is less than rs2 when both registers
+ * are treated as unsigned numbers.
+ */
 static inline void rv64i_sltu(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-
+    if ((uint64_t)emulator->registers.regs[rs1] < (uint64_t)emulator->registers.regs[rs2]) {
+        emulator->registers.regs[rd] = 1;
+    } else {
+        emulator->registers.regs[rd] = 0;
+    }
 }
 
 static inline void rv64i_xor(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
@@ -412,11 +451,11 @@ static inline void rv64i_xor(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2
 }
 
 static inline void rv64i_srl(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-
+    // todo
 }
 
 static inline void rv64i_sra(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-
+    // todo
 }
 
 static inline void rv64i_or(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
@@ -505,6 +544,11 @@ emu_result_t rv64i_base_integer_emulate(
             result = rv64i_emulate_j_type(emulator, raw_instruction, tag);
             break;
         }
+        case I_RV64I_JALR: {
+            result = rv64_emulate_register_immediate(emulator, raw_instruction, tag);
+            break;
+        }
+
         // Core Format "B" - "branch"
         case I_RV64I_BEQ:
         case I_RV64I_BNE:
@@ -525,7 +569,6 @@ emu_result_t rv64i_base_integer_emulate(
         }
 
         // Core Format "I" - "register-immediate"
-        case I_RV64I_JALR:
         case I_RV64I_LB:
         case I_RV64I_LH:
         case I_RV64I_LW:

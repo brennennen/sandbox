@@ -20,6 +20,7 @@ Test(emu_rv64_emulate__auipc__tests, auipc_1, .init = rv64_emu_auipc_default_set
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);
     cr_assert(1 == g_emulator.instructions_count);
-    int64_t res = (0x12345 << 12) + g_emulator.registers.pc - 4; // 0x12345 is the upper 20 bits, zero out the lower 12, then sign extend to 64 bits
+    int64_t res = (0x12345 << 12) + PROGRAM_START; // 0x12345 is the upper 20 bits, zero out the lower 12, then sign extend to 64 bits
     cr_assert(res == g_emulator.registers.regs[RV64_REG_T0]);
+    cr_assert(PROGRAM_START + 4 == g_emulator.registers.pc);
 }

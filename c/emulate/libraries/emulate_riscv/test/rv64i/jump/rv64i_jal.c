@@ -1,0 +1,33 @@
+
+#include <stdio.h>
+#include <string.h>
+
+#include <criterion/criterion.h>
+
+#include "rv64/rv64_emulate.h"
+
+static emulator_rv64_t g_emulator;
+
+void rv64_emu_jal_default_setup(void) {
+    memset(&g_emulator, 0, sizeof(emulator_rv64_t));
+    emu_rv64_init(&g_emulator);
+}
+
+Test(emu_rv64_emulate__jal__tests, jal_1, .init = rv64_emu_jal_default_setup)
+{
+    // li is a pseudo instruction, "li t1, 10" expands to "addi t1, zero, 10"
+    uint8_t input[] = {
+        0x00, 0xa0, 0x03, 0x13, // li t1, 10
+        0x00, 0x80, 0x00, 0xef, // jal ra, next
+        0x01, 0x40, 0x03, 0x93, // li t2, 20
+                                // next:
+        0x01, 0xe0, 0x0e, 0x13, // li t3, 30
+    };
+    cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
+    debug_print_registers(&g_emulator);
+    cr_assert(3 == g_emulator.instructions_count);
+    cr_assert(PROGRAM_START + 4 + 4 + 4 == g_emulator.registers.regs[RV64_REG_RA]); // "next" symbol
+    cr_assert(10 == g_emulator.registers.regs[RV64_REG_T1]);
+    cr_assert(0 == g_emulator.registers.regs[RV64_REG_T2]); // we jumped over setting t2, so should be 0.
+    cr_assert(30 == g_emulator.registers.regs[RV64_REG_T3]);
+}

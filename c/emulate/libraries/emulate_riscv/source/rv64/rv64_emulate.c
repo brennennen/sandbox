@@ -72,7 +72,9 @@ emu_result_t emu_rv64_read_m32(emulator_rv64_t* emulator, uint32_t* out_data) {
         | (emulator->memory[emulator->registers.pc + 1] << 16)
         | (emulator->memory[emulator->registers.pc + 2] << 8)
         | (emulator->memory[emulator->registers.pc + 3]);
-    emulator->registers.pc += 4;
+    if (*out_data != 0) { // if we reached an empty instruction (end of program), don't increment pc.
+        emulator->registers.pc += 4;
+    }
     return(ER_SUCCESS);
 }
 
@@ -101,31 +103,18 @@ static result_iter_t emu_rv64_emulate_next(emulator_rv64_t* emulator) {
     printf("tag: %d\n", instruction_tag);
     emulator->instructions_count += 1;
 
-    emu_result_t result = ER_SUCCESS; //RI_FAILURE;
+    emu_result_t result = ER_FAILURE;
     switch(instruction_tag) {
-        // Core Format "U" - "upper-immediate"
+        // RV64I
         case I_RV64I_LUI:
-        case I_RV64I_AUIPC: {
-            result = rv64i_base_integer_emulate(emulator, raw_instruction, instruction_tag);
-            break;
-        }
-        // Core Format "J" - Unconditional Jump
-        case I_RV64I_JAL: {
-            printf("todo jal\n");
-            return(RI_FAILURE);
-        }
-        // Core Format "B" - Branch
+        case I_RV64I_AUIPC:
+        case I_RV64I_JAL:
         case I_RV64I_BEQ:
         case I_RV64I_BNE:
         case I_RV64I_BLT:
         case I_RV64I_BGE:
         case I_RV64I_BLTU:
-        case I_RV64I_BGEU: {
-            printf("todo branch instructions\n");
-            return(RI_FAILURE);
-        }
-        // TODO: lb - sw
-        // Core Format "I" - "register-immediate"
+        case I_RV64I_BGEU:
         case I_RV64I_JALR:
         case I_RV64I_LB:
         case I_RV64I_LH:
@@ -215,6 +204,10 @@ result_t emu_rv64_emulate_file(emulator_rv64_t* emulator, char* input_path) {
 result_t emu_rv64_emulate_chunk(emulator_rv64_t* emulator, char* in_buffer, size_t in_buffer_size) {
     memcpy(emulator->memory + PROGRAM_START, in_buffer, in_buffer_size);
     emulator->registers.pc = PROGRAM_START;
+    // emulator runs until exit is called or a null byte is hit, set some bytes directly
+    // after the program to null to facilitate this.
+    emulator->memory[emulator->registers.pc + in_buffer_size] = 0x00;
+    emulator->memory[emulator->registers.pc + in_buffer_size + 1] = 0x00;
     return(emu_rv64_emulate(emulator));
 }
 

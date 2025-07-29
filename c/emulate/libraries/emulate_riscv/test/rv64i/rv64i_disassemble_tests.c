@@ -209,9 +209,41 @@ Test(emu_rv64_disassemble__lhu__tests, lhu_1, .init = rv64i_disassemble_default_
     ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
 }
 
-// TODO: lb - sw
+// MARK: sb tests
+Test(emu_rv64_disassemble__sb__tests, sb_1, .init = rv64i_disassemble_default_setup)
+{
+    char* expected = "sb t0, 0(t1)\n";
+    uint8_t input[] = { 0x00, 0x53, 0x00, 0x23 };
+    char output[32] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
 
+// MARK: sh tests
+Test(emu_rv64_disassemble__sh__tests, sh_1, .init = rv64i_disassemble_default_setup)
+{
+    char* expected = "sh t0, 0(t1)\n";
+    uint8_t input[] = { 0x00, 0x53, 0x10, 0x23 };
+    char output[32] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
 
+// MARK: sw tests
+Test(emu_rv64_disassemble__sw__tests, sw_1, .init = rv64i_disassemble_default_setup)
+{
+    char* expected = "sw t0, 0(t1)\n";
+    uint8_t input[] = { 0x00, 0x53, 0x20, 0x23 };
+    char output[32] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
 
 /*
  *
@@ -380,3 +412,8 @@ Test(emu_rv64_disassemble__srl__tests, srl_1, .init = rv64i_disassemble_default_
     cr_assert(1 == g_emulator.instructions_count);
     ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
 }
+
+// TODO: sra - sraw
+
+// TODO: i extensions here or in different files?
+// TODO: Zifencei, Zicsr, ???

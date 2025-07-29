@@ -127,6 +127,33 @@ emu_result_t rv64_disassemble_load(
     return(ER_SUCCESS);
 }
 
+emu_result_t rv64_disassemble_store(
+    emulator_rv64_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64_t tag,
+    char* buffer,
+    int* index,
+    size_t buffer_size
+) {
+    uint16_t offset = 0;
+    uint8_t rs1 = 0;
+    uint8_t rs2 = 0;
+
+    rv64_decode_store(raw_instruction, &offset, &rs1, &rs2);
+
+    char* rs1_name = rv64_map_register_name(rs1);
+    char* rs2_name = rv64_map_register_name(rs2);
+    char* tag_name = rv64_instruction_tag_mnemonic[tag];
+
+    int written = snprintf(buffer + *index, buffer_size - *index,
+        "%s %s, %d(%s)", tag_name, rs2_name, offset, rs1_name);
+    if (written < 0) {
+        return(ER_FAILURE);
+    }
+    *index += written;
+    return(ER_SUCCESS);
+}
+
 emu_result_t rv64_disassemble_register_immediate(
     emulator_rv64_t* emulator,
     uint32_t raw_instruction,
@@ -393,7 +420,14 @@ static result_iter_t emu_rv64_disassemble_next(
             result = rv64_disassemble_load(emulator, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
             break;
         }
-        // todo: store
+
+        // Store ("S" format)
+        case I_RV64I_SB:
+        case I_RV64I_SH:
+        case I_RV64I_SW: {
+            result = rv64_disassemble_store(emulator, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
+            break;
+        }
 
         // Core Format "I" - "register-immediate"
         case I_RV64I_ADDI:

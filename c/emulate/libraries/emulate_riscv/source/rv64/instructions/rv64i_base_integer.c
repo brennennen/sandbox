@@ -59,11 +59,9 @@ static emu_result_t rv64i_emulate_upper_immediate(
     return(ER_SUCCESS);
 }
 
-static inline void rv64i_jal(emulator_rv64_t* emulator, int32_t imm20, uint8_t rd) {
-    LOGD("%s: imm20: %d, rd: %d", __func__, imm20, rd);
-    // set pc to pc + imm20?
-    // TODO: what offset is it relative from? before the instruction's 4 bytes is the intel convention. could be after though (need to just add +4).
-    emulator->registers.pc = emulator->registers.pc + imm20 - 4;
+static inline void rv64i_jal(emulator_rv64_t* emulator, int32_t offset, uint8_t rd) {
+    LOGD("%s: offset: %d, rd: %d", __func__, offset, rd);
+    emulator->registers.pc = emulator->registers.pc + offset - 4;
     emulator->registers.regs[rd] = emulator->registers.pc;
 }
 
@@ -94,28 +92,59 @@ static inline void rv64i_jalr(emulator_rv64_t* emulator, int32_t imm12, uint8_t 
     printf("todo: rv64i_jalr\n");
 }
 
+/**
+ * BEQ - Branch if EQual. If rs1 and rs2 are equal, add the offset to pc (branch out of
+ * the mainline execution flow).
+ * `beq rs1, rs2, <label>`
+ * `beq rs1, rs2, . + <jump offset>`
+ * pseudo-instruction beqz: rs2 is zero and ommitted `beqz rs1, <label>`.
+ */
 static inline void rv64i_beq(emulator_rv64_t* emulator, int32_t offset, uint8_t rs1, uint8_t rs2) {
-    printf("todo: rv64i_beq\n");
+    LOGD("%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset,
+        emulator->registers.regs[rs1], emulator->registers.regs[rs2]);
+    if (emulator->registers.regs[rs1] == emulator->registers.regs[rs2]) {
+        emulator->registers.pc = emulator->registers.pc + offset - 4;
+    }
 }
 
 static inline void rv64i_bne(emulator_rv64_t* emulator, int32_t offset, uint8_t rs1, uint8_t rs2) {
-    printf("todo: rv64i_bne\n");
+    LOGD("%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset,
+        emulator->registers.regs[rs1], emulator->registers.regs[rs2]);
+    if (emulator->registers.regs[rs1] != emulator->registers.regs[rs2]) {
+        emulator->registers.pc = emulator->registers.pc + offset - 4;
+    }
 }
 
 static inline void rv64i_blt(emulator_rv64_t* emulator, int32_t offset, uint8_t rs1, uint8_t rs2) {
-    printf("todo: rv64i_blt\n");
+    LOGD("%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset,
+        emulator->registers.regs[rs1], emulator->registers.regs[rs2]);
+    if ((int64_t)emulator->registers.regs[rs1] < (int64_t)emulator->registers.regs[rs2]) {
+        emulator->registers.pc = emulator->registers.pc + offset - 4;
+    }
 }
 
 static inline void rv64i_bge(emulator_rv64_t* emulator, int32_t offset, uint8_t rs1, uint8_t rs2) {
-    printf("todo: rv64i_bge\n");
+    LOGD("%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset,
+        emulator->registers.regs[rs1], emulator->registers.regs[rs2]);
+    if ((int64_t)emulator->registers.regs[rs1] >= (int64_t)emulator->registers.regs[rs2]) {
+        emulator->registers.pc = emulator->registers.pc + offset - 4;
+    }
 }
 
 static inline void rv64i_bltu(emulator_rv64_t* emulator, int32_t offset, uint8_t rs1, uint8_t rs2) {
-    printf("todo: rv64i_bltu\n");
+    LOGD("%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset,
+        emulator->registers.regs[rs1], emulator->registers.regs[rs2]);
+    if (emulator->registers.regs[rs1] < emulator->registers.regs[rs2]) {
+        emulator->registers.pc = emulator->registers.pc + offset - 4;
+    }
 }
 
 static inline void rv64i_bgeu(emulator_rv64_t* emulator, int32_t offset, uint8_t rs1, uint8_t rs2) {
-    printf("todo: rv64i_bgeu\n");
+    LOGD("%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset,
+        emulator->registers.regs[rs1], emulator->registers.regs[rs2]);
+    if (emulator->registers.regs[rs1] >= emulator->registers.regs[rs2]) {
+        emulator->registers.pc = emulator->registers.pc + offset - 4;
+    }
 }
 
 static emu_result_t rv64i_emulate_b_type(

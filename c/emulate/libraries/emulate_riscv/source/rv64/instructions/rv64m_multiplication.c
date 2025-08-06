@@ -57,6 +57,7 @@ static inline void rv64m_mulhu(emulator_rv64_t* emulator, uint8_t rs1, uint8_t r
 
 static inline void rv64m_div(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
     // emulator->registers.regs[rd] = emulator->registers.regs[rs1] / emulator->registers.regs[rs2];
+    
 }
 
 static inline void rv64m_divu(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {

@@ -18,7 +18,7 @@ Test(emu_rv64_emulate__sb__tests, sb_1, .init = rv64_emu_sb_default_setup)
 {
     g_emulator.registers.regs[RV64_REG_T0] = 12;
     g_emulator.registers.regs[RV64_REG_T1] = 0x2000;
-    uint8_t input[] = { 0x00, 0x53, 0x00, 0x23 }; // sb t0, 0(t1)
+    uint8_t input[] = { 0x23, 0x00, 0x53, 0x00 }; // sb t0, 0(t1)
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);
     cr_assert(1 == g_emulator.instructions_count);

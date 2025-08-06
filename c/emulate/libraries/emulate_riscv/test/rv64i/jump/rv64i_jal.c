@@ -17,11 +17,11 @@ Test(emu_rv64_emulate__jal__tests, jal_1, .init = rv64_emu_jal_default_setup)
 {
     // li is a pseudo instruction, "li t1, 10" expands to "addi t1, zero, 10"
     uint8_t input[] = {
-        0x00, 0xa0, 0x03, 0x13, // li t1, 10
-        0x00, 0x80, 0x00, 0xef, // jal ra, next
-        0x01, 0x40, 0x03, 0x93, // li t2, 20
+        0x13, 0x03, 0xa0, 0x00, // li t1, 10
+        0xef, 0x00, 0x80, 0x00, // jal ra, next
+        0x93, 0x03, 0x40, 0x01, // li t2, 20
                                 // next:
-        0x01, 0xe0, 0x0e, 0x13, // li t3, 30
+        0x13, 0x0e, 0xe0, 0x01, // li t3, 30
     };
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);

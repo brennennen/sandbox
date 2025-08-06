@@ -353,11 +353,13 @@ emu_result_t emu_rv64_disassemble_read_m32(emulator_rv64_t* emulator, uint32_t* 
             emulator->registers.pc, emulator->memory_size);
         return(ER_OUT_OF_BOUNDS);
     }
-    *out_data = (emulator->memory[emulator->registers.pc] << 24)
-        | (emulator->memory[emulator->registers.pc + 1] << 16)
-        | (emulator->memory[emulator->registers.pc + 2] << 8)
-        | (emulator->memory[emulator->registers.pc + 3]);
-    emulator->registers.pc += 4;
+    *out_data = (emulator->memory[emulator->registers.pc + 3] << 24)
+        | (emulator->memory[emulator->registers.pc + 2] << 16)
+        | (emulator->memory[emulator->registers.pc + 1] << 8)
+        | (emulator->memory[emulator->registers.pc]);
+    if (*out_data != 0) { // if we reached an empty instruction (end of program), don't increment pc.
+        emulator->registers.pc += 4;
+    }
     return(ER_SUCCESS);
 }
 

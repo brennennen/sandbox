@@ -17,7 +17,7 @@ Test(emu_rv64_emulate__xor__tests, xor_1, .init = rv64_emu_xor_default_setup)
 {
     g_emulator.registers.regs[RV64_REG_T1] = 17; // 17 = 0001 0001
     g_emulator.registers.regs[RV64_REG_T2] = 33; // 33 = 0010 0001
-    uint8_t input[] = { 0x00, 0x73, 0x42, 0xb3 }; // `xor t0, t1, t2`
+    uint8_t input[] = { 0xb3, 0x42, 0x73, 0x00 }; // `xor t0, t1, t2`
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);
     cr_assert(1 == g_emulator.instructions_count);

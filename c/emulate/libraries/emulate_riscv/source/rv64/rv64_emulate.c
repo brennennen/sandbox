@@ -62,16 +62,19 @@ char* rv64_map_instruction_tag_mnemonic(instruction_tag_rv64_t tag) {
     return rv64_instruction_tag_mnemonic[tag];
 }
 
+/**
+ * Reads 32 bits (4 bytes) from memory starting at the pc register in little-endian.
+ */
 emu_result_t emu_rv64_read_m32(emulator_rv64_t* emulator, uint32_t* out_data) {
     if (emulator->registers.pc + 1 >= emulator->memory_size) {
         LOG(LOG_ERROR, "read m32: ER_OUT_OF_BOUNDS. ip (+ read size): (%d + 4) >= memory size: %d\n",
             emulator->registers.pc, emulator->memory_size);
         return(ER_OUT_OF_BOUNDS);
     }
-    *out_data = (emulator->memory[emulator->registers.pc] << 24)
-        | (emulator->memory[emulator->registers.pc + 1] << 16)
-        | (emulator->memory[emulator->registers.pc + 2] << 8)
-        | (emulator->memory[emulator->registers.pc + 3]);
+    *out_data = (emulator->memory[emulator->registers.pc + 3] << 24)
+        | (emulator->memory[emulator->registers.pc + 2] << 16)
+        | (emulator->memory[emulator->registers.pc + 1] << 8)
+        | (emulator->memory[emulator->registers.pc]);
     if (*out_data != 0) { // if we reached an empty instruction (end of program), don't increment pc.
         emulator->registers.pc += 4;
     }

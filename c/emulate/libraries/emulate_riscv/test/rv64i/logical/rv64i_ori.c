@@ -22,7 +22,7 @@ Test(emu_rv64_emulate__ori__tests, ori_1, .init = rv64_emu_ori_default_setup)
 {
     g_emulator.registers.regs[RV64_REG_T0] = 1; // rd
     g_emulator.registers.regs[RV64_REG_T1] = 16; // 16 = 0b0001 0000
-    uint8_t input[] = { 0x02, 0x03, 0x62, 0x93 }; // `ori t0, t1, 32` (32 = 0b0010 0000)
+    uint8_t input[] = { 0x93, 0x62, 0x03, 0x02 }; // `ori t0, t1, 32` (32 = 0b0010 0000)
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);
     cr_assert(1 == g_emulator.instructions_count);

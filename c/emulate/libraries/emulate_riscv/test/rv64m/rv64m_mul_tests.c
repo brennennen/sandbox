@@ -18,7 +18,7 @@ Test(emu_rv64_emulate__I_RV64M_MUL__tests, mul_simple, .init = rv64_emu_mul_defa
 {
     g_emulator.registers.regs[RV64_REG_T1] = 3;
     g_emulator.registers.regs[RV64_REG_T2] = 5; // 3 * 5 = 15
-    uint8_t input[] = { 0x02, 0x73, 0x02, 0xb3 }; // mul t0, t1, t2
+    uint8_t input[] = { 0xb3, 0x02, 0x73, 0x02 }; // mul t0, t1, t2
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);
     cr_assert(1 == g_emulator.instructions_count);
@@ -29,7 +29,7 @@ Test(emu_rv64_emulate__I_RV64M_MUL__tests, mul_overflow, .init = rv64_emu_mul_de
 {
     g_emulator.registers.regs[RV64_REG_T1] = 0xFFFFFFFFFFFFFFFF; // max uint64_t
     g_emulator.registers.regs[RV64_REG_T2] = 2;
-    uint8_t input[] = { 0x02, 0x73, 0x02, 0xb3 }; // mul t0, t1, t2
+    uint8_t input[] = { 0xb3, 0x02, 0x73, 0x02 }; // mul t0, t1, t2
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);
     cr_assert(1 == g_emulator.instructions_count);

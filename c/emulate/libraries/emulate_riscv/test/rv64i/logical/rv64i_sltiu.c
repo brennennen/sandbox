@@ -22,7 +22,7 @@ Test(emu_rv64_emulate__sltiu__tests, sltiu_1, .init = rv64_emu_sltiu_default_set
 {
     g_emulator.registers.regs[RV64_REG_T0] = 0; // rd
     g_emulator.registers.regs[RV64_REG_T1] = 10; // rs1
-    uint8_t input[] = { 0x0f, 0xf3, 0x32, 0x93 }; // sltiu t0, t1, 255
+    uint8_t input[] = { 0x93, 0x32, 0xf3, 0x0f }; // sltiu t0, t1, 255
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);
     cr_assert(1 == g_emulator.instructions_count);
@@ -33,7 +33,7 @@ Test(emu_rv64_emulate__sltiu__tests, sltiu_2, .init = rv64_emu_sltiu_default_set
 {
     g_emulator.registers.regs[RV64_REG_T0] = 1; // rd
     g_emulator.registers.regs[RV64_REG_T1] = 256; // rs1
-    uint8_t input[] = { 0x0f, 0xf3, 0x32, 0x93 }; // sltiu t0, t1, 255
+    uint8_t input[] = { 0x93, 0x32, 0xf3, 0x0f }; // sltiu t0, t1, 255
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);
     cr_assert(1 == g_emulator.instructions_count);

@@ -18,7 +18,7 @@ Test(emu_rv64_emulate__lbu__tests, lhu_1, .init = rv64_emu_lbu_default_setup)
 {
     g_emulator.memory[0x2000] = 0x12;
     g_emulator.registers.regs[RV64_REG_T0] = 0x2000;
-    uint8_t input[] = { 0x00, 0x02, 0xc3, 0x03 }; // lbu t1, (0)t0\n
+    uint8_t input[] = { 0x03, 0xc3, 0x02, 0x00 }; // lbu t1, (0)t0
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);
     cr_assert(1 == g_emulator.instructions_count);

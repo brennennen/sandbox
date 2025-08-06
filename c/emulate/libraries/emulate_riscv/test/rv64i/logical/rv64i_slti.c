@@ -22,7 +22,7 @@ Test(emu_rv64_emulate__slti__tests, slti_1, .init = rv64_emu_slti_default_setup)
 {
     g_emulator.registers.regs[RV64_REG_T0] = 1; // rd
     g_emulator.registers.regs[RV64_REG_T1] = 10; // rs1
-    uint8_t input[] = { 0x00, 0x03, 0x22, 0x93 }; // slti t0, t1, 0
+    uint8_t input[] = { 0x93, 0x22, 0x03, 0x00 }; // slti t0, t1, 0
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);
     cr_assert(1 == g_emulator.instructions_count);
@@ -33,7 +33,7 @@ Test(emu_rv64_emulate__slti__tests, slti_2, .init = rv64_emu_slti_default_setup)
 {
     g_emulator.registers.regs[RV64_REG_T0] = 0; // rd
     g_emulator.registers.regs[RV64_REG_T1] = -10; // rs1
-    uint8_t input[] = { 0x00, 0x03, 0x22, 0x93 }; // slti t0, t1, 0
+    uint8_t input[] = { 0x93, 0x22, 0x03, 0x00 }; // slti t0, t1, 0
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);
     cr_assert(1 == g_emulator.instructions_count);

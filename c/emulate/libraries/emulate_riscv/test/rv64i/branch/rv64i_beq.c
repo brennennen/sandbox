@@ -23,12 +23,12 @@ void rv64_emu_beq_default_setup(void) {
 Test(emu_rv64_emulate__beq__tests, beq_take_branch, .init = rv64_emu_beq_default_setup)
 {
     uint8_t input[] = {
-        0x00, 0xa0, 0x03, 0x13, // li t1, 10
-        0x00, 0xa0, 0x03, 0x93, // li t2, 10
-        0x00, 0x73, 0x04, 0x63, // beq t1, t2, next
-        0x01, 0xe0, 0x0e, 0x13, // li t3, 30
-                                // next:
-        0x02, 0x80, 0x0e, 0x93, // li t4, 40
+        0x13, 0x03, 0xa0, 0x00, // li t1, 10
+        0x93, 0x03, 0xa0, 0x00, // li t2, 10
+        0x63, 0x04, 0x73, 0x00, // beq t1, t2, next
+        0x13, 0x0e, 0xe0, 0x01, // li t3, 30
+                               // next:
+        0x93, 0x0e, 0x80, 0x02, // li t4, 40
     };
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);
@@ -42,12 +42,12 @@ Test(emu_rv64_emulate__beq__tests, beq_take_branch, .init = rv64_emu_beq_default
 Test(emu_rv64_emulate__beq__tests, beq_dont_take_branch, .init = rv64_emu_beq_default_setup)
 {
     uint8_t input[] = {
-        0x00, 0xa0, 0x03, 0x13, // li t1, 10
-        0x01, 0x40, 0x03, 0x93, // li t2, 20
-        0x00, 0x73, 0x04, 0x63, // beq t1, t2, next
-        0x01, 0xe0, 0x0e, 0x13, // li t3, 30
+        0x13, 0x03, 0xa0, 0x00, // li t1, 10
+        0x93, 0x03, 0x40, 0x01, // li t2, 20
+        0x63, 0x04, 0x73, 0x00, // beq t1, t2, next
+        0x13, 0x0e, 0xe0, 0x01, // li t3, 30
                                 // next:
-        0x02, 0x80, 0x0e, 0x93, // li t4, 40
+        0x93, 0x0e, 0x80, 0x02, // li t4, 40
     };
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);
@@ -61,11 +61,11 @@ Test(emu_rv64_emulate__beq__tests, beq_dont_take_branch, .init = rv64_emu_beq_de
 Test(emu_rv64_emulate__beq__tests, beqz_take_branch, .init = rv64_emu_beq_default_setup)
 {
     uint8_t input[] = {
-        0x00, 0x00, 0x03, 0x13, // li t1, 0
-        0x00, 0x03, 0x04, 0x63, // beqz t1, next
-        0x01, 0xe0, 0x0e, 0x13, // li t3, 30
+        0x13, 0x03, 0x00, 0x00, // li t1, 0
+        0x63, 0x04, 0x03, 0x00, // beqz t1, next
+        0x13, 0x0e, 0xe0, 0x01, // li t3, 30
                                 // next:
-        0x02, 0x80, 0x0e, 0x93, // li t4, 40
+        0x93, 0x0e, 0x80, 0x02, // li t4, 40
     };
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);
@@ -78,11 +78,11 @@ Test(emu_rv64_emulate__beq__tests, beqz_take_branch, .init = rv64_emu_beq_defaul
 Test(emu_rv64_emulate__beq__tests, beqz_dont_take_branch, .init = rv64_emu_beq_default_setup)
 {
     uint8_t input[] = {
-        0x00, 0xa0, 0x03, 0x13, // li t1, 10
-        0x00, 0x03, 0x04, 0x63, // beqz t1, next
-        0x01, 0xe0, 0x0e, 0x13, // li t3, 30
-                                // next:
-        0x02, 0x80, 0x0e, 0x93, // li t4, 40
+        0x13, 0x03, 0xa0, 0x00, // li t1, 10
+        0x63, 0x04, 0x03, 0x00, // beqz t1, next
+        0x13, 0x0e, 0xe0, 0x01, // li t3, 30
+                               // next:
+        0x93, 0x0e, 0x80, 0x02, // li t4, 40
     };
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);

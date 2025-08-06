@@ -18,7 +18,7 @@ Test(emu_rv64_emulate__sltu__tests, sltu_1, .init = rv64_emu_sltu_default_setup)
     g_emulator.registers.regs[RV64_REG_T0] = 0; // rd
     g_emulator.registers.regs[RV64_REG_T1] = 10; // rs1
     g_emulator.registers.regs[RV64_REG_T2] = 20; // rs2
-    uint8_t input[] = { 0x00, 0x73, 0x32, 0xb3 }; // sltu t0, t1, t2
+    uint8_t input[] = { 0xb3, 0x32, 0x73, 0x00 }; // sltu t0, t1, t2
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);
     cr_assert(1 == g_emulator.instructions_count);

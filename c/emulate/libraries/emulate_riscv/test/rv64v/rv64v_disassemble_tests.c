@@ -22,7 +22,7 @@ void rv64v_disassemble_default_setup(void) {
 Test(emu_rv64v_disassemble__I_RV64V_VSETVLI__tests, vsetvli_1, .init = rv64v_disassemble_default_setup)
 {
     char* expected = "vsetvli a4, a3, e32, m1, ta, ma\n";
-    uint8_t input[] = { 0x0d, 0x06, 0xf7, 0x57 };
+    uint8_t input[] = { 0x57, 0xf7, 0x06, 0x0d };
     char output[64] = { '\0' };
     cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
         &g_emulator, input, sizeof(input), output, sizeof(output)));

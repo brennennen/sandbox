@@ -47,9 +47,16 @@
     #else
         #define pop_count_uint16(x) pop_count_uint16_fallback(x)
     #endif
-#endif
+#endif // pop_count
 
-
-
+#ifndef bswap_32
+    #define bswap_32(x) __builtin_bswap32(x)
+    // TODO: make compiler agnostic
+    // #if defined(__GNUC__)
+    //     #define bswap_32(x) __builtin_bswap32(x)
+    // #else
+    //     #define bswap_32(x) bswap_32_fallback(x)
+    // #endif
+#endif // bswap_32
 
 #endif // BINARY_UTILS_H

@@ -18,7 +18,7 @@ Test(emu_rv64_emulate__I_RV64I_SUB__tests, addi_1, .init = rv64_emu_sub_default_
 {
     g_emulator.registers.regs[RV64_REG_T1] = 5;
     g_emulator.registers.regs[RV64_REG_T2] = 3; // 5 - 3 = 2
-    uint8_t input[] = { 0x40, 0x73, 0x02, 0xb3 }; // sub t0, t1, t2
+    uint8_t input[] = { 0xb3, 0x02, 0x73, 0x40 }; // sub t0, t1, t2
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);
     cr_assert(1 == g_emulator.instructions_count);

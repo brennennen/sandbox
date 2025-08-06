@@ -344,8 +344,7 @@ static inline void rv64_slli(emulator_rv64_t* emulator, int16_t imm12, uint8_t r
  * (Section 2.4.1. Integer Register-Immediate Instructions)
  */
 static inline void rv64_srli(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    // TODO: lookup arithmetic vs logical shift
-    // emulator->registers.regs[rd] = emulator->registers.regs[rs1] >> imm12;
+    emulator->registers.regs[rd] = emulator->registers.regs[rs1] >> ((uint16_t)imm12);
 }
 
 /**
@@ -354,8 +353,7 @@ static inline void rv64_srli(emulator_rv64_t* emulator, int16_t imm12, uint8_t r
  * (Section 2.4.1. Integer Register-Immediate Instructions)
  */
 static inline void rv64_srai(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    // TODO: lookup arithmetic vs logical shift
-    // emulator->registers.regs[rd] = emulator->registers.regs[rs1] >> imm12;
+    emulator->registers.regs[rd] = ((int64_t)emulator->registers.regs[rs1]) >> imm12;
 }
 
 static emu_result_t rv64_emulate_register_immediate(
@@ -448,7 +446,7 @@ static inline void rv64i_sub(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2
 }
 
 static inline void rv64i_sll(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-
+    emulator->registers.regs[rd] = emulator->registers.regs[rs1] << emulator->registers.regs[rs2];
 }
 
 /**
@@ -479,12 +477,14 @@ static inline void rv64i_xor(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2
     emulator->registers.regs[rd] = emulator->registers.regs[rs1] ^ emulator->registers.regs[rs2];
 }
 
+// c shift right is logical when unsigned, arithmetic when signed (sign extension)
 static inline void rv64i_srl(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    // todo
+    emulator->registers.regs[rd] = emulator->registers.regs[rs1] >> emulator->registers.regs[rs2];
 }
 
 static inline void rv64i_sra(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    // todo
+    emulator->registers.regs[rd] = ((int64_t)emulator->registers.regs[rs1]) >>
+        ((int64_t)emulator->registers.regs[rs2]);
 }
 
 static inline void rv64i_or(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
@@ -608,7 +608,10 @@ emu_result_t rv64i_base_integer_emulate(
         case I_RV64I_SLTIU:
         case I_RV64I_XORI:
         case I_RV64I_ORI:
-        case I_RV64I_ANDI: {
+        case I_RV64I_ANDI:
+        case I_RV64I_SLLI:
+        case I_RV64I_SRLI:
+        case I_RV64I_SRAI: {
             result = rv64_emulate_register_immediate(emulator, raw_instruction, tag);
             break;
         }
@@ -620,6 +623,7 @@ emu_result_t rv64i_base_integer_emulate(
         case I_RV64I_SLTU:
         case I_RV64I_XOR:
         case I_RV64I_SRL:
+        case I_RV64I_SRA:
         case I_RV64I_OR:
         case I_RV64I_AND: {
             result = rv64_emulate_register_register(emulator, raw_instruction, tag);

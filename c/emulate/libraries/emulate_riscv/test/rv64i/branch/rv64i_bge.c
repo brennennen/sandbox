@@ -2,7 +2,7 @@
  * bge tests
  * `bge rs1, rs2, <label>`
  * `bge rs1, rs2, . + <jump offset>`
- * "Branch Greater Equal than" - If rs1 is greater or equal than, add the offset to pc
+ * "Branch Greater Equal than" - If rs1 is greater or equal than rs2, add the offset to pc
  * (branch out of the mainline execution flow).
  */
 

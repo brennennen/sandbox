@@ -1,9 +1,9 @@
 /**
- * bge tests
- * `bge rs1, rs2, <label>`
- * `bge rs1, rs2, . + <jump offset>`
- * "Branch Greater Equal than" - If rs1 is greater or equal than, add the offset to pc
- * (branch out of the mainline execution flow).
+ * bgeu tests
+ * `bgeu rs1, rs2, <label>`
+ * `bgeu rs1, rs2, . + <jump offset>`
+ * "Branch Greater Equal than" - If rs1 is greater or equal than rs2 (unsigned), add the
+ * offset to pc (branch out of the mainline execution flow).
  */
 
 #include <stdio.h>

@@ -44,6 +44,12 @@ Test(emu_rv64_decode_tag_tests, decode_instruction_tests) {
     cr_assert(I_RV64I_SLT == rv64_decode_instruction_tag(0x007322b3)); // slt t0, t1, t2
     cr_assert(I_RV64I_SLTU == rv64_decode_instruction_tag(0x00c5b533)); // sltu a0, a1, a2
     cr_assert(I_RV64I_XOR == rv64_decode_instruction_tag(0x0093c533)); // xor a0, t2, s1
+    cr_assert(I_RV64I_SRL == rv64_decode_instruction_tag(0x007352b3)); // srl t0, t1, t2
+    cr_assert(I_RV64I_SRA == rv64_decode_instruction_tag(0x407352b3)); // sra t0, t1, t2
+    cr_assert(I_RV64I_OR == rv64_decode_instruction_tag(0x007362b3)); // or t0, t1, t2
+    cr_assert(I_RV64I_AND == rv64_decode_instruction_tag(0x007372b3)); // and t0, t1, t2
+    // TODO: or, and
+
     // ...
     // I Extensions
     // RV64I Zifencei

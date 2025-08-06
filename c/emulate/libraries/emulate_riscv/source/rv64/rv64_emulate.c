@@ -130,6 +130,9 @@ static result_iter_t emu_rv64_emulate_next(emulator_rv64_t* emulator) {
         case I_RV64I_XORI:
         case I_RV64I_ORI:
         case I_RV64I_ANDI:
+        case I_RV64I_SLLI:
+        case I_RV64I_SRLI:
+        case I_RV64I_SRAI:
         case I_RV64I_ADD:
         case I_RV64I_SUB:
         case I_RV64I_SLL:
@@ -137,6 +140,7 @@ static result_iter_t emu_rv64_emulate_next(emulator_rv64_t* emulator) {
         case I_RV64I_SLTU:
         case I_RV64I_XOR:
         case I_RV64I_SRL:
+        case I_RV64I_SRA:
         case I_RV64I_OR:
         case I_RV64I_AND: {
             result = rv64i_base_integer_emulate(emulator, raw_instruction, instruction_tag);

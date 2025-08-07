@@ -96,9 +96,14 @@ static result_iter_t emu_rv64_emulate_next(emulator_rv64_t* emulator) {
     emu_result_t read_result = emu_rv64_read_m32(emulator, &raw_instruction);
     LOGD("ip: %d, raw_instruction: %x", emulator->registers.pc - 4, raw_instruction);
     //emulator->registers.pc += 1;
+    if (emulator->instructions_count >= 128) {
+        printf("%s:sentinel infinite loop detected, exiting (%d)\n",
+            __func__, emulator->instructions_count);
+        return(RI_DONE);
+    }
     // If we reach an empty byte, assume we've hit the end of the program.
     if (raw_instruction == 0x00) {
-        return RI_DONE;
+        return(RI_DONE);
     }
 
     instruction_tag_rv64_t instruction_tag = I_RV64_INVALID;

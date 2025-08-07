@@ -60,9 +60,12 @@ static emu_result_t rv64i_emulate_upper_immediate(
 }
 
 static inline void rv64i_jal(emulator_rv64_t* emulator, int32_t offset, uint8_t rd) {
-    LOGD("%s: offset: %d, rd: %d", __func__, offset, rd);
+    if (rd != 0) {
+        emulator->registers.regs[rd] = emulator->registers.pc; // point rd to the next instruction
+    }
     emulator->registers.pc = emulator->registers.pc + offset - 4;
-    emulator->registers.regs[rd] = emulator->registers.pc;
+    LOGD("%s: offset: %d (pc: %ld), rd: %d", __func__, offset, emulator->registers.pc, rd);
+
 }
 
 static emu_result_t rv64i_emulate_j_type(
@@ -89,7 +92,13 @@ static emu_result_t rv64i_emulate_j_type(
 }
 
 static inline void rv64i_jalr(emulator_rv64_t* emulator, int32_t imm12, uint8_t rs1, uint8_t rd) {
-    printf("todo: rv64i_jalr\n");
+    if (rd != 0) {
+        emulator->registers.regs[rd] = emulator->registers.pc; // point rd to the next instruction
+    }
+    LOGD("%s: imm12: %d, rs1: %ld (%d), rd: %d", __func__,
+        imm12, emulator->registers.regs[rs1], rs1, rd);
+    // TODO: does imm12 need to be left shifted 1 bit?
+    emulator->registers.pc = emulator->registers.regs[rs1] + imm12;
 }
 
 /**

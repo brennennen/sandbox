@@ -85,7 +85,8 @@ apt-get install binutils-arm-none-eabi
       * Examples:
         * `riscv64-unknown-elf-as -o add.o add.s`
         * `riscv64-unknown-elf-objdump -d add.o`
-          * retriev the text section as a c array for embedding in tests:
+          * objdump displays as big-endian
+          * retrieve the text section as a c array for embedding in tests:
           * `riscv64-unknown-elf-objcopy -O binary -j .text add.o /dev/stdout | xxd -i`
     * link and test in qemu
       * `riscv64-unknown-elf-as -o add.o add.s`

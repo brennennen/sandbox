@@ -15,6 +15,21 @@ void rv64_emu_jalr_default_setup(void) {
 
 Test(emu_rv64_emulate__jalr__tests, jalr_1, .init = rv64_emu_jalr_default_setup)
 {
-    // TODO
-    //cr_assert(0 == 1);
+    uint8_t input[] = {
+        0x13, 0x03, 0xa0, 0x00, // li t1, 10
+        0xef, 0x00, 0xc0, 0x00, // jal ra, next_section
+        0x93, 0x03, 0x40, 0x01, // li t2, 20
+        0xef, 0x00, 0xc0, 0x00, // jal ra, end
+                                // next
+        0x13, 0x0e, 0xe0, 0x01, // li t3, 30
+        0x67, 0x80, 0x00, 0x00  // jalr x0, ra, 0
+                                // end
+    };
+    cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
+    debug_print_registers(&g_emulator);
+    printf("%d\n", g_emulator.instructions_count);
+    cr_assert(6 == g_emulator.instructions_count);
+    cr_assert(10 == g_emulator.registers.regs[RV64_REG_T1]);
+    cr_assert(20 == g_emulator.registers.regs[RV64_REG_T2]);
+    cr_assert(30 == g_emulator.registers.regs[RV64_REG_T3]);
 }

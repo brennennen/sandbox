@@ -24,7 +24,7 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_RV64I_JAL, /** jal - Jump and Link - Unconditionally jump to symbol and stores the next instruction (after the jal) into a register (usually `ra` abi return address).*/
     I_RV64I_JALR, /** jalr - Jump and Link and Return - Unconditionally jump ... */
     I_RV64I_BEQ, /** beq - Branch/Conditional Jump - Take branch if equal. */
-    I_RV64I_BNE, 
+    I_RV64I_BNE,
     I_RV64I_BLT,
     I_RV64I_BGE,
     I_RV64I_BLTU,
@@ -58,7 +58,6 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_RV64I_AND,
     I_RV64I_FENCE, /** Memory/Core Fencing - TODO: is this part of RV64I or in it's own Zifencei? */
     I_RV64I_FENCE_TSO,
-    I_RV64I_PAUSE,
     I_RV64I_ECALL,
     I_RV64I_EBREAK,
     I_RV64I_LWU,
@@ -75,6 +74,12 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_RV64I_SRAW,
 
     /*
+     * MARK: RV64Zihintpause
+     * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zihintpause
+     */
+    I_RV64I_PAUSE,
+
+    /*
      * MARK: RV64Zifencei
      * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zifencei
      */
@@ -84,12 +89,12 @@ typedef enum ENUM_PACK_ATTRIBUTE {
      * MARK: RV64Zicsr
      * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#csrinsts
      */
-    I_RV64ZICSR_CSRRW,
-    I_RV64ZICSR_CSRRS,
-    I_RV64ZICSR_CSRRC,
-    I_RV64ZICSR_CSRRWI,
-    I_RV64ZICSR_CSRRSI,
-    I_RV64ZICSR_CSRRCI,
+    I_RV64ZICSR_CSRRW, // Control Status Registers atomic Read Write
+    I_RV64ZICSR_CSRRS, // atomic Read and Set bits
+    I_RV64ZICSR_CSRRC, // atomic Read and Clear bits
+    I_RV64ZICSR_CSRRWI, // atomic Read Write Immediate
+    I_RV64ZICSR_CSRRSI, // atomic Read and Set bits from Immediate
+    I_RV64ZICSR_CSRRCI, // atomic Read and Clear bits from Immediate
 
     /*
      * MARK: RV64Zicntr

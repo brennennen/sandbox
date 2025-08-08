@@ -8,7 +8,7 @@
 
 // MARK: Instructions
 Test(emu_rv64_decode_tag_tests, decode_instruction_tests) {
-    // RV64I
+    // MARK: RV64I
     cr_assert(I_RV64I_LUI == rv64_decode_instruction_tag(0x123452b7)); // lui t0, 0x12345
     cr_assert(I_RV64I_AUIPC == rv64_decode_instruction_tag(0x12345297)); // auipc t0, 0x12345
     cr_assert(I_RV64I_JAL == rv64_decode_instruction_tag(0xf71ff0ef)); // jal ra, symbol
@@ -48,15 +48,39 @@ Test(emu_rv64_decode_tag_tests, decode_instruction_tests) {
     cr_assert(I_RV64I_SRA == rv64_decode_instruction_tag(0x407352b3)); // sra t0, t1, t2
     cr_assert(I_RV64I_OR == rv64_decode_instruction_tag(0x007362b3)); // or t0, t1, t2
     cr_assert(I_RV64I_AND == rv64_decode_instruction_tag(0x007372b3)); // and t0, t1, t2
-    // TODO: or, and
-
-    // ...
+    cr_assert(I_RV64I_FENCE == rv64_decode_instruction_tag(0x0ff0000f)); // fence
+    cr_assert(I_RV64I_FENCE_TSO == rv64_decode_instruction_tag(0x8330000f)); // fence.tso
+    cr_assert(I_RV64I_ECALL == rv64_decode_instruction_tag(0x00000073)); // ecall
+    cr_assert(I_RV64I_EBREAK == rv64_decode_instruction_tag(0x00100073)); // ebreak
+    cr_assert(I_RV64I_LWU == rv64_decode_instruction_tag(0x0002e303)); // lwu t1, 0(t0)
+    cr_assert(I_RV64I_LD == rv64_decode_instruction_tag(0x0002b303)); // ld t1, 0(t0)
+    cr_assert(I_RV64I_SD == rv64_decode_instruction_tag(0x00533023)); // sd t0, 0(t1)
+    cr_assert(I_RV64I_SLLI == rv64_decode_instruction_tag(0x00731293)); // slli t0, t1, 0x7
+    cr_assert(I_RV64I_SRLI == rv64_decode_instruction_tag(0x00735293)); // srli t0, t1, 0x7
+    cr_assert(I_RV64I_SRAI == rv64_decode_instruction_tag(0x40735293)); // srai t0, t1, 0x7
+    cr_assert(I_RV64I_ADDIW == rv64_decode_instruction_tag(0x0073029b)); // addiw t0, t1, 7
+    cr_assert(I_RV64I_SLLIW == rv64_decode_instruction_tag(0x0073129b)); // slliw t0, t1, 0x7
+    cr_assert(I_RV64I_SRLIW == rv64_decode_instruction_tag(0x0073529b)); // srliw t0, t1, 0x7
+    cr_assert(I_RV64I_SRAIW == rv64_decode_instruction_tag(0x4073529b)); // sraiw t0, t1, 0x7
+    cr_assert(I_RV64I_ADDW == rv64_decode_instruction_tag(0x007302bb)); // addw t0, t1, t2
+    cr_assert(I_RV64I_SUBW == rv64_decode_instruction_tag(0x407302bb)); // subw t0, t1, t2
+    cr_assert(I_RV64I_SLLW == rv64_decode_instruction_tag(0x007312bb)); // sllw t0, t1, t2
+    cr_assert(I_RV64I_SRLW == rv64_decode_instruction_tag(0x007352bb)); // srlw t0, t1, t2
+    cr_assert(I_RV64I_SRAW == rv64_decode_instruction_tag(0x407352bb)); // sraw t0, t1, t2
     // I Extensions
+    // RV64I Zihintpause
+    cr_assert(I_RV64I_PAUSE == rv64_decode_instruction_tag(0x0100000f)); // pause
     // RV64I Zifencei
-
+    cr_assert(I_RV64ZIFENCEI_FENCE_I == rv64_decode_instruction_tag(0x0000100f)); // fence.i
     // RV64I Zicsr
+    cr_assert(I_RV64ZICSR_CSRRW == rv64_decode_instruction_tag(0x340292f3)); // csrrw t0, mscratch, t0
+    cr_assert(I_RV64ZICSR_CSRRS == rv64_decode_instruction_tag(0x300322f3)); // csrrs t0, mstatus, t1
+    cr_assert(I_RV64ZICSR_CSRRC == rv64_decode_instruction_tag(0x300332f3)); // csrrc t0, mstatus, t1
+    cr_assert(I_RV64ZICSR_CSRRWI == rv64_decode_instruction_tag(0x3407d2f3)); // csrrwi t0, mscratch, 15
+    cr_assert(I_RV64ZICSR_CSRRSI == rv64_decode_instruction_tag(0x3007e2f3)); // csrrsi t0, mstatus, 15
+    cr_assert(I_RV64ZICSR_CSRRCI == rv64_decode_instruction_tag(0x3007f2f3)); // csrrci t0, mstatus, 15
 
-    // RV64M
+    // MARK: RV64M
     cr_assert(I_RV64M_MUL == rv64_decode_instruction_tag(0x027302b3)); // mul t0, t1, t2
     cr_assert(I_RV64M_MULH == rv64_decode_instruction_tag(0x027312b3)); // mulh t0, t1, t2
     cr_assert(I_RV64M_MULHSU == rv64_decode_instruction_tag(0x027322b3)); // mulhsu t0, t1, t2
@@ -70,7 +94,7 @@ Test(emu_rv64_decode_tag_tests, decode_instruction_tests) {
     cr_assert(I_RV64M_DIVUW == rv64_decode_instruction_tag(0x027352bb)); // divuw t0, t1, t2
     cr_assert(I_RV64M_REMW == rv64_decode_instruction_tag(0x027362bb)); // remw t0, t1, t2
     cr_assert(I_RV64M_REMUW == rv64_decode_instruction_tag(0x027372bb)); // remuw t0, t1, t2
-    // RV64A
+    // MARK: RV64A
     cr_assert(I_RV64ZALRSC_LR_W == rv64_decode_instruction_tag(0x100522af)); // lr.w t0, (a0)
     cr_assert(I_RV64ZALRSC_SC_W == rv64_decode_instruction_tag(0x18c522af)); // sc.w t0, a2, (a0)
     cr_assert(I_RV64ZAWRS_AMOSWAP_W == rv64_decode_instruction_tag(0x0805202f)); // amoswap.w t0, t1, (t2)
@@ -95,7 +119,7 @@ Test(emu_rv64_decode_tag_tests, decode_instruction_tests) {
     cr_assert(I_RV64ZAWRS_AMOMAXU_D == rv64_decode_instruction_tag(0xe063b2af)); // amomaxu.d t0, t1, (t2)
 
     // ...
-    // RV64F
+    // MARK: RV64F
     cr_assert(I_RV64F_FLW == rv64_decode_instruction_tag(0x0009a187)); // flw ft3, (s3)
     cr_assert(I_RV64F_FSW == rv64_decode_instruction_tag(0x0039a027)); // fsw ft3, (s3)
     cr_assert(I_RV64F_FMADD_S == rv64_decode_instruction_tag(0x60b57543)); // fmadd.s fa0, fa0, fa1, fa2
@@ -129,7 +153,7 @@ Test(emu_rv64_decode_tag_tests, decode_instruction_tests) {
     // RV64D
     // RV64Q
     // ...
-    // RV64V
+    // MARK: RV64V
     // vector load/store
     cr_assert(I_RV64V_VSETVLI == rv64_decode_instruction_tag(0x0d06f757)); // vsetvli a4, a3, e32, m1, ta, ma
     cr_assert(I_RV64V_VSETIVLI == rv64_decode_instruction_tag(0xc804f2d7)); // vsetivli t0, 9, e8, m1, tu, ma

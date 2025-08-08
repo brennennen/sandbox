@@ -104,5 +104,5 @@ apt-get install binutils-arm-none-eabi
    * vector instructions: https://godbolt.org/z/x1q8qvdhr
    * for `riscv64-unknown-elf-as` instructions, need to add the 'v' extension `-march=rv64gcv`
      * ex: `riscv64-unknown-elf-as -march=rv64gcv -o vector_misc.o vector_misc.asm`
-*
+  * with pause: `riscv64-unknown-elf-as -march=rv64gcv_zihintpause -o rv64i_extras.o rv64i_extras.asm`
 

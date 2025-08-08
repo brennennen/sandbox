@@ -41,7 +41,7 @@ Compiled PDF Link: https://drive.google.com/file/d/1uviu1nH-tScFfgrovvFCrj7Omv8t
   * I - register-immediate (used for Load operations)
   * R - register-register
   * S - store
-  * U - ???
+  * U - ??? (upper-immediate? upper 20 bits of a 32 bit immediate, bottom 12 bits are 0)
   * B - branch
   * J - jump
 

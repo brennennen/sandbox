@@ -413,7 +413,9 @@ Test(emu_rv64_disassemble__srl__tests, srl_1, .init = rv64i_disassemble_default_
     ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
 }
 
-// TODO: sra - sraw
+// TODO: sra, or, and
+// todo: fence, fence.tso, pause, ecall, ebreak
+// todo: lwu - sraw
 
 // TODO: i extensions here or in different files?
 // TODO: Zifencei, Zicsr, ???

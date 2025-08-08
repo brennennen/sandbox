@@ -65,7 +65,6 @@ static inline void rv64i_jal(emulator_rv64_t* emulator, int32_t offset, uint8_t 
     }
     emulator->registers.pc = emulator->registers.pc + offset - 4;
     LOGD("%s: offset: %d (pc: %ld), rd: %d", __func__, offset, emulator->registers.pc, rd);
-
 }
 
 static emu_result_t rv64i_emulate_j_type(
@@ -564,6 +563,26 @@ static emu_result_t rv64_emulate_register_register(
     return(ER_SUCCESS);
 }
 
+static emu_result_t rv64_ecall(
+    emulator_rv64_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64_t tag
+) {
+    printf("%s:", __func__);
+    // TODO: call registered callbacks? setup some defaults like prints?
+    return(ER_SUCCESS);
+}
+
+static emu_result_t rv64_ebreak(
+    emulator_rv64_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64_t tag
+) {
+    printf("%s:", __func__);
+    // TODO: call registered callbacks? setup some defaults like prints?
+    return(ER_SUCCESS);
+}
+
 emu_result_t rv64i_base_integer_emulate(
     emulator_rv64_t* emulator,
     uint32_t raw_instruction,
@@ -637,6 +656,21 @@ emu_result_t rv64i_base_integer_emulate(
         case I_RV64I_AND: {
             result = rv64_emulate_register_register(emulator, raw_instruction, tag);
             break;
+        }
+        // todo: fence, fence.tso
+        // todo: ecall, ebreak
+
+        case I_RV64I_ECALL: {
+            result = rv64_ecall(emulator, raw_instruction, tag);
+        }
+        case I_RV64I_EBREAK: {
+            result = rv64_ebreak(emulator, raw_instruction, tag);
+        }
+
+        // todo: rv64i additional instructions
+        default: {
+            LOG(LOG_ERROR, "rv64i_base_integer_emulate: instruction not implemented");
+            return(ER_FAILURE);
         }
     }
     return result;

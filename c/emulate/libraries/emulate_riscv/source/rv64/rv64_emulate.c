@@ -158,6 +158,7 @@ static result_iter_t emu_rv64_emulate_next(emulator_rv64_t* emulator) {
         case I_RV64I_EBREAK:
         case I_RV64I_LWU:
         case I_RV64I_LD:
+        case I_RV64I_SD:
         case I_RV64I_ADDIW:
         case I_RV64I_SLLIW:
         case I_RV64I_SRLIW:

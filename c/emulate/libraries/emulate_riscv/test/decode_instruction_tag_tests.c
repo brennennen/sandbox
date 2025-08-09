@@ -31,12 +31,15 @@ Test(emu_rv64_decode_tag_tests, decode_instruction_tests) {
     cr_assert(I_RV64I_SW == rv64_decode_instruction_tag(0x00532023)); // sw t0, 0(t1)
     // "I" Type
     cr_assert(I_RV64I_ADDI == rv64_decode_instruction_tag(0x00550593)); // addi a1, a0, 5
-    cr_assert(I_RV64I_ADD == rv64_decode_instruction_tag(0x007302b3)); // add t0, t1, t2
     cr_assert(I_RV64I_SLTI == rv64_decode_instruction_tag(0x0003ae13)); // slti t3, t2, 0
     cr_assert(I_RV64I_SLTIU == rv64_decode_instruction_tag(0x0ff33293)); // sltiu t0, t1, 255
     cr_assert(I_RV64I_XORI == rv64_decode_instruction_tag(0x01034293)); // xori t0, t1, 16
     cr_assert(I_RV64I_ORI == rv64_decode_instruction_tag(0x020fef13)); // ori t5, t6, 32
     cr_assert(I_RV64I_ANDI == rv64_decode_instruction_tag(0x040efe13)); // andi t3, t4, 64
+    cr_assert(I_RV64I_SLLI == rv64_decode_instruction_tag(0x00731293)); // slli t0, t0, 0xc
+    cr_assert(I_RV64I_SRLI == rv64_decode_instruction_tag(0x00735293)); // srli t0, t0, 0xc
+    cr_assert(I_RV64I_SRAI == rv64_decode_instruction_tag(0x40735293)); // srai t0, t0, 0xc
+
     // "R" Type
     cr_assert(I_RV64I_ADD == rv64_decode_instruction_tag(0x007302b3)); // add t0, t1, t2
     cr_assert(I_RV64I_SUB == rv64_decode_instruction_tag(0x41ff0eb3)); // sub t4, t5, t6

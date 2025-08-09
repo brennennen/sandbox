@@ -252,6 +252,25 @@ static inline void rv64i_sw(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs
     emulator->memory[address + 3] = (uint8_t) ((emulator->registers.regs[rs2] >> 24) & 0xFF);
 }
 
+/**
+ * sd - Store Double-word
+ * `sd rs2, <offset>(rs1)`
+ * Stores 8 bytes from rs2 to memory.
+ * RV64I Additional Instruction (Not in RV32I)
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_load_and_store_instructions
+ */
+static inline void rv64i_sd(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rs2) {
+    uint64_t address = emulator->registers.regs[rs1] + imm12;
+    emulator->memory[address] = (uint8_t) (emulator->registers.regs[rs2] & 0xFF);
+    emulator->memory[address + 1] = (uint8_t) ((emulator->registers.regs[rs2] >> 8) & 0xFF);
+    emulator->memory[address + 2] = (uint8_t) ((emulator->registers.regs[rs2] >> 16) & 0xFF);
+    emulator->memory[address + 3] = (uint8_t) ((emulator->registers.regs[rs2] >> 24) & 0xFF);
+    emulator->memory[address + 4] = (uint8_t) ((emulator->registers.regs[rs2] >> 32) & 0xFF);
+    emulator->memory[address + 5] = (uint8_t) ((emulator->registers.regs[rs2] >> 40) & 0xFF);
+    emulator->memory[address + 6] = (uint8_t) ((emulator->registers.regs[rs2] >> 48) & 0xFF);
+    emulator->memory[address + 7] = (uint8_t) ((emulator->registers.regs[rs2] >> 56) & 0xFF);
+}
+
 static emu_result_t rv64i_emulate_s_type(
     emulator_rv64_t* emulator,
     uint32_t raw_instruction,
@@ -274,6 +293,10 @@ static emu_result_t rv64i_emulate_s_type(
         }
         case I_RV64I_SW: {
             rv64i_sw(emulator, offset, rs1, rs2);
+            break;
+        }
+        case I_RV64I_SD: {
+            rv64i_sd(emulator, offset, rs1, rs2);
             break;
         }
         default: {
@@ -767,7 +790,8 @@ emu_result_t rv64i_base_integer_emulate(
         // Core Format "S" - "store"
         case I_RV64I_SB:
         case I_RV64I_SH:
-        case I_RV64I_SW: {
+        case I_RV64I_SW:
+        case I_RV64I_SD: {
             result = rv64i_emulate_s_type(emulator, raw_instruction, tag);
             break;
         }
@@ -784,14 +808,15 @@ emu_result_t rv64i_base_integer_emulate(
         case I_RV64I_XORI:
         case I_RV64I_ORI:
         case I_RV64I_ANDI:
-        case I_RV64I_SLLI:
-        case I_RV64I_SRLI:
-        case I_RV64I_SRAI:
         case I_RV64I_LWU:
         case I_RV64I_LD: {
             result = rv64_emulate_register_immediate(emulator, raw_instruction, tag);
             break;
         }
+        // todo: slli, srli, srai
+        // case I_RV64I_SLLI:
+        // case I_RV64I_SRLI:
+        // case I_RV64I_SRAI:
         // Core Format "R" - "register-register"
         case I_RV64I_ADD:
         case I_RV64I_SUB:

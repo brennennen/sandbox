@@ -210,10 +210,28 @@ emu_result_t rv64_disassemble_register_register(
     return(ER_SUCCESS);
 }
 
+emu_result_t rv64_disassemble_no_args(
+    emulator_rv64_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64_t tag,
+    char* buffer,
+    int* index,
+    size_t buffer_size
+) {
+    char* tag_name = rv64_instruction_tag_mnemonic[tag];
+    int written = snprintf(buffer + *index, buffer_size - *index,
+        "%s", tag_name);
+
+    if (written < 0) {
+        return(ER_FAILURE);
+    }
+    *index += written;
+    return(ER_SUCCESS);
+}
+
 /**
  * MARK: RV64V
  */
-
 
 char* rv64v_map_vsew_name(uint8_t vsew) {
     switch(vsew) {
@@ -418,7 +436,9 @@ static result_iter_t emu_rv64_disassemble_next(
         case I_RV64I_LH:
         case I_RV64I_LW:
         case I_RV64I_LBU:
-        case I_RV64I_LHU: {
+        case I_RV64I_LHU:
+        case I_RV64I_LWU:
+        case I_RV64I_LD: {
             result = rv64_disassemble_load(emulator, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
             break;
         }
@@ -426,7 +446,8 @@ static result_iter_t emu_rv64_disassemble_next(
         // Store ("S" format)
         case I_RV64I_SB:
         case I_RV64I_SH:
-        case I_RV64I_SW: {
+        case I_RV64I_SW:
+        case I_RV64I_SD: {
             result = rv64_disassemble_store(emulator, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
             break;
         }
@@ -441,6 +462,16 @@ static result_iter_t emu_rv64_disassemble_next(
             result = rv64_disassemble_register_immediate(emulator, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
             break;
         }
+        // TODO: slli, srli, srai
+        case I_RV64I_SLLI:
+        case I_RV64I_SRLI:
+        case I_RV64I_SRAI: {
+            // TODO: special decode for these 3 instructions where the normal bytes for rs2
+            // are "shamt"
+            //result = rv64_disassemble_register_register(emulator, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
+            break;
+        }
+
         // Core Format "R" - "register-register"
         case I_RV64I_ADD:
         case I_RV64I_SUB:
@@ -449,9 +480,18 @@ static result_iter_t emu_rv64_disassemble_next(
         case I_RV64I_SLTU:
         case I_RV64I_XOR:
         case I_RV64I_SRL:
+        case I_RV64I_SRA:
         case I_RV64I_OR:
         case I_RV64I_AND: {
             result = rv64_disassemble_register_register(emulator, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
+            break;
+        }
+        case I_RV64I_FENCE:
+        case I_RV64I_FENCE_TSO:
+        case I_RV64I_PAUSE:
+        case I_RV64I_ECALL:
+        case I_RV64I_EBREAK: {
+            result = rv64_disassemble_no_args(emulator, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
             break;
         }
         // todo: fence, fence.tso, pause, ecall, ebreak

@@ -597,7 +597,6 @@ static char rv64_instruction_tag_mnemonic[][16] = {
     "and",
     "fence",
     "fence.tso",
-    "pause",
     "ecall",
     "ebreak",
     "lwu",
@@ -612,6 +611,8 @@ static char rv64_instruction_tag_mnemonic[][16] = {
     "sllw",
     "srlw",
     "sraw",
+    // RV64Zihintpause
+    "pause",
     // RV64Zifencei
     "fence.i",
     // RV64Zicsr

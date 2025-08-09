@@ -1,4 +1,4 @@
-# RISCV ISA Notes
+# RISCV Unprivileged ISA Notes
 Notes taken during a deep dive into the "RISC-V Instruction Set Manual Volume 1", subtitle "Unprivileged Architecture".
 
 Source: https://github.com/riscv/riscv-isa-manual/

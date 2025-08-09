@@ -95,6 +95,23 @@ static inline void rv64_decode_register_immediate(
 }
 
 /**
+ * Decodes a specialized "I-type" instruction that doesn't have a name, but I'll
+ * be calling the "shift immediate" format. It's similar to the "I-Type", but only
+ * the lower 5 bits of the immediate value are used, the upper bits are for
+ * instruction identification.
+ */
+static inline void rv64_decode_shift_immediate(
+    uint32_t raw_instruction,
+    uint8_t* imm5,
+    uint8_t* rs1,
+    uint8_t* rd
+) {
+    *imm5 = (uint8_t)((raw_instruction >> 20) & 0b11111);
+    *rs1 = (raw_instruction >> 15) & 0b11111;
+    *rd = (raw_instruction >> 7) & 0b11111;
+}
+
+/**
  * Decodes the "R-type" instruction format.
  */
 static inline void rv64_decode_register_register(

@@ -469,33 +469,6 @@ static inline void rv64_andi(emulator_rv64_t* emulator, int16_t imm12, uint8_t r
     emulator->registers.regs[rd] = emulator->registers.regs[rs1] & imm12;
 }
 
-/**
- * SLLI - Shift Logical Left with Immediate.
- * Zeros are shifted into the lower bits.
- * (Section 2.4.1. Integer Register-Immediate Instructions)
- */
-static inline void rv64_slli(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    emulator->registers.regs[rd] = emulator->registers.regs[rs1] << imm12;
-}
-
-/**
- * SRLI - Shift Right Logical with Immediate.
- * Zeros are shifted into the upper bits.
- * (Section 2.4.1. Integer Register-Immediate Instructions)
- */
-static inline void rv64_srli(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    emulator->registers.regs[rd] = emulator->registers.regs[rs1] >> ((uint16_t)imm12);
-}
-
-/**
- * SRAI - Shift Right Arithmetic with Immediate.
- * The original sign bit is copied into the vacated upper bits.
- * (Section 2.4.1. Integer Register-Immediate Instructions)
- */
-static inline void rv64_srai(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    emulator->registers.regs[rd] = ((int64_t)emulator->registers.regs[rs1]) >> imm12;
-}
-
 static emu_result_t rv64_emulate_register_immediate(
     emulator_rv64_t* emulator,
     uint32_t raw_instruction,
@@ -556,18 +529,6 @@ static emu_result_t rv64_emulate_register_immediate(
             rv64_andi(emulator, imm12, rs1, rd);
             break;
         }
-        case I_RV64I_SLLI: {
-            rv64_slli(emulator, imm12, rs1, rd);
-            break;
-        }
-        case I_RV64I_SRLI: {
-            rv64_srli(emulator, imm12, rs1, rd);
-            break;
-        }
-        case I_RV64I_SRAI: {
-            rv64_srai(emulator, imm12, rs1, rd);
-            break;
-        }
         case I_RV64I_LWU: {
             rv64i_lwu(emulator, imm12, rs1, rd);
             break;
@@ -584,6 +545,94 @@ static emu_result_t rv64_emulate_register_immediate(
     return(ER_SUCCESS);
 }
 
+/**
+ * SLLI - Shift Logical Left with Immediate.
+ * Zeros are shifted into the lower bits.
+ * (Section 2.4.1. Integer Register-Immediate Instructions)
+ */
+static inline void rv64_slli(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
+    emulator->registers.regs[rd] = emulator->registers.regs[rs1] << imm12;
+}
+
+/**
+ * SRLI - Shift Right Logical with Immediate.
+ * Zeros are shifted into the upper bits.
+ * (Section 2.4.1. Integer Register-Immediate Instructions)
+ */
+static inline void rv64_srli(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
+    emulator->registers.regs[rd] = emulator->registers.regs[rs1] >> ((uint16_t)imm12);
+}
+
+/**
+ * SRAI - Shift Right Arithmetic with Immediate.
+ * The original sign bit is copied into the vacated upper bits.
+ * (Section 2.4.1. Integer Register-Immediate Instructions)
+ */
+static inline void rv64_srai(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
+    emulator->registers.regs[rd] = ((int64_t)emulator->registers.regs[rs1]) >> imm12;
+}
+
+/**
+ * slli - Shift Logical Left with Immediate.
+ * `slli rd, rs1, imm5`
+ * Zeros are shifted into the lower bits.
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions
+ */
+static inline void rv64i_slli(emulator_rv64_t* emulator, uint8_t imm5, uint8_t rs1, uint8_t rd) {
+    emulator->registers.regs[rd] = emulator->registers.regs[rs1] << imm5;
+}
+
+/**
+ * srli - Shift Logical Right with Immediate.
+ * `srli rd, rs1, imm5`
+ * Zeros are shifted into the lower bits.
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions
+ */
+static inline void rv64i_srli(emulator_rv64_t* emulator, uint8_t imm5, uint8_t rs1, uint8_t rd) {
+    emulator->registers.regs[rd] = emulator->registers.regs[rs1] >> ((uint8_t)imm5);
+}
+
+/**
+ * srai - Shift Right Arithmetic with Immediate.
+ * `srai rd, rs1, imm5`
+ * The original sign bit is copied into the vacated upper bits (sign extension).
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions
+ */
+static inline void rv64i_srai(emulator_rv64_t* emulator, uint8_t imm5, uint8_t rs1, uint8_t rd) {
+    emulator->registers.regs[rd] = ((int64_t)emulator->registers.regs[rs1]) >> imm5;
+}
+
+static emu_result_t rv64i_emulate_shift_immediate(
+    emulator_rv64_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64_t tag
+) {
+    uint8_t imm5 = 0;
+    uint8_t rs1 = 0;
+    uint8_t rd = 0;
+
+    rv64_decode_shift_immediate(raw_instruction, &imm5, &rs1, &rd);
+
+    switch(tag) {
+        case I_RV64I_SLLI: {
+            rv64i_slli(emulator, imm5, rs1, rd);
+            break;
+        }
+        case I_RV64I_SRLI: {
+            rv64i_srli(emulator, imm5, rs1, rd);
+            break;
+        }
+        case I_RV64I_SRAI: {
+            rv64i_srai(emulator, imm5, rs1, rd);
+            break;
+        }
+        default: {
+            LOG(LOG_ERROR, "%s: instruction not implemented", __func__);
+            return(ER_FAILURE);
+        }
+    }
+    return(ER_SUCCESS);
+}
 
 static inline void rv64i_add(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
     emulator->registers.regs[rd] = emulator->registers.regs[rs1] + emulator->registers.regs[rs2];
@@ -813,10 +862,13 @@ emu_result_t rv64i_base_integer_emulate(
             result = rv64_emulate_register_immediate(emulator, raw_instruction, tag);
             break;
         }
-        // todo: slli, srli, srai
-        // case I_RV64I_SLLI:
-        // case I_RV64I_SRLI:
-        // case I_RV64I_SRAI:
+        // Special "shift immediate" format
+        case I_RV64I_SLLI:
+        case I_RV64I_SRLI:
+        case I_RV64I_SRAI: {
+            result = rv64i_emulate_shift_immediate(emulator, raw_instruction, tag);
+            break;
+        }
         // Core Format "R" - "register-register"
         case I_RV64I_ADD:
         case I_RV64I_SUB:

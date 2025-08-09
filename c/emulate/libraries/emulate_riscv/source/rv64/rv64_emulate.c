@@ -150,7 +150,23 @@ static result_iter_t emu_rv64_emulate_next(emulator_rv64_t* emulator) {
         case I_RV64I_SRL:
         case I_RV64I_SRA:
         case I_RV64I_OR:
-        case I_RV64I_AND: {
+        case I_RV64I_AND:
+        case I_RV64I_FENCE:
+        case I_RV64I_FENCE_TSO:
+        case I_RV64I_PAUSE:
+        case I_RV64I_ECALL:
+        case I_RV64I_EBREAK:
+        case I_RV64I_LWU:
+        case I_RV64I_LD:
+        case I_RV64I_ADDIW:
+        case I_RV64I_SLLIW:
+        case I_RV64I_SRLIW:
+        case I_RV64I_SRAIW:
+        case I_RV64I_ADDW:
+        case I_RV64I_SUBW:
+        case I_RV64I_SLLW:
+        case I_RV64I_SRLW:
+        case I_RV64I_SRAW: {
             result = rv64i_base_integer_emulate(emulator, raw_instruction, instruction_tag);
             break;
         }

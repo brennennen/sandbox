@@ -11,24 +11,29 @@
 #include "rv64/instructions/rv64i_base_integer.h"
 
 /**
- * LUI - Load Upper Immediate. Places the 32-bi9t U-immediate into register rd,
- * filling the lowest 12 bits with zeros. The 32-bit result is sign-extended to
- * 64 bits.
+ * lui - Load Upper Immediate.
+ * `lui rd, imm`
+ * Places the 32-bit U-immediate into register rd, filling the lowest 12 bits
+ * with zeros. The 32-bit result is sign-extended to 64 bits.
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions_2
  */
 static inline void rv64i_lui(emulator_rv64_t* emulator, int32_t imm20, uint8_t rd) {
+    // sign-extension for imm20 done in decode
     emulator->registers.regs[rd] = imm20 << 12;
 }
 
 /**
- * AUIPC - Add Upper Immediate to `pc`. Used to build pc-relative addresses and uses
- * the "U-Type" format. AUIPC forms a 32 bit offset from the U-immediate, filling in
- * the lowest 12 bits with zeros, adds this offset to the address of the AUIPC
- * instruction, then places the result in register rd.
+ * auipc - Add Upper Immediate to `pc`.
+ * `auipc rd, imm`
+ * Used to build pc-relative addresses and uses the "U-Type" format. AUIPC forms
+ * a 32 bit offset from the U-immediate, filling in the lowest 12 bits with zeros,
+ * adds this offset to the address of the AUIPC instruction, then places the result
+ * in register rd.
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions_2
  */
 static inline void rv64i_auipc(emulator_rv64_t* emulator, int32_t imm20, uint8_t rd) {
     // pc is incremented when the instruction is originally read, so need to decrement here.
+    // sign-extension for imm20 done in decode
     emulator->registers.regs[rd] = (imm20 << 12) + emulator->registers.pc - 4;
 }
 
@@ -59,6 +64,15 @@ static emu_result_t rv64i_emulate_upper_immediate(
     return(ER_SUCCESS);
 }
 
+/**
+ * jal - Jump and Link
+ * `jal rd, offset`
+ * `jal rd, <label>`
+ * `j label`
+ * `call label`
+ * Store pc 1 instruction after jump to rd, and jumps (sets pc) to offset.
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_unconditional_jumps
+ */
 static inline void rv64i_jal(emulator_rv64_t* emulator, int32_t offset, uint8_t rd) {
     if (rd != 0) {
         emulator->registers.regs[rd] = emulator->registers.pc; // point rd to the next instruction
@@ -90,6 +104,14 @@ static emu_result_t rv64i_emulate_j_type(
     return(ER_SUCCESS);
 }
 
+/**
+ * jalr - Jump and Link Register
+ * `jalr rd, rs1, offset`
+ * `jr rs1, offset`
+ * `ret`
+ * Store pc 1 instruction after jump to rd, and jumps (sets pc) to rs1 + offset
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_unconditional_jumps
+ */
 static inline void rv64i_jalr(emulator_rv64_t* emulator, int32_t imm12, uint8_t rs1, uint8_t rd) {
     if (rd != 0) {
         emulator->registers.regs[rd] = emulator->registers.pc; // point rd to the next instruction
@@ -101,11 +123,13 @@ static inline void rv64i_jalr(emulator_rv64_t* emulator, int32_t imm12, uint8_t 
 }
 
 /**
- * BEQ - Branch if EQual. If rs1 and rs2 are equal, add the offset to pc (branch out of
- * the mainline execution flow).
+ * beq - Branch if EQual.
  * `beq rs1, rs2, <label>`
  * `beq rs1, rs2, . + <jump offset>`
- * pseudo-instruction beqz: rs2 is zero and ommitted `beqz rs1, <label>`.
+ * `beqz rs1, <label>`
+ * If rs1 and rs2 are equal, add the offset to pc (branch out of the mainline
+ * execution flow).
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_conditional_branches
  */
 static inline void rv64i_beq(emulator_rv64_t* emulator, int32_t offset, uint8_t rs1, uint8_t rs2) {
     LOGD("%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset,
@@ -115,6 +139,15 @@ static inline void rv64i_beq(emulator_rv64_t* emulator, int32_t offset, uint8_t 
     }
 }
 
+/**
+ * bne - Branch Not Equal.
+ * `bne rs1, rs2, <label>`
+ * `bne rs1, rs2, . + <jump offset>`
+ * `bnez rs1, <label>`
+ * If rs1 and rs2 are not equal, add the offset to pc (branch out of the mainline
+ * execution flow).
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_conditional_branches
+ */
 static inline void rv64i_bne(emulator_rv64_t* emulator, int32_t offset, uint8_t rs1, uint8_t rs2) {
     LOGD("%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset,
         emulator->registers.regs[rs1], emulator->registers.regs[rs2]);
@@ -251,37 +284,113 @@ static emu_result_t rv64i_emulate_s_type(
     return(ER_SUCCESS);
 }
 
-
+/**
+ * lb - Load Byte
+ * `lb rd, <offset>(rs1)`
+ * Loads 1 byte from memory as a signed value, sign-extending to 64 bits, and
+ * stores it in rd.
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_load_and_store_instructions
+ */
 static inline void rv64i_lb(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
     uint64_t address = emulator->registers.regs[rs1] + imm12;
+    // cast provides sign extension
     emulator->registers.regs[rd] = (int8_t) emulator->memory[address];
 }
 
+/**
+ * lh - Load Half-word
+ * `lh rd, <offset>(rs1)`
+ * Loads 2 bytes from memory as a signed value, sign-extending to 64 bits, and
+ * stores it in rd.
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_load_and_store_instructions
+ */
 static inline void rv64i_lh(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
     uint64_t address = emulator->registers.regs[rs1] + imm12;
     uint16_t halfword = (uint16_t)emulator->memory[address] |
         ((uint16_t) emulator->memory[address + 1] << 8);
+    // cast provides sign extension
     emulator->registers.regs[rd] = (int16_t) halfword;
 }
 
+/**
+ * lw - Load Word
+ * `lw rd, <offset>(rs1)`
+ * Loads 4 bytes from memory as a signed value, sign-extending to 64 bits, and
+ * stores it in rd.
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_load_and_store_instructions
+ */
 static inline void rv64i_lw(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
+    // TODO: sign extend
     uint64_t address = emulator->registers.regs[rs1] + imm12;
     uint32_t word = (uint32_t)emulator->memory[address] |
         ((uint32_t) emulator->memory[address + 1] << 24) |
         ((uint32_t) emulator->memory[address + 2] << 16) |
         ((uint32_t) emulator->memory[address + 3] << 8);
+    // cast provides sign extension
     emulator->registers.regs[rd] = (int32_t) word;
 }
 
+/**
+ * lbu - Load Byte Unsigned
+ * `lbu rd, <offset>(rs1)`
+ * Loads 1 byte from memory as an unsigned value, zero-extending to 64 bits, and
+ * stores it in rd.
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_load_and_store_instructions
+ */
 static inline void rv64i_lbu(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
     uint64_t address = emulator->registers.regs[rs1] + imm12;
     emulator->registers.regs[rd] = emulator->memory[address];
 }
 
+/**
+ * lhu - Load Half-word Unsigned
+ * `lhu rd, <offset>(rs1)`
+ * Loads 2 bytes from memory as an unsigned value, zero-extending to 64 bits, and
+ * stores it in rd.
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_load_and_store_instructions
+ */
 static inline void rv64i_lhu(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
     uint64_t address = emulator->registers.regs[rs1] + imm12;
     emulator->registers.regs[rd] = (uint16_t)emulator->memory[address] |
         ((uint16_t) emulator->memory[address + 1] << 8);
+}
+
+/**
+ * lwu - Load Word Unsigned
+ * `lwu rd, <offset>(rs1)`
+ * Loads 4 bytes from memory as an unsigned value, zero-extending to 64
+ * bits, and stores it in rd.
+ * RV64I Additional Instruction (Not in RV32I)
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_load_and_store_instructions
+ */
+static inline void rv64i_lwu(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
+    uint64_t address = emulator->registers.regs[rs1] + imm12;
+    uint32_t word = (uint32_t)emulator->memory[address] |
+        ((uint32_t) emulator->memory[address + 1] << 24) |
+        ((uint32_t) emulator->memory[address + 2] << 16) |
+        ((uint32_t) emulator->memory[address + 3] << 8);
+    emulator->registers.regs[rd] = word;
+}
+
+/**
+ * ld - Load Double-word
+ * `ld rd, <offset>(rs1)`
+ * Loads 8 bytes from memory as a signed value and stores it in rd.
+ * RV64I Additional Instruction (Not in RV32I)
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_load_and_store_instructions
+ */
+static inline void rv64i_ld(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
+    uint64_t address = emulator->registers.regs[rs1] + imm12;
+    // todo: why not just memcpy?
+    uint64_t double_word = (uint64_t)emulator->memory[address] |
+        ((uint64_t) emulator->memory[address + 1] << 56) |
+        ((uint64_t) emulator->memory[address + 3] << 48) |
+        ((uint64_t) emulator->memory[address + 4] << 40) |
+        ((uint64_t) emulator->memory[address + 5] << 32) |
+        ((uint64_t) emulator->memory[address + 6] << 24) |
+        ((uint64_t) emulator->memory[address + 7] << 16) |
+        ((uint64_t) emulator->memory[address + 8] << 8);
+    emulator->registers.regs[rd] = double_word;
 }
 
 /**
@@ -436,6 +545,14 @@ static emu_result_t rv64_emulate_register_immediate(
             rv64_srai(emulator, imm12, rs1, rd);
             break;
         }
+        case I_RV64I_LWU: {
+            rv64i_lwu(emulator, imm12, rs1, rd);
+            break;
+        }
+        case I_RV64I_LD: {
+            rv64i_ld(emulator, imm12, rs1, rd);
+            break;
+        }
         default: {
             LOG(LOG_ERROR, "rv64i_emulate_register_immediate: instruction not implemented");
             return(ER_FAILURE);
@@ -563,7 +680,7 @@ static emu_result_t rv64_emulate_register_register(
     return(ER_SUCCESS);
 }
 
-static emu_result_t rv64_ecall(
+static emu_result_t rv64i_fence(
     emulator_rv64_t* emulator,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
@@ -573,7 +690,37 @@ static emu_result_t rv64_ecall(
     return(ER_SUCCESS);
 }
 
-static emu_result_t rv64_ebreak(
+static emu_result_t rv64i_fence_tso(
+    emulator_rv64_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64_t tag
+) {
+    printf("%s:", __func__);
+    // TODO: call registered callbacks? setup some defaults like prints?
+    return(ER_SUCCESS);
+}
+
+static emu_result_t rv64i_pause(
+    emulator_rv64_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64_t tag
+) {
+    printf("%s:", __func__);
+    // TODO: call registered callbacks? setup some defaults like prints?
+    return(ER_SUCCESS);
+}
+
+static emu_result_t rv64i_ecall(
+    emulator_rv64_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64_t tag
+) {
+    printf("%s:", __func__);
+    // TODO: call registered callbacks? setup some defaults like prints?
+    return(ER_SUCCESS);
+}
+
+static emu_result_t rv64i_ebreak(
     emulator_rv64_t* emulator,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
@@ -639,7 +786,9 @@ emu_result_t rv64i_base_integer_emulate(
         case I_RV64I_ANDI:
         case I_RV64I_SLLI:
         case I_RV64I_SRLI:
-        case I_RV64I_SRAI: {
+        case I_RV64I_SRAI:
+        case I_RV64I_LWU:
+        case I_RV64I_LD: {
             result = rv64_emulate_register_immediate(emulator, raw_instruction, tag);
             break;
         }
@@ -657,14 +806,26 @@ emu_result_t rv64i_base_integer_emulate(
             result = rv64_emulate_register_register(emulator, raw_instruction, tag);
             break;
         }
-        // todo: fence, fence.tso
-        // todo: ecall, ebreak
-
+        // misc
+        case I_RV64I_FENCE: {
+            result = rv64i_fence(emulator, raw_instruction, tag);
+            break;
+        }
+        case I_RV64I_FENCE_TSO: {
+            result = rv64i_fence_tso(emulator, raw_instruction, tag);
+            break;
+        }
+        case I_RV64I_PAUSE: {
+            result = rv64i_pause(emulator, raw_instruction, tag);
+            break;
+        }
         case I_RV64I_ECALL: {
-            result = rv64_ecall(emulator, raw_instruction, tag);
+            result = rv64i_ecall(emulator, raw_instruction, tag);
+            break;
         }
         case I_RV64I_EBREAK: {
-            result = rv64_ebreak(emulator, raw_instruction, tag);
+            result = rv64i_ebreak(emulator, raw_instruction, tag);
+            break;
         }
 
         // todo: rv64i additional instructions

@@ -125,6 +125,28 @@ static inline void rv64_decode_register_register(
     *rd = (raw_instruction >> 7) & 0b11111;
 }
 
+static inline void rv64_decode_csr_register(
+    uint32_t raw_instruction,
+    uint8_t* csr,
+    uint8_t* rs1,
+    uint8_t* rd
+) {
+    *csr = (raw_instruction >> 20) & 0b111111111111;
+    *rs1 = (raw_instruction >> 15) & 0b11111;
+    *rd = (raw_instruction >> 7) & 0b11111;
+}
+
+static inline void rv64_decode_csr_immediate(
+    uint32_t raw_instruction,
+    uint8_t* csr,
+    uint8_t* uimm,
+    uint8_t* rd
+) {
+    *csr = (raw_instruction >> 20) & 0b111111111111;
+    *uimm = (raw_instruction >> 15) & 0b11111;
+    *rd = (raw_instruction >> 7) & 0b11111;
+}
+
 /**
  * MARK: RV64V
  */

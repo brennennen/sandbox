@@ -1,7 +1,9 @@
 /**
  * ecall tests
  * `ecall`
- * "External? Call" - ???
+ * "Environment Call" - Make a service request to the execution environment. The
+ * EEI (Environment Execution Interface) will define how parameters are passed.
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#ecall-ebreak
  */
 
 #include <stdio.h>

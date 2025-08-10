@@ -716,8 +716,8 @@ Test(emu_rv64_disassemble__fence_i__tests, fence_i_1, .init = rv64i_disassemble_
 // MARK: csrrw Tests
 Test(emu_rv64_disassemble__csrrw__tests, csrrw_1, .init = rv64i_disassemble_default_setup)
 {
-    char* expected = "csrrw t0, mscratch, t0\n";
-    uint8_t input[] = { 0xf3, 0x92, 0x02, 0x34 };
+    char* expected = "csrrw t0, fflags, t0\n";
+    uint8_t input[] = { 0xf3, 0x92, 0x12, 0x00 };
     char output[32] = { '\0' };
     cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
         &g_emulator, input, sizeof(input), output, sizeof(output)));
@@ -725,5 +725,64 @@ Test(emu_rv64_disassemble__csrrw__tests, csrrw_1, .init = rv64i_disassemble_defa
     ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
 }
 
+// MARK: csrrs Tests
+Test(emu_rv64_disassemble__csrrs__tests, csrrs_1, .init = rv64i_disassemble_default_setup)
+{
+    char* expected = "csrrs t0, fflags, t1\n";
+    uint8_t input[] = { 0xf3, 0x22, 0x13, 0x00 };
+    char output[32] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+// MARK: csrrc Tests
+Test(emu_rv64_disassemble__csrrc__tests, csrrc_1, .init = rv64i_disassemble_default_setup)
+{
+    char* expected = "csrrc t0, fflags, t1\n";
+    uint8_t input[] = { 0xf3, 0x32, 0x13, 0x00 };
+    char output[32] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+// MARK: csrrwi Tests
+Test(emu_rv64_disassemble__csrrwi__tests, csrrwi_1, .init = rv64i_disassemble_default_setup)
+{
+    char* expected = "csrrwi t0, fflags, 15\n";
+    uint8_t input[] = { 0xf3, 0xd2, 0x17, 0x00 };
+    char output[32] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+// MARK: csrrsi Tests
+Test(emu_rv64_disassemble__csrrsi__tests, csrrsi_1, .init = rv64i_disassemble_default_setup)
+{
+    char* expected = "csrrsi t0, fflags, 15\n";
+    uint8_t input[] = { 0xf3, 0xe2, 0x17, 0x00 };
+    char output[32] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+// MARK: csrrci Tests
+Test(emu_rv64_disassemble__csrrci__tests, csrrci_1, .init = rv64i_disassemble_default_setup)
+{
+    char* expected = "csrrci t0, fflags, 15\n";
+    uint8_t input[] = { 0xf3, 0xf2, 0x17, 0x00 };
+    char output[32] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
 
 // TODO: other i extensions ???

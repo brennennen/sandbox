@@ -55,6 +55,7 @@ typedef struct {
     uint32_t pc;
 
     // TODO: CSR registers? or put those in a different struct?
+    //uint8_t csrs[4096];
 
     // RV64V
     uint64_t vregs[64]; // faking 128 bit wide registers
@@ -68,14 +69,7 @@ typedef struct {
     uint8_t vxsat;
     uint64_t vcsr;
     // vtype, sew, lmul, vlmax?
-
-
-
 } registers_rv64_t;
 
-// TODO: provide accessor functions for aliased names (args = x0, x1, etc. temp/local
-// vars = t0, t1, etc.)
-
-// TODO: vector registers?
 
 #endif // REGISTERS_RV64I_H

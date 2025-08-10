@@ -257,6 +257,63 @@ emu_result_t rv64_disassemble_no_args(
     return(ER_SUCCESS);
 }
 
+emu_result_t rv64_disassemble_csr_register(
+    emulator_rv64_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64_t tag,
+    char* buffer,
+    int* index,
+    size_t buffer_size
+) {
+    uint8_t csr = 0;
+    uint8_t rs1 = 0;
+    uint8_t rd = 0;
+
+    rv64_decode_csr_register(raw_instruction, &csr, &rs1, &rd);
+
+    char* csr_name = rv64_get_csr_name(csr);
+    char* rs1_name = rv64_map_register_name(rs1);
+    char* rd_name = rv64_map_register_name(rd);
+    char* tag_name = rv64_instruction_tag_mnemonic[tag];
+
+    int written = snprintf(buffer + *index, buffer_size - *index,
+        "%s %s, %s, %s", tag_name, rd_name, csr_name, rs1_name);
+
+    if (written < 0) {
+        return(ER_FAILURE);
+    }
+    *index += written;
+    return(ER_SUCCESS);
+}
+
+emu_result_t rv64_disassemble_csr_immediate(
+    emulator_rv64_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64_t tag,
+    char* buffer,
+    int* index,
+    size_t buffer_size
+) {
+    uint8_t csr = 0;
+    uint8_t uimm = 0;
+    uint8_t rd = 0;
+
+    rv64_decode_csr_immediate(raw_instruction, &csr, &uimm, &rd);
+
+    char* csr_name = rv64_get_csr_name(csr);
+    char* rd_name = rv64_map_register_name(rd);
+    char* tag_name = rv64_instruction_tag_mnemonic[tag];
+
+    int written = snprintf(buffer + *index, buffer_size - *index,
+        "%s %s, %s, %d", tag_name, rd_name, csr_name, uimm);
+
+    if (written < 0) {
+        return(ER_FAILURE);
+    }
+    *index += written;
+    return(ER_SUCCESS);
+}
+
 /**
  * MARK: RV64V
  */
@@ -538,6 +595,18 @@ static result_iter_t emu_rv64_disassemble_next(
             break;
         }
         // RV64Zicsr
+        case I_RV64ZICSR_CSRRW:
+        case I_RV64ZICSR_CSRRS:
+        case I_RV64ZICSR_CSRRC: {
+            result = rv64_disassemble_csr_register(emulator, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
+            break;
+        }
+        case I_RV64ZICSR_CSRRWI:
+        case I_RV64ZICSR_CSRRSI:
+        case I_RV64ZICSR_CSRRCI: {
+            result = rv64_disassemble_csr_immediate(emulator, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
+            break;
+        }
         // RV64M
         case I_RV64M_MUL:
         case I_RV64M_MULH:

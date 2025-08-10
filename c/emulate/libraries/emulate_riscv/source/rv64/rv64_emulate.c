@@ -171,6 +171,16 @@ static result_iter_t emu_rv64_emulate_next(emulator_rv64_t* emulator) {
             result = rv64i_base_integer_emulate(emulator, raw_instruction, instruction_tag);
             break;
         }
+        // Zicsr
+        case I_RV64ZICSR_CSRRW:
+        case I_RV64ZICSR_CSRRS:
+        case I_RV64ZICSR_CSRRC:
+        case I_RV64ZICSR_CSRRWI:
+        case I_RV64ZICSR_CSRRSI:
+        case I_RV64ZICSR_CSRRCI: {
+            result = rv64i_zicsr_emulate(emulator, raw_instruction, instruction_tag);
+            break;
+        }
         // RV64M
         case I_RV64M_MUL:
         case I_RV64M_MULH:

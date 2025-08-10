@@ -10,6 +10,7 @@
 #include "shared/include/result.h"
 
 #include "rv64/rv64_registers.h"
+#include "rv64/rv64_control_status_registers.h"
 
 #include "rv64/rv64_instructions.h"
 
@@ -50,6 +51,7 @@
 
 typedef struct {
     registers_rv64_t registers;
+    rv64_control_status_registers_t control_status_registers;
     int instructions_count;
     // uint16_t stack_size; // using a size here in case i want to make this dynamic/resizable later.
     // uint16_t stack_top;

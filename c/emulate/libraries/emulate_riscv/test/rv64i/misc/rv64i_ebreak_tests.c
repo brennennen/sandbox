@@ -1,7 +1,8 @@
 /**
  * ebreak tests
  * `ebreak`
- * "External? Break" - ???
+ * "Environment Break" - Return control to a debugging environment.
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#ecall-ebreak
  */
 
 #include <stdio.h>

@@ -10,6 +10,10 @@
 
 #include "rv64/instructions/rv64i_base_integer.h"
 
+/*
+ * MARK: U-Type
+ */
+
 /**
  * lui - Load Upper Immediate.
  * `lui rd, imm`
@@ -63,6 +67,10 @@ static emu_result_t rv64i_emulate_upper_immediate(
     }
     return(ER_SUCCESS);
 }
+
+/*
+ * MARK: J-Type
+ */
 
 /**
  * jal - Jump and Link
@@ -121,6 +129,10 @@ static inline void rv64i_jalr(emulator_rv64_t* emulator, int32_t imm12, uint8_t 
     // TODO: does imm12 need to be left shifted 1 bit?
     emulator->registers.pc = emulator->registers.regs[rs1] + imm12;
 }
+
+/*
+ * MARK: B-Type
+ */
 
 /**
  * beq - Branch if EQual.
@@ -232,6 +244,10 @@ static emu_result_t rv64i_emulate_b_type(
     return(ER_SUCCESS);
 }
 
+/*
+ * MARK: S-Type
+ */
+
 static inline void rv64i_sb(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rs2) {
     uint64_t address = emulator->registers.regs[rs1] + imm12;
     emulator->memory[address] = emulator->registers.regs[rs2] & 0xFF;
@@ -306,6 +322,10 @@ static emu_result_t rv64i_emulate_s_type(
     }
     return(ER_SUCCESS);
 }
+
+/*
+ * MARK: I-Type
+ */
 
 /**
  * lb - Load Byte
@@ -634,6 +654,10 @@ static emu_result_t rv64i_emulate_shift_immediate(
     return(ER_SUCCESS);
 }
 
+/*
+ * MARK: R-Type
+ */
+
 static inline void rv64i_add(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
     emulator->registers.regs[rd] = emulator->registers.regs[rs1] + emulator->registers.regs[rs2];
 }
@@ -752,12 +776,16 @@ static emu_result_t rv64_emulate_register_register(
     return(ER_SUCCESS);
 }
 
+/*
+ * MARK: Misc
+ */
+
 static emu_result_t rv64i_fence(
     emulator_rv64_t* emulator,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
-    printf("%s:", __func__);
+    printf("%s:\n", __func__);
     // TODO: call registered callbacks? setup some defaults like prints?
     return(ER_SUCCESS);
 }
@@ -767,7 +795,7 @@ static emu_result_t rv64i_fence_tso(
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
-    printf("%s:", __func__);
+    printf("%s:\n", __func__);
     // TODO: call registered callbacks? setup some defaults like prints?
     return(ER_SUCCESS);
 }
@@ -777,7 +805,7 @@ static emu_result_t rv64i_pause(
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
-    printf("%s:", __func__);
+    printf("%s:\n", __func__);
     // TODO: call registered callbacks? setup some defaults like prints?
     return(ER_SUCCESS);
 }
@@ -787,7 +815,7 @@ static emu_result_t rv64i_ecall(
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
-    printf("%s:", __func__);
+    printf("%s:\n", __func__);
     // TODO: call registered callbacks? setup some defaults like prints?
     return(ER_SUCCESS);
 }
@@ -797,10 +825,14 @@ static emu_result_t rv64i_ebreak(
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
-    printf("%s:", __func__);
+    printf("%s:\n", __func__);
     // TODO: call registered callbacks? setup some defaults like prints?
     return(ER_SUCCESS);
 }
+
+/*
+ * MARK: RV64I Main
+ */
 
 emu_result_t rv64i_base_integer_emulate(
     emulator_rv64_t* emulator,
@@ -904,10 +936,136 @@ emu_result_t rv64i_base_integer_emulate(
             result = rv64i_ebreak(emulator, raw_instruction, tag);
             break;
         }
-
-        // todo: rv64i additional instructions
         default: {
             LOG(LOG_ERROR, "rv64i_base_integer_emulate: instruction not implemented");
+            return(ER_FAILURE);
+        }
+    }
+    return result;
+}
+
+/*
+ * MARK: Zicsr
+ */
+
+static inline void rv64i_csrrw(emulator_rv64_t* emulator, uint8_t csr, uint8_t rs1, uint8_t rd) {
+    // todo: if any threading is added, make atomic
+    uint64_t temp = emulator->registers.regs[rs1]; // need to use a temp incase rs1 and rd are the same register.
+    emulator->registers.regs[rd] = rv64_get_csr_value(&emulator->control_status_registers, csr);
+    rv64_set_csr_value(&emulator->control_status_registers, csr, temp);
+}
+
+static inline void rv64i_csrrs(emulator_rv64_t* emulator, uint8_t csr, uint8_t rs1, uint8_t rd) {
+    printf("%s:todo\n", __func__);
+}
+
+static inline void rv64i_csrrc(emulator_rv64_t* emulator, uint8_t csr, uint8_t rs1, uint8_t rd) {
+    printf("%s:todo\n", __func__);
+}
+
+static emu_result_t rv64i_csr_register(
+    emulator_rv64_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64_t tag
+) {
+    printf("%s:\n", __func__);
+    emu_result_t result = ER_FAILURE;
+
+    uint8_t csr = 0;
+    uint8_t rs1 = 0;
+    uint8_t rd = 0;
+
+    rv64_decode_csr_register(raw_instruction, &csr, &rs1, &rd);
+
+    switch(tag) {
+        case I_RV64ZICSR_CSRRW: {
+            rv64i_csrrw(emulator, csr, rs1, rd);
+            break;
+        }
+        case I_RV64ZICSR_CSRRS: {
+            rv64i_csrrs(emulator, csr, rs1, rd);
+            break;
+        }
+        case I_RV64ZICSR_CSRRC: {
+            rv64i_csrrc(emulator, csr, rs1, rd);
+            break;
+        }
+        default: {
+            LOG(LOG_ERROR, "%s: instruction not implemented", __func__);
+            return(ER_FAILURE);
+        }
+    }
+    return(ER_SUCCESS);
+}
+
+static inline void rv64i_csrrwi(emulator_rv64_t* emulator, uint8_t csr, uint8_t rs1, uint8_t rd) {
+    printf("%s:todo\n", __func__);
+}
+
+static inline void rv64i_csrrsi(emulator_rv64_t* emulator, uint8_t csr, uint8_t rs1, uint8_t rd) {
+    printf("%s:todo\n", __func__);
+}
+
+static inline void rv64i_csrrci(emulator_rv64_t* emulator, uint8_t csr, uint8_t rs1, uint8_t rd) {
+    printf("%s:todo\n", __func__);
+}
+
+static emu_result_t rv64i_csr_immediate(
+    emulator_rv64_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64_t tag
+) {
+    printf("%s:\n", __func__);
+    emu_result_t result = ER_FAILURE;
+
+    uint8_t csr = 0;
+    uint8_t rs1 = 0;
+    uint8_t rd = 0;
+
+    rv64_decode_csr_immediate(raw_instruction, &csr, &rs1, &rd);
+
+    switch(tag) {
+        case I_RV64ZICSR_CSRRWI: {
+            rv64i_csrrwi(emulator, csr, rs1, rd);
+            break;
+        }
+        case I_RV64ZICSR_CSRRSI: {
+            rv64i_csrrsi(emulator, csr, rs1, rd);
+            break;
+        }
+        case I_RV64ZICSR_CSRRCI: {
+            rv64i_csrrci(emulator, csr, rs1, rd);
+            break;
+        }
+        default: {
+            LOG(LOG_ERROR, "%s: instruction not implemented", __func__);
+            return(ER_FAILURE);
+        }
+    }
+    return(ER_SUCCESS);
+}
+
+emu_result_t rv64i_zicsr_emulate(
+    emulator_rv64_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64_t tag
+) {
+    emu_result_t result = ER_FAILURE;
+    switch(tag) {
+        case I_RV64ZICSR_CSRRW:
+        case I_RV64ZICSR_CSRRS:
+        case I_RV64ZICSR_CSRRC: {
+            result = rv64i_csr_register(emulator, raw_instruction, tag);
+            break;
+        }
+        case I_RV64ZICSR_CSRRWI:
+        case I_RV64ZICSR_CSRRSI:
+        case I_RV64ZICSR_CSRRCI: {
+            result = rv64i_csr_immediate(emulator, raw_instruction, tag);
+            break;
+        }
+        default: {
+            LOG(LOG_ERROR, "%s: instruction not implemented", __func__);
             return(ER_FAILURE);
         }
     }

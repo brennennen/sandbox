@@ -88,6 +88,7 @@ apt-get install binutils-arm-none-eabi
           * objdump displays as big-endian
           * retrieve the text section as a c array for embedding in tests:
           * `riscv64-unknown-elf-objcopy -O binary -j .text add.o /dev/stdout | xxd -i`
+          * `--disassembler-options=no-aliases` - disable pseudo instruction aliasing
     * link and test in qemu
       * `riscv64-unknown-elf-as -o add.o add.s`
       * `riscv64-unknown-elf-ld -Ttext=0x1000 -e _start -o add add.o`

@@ -271,7 +271,7 @@ emu_result_t rv64_disassemble_csr_register(
 
     rv64_decode_csr_register(raw_instruction, &csr, &rs1, &rd);
 
-    char* csr_name = rv64_get_csr_name(csr);
+    char* csr_name = rv64_csr_name_from_address(csr);
     char* rs1_name = rv64_map_register_name(rs1);
     char* rd_name = rv64_map_register_name(rd);
     char* tag_name = rv64_instruction_tag_mnemonic[tag];
@@ -300,7 +300,7 @@ emu_result_t rv64_disassemble_csr_immediate(
 
     rv64_decode_csr_immediate(raw_instruction, &csr, &uimm, &rd);
 
-    char* csr_name = rv64_get_csr_name(csr);
+    char* csr_name = rv64_csr_name_from_address(csr);
     char* rd_name = rv64_map_register_name(rd);
     char* tag_name = rv64_instruction_tag_mnemonic[tag];
 

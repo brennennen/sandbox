@@ -36,10 +36,20 @@ CSRs are associated with a privilege level, they can be accessed by that level a
   * CSR high level addressing:
     * Machine-mode: 0x7A0 - 0x7BF
       * 0x7B0 - 0x7BF are accessible in debug mode only.
-    *
 * 2.2 CSR Listing
-  * 0x000 - 0xFFF = 4k memory block
+  * 0x000 - 0xFFF = 4096 csrs
   * table 3. address ranges
   * tables 4 thru 8 - mapping of every csr (very important, will be referencing these a lot)
   * tables 9 thru 11 - TODO: what are these?
-*
+* 2.3 CSR Field Specifications
+  * skipping the rest of the "2.x" chapters on the first pass of the emulator
+  * 2.3.1 Reserved Writes Preserve Values, Read Ignore Values (WPRI)
+  * 2.3.2 Write/Read Only Legal Values (WLRL)
+  * 2.3.3 Write Any Values, Reads Legal Values (WARL)
+* 2.4 CSR Field Modulation
+* 2.5 Implicit Reads of CSRs
+* 2.6 CSR Width Modulation
+* 2.7 Explicit Accesses to CSRs Wider than XLEN
+  * return least significant XLEN bits when a register is larger than XLEN.
+# 3 Machine-Level ISA, Version 1.13
+* todo

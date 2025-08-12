@@ -949,18 +949,35 @@ emu_result_t rv64i_base_integer_emulate(
  */
 
 static inline void rv64i_csrrw(emulator_rv64_t* emulator, uint8_t csr, uint8_t rs1, uint8_t rd) {
-    // todo: if any threading is added, make atomic
-    uint64_t temp = emulator->registers.regs[rs1]; // need to use a temp incase rs1 and rd are the same register.
-    emulator->registers.regs[rd] = rv64_get_csr_value(&emulator->control_status_registers, csr);
-    rv64_set_csr_value(&emulator->control_status_registers, csr, temp);
+    uint64_t rs1_temp = emulator->registers.regs[rs1]; // need to use a local here incase rs1 and rd are the same register.
+    if (rd != 0) {
+        emulator->registers.regs[rd] = rv64_get_csr_value(&emulator->control_status_registers, csr);
+    }
+    rv64_set_csr_value(&emulator->control_status_registers, csr, rs1_temp);
 }
 
 static inline void rv64i_csrrs(emulator_rv64_t* emulator, uint8_t csr, uint8_t rs1, uint8_t rd) {
-    printf("%s:todo\n", __func__);
+    uint64_t rs1_mask = emulator->registers.regs[rs1]; // need to use a local here incase rs1 and rd are the same register.
+    uint64_t result = rv64_get_csr_value(&emulator->control_status_registers, csr);
+    if (rd != 0) {
+        emulator->registers.regs[rd] = result;
+    }
+    if (rs1 != 0) {
+        result = result ^ rs1_mask; // rs1 mask contains bits to clear
+        rv64_set_csr_value(&emulator->control_status_registers, csr, result);
+    }
 }
 
 static inline void rv64i_csrrc(emulator_rv64_t* emulator, uint8_t csr, uint8_t rs1, uint8_t rd) {
-    printf("%s:todo\n", __func__);
+    uint64_t rs1_mask = emulator->registers.regs[rs1]; // need to use a local here incase rs1 and rd are the same register.
+    uint64_t result = rv64_get_csr_value(&emulator->control_status_registers, csr);
+    if (rd != 0) {
+        emulator->registers.regs[rd] = result;
+    }
+    if (rs1 != 0) {
+        result = result & (~rs1_mask); // rs1 mask contains bits to clear
+        rv64_set_csr_value(&emulator->control_status_registers, csr, result);
+    }
 }
 
 static emu_result_t rv64i_csr_register(
@@ -968,7 +985,6 @@ static emu_result_t rv64i_csr_register(
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
-    printf("%s:\n", __func__);
     emu_result_t result = ER_FAILURE;
 
     uint8_t csr = 0;
@@ -998,16 +1014,33 @@ static emu_result_t rv64i_csr_register(
     return(ER_SUCCESS);
 }
 
-static inline void rv64i_csrrwi(emulator_rv64_t* emulator, uint8_t csr, uint8_t rs1, uint8_t rd) {
-    printf("%s:todo\n", __func__);
+static inline void rv64i_csrrwi(emulator_rv64_t* emulator, uint8_t csr, uint8_t uimm, uint8_t rd) {
+    if (rd != 0) {
+        emulator->registers.regs[rd] = rv64_get_csr_value(&emulator->control_status_registers, csr);
+    }
+    rv64_set_csr_value(&emulator->control_status_registers, csr, uimm);
 }
 
-static inline void rv64i_csrrsi(emulator_rv64_t* emulator, uint8_t csr, uint8_t rs1, uint8_t rd) {
-    printf("%s:todo\n", __func__);
+static inline void rv64i_csrrsi(emulator_rv64_t* emulator, uint8_t csr, uint8_t uimm, uint8_t rd) {
+    uint64_t result = rv64_get_csr_value(&emulator->control_status_registers, csr);
+    if (rd != 0) {
+        emulator->registers.regs[rd] = result;
+    }
+    if (uimm != 0) {
+        result = result ^ uimm;
+        rv64_set_csr_value(&emulator->control_status_registers, csr, result);
+    }
 }
 
-static inline void rv64i_csrrci(emulator_rv64_t* emulator, uint8_t csr, uint8_t rs1, uint8_t rd) {
-    printf("%s:todo\n", __func__);
+static inline void rv64i_csrrci(emulator_rv64_t* emulator, uint8_t csr, uint8_t uimm, uint8_t rd) {
+    uint64_t result = rv64_get_csr_value(&emulator->control_status_registers, csr);
+    if (rd != 0) {
+        emulator->registers.regs[rd] = result;
+    }
+    if (uimm != 0) {
+        result = result & (~uimm); // uimm mask contains bits to clear
+        rv64_set_csr_value(&emulator->control_status_registers, csr, result);
+    }
 }
 
 static emu_result_t rv64i_csr_immediate(
@@ -1019,22 +1052,22 @@ static emu_result_t rv64i_csr_immediate(
     emu_result_t result = ER_FAILURE;
 
     uint8_t csr = 0;
-    uint8_t rs1 = 0;
+    uint8_t uimm = 0;
     uint8_t rd = 0;
 
-    rv64_decode_csr_immediate(raw_instruction, &csr, &rs1, &rd);
+    rv64_decode_csr_immediate(raw_instruction, &csr, &uimm, &rd);
 
     switch(tag) {
         case I_RV64ZICSR_CSRRWI: {
-            rv64i_csrrwi(emulator, csr, rs1, rd);
+            rv64i_csrrwi(emulator, csr, uimm, rd);
             break;
         }
         case I_RV64ZICSR_CSRRSI: {
-            rv64i_csrrsi(emulator, csr, rs1, rd);
+            rv64i_csrrsi(emulator, csr, uimm, rd);
             break;
         }
         case I_RV64ZICSR_CSRRCI: {
-            rv64i_csrrci(emulator, csr, rs1, rd);
+            rv64i_csrrci(emulator, csr, uimm, rd);
             break;
         }
         default: {

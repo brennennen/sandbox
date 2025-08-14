@@ -13,9 +13,24 @@
 #include "rv64/instructions/rv64m_multiplication.h"
 
 
+static void set_default_machine_csrs(emulator_rv64_t* emulator) {
+    rv_mxl_t mxl = RV_MXL_64;
+    uint32_t extensions = 0;
+    extensions |= RV_EXTENSION_M;
+    // Machine Information Registers
+    rv64_csr_set_initial_mvendorid(&emulator->csrs, 0); // 0 = non-commercial implementation
+    rv64_csr_set_initial_marchid(&emulator->csrs, 0); // 0 = not implemented (seems to be the best option for an emulator?)
+    rv64_csr_set_initial_mimpid(&emulator->csrs, 0); // 0 = not implemented
+    rv64_csr_set_initial_mhartid(&emulator->csrs, 0); // 0 = main core (only core)
+    rv64_csr_set_initial_mconfigptr(&emulator->csrs, 0); // 0 = not implemented (format and schema not standardized yet, so not implementing)
+    // Machine Trap Setup
+    rv64_csr_set_initial_misa(&emulator->csrs, RV_MXL_64, extensions);
+    // ...
+}
 
 emu_result_t emu_rv64_init(emulator_rv64_t* emulator) {
     emulator->memory_size = MEMORY_SIZE;
+    set_default_machine_csrs(emulator);
     return(ER_SUCCESS);
 }
 

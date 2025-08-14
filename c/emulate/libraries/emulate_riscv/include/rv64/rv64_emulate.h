@@ -49,9 +49,9 @@
 #define PROGRAM_START 0x100 // address '0' is usually a forced segfault, write program to some
                             // offset above and leave bytes around 0 for error detection.
 
-typedef struct {
+typedef struct emulator_rv64_s {
     registers_rv64_t registers;
-    rv64_control_status_registers_t control_status_registers;
+    rv64_csrs_t csrs;
     int instructions_count;
     // uint16_t stack_size; // using a size here in case i want to make this dynamic/resizable later.
     // uint16_t stack_top;

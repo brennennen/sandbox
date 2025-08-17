@@ -58,9 +58,76 @@ uint64_t rv64_get_csr_value(rv64_csrs_t* csrs, int32_t address) {
         // Machine Trap Setup
         case 0x300: return(csrs->mstatus);
         case 0x301: return(csrs->misa);
-
-
-        // ...
+        case 0x302: return(csrs->medeleg);
+        case 0x303: return(csrs->mideleg);
+        case 0x304: return(csrs->mie);
+        case 0x305: return(csrs->mtvec);
+        case 0x306: return(csrs->mcounteren);
+        // Machine Counter Configuration
+        case 0x321: return(csrs->mcyclecfg);
+        case 0x322: return(csrs->minstretcfg);
+        // Machine Trap Handling
+        case 0x340: return(csrs->mscratch);
+        case 0x341: return(csrs->mepc);
+        case 0x342: return(csrs->mcause);
+        case 0x343: return(csrs->mtval);
+        case 0x344: return(csrs->mip);
+        case 0x34a: return(csrs->mtinst);
+        case 0x34b: return(csrs->mtval2);
+        // Machine Indirect
+        case 0x350: return(csrs->miselect);
+        case 0x351: return(csrs->mireg);
+        case 0x352: return(csrs->mireg2);
+        case 0x353: return(csrs->mireg3);
+        case 0x355: return(csrs->mireg4);
+        case 0x356: return(csrs->mireg5);
+        case 0x357: return(csrs->mireg6);
+        // Machine Configuration
+        case 0x30a: return(csrs->menvcfg);
+        case 0x747: return(csrs->mseccfg);
+        // Machine Memory Protection
+        case 0x3a0: return(csrs->pmpcfg0);
+        case 0x3a2: return(csrs->pmpcfg2);
+        // todo: pmpcfg 4 - 12
+        case 0x3ae: return(csrs->pmpcfg14);
+        case 0x3b1: return(csrs->pmpaddr0);
+        case 0x3b2: return(csrs->pmpaddr1);
+        // todo: pmpaddr 2 - 62
+        case 0x3ef: return(csrs->pmpaddr63);
+        // Machine State Enable Registers
+        case 0x30c: return(csrs->mstateen0);
+        case 0x30d: return(csrs->mstateen1);
+        case 0x30e: return(csrs->mstateen2);
+        case 0x30f: return(csrs->mstateen3);
+        // Machine Non-Maskable Interrupt Handling
+        case 0x740: return(csrs->mnscratch);
+        case 0x741: return(csrs->mnepc);
+        case 0x742: return(csrs->mncause);
+        case 0x744: return(csrs->mnstatus);
+        // Machine Counter/Timers
+        case 0xb00: return(csrs->mcycle);
+        case 0xb02: return(csrs->minstret);
+        case 0xb03: return(csrs->mhpmcounter3);
+        // todo: mhpmevent 4 - 30
+        case 0xb1f: return(csrs->mhpmcounter31);
+        // Machine Counter Setup
+        case 0x320: return(csrs->mcountinhibit);
+        case 0x323: return(csrs->mhpmevent3);
+        // todo: mhpmevent 4 - 30
+        case 0x33f: return(csrs->mhpmevent31);
+        // Machine Control Transfer Records Configuration
+        case 0x34e: return(csrs->mctrctl);
+        // Debug/Trace Registers
+        case 0x7a0: return(csrs->tselect);
+        case 0x7a1: return(csrs->tdata1);
+        case 0x7a2: return(csrs->tdata2);
+        case 0x7a3: return(csrs->tdata3);
+        case 0x7a8: return(csrs->mcontext);
+        // Debug Mode Registers
+        case 0x7b0: return(csrs->dcsr);
+        case 0x7b1: return(csrs->dpc);
+        case 0x7b2: return(csrs->dscratch0);
+        case 0x7b3: return(csrs->dscratch1);
         default: {
             // todo: log error
             return(0);
@@ -77,11 +144,33 @@ uint64_t rv64_get_csr_value(rv64_csrs_t* csrs, int32_t address) {
  * WARL (Write any values, reads legal values)
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/privileged/#misa
  */
-void rv64_csr_set_misa(uint64_t* misa_csr, uint64_t misa) {
+static void rv64_csr_set_misa(uint64_t* misa_csr, uint64_t misa) {
     misa = misa & 0x1fffffffffffffff; // top 2 bits are read only and top 3rd bit is always 0.
     // TODO: prefer "I" if both "I" and "E" are set (set I, clear E).
     // TODO: there are other requirements based on feature dependencies, see spec 3.1.1
     *misa_csr = misa;
+}
+
+
+
+static void rv64_csr_set_mstatus2(uint64_t* mstatus_csr, rv64_mstatus_t mstatus) {
+    //*mstatus_csr = 0;
+    // todo
+}
+
+/**
+ *
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/privileged/#_machine_status_mstatus_and_mstatush_registers
+ */
+static void rv64_csr_set_mstatus(uint64_t* mstatus_csr, uint64_t mstatus) {
+    *mstatus_csr = mstatus;
+}
+
+static void rv64_csr_set_mtvec(uint64_t* mtvec_csr, uint64_t mtvec) {
+    // 63 - 2: base
+    // 0 - 1: mode
+    // mode: 0 = direct, 1 = vectored
+    *mtvec_csr = mtvec;
 }
 
 void rv64_set_csr_value(rv64_csrs_t* csrs, int32_t address, uint64_t value) {
@@ -116,13 +205,19 @@ void rv64_set_csr_value(rv64_csrs_t* csrs, int32_t address, uint64_t value) {
         // mvendorid, marchid, mimpid, mhartid, and mconfigptr are all read only.
         // Machine Trap Setup
         case 0x300: {
-            csrs->mstatus = value;
+            rv64_csr_set_mstatus(&csrs->mstatus, value);
             break;
         }
         case 0x301: {
             rv64_csr_set_misa(&csrs->misa, value);
             break;
         }
+        // todo: medeleg, mideleg, mie
+        case 0x305: {
+            rv64_csr_set_mtvec(&csrs->mtvec, value);
+            break;
+        }
+
 
         // ...
         default: {

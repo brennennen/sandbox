@@ -13,6 +13,10 @@
 #include "rv64/instructions/rv64m_multiplication.h"
 
 
+/**
+ * RISCV defines which 
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/privileged/#reset
+ */
 static void set_default_machine_csrs(emulator_rv64_t* emulator) {
     rv_mxl_t mxl = RV_MXL_64;
     uint32_t extensions = 0;

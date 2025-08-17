@@ -13,8 +13,7 @@ void rv64_emu_mul_default_setup(void) {
     emu_rv64_init(&g_emulator);
 }
 
-// MARK: I_RV64M_MUL Tests
-Test(emu_rv64_emulate__I_RV64M_MUL__tests, mul_simple, .init = rv64_emu_mul_default_setup)
+Test(emu_rv64_emulate__mul__tests, mul_simple, .init = rv64_emu_mul_default_setup)
 {
     g_emulator.registers.regs[RV64_REG_T1] = 3;
     g_emulator.registers.regs[RV64_REG_T2] = 5; // 3 * 5 = 15
@@ -25,7 +24,7 @@ Test(emu_rv64_emulate__I_RV64M_MUL__tests, mul_simple, .init = rv64_emu_mul_defa
     cr_assert(15 == g_emulator.registers.regs[RV64_REG_T0]);
 }
 
-Test(emu_rv64_emulate__I_RV64M_MUL__tests, mul_overflow, .init = rv64_emu_mul_default_setup)
+Test(emu_rv64_emulate__mul__tests, mul_overflow, .init = rv64_emu_mul_default_setup)
 {
     g_emulator.registers.regs[RV64_REG_T1] = 0xFFFFFFFFFFFFFFFF; // max uint64_t
     g_emulator.registers.regs[RV64_REG_T2] = 2;

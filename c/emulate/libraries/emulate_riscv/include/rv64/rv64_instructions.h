@@ -159,9 +159,9 @@ typedef enum ENUM_PACK_ATTRIBUTE {
      * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#mstandard
      */
     I_RV64M_MUL, /** Multiply - Multiply 2 64-bit values together. */
-    I_RV64M_MULH, /** Multiply High - Multiply 2 64-bit values together, interprets the results of 128 bits and returns the upper/high 64 bits. */
-    I_RV64M_MULHSU, /** ??? */
-    I_RV64M_MULHU,
+    I_RV64M_MULH, /** Multiply High - Multiply 2 64-bit signed values together, interprets the result as 128 bits and returns the upper/high 64 bits. */
+    I_RV64M_MULHSU, /** Multiply High Signed by Unsigned - Multiply a 64-bit signed value with a 64-bit unsigned value, interprets the result as 128 bits and returns the upper/high 64 bits. */
+    I_RV64M_MULHU, /** Multiply High Unsigned - Multiply 2 64-bit unsigned values together, */
     I_RV64M_DIV,
     I_RV64M_DIVU,
     I_RV64M_REM,

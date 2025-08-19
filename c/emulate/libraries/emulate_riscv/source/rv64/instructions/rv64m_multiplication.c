@@ -164,30 +164,30 @@ static inline void rv64m_remu(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs
  * 32 bit mul
  */
 static inline void rv64m_mulw(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    // int32_t rs1_value = emulator->registers.regs[rs1];
-    // int32_t rs2_value = emulator->registers.regs[rs2];
-    // emulator->registers.regs[rd] = (int32_t) rs1_value * rs2_value;
+    int32_t rs1_value = emulator->registers.regs[rs1];
+    int32_t rs2_value = emulator->registers.regs[rs2];
+    emulator->registers.regs[rd] = (int32_t) rs1_value * rs2_value;
 }
 
 static inline void rv64m_divw(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    // int32_t rs1_value = emulator->registers.regs[rs1];
-    // int32_t rs2_value = emulator->registers.regs[rs2];
-    // emulator->registers.regs[rd] = (int32_t) rs1_value / rs2_value;
+    int32_t rs1_value = emulator->registers.regs[rs1];
+    int32_t rs2_value = emulator->registers.regs[rs2];
+    emulator->registers.regs[rd] = (int32_t) rs1_value / rs2_value;
 }
 
 static inline void rv64m_divuw(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    // uint32_t rs1_value = emulator->registers.regs[rs1];
-    // uint32_t rs2_value = emulator->registers.regs[rs2];
-    // emulator->registers.regs[rd] = (uint32_t) rs1_value / rs2_value;
+    uint32_t rs1_value = emulator->registers.regs[rs1];
+    uint32_t rs2_value = emulator->registers.regs[rs2];
+    emulator->registers.regs[rd] = (uint32_t) rs1_value / rs2_value;
 }
 
 // "REMW and REMUW are RV64 instructions that provide the corresponding signed and unsigned
 // remainder operations. Both REMW and REMUW always sign-extend the 32-bit result to 64 bits,
 // including on a divide by zero."
 static inline void rv64m_remw(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    // int32_t rs1_value = emulator->registers.regs[rs1];
-    // int32_t rs2_value = emulator->registers.regs[rs2];
-    // emulator->registers.regs[rd] = (int32_t) rs1_value % rs2_value;
+    int32_t rs1_value = emulator->registers.regs[rs1];
+    int32_t rs2_value = emulator->registers.regs[rs2];
+    emulator->registers.regs[rd] = (int32_t) rs1_value % rs2_value;
 }
 
 // "REMW and REMUW are RV64 instructions that provide the corresponding signed and unsigned

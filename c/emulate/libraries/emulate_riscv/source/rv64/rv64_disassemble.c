@@ -11,6 +11,8 @@
 #include "rv64/rv64_decode.h"
 #include "rv64/rv64_disassemble.h"
 
+#include "rv64/disassemble/rv64a_atomic_disassemble.h"
+
 emu_result_t rv64_disassemble_init(emulator_rv64_t* emulator) {
     emulator->memory_size = MEMORY_SIZE;
     return(ER_SUCCESS);
@@ -207,7 +209,6 @@ emu_result_t rv64_disassemble_shift_immediate(
     *index += written;
     return(ER_SUCCESS);
 }
-
 
 emu_result_t rv64_disassemble_register_register(
     emulator_rv64_t* emulator,
@@ -625,6 +626,32 @@ static result_iter_t emu_rv64_disassemble_next(
             break;
         }
         // RV64A
+        case I_RV64ZALRSC_LR_W:
+        case I_RV64ZALRSC_SC_W:
+        case I_RV64ZAWRS_AMOSWAP_W:
+        case I_RV64ZAWRS_AMOADD_W:
+        case I_RV64ZAWRS_AMOXOR_W:
+        case I_RV64ZAWRS_AMOAND_W:
+        case I_RV64ZAWRS_AMOOR_W:
+        case I_RV64ZAWRS_AMOMIN_W:
+        case I_RV64ZAWRS_AMOMAX_W:
+        case I_RV64ZAWRS_AMOMINU_W:
+        case I_RV64ZAWRS_AMOMAXU_W:
+        case I_RV64ZALRSC_LR_D:
+        case I_RV64ZALRSC_SC_D:
+        case I_RV64ZAWRS_AMOSWAP_D:
+        case I_RV64ZAWRS_AMOADD_D:
+        case I_RV64ZAWRS_AMOXOR_D:
+        case I_RV64ZAWRS_AMOAND_D:
+        case I_RV64ZAWRS_AMOOR_D:
+        case I_RV64ZAWRS_AMOMIN_D:
+        case I_RV64ZAWRS_AMOMAX_D:
+        case I_RV64ZAWRS_AMOMINU_D:
+        case I_RV64ZAWRS_AMOMAXU_D: {
+            result = rv64a_atomic_disassemble(emulator, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
+            break;
+        }
+
         // RV64F
         case I_RV64F_FLW: {
             // todo: separate file?

@@ -148,6 +148,25 @@ static inline void rv64_decode_csr_immediate(
 }
 
 /**
+ * MARK: RV64A
+ */
+static inline void rv64a_decode_atomic(
+    uint32_t raw_instruction,
+    uint8_t* aq,
+    uint8_t* rl,
+    uint8_t* rs2,
+    uint8_t* rs1,
+    uint8_t* rd
+) {
+    *aq = (raw_instruction >> 26) & 0b1;
+    *rl = (raw_instruction >> 25) & 0b1;
+    *rs2 = (raw_instruction >> 20) & 0b11111;
+    *rs1 = (raw_instruction >> 15) & 0b11111;
+    *rd = (raw_instruction >> 7) & 0b11111;
+}
+
+
+/**
  * MARK: RV64V
  */
 

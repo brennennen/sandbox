@@ -189,7 +189,7 @@ typedef enum ENUM_PACK_ATTRIBUTE {
      * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#sec:lrsc
      */
     I_RV64ZALRSC_LR_W, /** Load-Reserved Word */
-    I_RV64ZALRSC_SC_W, /** Store-Conditional */
+    I_RV64ZALRSC_SC_W, /** Store-Conditional Word */
     I_RV64ZALRSC_LR_D,
     I_RV64ZALRSC_SC_D,
 
@@ -197,24 +197,24 @@ typedef enum ENUM_PACK_ATTRIBUTE {
      * MARK: RV64Zaamo
      * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#sec:amo
      */
-    I_RV64ZAWRS_AMOSWAP_W, /** Atomic Swap */
-    I_RV64ZAWRS_AMOADD_W,
-    I_RV64ZAWRS_AMOXOR_W,
-    I_RV64ZAWRS_AMOAND_W,
-    I_RV64ZAWRS_AMOOR_W,
-    I_RV64ZAWRS_AMOMIN_W,
-    I_RV64ZAWRS_AMOMAX_W,
-    I_RV64ZAWRS_AMOMINU_W,
-    I_RV64ZAWRS_AMOMAXU_W,
-    I_RV64ZAWRS_AMOSWAP_D,
-    I_RV64ZAWRS_AMOADD_D,
-    I_RV64ZAWRS_AMOXOR_D,
-    I_RV64ZAWRS_AMOAND_D,
-    I_RV64ZAWRS_AMOOR_D,
-    I_RV64ZAWRS_AMOMIN_D,
-    I_RV64ZAWRS_AMOMAX_D,
-    I_RV64ZAWRS_AMOMINU_D,
-    I_RV64ZAWRS_AMOMAXU_D,
+    I_RV64ZAAMO_AMOSWAP_W, /** Atomic Swap */
+    I_RV64ZAAMO_AMOADD_W,
+    I_RV64ZAAMO_AMOXOR_W,
+    I_RV64ZAAMO_AMOAND_W,
+    I_RV64ZAAMO_AMOOR_W,
+    I_RV64ZAAMO_AMOMIN_W,
+    I_RV64ZAAMO_AMOMAX_W,
+    I_RV64ZAAMO_AMOMINU_W,
+    I_RV64ZAAMO_AMOMAXU_W,
+    I_RV64ZAAMO_AMOSWAP_D,
+    I_RV64ZAAMO_AMOADD_D,
+    I_RV64ZAAMO_AMOXOR_D,
+    I_RV64ZAAMO_AMOAND_D,
+    I_RV64ZAAMO_AMOOR_D,
+    I_RV64ZAAMO_AMOMIN_D,
+    I_RV64ZAAMO_AMOMAX_D,
+    I_RV64ZAAMO_AMOMINU_D,
+    I_RV64ZAAMO_AMOMAXU_D,
 
     /*
      * MARK: Zawrs
@@ -682,7 +682,7 @@ static char rv64_instruction_tag_mnemonic[][16] = {
     "amomax.d",
     "amominu.d",
     "amomaxu.d",
-    // RV64Zawrs
+    // RV64ZAAMO
     "wrs.nto",
     "wrs.sto",
     // RV64Zacas

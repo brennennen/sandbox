@@ -25,30 +25,23 @@ emu_result_t rv64a_atomic_disassemble(
     size_t buffer_size
 ) {
     emu_result_t result = ER_FAILURE;
-    // looks like all atomic instructions have the same decode format, probably don't
-    // need a switch case
-
-    uint8_t aq = 0;
-    uint8_t rl = 0;
+    uint8_t aquire = 0;
+    uint8_t release = 0;
     uint8_t rs2 = 0;
     uint8_t rs1 = 0;
     uint8_t rd = 0;
-    rv64a_decode_atomic(raw_instruction, &aq, &rl, &rs2, &rs1, &rd);
+    rv64a_decode_atomic(raw_instruction, &aquire, &release, &rs2, &rs1, &rd);
 
-    printf("rv64a_atomic_disassemble: aq: %d, rl: %d, rs2: %d, rs1: %d, rd: %d\n",
-        aq, rl, rs2, rs1, rd);
+    printf("rv64a_atomic_disassemble: aquire: %d, release: %d, rs2: %d, rs1: %d, rd: %d\n",
+        aquire, release, rs2, rs1, rd);
 
-    // amoswap.w t0, t1, (t2)\n
-    // rv64a_atomic_disassemble: aq: 0, rl: 0, rs2: 0, rs1: 10, rd: 0
-    // test fails as: amoswap.w zero, a0, (zero)
-    // TODO: why is t0 and t2 being encoded as x0?
     char* rs1_name = rv64_map_register_name(rs1);
     char* rs2_name = rv64_map_register_name(rs2);
     char* rd_name = rv64_map_register_name(rd);
     char* tag_name = rv64_instruction_tag_mnemonic[tag];
 
     int written = snprintf(buffer + *index, buffer_size - *index,
-        "%s %s, %s, (%s)", tag_name, rd_name, rs1_name, rs2_name);
+        "%s %s, %s, (%s)", tag_name, rd_name, rs2_name, rs1_name);
 
     if (written < 0) {
         return(ER_FAILURE);

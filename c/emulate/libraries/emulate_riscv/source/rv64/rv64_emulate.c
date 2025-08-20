@@ -11,10 +11,11 @@
 
 #include "rv64/instructions/rv64i_base_integer.h"
 #include "rv64/instructions/rv64m_multiplication.h"
+#include "rv64/instructions/rv64a_atomic.h"
 
 
 /**
- * RISCV defines which 
+ * RISCV defines which
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/privileged/#reset
  */
 static void set_default_machine_csrs(emulator_rv64_t* emulator) {
@@ -218,6 +219,31 @@ static result_iter_t emu_rv64_emulate_next(emulator_rv64_t* emulator) {
             break;
         }
         // RV64A
+        case I_RV64ZALRSC_LR_W:
+        case I_RV64ZALRSC_SC_W:
+        case I_RV64ZAAMO_AMOSWAP_W:
+        case I_RV64ZAAMO_AMOADD_W:
+        case I_RV64ZAAMO_AMOXOR_W:
+        case I_RV64ZAAMO_AMOAND_W:
+        case I_RV64ZAAMO_AMOOR_W:
+        case I_RV64ZAAMO_AMOMIN_W:
+        case I_RV64ZAAMO_AMOMAX_W:
+        case I_RV64ZAAMO_AMOMINU_W:
+        case I_RV64ZAAMO_AMOMAXU_W:
+        case I_RV64ZALRSC_LR_D:
+        case I_RV64ZALRSC_SC_D:
+        case I_RV64ZAAMO_AMOSWAP_D:
+        case I_RV64ZAAMO_AMOADD_D:
+        case I_RV64ZAAMO_AMOXOR_D:
+        case I_RV64ZAAMO_AMOAND_D:
+        case I_RV64ZAAMO_AMOOR_D:
+        case I_RV64ZAAMO_AMOMIN_D:
+        case I_RV64ZAAMO_AMOMAX_D:
+        case I_RV64ZAAMO_AMOMINU_D:
+        case I_RV64ZAAMO_AMOMAXU_D: {
+            result = rv64a_atomic_emulate(emulator, raw_instruction, instruction_tag);
+            break;
+        }
         // ...
         // RV64V
         case I_RV64V_VSETVLI:

@@ -628,26 +628,26 @@ static result_iter_t emu_rv64_disassemble_next(
         // RV64A
         case I_RV64ZALRSC_LR_W:
         case I_RV64ZALRSC_SC_W:
-        case I_RV64ZAWRS_AMOSWAP_W:
-        case I_RV64ZAWRS_AMOADD_W:
-        case I_RV64ZAWRS_AMOXOR_W:
-        case I_RV64ZAWRS_AMOAND_W:
-        case I_RV64ZAWRS_AMOOR_W:
-        case I_RV64ZAWRS_AMOMIN_W:
-        case I_RV64ZAWRS_AMOMAX_W:
-        case I_RV64ZAWRS_AMOMINU_W:
-        case I_RV64ZAWRS_AMOMAXU_W:
+        case I_RV64ZAAMO_AMOSWAP_W:
+        case I_RV64ZAAMO_AMOADD_W:
+        case I_RV64ZAAMO_AMOXOR_W:
+        case I_RV64ZAAMO_AMOAND_W:
+        case I_RV64ZAAMO_AMOOR_W:
+        case I_RV64ZAAMO_AMOMIN_W:
+        case I_RV64ZAAMO_AMOMAX_W:
+        case I_RV64ZAAMO_AMOMINU_W:
+        case I_RV64ZAAMO_AMOMAXU_W:
         case I_RV64ZALRSC_LR_D:
         case I_RV64ZALRSC_SC_D:
-        case I_RV64ZAWRS_AMOSWAP_D:
-        case I_RV64ZAWRS_AMOADD_D:
-        case I_RV64ZAWRS_AMOXOR_D:
-        case I_RV64ZAWRS_AMOAND_D:
-        case I_RV64ZAWRS_AMOOR_D:
-        case I_RV64ZAWRS_AMOMIN_D:
-        case I_RV64ZAWRS_AMOMAX_D:
-        case I_RV64ZAWRS_AMOMINU_D:
-        case I_RV64ZAWRS_AMOMAXU_D: {
+        case I_RV64ZAAMO_AMOSWAP_D:
+        case I_RV64ZAAMO_AMOADD_D:
+        case I_RV64ZAAMO_AMOXOR_D:
+        case I_RV64ZAAMO_AMOAND_D:
+        case I_RV64ZAAMO_AMOOR_D:
+        case I_RV64ZAAMO_AMOMIN_D:
+        case I_RV64ZAAMO_AMOMAX_D:
+        case I_RV64ZAAMO_AMOMINU_D:
+        case I_RV64ZAAMO_AMOMAXU_D: {
             result = rv64a_atomic_disassemble(emulator, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
             break;
         }

@@ -139,4 +139,54 @@ Compiled PDF Link: https://drive.google.com/file/d/1uviu1nH-tScFfgrovvFCrj7Omv8t
   * `czero.eqz rd, rs1, rs2`
   * `czero.nez rd, rs1, rs2`
 ### 12. "M" - Integer Multiplication and Division
-* TODO: pickup here
+* standard multiplication and division
+* dividend = divisor * quotient + remainder
+* division edge cases (divide by 0, overflow) described in table 11, in section 12.2
+  * unsigned:
+    * divide by 0, return max uint
+  * signed:
+    * divide by 0, return -1
+    * signed division overflow, return lowest negative number
+  * also return certain values for the remainders for each of these cases, see table.
+* Zmmul is a module that just implements multiplication and skips division
+
+### 13. "A" Extension for Atomic Instructions
+* 2 forms of atomic instructions
+  * load-reserved/store-conditional (Zalrsc)
+  * atomic fetch-and-op memory (Zaamo)
+* RCsc - Release Consistency with Sequentially Consistent Synchronization
+* 13.1 Specifying Ordering of Atomic Instructions
+  * Address space is divided into memory and I/O domains
+    * use fence to force order access in one or both domains
+  * `aq` (aquire) and `rl` (release)
+    * For efficient release consistency, each atomic instruction has 2 bits
+    * The bits order accesses to one of the two address domains: memory or i/o
+    * if both bits are clear, no additional ordering constraints are imposed
+    * if only `aq` is set: the operation is treated as an aquire access.
+      * i.e., no following memory operaitons on this hart can be observed to take place before the aquire memory operation.
+    * if only `rl` is set: the operation is treated as a release access.
+      * i.e., the release memory operation cannot be observed to take place before any earlier memory operations.
+    * if both `aq` and `rl` are set:
+      * the atomic memory operation is "sequentially consistent" and cannot be observed to happen before any earlier memory operations or after any later memory operations.
+    * The obtuse verbiage around "can(not) be observed" is probably related to cpu instruction re-ordering stuff. I don't plan to implement this in the emulator and can probably ignore most of these features.
+* 13.2 "Zalrsc" Extension for Load-Reserved/Store-Conditional Instructions
+  * `lr` - Load Reserved
+    * `lr.w` - Loads a word from the address in rs1, places the sign-extended value in rd, and regsiters a "reservation set".
+      * "reservation set" - A set of bytes that subsumes the bytes in the addressed word.
+  * `sc` - Store Conditional
+    * `sc.w` - Conditionally writes a word in rs2 to the address in rs1. The `sc.w` succeeds only if the reservation is still valid and the reservation set contains the bytes being written.
+      * If the `sc.w` succeeds, the instruction writes the word in rs2 to memory, and it writes zero to rd.
+      * if the `sc.w` fails, the instruction does not write to memory, and it writes a nonzero value to rd.
+      * No `sc.w` instruction shall retire unless it passes memory permission checks (side-effects may still occur though).
+      * a failed `sc.w` may be trated like a store.
+      * executing a `sc.w` invalidates any reservation currently held.
+  * lr.d and sc.d are the same but for doublewords.
+  * lr.w and sc.d sign extend the value placed in rd.
+  * there is debate around the "CAS" (compare and swap) and "LR/SC" models (both used to build lock-free data structures). riscv chose the lr/sc model
+    * x86 implements "CAS" and the difference here may cause porting issues
+  * the failure code with value 1 encodes an unspecified failure. other codes are reserved but portable software should only assume the code will be non-zero.
+  * atomicity axiom: section 17.1
+
+
+
+

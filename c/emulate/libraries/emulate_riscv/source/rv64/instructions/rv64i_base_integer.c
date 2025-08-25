@@ -941,7 +941,7 @@ emu_result_t rv64i_base_integer_emulate(
             return(ER_FAILURE);
         }
     }
-    return result;
+    return(result);
 }
 
 /*

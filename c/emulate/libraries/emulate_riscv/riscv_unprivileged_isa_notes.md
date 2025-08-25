@@ -186,7 +186,15 @@ Compiled PDF Link: https://drive.google.com/file/d/1uviu1nH-tScFfgrovvFCrj7Omv8t
     * x86 implements "CAS" and the difference here may cause porting issues
   * the failure code with value 1 encodes an unspecified failure. other codes are reserved but portable software should only assume the code will be non-zero.
   * atomicity axiom: section 17.1
-
-
+* 13.3
+* 13.4 "Zaamo" Extension for Atomic Memory Operations
+  * AMO = Atomic Memory Operation
+  * load data from address in rs1, place the value into rd, and perform a binary operator to the loaded value and rs2.
+  * always sign-extend rd, for "W" word instructions, ignore upper 32 bits of rs2
+  * address accessed needs to be naturally aligned to the size of the operand.
+    * if not aligned, raise an address-misaligned exception or an access-fault exception
+  * TODO: read the "Misaligned atomicity granule PMA" in volume 2 (priviledged spec)
+* 14 "Zawrs" Extension for Wait-on-Reservation-Set instructions
+  *
 
 

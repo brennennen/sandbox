@@ -157,10 +157,11 @@ Test(emu_rv64_decode_tag_tests, decode_instruction_tests) {
     // RV64Q
     // ...
     // MARK: RV64V
-    // vector load/store
+    // vector configuration
     cr_assert(I_RV64V_VSETVLI == rv64_decode_instruction_tag(0x0d06f757)); // vsetvli a4, a3, e32, m1, ta, ma
     cr_assert(I_RV64V_VSETIVLI == rv64_decode_instruction_tag(0xc804f2d7)); // vsetivli t0, 9, e8, m1, tu, ma
     cr_assert(I_RV64V_VSETVL == rv64_decode_instruction_tag(0x81fe7ed7)); // vsetvl t4, t3, t6
+   // vector load/store
     cr_assert(I_RV64V_VLE64_V == rv64_decode_instruction_tag(0x0205f087)); // vle64.v v0, (a0)
     cr_assert(I_RV64V_VLE32_V == rv64_decode_instruction_tag(0x02056007)); // vle32.v v0, (a0)
     cr_assert(I_RV64V_VLE16_V == rv64_decode_instruction_tag(0x0205d087)); // vle16.v v0, (a0)

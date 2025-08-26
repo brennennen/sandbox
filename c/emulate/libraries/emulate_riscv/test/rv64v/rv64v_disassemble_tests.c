@@ -19,7 +19,7 @@ void rv64v_disassemble_default_setup(void) {
         "expected:\n'%s'\n\nactual:\n'%s'\n", expected, actual);
 
 // MARK: avl and vtype csr configuration tests
-Test(emu_rv64v_disassemble__I_RV64V_VSETVLI__tests, vsetvli_1, .init = rv64v_disassemble_default_setup)
+Test(emu_rv64v_disassemble__vsetvli__tests, vsetvli_1, .init = rv64v_disassemble_default_setup)
 {
     char* expected = "vsetvli a4, a3, e32, m1, ta, ma\n";
     uint8_t input[] = { 0x57, 0xf7, 0x06, 0x0d };
@@ -29,5 +29,97 @@ Test(emu_rv64v_disassemble__I_RV64V_VSETVLI__tests, vsetvli_1, .init = rv64v_dis
     cr_assert(1 == g_emulator.instructions_count);
     ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
 }
+
+// MARK: load and store
+// load unit stride
+Test(emu_rv64v_disassemble__vle8_v__tests, vle8_v_1, .init = rv64v_disassemble_default_setup)
+{
+    char* expected = "vle8.v v0, (a0)\n";
+    uint8_t input[] = { 0x07, 0x00, 0x05, 0x02 };
+    char output[64] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+Test(emu_rv64v_disassemble__vle16_v__tests, vle16_v_1, .init = rv64v_disassemble_default_setup)
+{
+    char* expected = "vle16.v v0, (a0)\n";
+    uint8_t input[] = { 0x07, 0x50, 0x05, 0x02 };
+    char output[64] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+Test(emu_rv64v_disassemble__vle32_v__tests, vle32_v_1, .init = rv64v_disassemble_default_setup)
+{
+    char* expected = "vle32.v v0, (a0)\n";
+    uint8_t input[] = { 0x07, 0x60, 0x05, 0x02 };
+    char output[64] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+Test(emu_rv64v_disassemble__vle64_v__tests, vle64_v_1, .init = rv64v_disassemble_default_setup)
+{
+    char* expected = "vle64.v v0, (a0)\n";
+    uint8_t input[] = { 0x07, 0x70, 0x05, 0x02 };
+    char output[64] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+// store unit stride
+Test(emu_rv64v_disassemble__vse8_v__tests, vse8_v_1, .init = rv64v_disassemble_default_setup)
+{
+    char* expected = "vse8.v v0, (a0)\n";
+    uint8_t input[] = { 0x27, 0x00, 0x05, 0x02 };
+    char output[64] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+Test(emu_rv64v_disassemble__vse16_v__tests, vse16_v_1, .init = rv64v_disassemble_default_setup)
+{
+    char* expected = "vse16.v v0, (a0)\n";
+    uint8_t input[] = { 0x27, 0x50, 0x05, 0x02 };
+    char output[64] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+Test(emu_rv64v_disassemble__vse32_v__tests, vse32_v_1, .init = rv64v_disassemble_default_setup)
+{
+    char* expected = "vse32.v v0, (a0)\n";
+    uint8_t input[] = { 0x27, 0x60, 0x05, 0x02 };
+    char output[64] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+Test(emu_rv64v_disassemble__vse64_v__tests, vse64_v_1, .init = rv64v_disassemble_default_setup)
+{
+    char* expected = "vse64.v v0, (a0)\n";
+    uint8_t input[] = { 0x27, 0x70, 0x05, 0x02 };
+    char output[64] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
 
 // MARK: vector arithmetic tests

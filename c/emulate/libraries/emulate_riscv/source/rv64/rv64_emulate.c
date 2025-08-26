@@ -74,7 +74,45 @@ char* rv64_map_register_name(uint8_t reg_id) {
         case(29): return("t4");
         case(30): return("t5");
         case(31): return("t6");
-        default: return("reg?");
+        default: return("r??");
+    }
+}
+
+char* rv64_map_vector_register_name(uint8_t vector_reg_id) {
+    switch(vector_reg_id) {
+        case(0): return("v0");
+        case(1): return("v1");
+        case(2): return("v2");
+        case(3): return("v3");
+        case(4): return("v4");
+        case(5): return("v5");
+        case(6): return("v6");
+        case(7): return("v7");
+        case(8): return("v8");
+        case(9): return("v9");
+        case(10): return("v10");
+        case(11): return("v11");
+        case(12): return("v12");
+        case(13): return("v13");
+        case(14): return("v14");
+        case(15): return("v15");
+        case(16): return("v16");
+        case(17): return("v17");
+        case(18): return("v18");
+        case(19): return("v19");
+        case(20): return("v20");
+        case(21): return("v21");
+        case(22): return("v22");
+        case(23): return("v23");
+        case(24): return("v24");
+        case(25): return("v25");
+        case(26): return("v26");
+        case(27): return("v27");
+        case(28): return("v28");
+        case(29): return("v29");
+        case(30): return("v30");
+        case(31): return("v31");
+        default: return("v??");
     }
 }
 

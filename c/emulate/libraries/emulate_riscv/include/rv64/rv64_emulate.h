@@ -63,6 +63,7 @@ typedef struct emulator_rv64_s {
 emu_result_t emu_rv64_init(emulator_rv64_t* emulator);
 
 char* rv64_map_register_name(uint8_t reg_id);
+char* rv64_map_vector_register_name(uint8_t vector_reg_id);
 char* rv64_map_instruction_tag_mnemonic(instruction_tag_rv64_t tag);
 
 void debug_print_registers(emulator_rv64_t* emulator);

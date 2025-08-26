@@ -12,6 +12,7 @@
 #include "rv64/rv64_disassemble.h"
 
 #include "rv64/disassemble/rv64a_atomic_disassemble.h"
+#include "rv64/disassemble/rv64v_vector_disassemble.h"
 
 emu_result_t rv64_disassemble_init(emulator_rv64_t* emulator) {
     emulator->memory_size = MEMORY_SIZE;
@@ -315,136 +316,6 @@ emu_result_t rv64_disassemble_csr_immediate(
     return(ER_SUCCESS);
 }
 
-/**
- * MARK: RV64V
- */
-
-char* rv64v_map_vsew_name(uint8_t vsew) {
-    switch(vsew) {
-        case(0b000): return("e8");
-        case(0b001): return("e16");
-        case(0b010): return("e32");
-        case(0b011): return("e64");
-        default: return("?");
-    }
-}
-
-char* rv64v_map_vlmul_name(uint8_t vlmul) {
-    switch(vlmul) {
-        case(0b000): return("m1");
-        case(0b001): return("m2");
-        case(0b010): return("m4");
-        case(0b011): return("m8");
-        case(0b100): return("?");
-        case(0b101): return("?");
-        case(0b110): return("?");
-        default: return("?");
-    }
-}
-
-/**
- * @see 30.6.1 vtype encoding (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vtype_encoding)
- */
-emu_result_t rv64v_disassemble_vsetvli_vtypei(
-    emulator_rv64_t* emulator,
-    uint16_t vtypei,
-    char* buffer,
-    int* index,
-    size_t buffer_size
-) {
-    uint8_t vill = 0;
-    uint8_t vma = 0;
-    uint8_t vta = 0;
-    uint8_t vsew = 0;
-    uint8_t vlmul = 0;
-    rv64v_decode_vsetvli_vtypei(vtypei, &vill, &vma, &vta, &vsew, &vlmul);
-
-    char* vsew_name = rv64v_map_vsew_name(vsew);
-    char* vlmul_name = rv64v_map_vlmul_name(vlmul);
-    char* vma_name = "ma";
-    if (vma == 0) {
-        vma_name = "mu";
-    }
-    char* vta_name = "ta";
-    if (vta == 0) {
-        vta_name = "tu";
-    }
-
-    int written = snprintf(buffer + *index, buffer_size - *index,
-        "%s, %s, %s, %s", vsew_name, vlmul_name, vta_name, vma_name);
-    if (written < 0) {
-        return(ER_FAILURE);
-    }
-    *index += written;
-    return(ER_SUCCESS);
-}
-
-emu_result_t rv64v_disassemble_vsetvli(
-    emulator_rv64_t* emulator,
-    uint32_t raw_instruction,
-    instruction_tag_rv64_t tag,
-    char* buffer,
-    int* index,
-    size_t buffer_size
-) {
-    uint8_t rs1 = 0;
-    uint8_t rd = 0;
-    uint16_t vtypei = 0;
-    rv64v_decode_vsetvli(raw_instruction, &rs1, &rd, &vtypei);
-
-    char* rs1_name = rv64_map_register_name(rs1);
-    char* rd_name = rv64_map_register_name(rd);
-    char* tag_name = rv64_instruction_tag_mnemonic[tag];
-
-    int written = snprintf(buffer + *index, buffer_size - *index,
-        "%s %s, %s, ", tag_name, rs1_name, rd_name);
-    if (written < 0) {
-        return(ER_FAILURE);
-    }
-    *index += written;
-    return(rv64v_disassemble_vsetvli_vtypei(emulator, vtypei, buffer, index, buffer_size));
-}
-
-emu_result_t rv64v_disassemble_vsetivli(
-    emulator_rv64_t* emulator,
-    uint32_t raw_instruction,
-    instruction_tag_rv64_t tag,
-    char* buffer,
-    int* index,
-    size_t buffer_size
-) {
-    // TODO
-    return(ER_FAILURE);
-}
-
-emu_result_t rv64v_disassemble_vsetvl(
-    emulator_rv64_t* emulator,
-    uint32_t raw_instruction,
-    instruction_tag_rv64_t tag,
-    char* buffer,
-    int* index,
-    size_t buffer_size
-) {
-    // TODO
-    return(ER_FAILURE);
-}
-
-emu_result_t rv64v_disassemble_opivv(
-    emulator_rv64_t* emulator,
-    uint32_t raw_instruction,
-    instruction_tag_rv64_t tag,
-    char* buffer,
-    int* index,
-    size_t buffer_size
-) {
-    uint8_t vs1 = 0;
-    uint8_t vs2 = 0;
-    uint8_t vd = 0;
-    uint8_t vm = 0;
-
-    rv64v_decode_opivv(raw_instruction, &vs1, &vs2, &vd, &vm);
-    // todo
-}
 
 /**
  * MARK: MAIN
@@ -658,21 +529,25 @@ static result_iter_t emu_rv64_disassemble_next(
         }
         // RV64D
         // RV64Q
+        // ...
         // RV64V
-        // todo: vector admin/setup
-        case I_RV64V_VSETVLI: {
-            result = rv64v_disassemble_vsetvli(emulator, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
+        // vector admin/config
+        case I_RV64V_VSETVLI:
+        case I_RV64V_VSETIVLI:
+        case I_RV64V_VSETVL:
+        // vector load
+        case I_RV64V_VLE8_V:
+        case I_RV64V_VLE16_V:
+        case I_RV64V_VLE32_V:
+        case I_RV64V_VLE64_V:
+        // vector store
+        case I_RV64V_VSE8_V:
+        case I_RV64V_VSE16_V:
+        case I_RV64V_VSE32_V:
+        case I_RV64V_VSE64_V: {
+            result = rv64v_vector_disassemble(emulator, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
             break;
         }
-        case I_RV64V_VSETIVLI: {
-            result = rv64v_disassemble_vsetivli(emulator, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
-            break;
-        }
-        case I_RV64V_VSETVL: {
-            result = rv64v_disassemble_vsetvl(emulator, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
-            break;
-        }
-        // todo: vector load and store
         // todo: vector arithmetic
         case I_RV64V_VADD_VV:
         case I_RV64V_VADD_VX:

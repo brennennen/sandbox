@@ -618,8 +618,8 @@ instruction_tag_rv64_t rv64_decode_instruction_tag(uint32_t instruction) {
                 // 30.10
                 case 0b000: { // OPIVV
                     switch(funct6) {
-                        case 0b000000: return(I_RV64V_VADD_VV);
-                        case 0b000010: return(I_RV64V_VSUB_VV);
+                        case 0b000000: return(I_RV64V_VADD_IVV);
+                        case 0b000010: return(I_RV64V_VSUB_IVV);
                         default: return(I_RV64_INVALID);
                     }
                 }
@@ -627,17 +627,17 @@ instruction_tag_rv64_t rv64_decode_instruction_tag(uint32_t instruction) {
                 case 0b010: return(I_RV64_INVALID); // OPMVV - TODO
                 case 0b011: { // OPIVI
                     switch(funct6) {
-                        case 0b000000: return(I_RV64V_VADD_VI);
-                        case 0b000011: return(I_RV64V_VRSUB_VI);
+                        case 0b000000: return(I_RV64V_VADD_IVI);
+                        case 0b000011: return(I_RV64V_VRSUB_IVI);
                         default: return(I_RV64_INVALID);
                     }
                     return(I_RV64_INVALID);
                 }
                 case 0b100: { // OPIVX
                     switch(funct6) {
-                        case 0b000000: return(I_RV64V_VADD_VX);
-                        case 0b000010: return(I_RV64V_VSUB_VX);
-                        case 0b000011: return(I_RV64V_VRSUB_VX);
+                        case 0b000000: return(I_RV64V_VADD_IVX);
+                        case 0b000010: return(I_RV64V_VSUB_IVX);
+                        case 0b000011: return(I_RV64V_VRSUB_IVX);
                         default: return(I_RV64_INVALID);
                     }
                     return(I_RV64_INVALID);

@@ -544,19 +544,17 @@ static result_iter_t emu_rv64_disassemble_next(
         case I_RV64V_VSE8_V:
         case I_RV64V_VSE16_V:
         case I_RV64V_VSE32_V:
-        case I_RV64V_VSE64_V: {
+        case I_RV64V_VSE64_V:
+        // single-width integer add and subtract
+        case I_RV64V_VADD_IVV:
+        case I_RV64V_VADD_IVX:
+        case I_RV64V_VADD_IVI:
+        case I_RV64V_VSUB_IVV:
+        case I_RV64V_VSUB_IVX:
+        case I_RV64V_VRSUB_IVX:
+        case I_RV64V_VRSUB_IVI: {
             result = rv64v_vector_disassemble(emulator, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
             break;
-        }
-        // todo: vector arithmetic
-        case I_RV64V_VADD_VV:
-        case I_RV64V_VADD_VX:
-        case I_RV64V_VADD_VI:
-        case I_RV64V_VSUB_VV:
-        case I_RV64V_VSUB_VX:
-        case I_RV64V_VRSUB_VX:
-        case I_RV64V_VRSUB_VI: {
-            //result = rv64v_disassemble_vector(emulator, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
         }
         default: {
             printf("emu_rv64_disassemble_next instruction not supported! %d\n", raw_instruction);

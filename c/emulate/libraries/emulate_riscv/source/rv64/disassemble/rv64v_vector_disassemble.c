@@ -218,12 +218,92 @@ emu_result_t rv64v_disassemble_store_unit_stride(
     return(ER_SUCCESS);
 }
 
+emu_result_t rv64v_integer_vector_vector_disassemble(
+    emulator_rv64_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64_t tag,
+    char* buffer,
+    int* index,
+    size_t buffer_size
+) {
+    uint8_t vm = 0;
+    uint8_t vs2 = 0;
+    uint8_t vs1 = 0;
+    uint8_t vd = 0;
+    rv64v_decode_vector_vector(raw_instruction, &vm, &vs2, &vs1, &vd);
 
+    char* tag_name = rv64_instruction_tag_mnemonic[tag];
+    char* vs2_name = rv64_map_vector_register_name(vs2);
+    char* vs1_name = rv64_map_vector_register_name(vs1);
+    char* vd_name = rv64_map_vector_register_name(vd);
+
+    int written = snprintf(buffer + *index, buffer_size - *index,
+        "%s %s, %s, %s", tag_name, vd_name, vs2_name, vs1_name);
+    if (written < 0) {
+        return(ER_FAILURE);
+    }
+    *index += written;
+    return(ER_SUCCESS);
+}
+
+emu_result_t rv64v_integer_vector_scalar_disassemble(
+    emulator_rv64_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64_t tag,
+    char* buffer,
+    int* index,
+    size_t buffer_size
+) {
+    uint8_t vm = 0;
+    uint8_t vs2 = 0;
+    uint8_t rs1 = 0;
+    uint8_t vd = 0;
+    rv64v_decode_vector_scalar(raw_instruction, &vm, &vs2, &rs1, &vd);
+
+    char* tag_name = rv64_instruction_tag_mnemonic[tag];
+    char* vs2_name = rv64_map_vector_register_name(vs2);
+    char* rs1_name = rv64_map_register_name(rs1);
+    char* vd_name = rv64_map_vector_register_name(vd);
+
+    int written = snprintf(buffer + *index, buffer_size - *index,
+        "%s %s, %s, %s", tag_name, vd_name, vs2_name, rs1_name);
+    if (written < 0) {
+        return(ER_FAILURE);
+    }
+    *index += written;
+    return(ER_SUCCESS);
+}
+
+emu_result_t rv64v_integer_vector_immediate_disassemble(
+    emulator_rv64_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64_t tag,
+    char* buffer,
+    int* index,
+    size_t buffer_size
+) {
+    uint8_t vm = 0;
+    uint8_t vs2 = 0;
+    uint8_t imm = 0;
+    uint8_t vd = 0;
+    rv64v_decode_vector_immediate(raw_instruction, &vm, &vs2, &imm, &vd);
+
+    char* tag_name = rv64_instruction_tag_mnemonic[tag];
+    char* vs2_name = rv64_map_vector_register_name(vs2);
+    char* vd_name = rv64_map_vector_register_name(vd);
+
+    int written = snprintf(buffer + *index, buffer_size - *index,
+        "%s %s, %s, %d", tag_name, vd_name, vs2_name, imm);
+    if (written < 0) {
+        return(ER_FAILURE);
+    }
+    *index += written;
+    return(ER_SUCCESS);
+}
 
 /*
  * MARK: RV64V Main
  */
-
 emu_result_t rv64v_vector_disassemble(
     emulator_rv64_t* emulator,
     uint32_t raw_instruction,
@@ -264,6 +344,27 @@ emu_result_t rv64v_vector_disassemble(
             result = rv64v_disassemble_store_unit_stride(emulator, raw_instruction, tag, buffer, index, buffer_size);
             break;
         }
+        // opivv - integer vector-vector
+        case I_RV64V_VADD_IVV:
+        case I_RV64V_VSUB_IVV: {
+            result = rv64v_integer_vector_vector_disassemble(emulator, raw_instruction, tag, buffer, index, buffer_size);
+            break;
+        }
+        // opivx - integer vector-scalar
+        case I_RV64V_VADD_IVX:
+        case I_RV64V_VSUB_IVX:
+        case I_RV64V_VRSUB_IVX: {
+            result = rv64v_integer_vector_scalar_disassemble(emulator, raw_instruction, tag, buffer, index, buffer_size);
+            break;
+        }
+        // opivi - integer vector-immediate
+        case I_RV64V_VADD_IVI:
+        case I_RV64V_VRSUB_IVI: {
+            result = rv64v_integer_vector_immediate_disassemble(emulator, raw_instruction, tag, buffer, index, buffer_size);
+            break;
+        }
+
+
         // ...
         default: {
             printf("rv64v_vector_disassemble: not implemented\n");

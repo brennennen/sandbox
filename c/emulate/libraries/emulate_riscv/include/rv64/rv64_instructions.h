@@ -529,15 +529,21 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     // @see 30.7.9 Vector Load/Store Whole Register Instructions (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_loadstore_whole_register_instructions)
     // TODO: VL*R*, VS*R*
     // @see 30.11.1 Vector Single-Width Integer Add and Subtract (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_single_width_integer_add_and_subtract)
-    I_RV64V_VADD_VV,
-    I_RV64V_VADD_VX,
-    I_RV64V_VADD_VI,
-    I_RV64V_VSUB_VV,
-    I_RV64V_VSUB_VX,
-    I_RV64V_VRSUB_VX,
-    I_RV64V_VRSUB_VI,
+    I_RV64V_VADD_IVV,
+    I_RV64V_VADD_IVX,
+    I_RV64V_VADD_IVI,
+    I_RV64V_VSUB_IVV,
+    I_RV64V_VSUB_IVX,
+    I_RV64V_VRSUB_IVX,
+    I_RV64V_VRSUB_IVI,
     // 30.11.2 Vector Widening Integer Add/Subtract
     // todo - next
+    // @see 30.11.9 Vector Integer Min/Max Instructions (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_integer_minmax_instructions)
+    //I_RV64_VMINU_VV,
+    //I_RV64_VMIN_VX,
+    // ...
+    // 30.11.10
+    // ...
 
     I_RV64V_VOPVV, /** Assembly syntax pattern for vector binary arithmetic instructions, integer vector-vector */
     I_RV64V_VOPVX, /** integer vector-scalar */
@@ -887,11 +893,11 @@ static char rv64_instruction_tag_mnemonic[][16] = {
     "vle32ff.v",
     "vle64ff.v",
     // @see 30.11.1 Vector Single-Width Integer Add and Subtract (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_single_width_integer_add_and_subtract)
-    "vadd.vi",
-    "vadd.vx",
     "vadd.vv",
-    "vsub.vx",
+    "vadd.vx",
+    "vadd.vi",
     "vsub.vv",
+    "vsub.vx",
     "vrsub.vx",
     "vrsub.vi",
     // todo: 30.11.2

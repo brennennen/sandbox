@@ -293,28 +293,54 @@ static inline void rv64v_decode_load_unit_stride(
 }
 
 /**
- * 30.5 Vector Instruction Formats
- * STORE-FP, VS* unit-stride
+ * 30.10 Vector Arithmetic Instruction Formats
+ * OPIVV
  */
-static inline void rv64v_decode_store_unit_stride(
+static inline void rv64v_decode_vector_vector(
     uint32_t raw_instruction,
-    uint8_t* number_of_fields,
-    uint8_t* memory_element_width,
-    uint8_t* memory_operation,
-    uint8_t* vector_mask,
-    uint8_t* store_unit_stride_mop,
-    uint8_t* rs1,
-    uint8_t* width,
-    uint8_t* vs3
+    uint8_t* vm,
+    uint8_t* vs2,
+    uint8_t* vs1,
+    uint8_t* vd
 ) {
-    *number_of_fields = (raw_instruction >> 29) & 0b111;
-    *memory_element_width = (raw_instruction >> 28) & 0b1;
-    *memory_operation = (raw_instruction >> 26) & 0b11;
-    *vector_mask = (raw_instruction >> 25) & 0b1;
-    *store_unit_stride_mop = (raw_instruction >> 20) & 0b11111;
+    *vm = (raw_instruction >> 25) & 0b1;
+    *vs2 = (raw_instruction >> 20) & 0b11111;
+    *vs1 = (raw_instruction >> 15) & 0b11111;
+    *vd = (raw_instruction >> 7) & 0b11111;
+}
+
+/**
+ * 30.10 Vector Arithmetic Instruction Formats
+ * OPIVX
+ */
+static inline void rv64v_decode_vector_scalar(
+    uint32_t raw_instruction,
+    uint8_t* vm,
+    uint8_t* vs2,
+    uint8_t* rs1,
+    uint8_t* vd
+) {
+    *vm = (raw_instruction >> 25) & 0b1;
+    *vs2 = (raw_instruction >> 20) & 0b11111;
     *rs1 = (raw_instruction >> 15) & 0b11111;
-    *width = (raw_instruction >> 12) & 0b111;
-    *vs3 = (raw_instruction >> 7) & 0b11111;
+    *vd = (raw_instruction >> 7) & 0b11111;
+}
+
+/**
+ * 30.10 Vector Arithmetic Instruction Formats
+ * OPIVI
+ */
+static inline void rv64v_decode_vector_immediate(
+    uint32_t raw_instruction,
+    uint8_t* vm,
+    uint8_t* vs2,
+    uint8_t* imm,
+    uint8_t* vd
+) {
+    *vm = (raw_instruction >> 25) & 0b1;
+    *vs2 = (raw_instruction >> 20) & 0b11111;
+    *imm = (raw_instruction >> 15) & 0b11111;
+    *vd = (raw_instruction >> 7) & 0b11111;
 }
 
 #endif // RV64I_DECODE_INSTRUCTION_H

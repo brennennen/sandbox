@@ -121,5 +121,75 @@ Test(emu_rv64v_disassemble__vse64_v__tests, vse64_v_1, .init = rv64v_disassemble
     ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
 }
 
+// vector integer arithmetic instructions
 
 // MARK: vector arithmetic tests
+// opivv - integer vector vector
+// 30.11.1 Vector Single-Width Integer Add and Subtract
+Test(emu_rv64v_disassemble__vadd_vv__tests, vadd_vv_1, .init = rv64v_disassemble_default_setup)
+{
+    char* expected = "vadd.vv v3, v1, v2\n";
+    uint8_t input[] = { 0xd7, 0x01, 0x11, 0x02 };
+    char output[64] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+Test(emu_rv64v_disassemble__vsub_vv__tests, vsub_vv_1, .init = rv64v_disassemble_default_setup)
+{
+    char* expected = "vsub.vv v3, v1, v2\n";
+    uint8_t input[] = { 0xd7, 0x01, 0x11, 0x0a };
+    char output[64] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+// opivx - integer vector scalar
+Test(emu_rv64v_disassemble__vadd_vx__tests, vadd_vx_1, .init = rv64v_disassemble_default_setup)
+{
+    char* expected = "vadd.vx v3, v1, t2\n";
+    uint8_t input[] = { 0xd7, 0xc1, 0x13, 0x02 };
+    char output[64] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+Test(emu_rv64v_disassemble__vsub_vx__tests, vsub_vx_1, .init = rv64v_disassemble_default_setup)
+{
+    char* expected = "vsub.vx v3, v1, t2\n";
+    uint8_t input[] = { 0xd7, 0xc1, 0x13, 0x0a };
+    char output[64] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+// opivi - integer vector immediate
+Test(emu_rv64v_disassemble__vadd_vi__tests, vadd_vi_1, .init = rv64v_disassemble_default_setup)
+{
+    char* expected = "vadd.vi v2, v1, 12\n";
+    uint8_t input[] = { 0x57, 0x31, 0x16, 0x02 };
+    char output[64] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}
+
+Test(emu_rv64v_disassemble__vrsub_vi__tests, vrsub_vi_1, .init = rv64v_disassemble_default_setup)
+{
+    char* expected = "vrsub.vi v2, v1, 12\n";
+    uint8_t input[] = { 0x57, 0x31, 0x16, 0x0e };
+    char output[64] = { '\0' };
+    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
+        &g_emulator, input, sizeof(input), output, sizeof(output)));
+    cr_assert(1 == g_emulator.instructions_count);
+    ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
+}

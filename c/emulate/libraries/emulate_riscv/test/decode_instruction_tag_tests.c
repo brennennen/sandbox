@@ -173,13 +173,13 @@ Test(emu_rv64_decode_tag_tests, decode_instruction_tests) {
     cr_assert(I_RV64V_VSE8_V == rv64_decode_instruction_tag(0x02050027)); // vse8.v v0, (a0)
     // todo: vss, vsx?
     // vector arithmetic (add/sub/mul/div/rem/multiply-add)
-    cr_assert(I_RV64V_VADD_VV == rv64_decode_instruction_tag(0x02110057)); // vadd.vv v0, v1, v2
-    cr_assert(I_RV64V_VADD_VX == rv64_decode_instruction_tag(0x0215c057)); // vadd.vx v0, v1, a1
-    cr_assert(I_RV64V_VADD_VI == rv64_decode_instruction_tag(0x0213b057)); // vadd.vi v0, v1, 7
-    cr_assert(I_RV64V_VSUB_VV == rv64_decode_instruction_tag(0x0a110057)); // vsub.vv v0, v1, v2
-    cr_assert(I_RV64V_VSUB_VX == rv64_decode_instruction_tag(0x0a15c057)); // vsub.vx v0, v1, a1
-    cr_assert(I_RV64V_VRSUB_VX == rv64_decode_instruction_tag(0x0e15c057)); // vrsub.vx v0, v1, a1
-    cr_assert(I_RV64V_VRSUB_VI == rv64_decode_instruction_tag(0x0e13b057)); // vrsub.vi v0, v1, 7
+    cr_assert(I_RV64V_VADD_IVV == rv64_decode_instruction_tag(0x02110057)); // vadd.vv v0, v1, v2
+    cr_assert(I_RV64V_VADD_IVX == rv64_decode_instruction_tag(0x0215c057)); // vadd.vx v0, v1, a1
+    cr_assert(I_RV64V_VADD_IVI == rv64_decode_instruction_tag(0x0213b057)); // vadd.vi v0, v1, 7
+    cr_assert(I_RV64V_VSUB_IVV == rv64_decode_instruction_tag(0x0a110057)); // vsub.vv v0, v1, v2
+    cr_assert(I_RV64V_VSUB_IVX == rv64_decode_instruction_tag(0x0a15c057)); // vsub.vx v0, v1, a1
+    cr_assert(I_RV64V_VRSUB_IVX == rv64_decode_instruction_tag(0x0e15c057)); // vrsub.vx v0, v1, a1
+    cr_assert(I_RV64V_VRSUB_IVI == rv64_decode_instruction_tag(0x0e13b057)); // vrsub.vi v0, v1, 7
     // vector widening/narrowing
     // vector boolean (and/or/xor/not)
     //

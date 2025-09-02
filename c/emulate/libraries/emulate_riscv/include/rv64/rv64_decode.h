@@ -269,6 +269,7 @@ static inline void rv64v_decode_opivv(
 
 /**
  * 30.5 Vector Instruction Formats
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_instruction_formats
  * LOAD-FP, VL* unit-stride
  */
 static inline void rv64v_decode_load_unit_stride(

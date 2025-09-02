@@ -331,4 +331,31 @@ void rv64_csr_set_initial_mconfigptr(rv64_csrs_t* csrs, uint64_t mconfigptr);
 // get functions?
 
 
+
+// vector stuff
+
+typedef enum {
+    RV64_SEW_8,
+    RV64_SEW_16,
+    RV64_SEW_32,
+    RV64_SEW_64
+} rv64v_selected_element_width_t;
+
+
+
+// TODO: decode vtypei?
+
+// uint8_t vma = (vtypei >> 7) & 0b1;
+// uint8_t vta = (vtypei >> 6) & 0b1;
+// uint8_t vsew = (vtypei >> 3) & 0b11;
+// uint8_t vlmul = vtypei & 0b11;
+typedef struct {
+    uint8_t vma;
+    uint8_t vta;
+    rv64v_selected_element_width_t selected_element_width;
+    uint8_t vlmul;
+} rv64v_vtype_t;
+rv64v_vtype_t rv64_csr_decode_vtype(uint64_t vtype_raw);
+
+
 #endif // RV64_CONTROL_STATUS_REGISTERS_H

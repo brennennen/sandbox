@@ -259,3 +259,16 @@ void rv64_csr_set_initial_mhartid(rv64_csrs_t* csrs, uint64_t mhartid) {
 void rv64_csr_set_initial_mconfigptr(rv64_csrs_t* csrs, uint64_t mconfigptr) {
     csrs->mconfigptr = mconfigptr;
 }
+
+
+rv64v_vtype_t rv64_csr_decode_vtype(uint64_t vtype_raw) {
+    rv64v_vtype_t vtype;
+    vtype.vma = (vtype_raw >> 7) & 0b1;
+    vtype.vta = (vtype_raw >> 6) & 0b1;
+    vtype.selected_element_width = (vtype_raw >> 3) & 0b11;
+    vtype.vlmul = vtype_raw & 0b11;
+    return vtype;
+}
+
+
+

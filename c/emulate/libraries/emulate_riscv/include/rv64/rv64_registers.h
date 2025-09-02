@@ -58,7 +58,7 @@ typedef struct {
     //uint8_t csrs[4096];
 
     // RV64V
-    uint64_t vregs[64]; // faking 128 bit wide registers
+    uint8_t vregs[32][16]; // faking 128 bit wide registers. 16 * 8 = 128 bits
     uint8_t vta; // @see 30.3.4.3 Vector Tail Agnostic and Vector Mask Agnostic `vta` and `vma` (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#sec-agnostic)
     uint8_t vma; // @see 30.3.4.3 Vector Tail Agnostic and Vector Mask Agnostic `vta` and `vma` (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#sec-agnostic)
     uint8_t vill; // @see 30.3.4.4 Vector Type Illegal (vill) (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_type_illegal_vill)

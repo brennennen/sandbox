@@ -12,7 +12,7 @@
 #include "rv64/instructions/rv64i_base_integer.h"
 #include "rv64/instructions/rv64m_multiplication.h"
 #include "rv64/instructions/rv64a_atomic.h"
-
+#include "rv64/instructions/rv64v_vector.h"
 
 /**
  * RISCV defines which
@@ -256,6 +256,7 @@ static result_iter_t emu_rv64_emulate_next(emulator_rv64_t* emulator) {
             result = rv64_multiplication_emulate(emulator, raw_instruction, instruction_tag);
             break;
         }
+        // TODO: RV64F float/double/quad
         // RV64A
         case I_RV64ZALRSC_LR_W:
         case I_RV64ZALRSC_SC_W:
@@ -286,13 +287,10 @@ static result_iter_t emu_rv64_emulate_next(emulator_rv64_t* emulator) {
         // RV64V
         case I_RV64V_VSETVLI:
         case I_RV64V_VSETVL:
-        case I_RV64V_VSETIVLI: {
-            printf("todo set vector length/type config operations\n");
-            return(RI_FAILURE);
-        }
+        case I_RV64V_VSETIVLI:
         case I_RV64V_VLE8_V: {
-            printf("todo vector load operations\n");
-            return(RI_FAILURE);
+            result = rv64v_vector_emulate(emulator, raw_instruction, instruction_tag);
+            break;
         }
         default: {
             result = ER_FAILURE;

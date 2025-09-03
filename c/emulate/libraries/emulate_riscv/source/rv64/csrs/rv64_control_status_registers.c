@@ -1,4 +1,6 @@
 
+#include <stdio.h>
+
 #include "rv64/rv64_control_status_registers.h"
 
 
@@ -261,14 +263,49 @@ void rv64_csr_set_initial_mconfigptr(rv64_csrs_t* csrs, uint64_t mconfigptr) {
 }
 
 
-rv64v_vtype_t rv64_csr_decode_vtype(uint64_t vtype_raw) {
-    rv64v_vtype_t vtype;
-    vtype.vma = (vtype_raw >> 7) & 0b1;
-    vtype.vta = (vtype_raw >> 6) & 0b1;
-    vtype.selected_element_width = (vtype_raw >> 3) & 0b11;
-    vtype.vlmul = vtype_raw & 0b11;
-    return vtype;
+uint8_t rv64_encode_vmul(rv64v_vlmul_t vlmul) {
+    switch(vlmul) {
+        case RV64_VLMUL_1: return 0b000;
+        case RV64_VLMUL_2: return 0b001;
+        case RV64_VLMUL_4: return 0b010;
+        case RV64_VLMUL_8: return 0b011;
+        case RV64_VLMUL_HALF: return 0b111;
+        case RV64_VLMUL_QUARTER: return 0b110;
+        case RV64_VLMUL_EIGHTH: return 0b101;
+        // all enum cases handled, no default needed.
+    }
 }
 
+rv64v_vlmul_t rv64_decode_vmul(uint8_t raw_vlmul) {
+    switch(raw_vlmul) {
+        case 0b000: return RV64_VLMUL_1;
+        case 0b001: return RV64_VLMUL_2;
+        case 0b010: return RV64_VLMUL_4;
+        case 0b011: return RV64_VLMUL_8;
+        case 0b111: return RV64_VLMUL_HALF;
+        case 0b110: return RV64_VLMUL_QUARTER;
+        case 0b101: return RV64_VLMUL_EIGHTH;
+        default: {
+            printf("%s:invalid vlmul: %d\n", __func__, raw_vlmul);
+            return RV64_VLMUL_1; // need to return something? todo: should set error flag or something though.
+        }
+    }
+}
 
+void rv64_csr_decode_vtype(uint64_t vtype_raw, rv64v_vtype_t* vtype) {
+    vtype->vma = (vtype_raw >> 7) & 0b1;
+    vtype->vta = (vtype_raw >> 6) & 0b1;
+    vtype->selected_element_width = (vtype_raw >> 3) & 0b111;
+    uint8_t vlmul_raw = vtype_raw & 0b111;
+    vtype->vlmul = rv64_decode_vmul(vlmul_raw);
+}
 
+uint64_t rv64_csr_encode_vtype(rv64v_vtype_t* vtype) {
+    uint64_t vtype_raw = 0;
+    vtype_raw |= (uint64_t) ((vtype->vma & 0b1) << 7);
+    vtype_raw |= (uint64_t) ((vtype->vta & 0b1) << 6);
+    vtype_raw |= (uint64_t) ((vtype->selected_element_width & 0b111) << 3);
+    uint8_t vlmul_raw = rv64_encode_vmul(vtype->vlmul);
+    vtype_raw |= (uint64_t) (vlmul_raw & 0b111);
+    return vtype_raw;
+}

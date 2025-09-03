@@ -334,6 +334,16 @@ void rv64_csr_set_initial_mconfigptr(rv64_csrs_t* csrs, uint64_t mconfigptr);
 
 // vector stuff
 
+/**
+ * Selected element width for vector operations
+ *
+ * Assuming VLEN = 128
+ * SEW_8 = 16 elements per vector register (128 / 8)
+ * SEW_16 = 8 elements per vector register (128 / 16)
+ * SEW_32 = 4 elements per vector register (128 / 32)
+ * SEW_64 = 2 elements per vector register (128 / 64)
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_selected_element_width_vsew20
+ */
 typedef enum {
     RV64_SEW_8,
     RV64_SEW_16,
@@ -341,21 +351,33 @@ typedef enum {
     RV64_SEW_64
 } rv64v_selected_element_width_t;
 
+/**
+ * Vector Length Multiplier
+ *
+ *
+ *
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#vector-register-grouping
+ */
+typedef enum {
+    RV64_VLMUL_1, // 0b000
+    RV64_VLMUL_2, // 0b001
+    RV64_VLMUL_4, // 0b010
+    RV64_VLMUL_8, // 0b011
+    RV64_VLMUL_HALF, // 0b111
+    RV64_VLMUL_QUARTER, // 0b110
+    RV64_VLMUL_EIGHTH, // 0b101
+} rv64v_vlmul_t;
 
-
-// TODO: decode vtypei?
-
-// uint8_t vma = (vtypei >> 7) & 0b1;
-// uint8_t vta = (vtypei >> 6) & 0b1;
-// uint8_t vsew = (vtypei >> 3) & 0b11;
-// uint8_t vlmul = vtypei & 0b11;
+/**
+ *
+ */
 typedef struct {
     uint8_t vma;
     uint8_t vta;
     rv64v_selected_element_width_t selected_element_width;
-    uint8_t vlmul;
+    rv64v_vlmul_t vlmul;
 } rv64v_vtype_t;
-rv64v_vtype_t rv64_csr_decode_vtype(uint64_t vtype_raw);
-
+void rv64_csr_decode_vtype(uint64_t vtype_raw, rv64v_vtype_t* vtype);
+uint64_t rv64_csr_encode_vtype(rv64v_vtype_t* vtype);
 
 #endif // RV64_CONTROL_STATUS_REGISTERS_H

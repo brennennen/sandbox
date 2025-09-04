@@ -289,7 +289,8 @@ static result_iter_t emu_rv64_emulate_next(emulator_rv64_t* emulator) {
         case I_RV64V_VSETVL:
         case I_RV64V_VSETIVLI:
         case I_RV64V_VLE8_V:
-        case I_RV64V_VLE16_V: {
+        case I_RV64V_VLE16_V:
+        case I_RV64V_VSE8_V: {
             result = rv64v_vector_emulate(emulator, raw_instruction, instruction_tag);
             break;
         }

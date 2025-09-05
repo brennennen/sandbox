@@ -16,7 +16,7 @@
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_multiplication_operations
  */
 static inline void rv64m_mul(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    emulator->registers.regs[rd] = emulator->registers.regs[rs1] * emulator->registers.regs[rs2];
+    emulator->registers[rd] = emulator->registers[rs1] * emulator->registers[rs2];
 }
 
 /**
@@ -27,8 +27,8 @@ static inline void rv64m_mul(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2
  */
 static inline void rv64m_mulh(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
 #if defined(__GNUC__) || defined(__clang)
-    __int128_t product = (__int128_t)emulator->registers.regs[rs1] * (__int128_t)emulator->registers.regs[rs2];
-    emulator->registers.regs[rd] = (uint64_t)(product >> 64);
+    __int128_t product = (__int128_t)emulator->registers[rs1] * (__int128_t)emulator->registers[rs2];
+    emulator->registers[rd] = (uint64_t)(product >> 64);
 #else
     // TODO: fallback
     LOG(LOG_ERROR, "rv64m_mulh: fallback not implemeneted for non gcc/clang compilers.");
@@ -45,8 +45,8 @@ static inline void rv64m_mulh(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs
 static inline void rv64m_mulhsu(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
 #if defined(__GNUC__) || defined(__clang)
     // need casting for sign extension
-    __int128_t product = (__int128_t)((int64_t)emulator->registers.regs[rs1] * (__uint128_t)emulator->registers.regs[rs2]);
-    emulator->registers.regs[rd] = (int64_t)(product >> 64);
+    __int128_t product = (__int128_t)((int64_t)emulator->registers[rs1] * (__uint128_t)emulator->registers[rs2]);
+    emulator->registers[rd] = (int64_t)(product >> 64);
 #else
     // TODO: fallback
     LOG(LOG_ERROR, "rv64m_mulhsu: fallback not implemeneted for non gcc/clang compilers.");
@@ -62,8 +62,8 @@ static inline void rv64m_mulhsu(emulator_rv64_t* emulator, uint8_t rs1, uint8_t 
  */
 static inline void rv64m_mulhu(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
 #if defined(__GNUC__) || defined(__clang)
-    __uint128_t product = (__uint128_t)emulator->registers.regs[rs1] * (__uint128_t)emulator->registers.regs[rs2];
-    emulator->registers.regs[rd] = (uint64_t)(product >> 64);
+    __uint128_t product = (__uint128_t)emulator->registers[rs1] * (__uint128_t)emulator->registers[rs2];
+    emulator->registers[rd] = (uint64_t)(product >> 64);
 #else
     // TODO: fallback
     LOG(LOG_ERROR, "rv64m_mulhu: fallback not implemeneted for non gcc/clang compilers.");
@@ -83,18 +83,18 @@ static inline void rv64m_mulhu(emulator_rv64_t* emulator, uint8_t rs1, uint8_t r
  */
 static inline void rv64m_div(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
     // divide by 0
-    if (emulator->registers.regs[rs2] == 0) {
-        emulator->registers.regs[rd] = -1;
+    if (emulator->registers[rs2] == 0) {
+        emulator->registers[rd] = -1;
     }
     // signed integer overflow
-    else if ( emulator->registers.regs[rs1] == 0x8000000000000000 && \
-                (int64_t)(emulator->registers.regs[rs2]) == -1)
+    else if ( emulator->registers[rs1] == 0x8000000000000000 && \
+                (int64_t)(emulator->registers[rs2]) == -1)
     {
-        emulator->registers.regs[rd] = 0x8000000000000000;
+        emulator->registers[rd] = 0x8000000000000000;
     }
     // common case
     else {
-        emulator->registers.regs[rd] = ((int64_t)emulator->registers.regs[rs1]) / ((int64_t)emulator->registers.regs[rs2]);
+        emulator->registers[rd] = ((int64_t)emulator->registers[rs1]) / ((int64_t)emulator->registers[rs2]);
     }
 }
 
@@ -109,12 +109,12 @@ static inline void rv64m_div(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2
  */
 static inline void rv64m_divu(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
     // divide by 0
-    if (emulator->registers.regs[rs2] == 0) {
-        emulator->registers.regs[rd] = 0xFFFFFFFFFFFFFFFF; // 2^64 - 1
+    if (emulator->registers[rs2] == 0) {
+        emulator->registers[rd] = 0xFFFFFFFFFFFFFFFF; // 2^64 - 1
     }
     // common case
     else {
-        emulator->registers.regs[rd] = emulator->registers.regs[rs1] / emulator->registers.regs[rs2];
+        emulator->registers[rd] = emulator->registers[rs1] / emulator->registers[rs2];
     }
 }
 
@@ -129,17 +129,17 @@ static inline void rv64m_divu(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs
  */
 static inline void rv64m_rem(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
     // divide by 0
-    if (emulator->registers.regs[rs2] == 0) {
-        emulator->registers.regs[rd] = emulator->registers.regs[rs1];
+    if (emulator->registers[rs2] == 0) {
+        emulator->registers[rd] = emulator->registers[rs1];
     }
     // signed division overflow
-    else if ( emulator->registers.regs[rs1] == 0x8000000000000000 && \
-                (int64_t)(emulator->registers.regs[rs2]) == -1)
+    else if ( emulator->registers[rs1] == 0x8000000000000000 && \
+                (int64_t)(emulator->registers[rs2]) == -1)
     {
-        emulator->registers.regs[rd] = 0;
+        emulator->registers[rd] = 0;
     }
     // common case
-    emulator->registers.regs[rd] = emulator->registers.regs[rs1] % emulator->registers.regs[rs2];
+    emulator->registers[rd] = emulator->registers[rs1] % emulator->registers[rs2];
 }
 
 /**
@@ -152,11 +152,11 @@ static inline void rv64m_rem(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2
  */
 static inline void rv64m_remu(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
     // divide by 0
-    if (emulator->registers.regs[rs2] == 0) {
-        emulator->registers.regs[rd] = emulator->registers.regs[rs1];
+    if (emulator->registers[rs2] == 0) {
+        emulator->registers[rd] = emulator->registers[rs1];
     }
     // common case
-    emulator->registers.regs[rd] = emulator->registers.regs[rs1] % emulator->registers.regs[rs2];
+    emulator->registers[rd] = emulator->registers[rs1] % emulator->registers[rs2];
 }
 
 /**
@@ -164,39 +164,39 @@ static inline void rv64m_remu(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs
  * 32 bit mul
  */
 static inline void rv64m_mulw(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    int32_t rs1_value = emulator->registers.regs[rs1];
-    int32_t rs2_value = emulator->registers.regs[rs2];
-    emulator->registers.regs[rd] = (int32_t) rs1_value * rs2_value;
+    int32_t rs1_value = emulator->registers[rs1];
+    int32_t rs2_value = emulator->registers[rs2];
+    emulator->registers[rd] = (int32_t) rs1_value * rs2_value;
 }
 
 static inline void rv64m_divw(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    int32_t rs1_value = emulator->registers.regs[rs1];
-    int32_t rs2_value = emulator->registers.regs[rs2];
-    emulator->registers.regs[rd] = (int32_t) rs1_value / rs2_value;
+    int32_t rs1_value = emulator->registers[rs1];
+    int32_t rs2_value = emulator->registers[rs2];
+    emulator->registers[rd] = (int32_t) rs1_value / rs2_value;
 }
 
 static inline void rv64m_divuw(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    uint32_t rs1_value = emulator->registers.regs[rs1];
-    uint32_t rs2_value = emulator->registers.regs[rs2];
-    emulator->registers.regs[rd] = (uint32_t) rs1_value / rs2_value;
+    uint32_t rs1_value = emulator->registers[rs1];
+    uint32_t rs2_value = emulator->registers[rs2];
+    emulator->registers[rd] = (uint32_t) rs1_value / rs2_value;
 }
 
 // "REMW and REMUW are RV64 instructions that provide the corresponding signed and unsigned
 // remainder operations. Both REMW and REMUW always sign-extend the 32-bit result to 64 bits,
 // including on a divide by zero."
 static inline void rv64m_remw(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    int32_t rs1_value = emulator->registers.regs[rs1];
-    int32_t rs2_value = emulator->registers.regs[rs2];
-    emulator->registers.regs[rd] = (int32_t) rs1_value % rs2_value;
+    int32_t rs1_value = emulator->registers[rs1];
+    int32_t rs2_value = emulator->registers[rs2];
+    emulator->registers[rd] = (int32_t) rs1_value % rs2_value;
 }
 
 // "REMW and REMUW are RV64 instructions that provide the corresponding signed and unsigned
 // remainder operations. Both REMW and REMUW always sign-extend the 32-bit result to 64 bits,
 // including on a divide by zero."
 static inline void rv64m_remuw(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    uint32_t rs1_value = emulator->registers.regs[rs1];
-    uint32_t rs2_value = emulator->registers.regs[rs2];
-    emulator->registers.regs[rd] = (uint32_t) rs1_value % rs2_value;
+    uint32_t rs1_value = emulator->registers[rs1];
+    uint32_t rs2_value = emulator->registers[rs2];
+    emulator->registers[rd] = (uint32_t) rs1_value % rs2_value;
 }
 
 emu_result_t rv64_multiplication_emulate(

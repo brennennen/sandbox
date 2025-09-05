@@ -29,7 +29,7 @@ Test(emu_rv64_emulate__jalr__tests, jalr_1, .init = rv64_emu_jalr_default_setup)
     debug_print_registers(&g_emulator);
     printf("%d\n", g_emulator.instructions_count);
     cr_assert(6 == g_emulator.instructions_count);
-    cr_assert(10 == g_emulator.registers.regs[RV64_REG_T1]);
-    cr_assert(20 == g_emulator.registers.regs[RV64_REG_T2]);
-    cr_assert(30 == g_emulator.registers.regs[RV64_REG_T3]);
+    cr_assert(10 == g_emulator.registers[RV64_REG_T1]);
+    cr_assert(20 == g_emulator.registers[RV64_REG_T2]);
+    cr_assert(30 == g_emulator.registers[RV64_REG_T3]);
 }

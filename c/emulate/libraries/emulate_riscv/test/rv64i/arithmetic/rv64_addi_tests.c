@@ -20,5 +20,5 @@ Test(emu_rv64_emulate__I_RV64I_ADDI__tests, addi_1, .init = rv64_emu_addi_defaul
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);
     cr_assert(1 == g_emulator.instructions_count);
-    cr_assert(5 == g_emulator.registers.regs[5]);
+    cr_assert(5 == g_emulator.registers[5]);
 }

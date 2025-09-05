@@ -30,8 +30,8 @@ static inline void rv64a_amoswap_w(
     uint8_t rs1,
     uint8_t rd
 ) {
-    uint64_t address = emulator->registers.regs[rs1];
-    uint64_t value = emulator->registers.regs[rs2];
+    uint64_t address = emulator->registers[rs1];
+    uint64_t value = emulator->registers[rs2];
 
     if (aquire) {
         // todo: if multi-threading is added, ...
@@ -46,7 +46,7 @@ static inline void rv64a_amoswap_w(
     }
 
     if (rd != 0) {
-        emulator->registers.regs[rd] = (int64_t)memory_value; // sign extend via cast
+        emulator->registers[rd] = (int64_t)memory_value; // sign extend via cast
     }
 }
 

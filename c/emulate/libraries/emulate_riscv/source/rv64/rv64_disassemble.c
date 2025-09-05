@@ -323,17 +323,17 @@ emu_result_t rv64_disassemble_csr_immediate(
 
 // TODO: move to shared func
 emu_result_t emu_rv64_disassemble_read_m32(emulator_rv64_t* emulator, uint32_t* out_data) {
-    if (emulator->registers.pc + 1 >= emulator->memory_size) {
+    if (emulator->pc + 1 >= emulator->memory_size) {
         LOG(LOG_ERROR, "read m32: ER_OUT_OF_BOUNDS. ip (+ read size): (%d + 4) >= memory size: %d\n",
-            emulator->registers.pc, emulator->memory_size);
+            emulator->pc, emulator->memory_size);
         return(ER_OUT_OF_BOUNDS);
     }
-    *out_data = (emulator->memory[emulator->registers.pc + 3] << 24)
-        | (emulator->memory[emulator->registers.pc + 2] << 16)
-        | (emulator->memory[emulator->registers.pc + 1] << 8)
-        | (emulator->memory[emulator->registers.pc]);
+    *out_data = (emulator->memory[emulator->pc + 3] << 24)
+        | (emulator->memory[emulator->pc + 2] << 16)
+        | (emulator->memory[emulator->pc + 1] << 8)
+        | (emulator->memory[emulator->pc]);
     if (*out_data != 0) { // if we reached an empty instruction (end of program), don't increment pc.
-        emulator->registers.pc += 4;
+        emulator->pc += 4;
     }
     return(ER_SUCCESS);
 }
@@ -346,7 +346,7 @@ static result_iter_t emu_rv64_disassemble_next(
 ) {
     uint32_t raw_instruction = 0;
     emu_result_t read_result = emu_rv64_disassemble_read_m32(emulator, &raw_instruction);
-    LOGD("ip: %d, raw_instruction: %x", emulator->registers.pc - 4, raw_instruction);
+    LOGD("ip: %d, raw_instruction: %x", emulator->pc - 4, raw_instruction);
 
     // If we reach an empty byte, assume we've hit the end of the program.
     if (raw_instruction == 0x00) {
@@ -594,7 +594,7 @@ result_t emu_rv64_disassemble_file(
         LOG(LOG_ERROR, "Failed to read file!\n");
         return FAILURE;
     }
-    emulator->registers.pc = PROGRAM_START;
+    emulator->pc = PROGRAM_START;
     result_t result = emu_rv64_disassemble(emulator, out_buffer, out_buffer_size);
     return result;
 }
@@ -605,7 +605,7 @@ result_t emu_rv64_disassemble_chunk(
     char* out_buffer, size_t out_buffer_size
 ) {
     memcpy(emulator->memory + PROGRAM_START, in_buffer, in_buffer_size);
-    emulator->registers.pc = PROGRAM_START;
+    emulator->pc = PROGRAM_START;
     return(emu_rv64_disassemble(emulator, out_buffer, out_buffer_size));
 }
 

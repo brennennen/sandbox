@@ -25,17 +25,17 @@ Test(emu_rv64_emulate__vle16_v__tests, vle16_v_1, .init = rv64_emu_vle16_v_defau
     uint8_t src_data[8];
     for (int i = 0; i < 8; i++) {
         src_data[i] = i;
-        printf("src_data[%d] = %d\n", i, i);
+        //printf("src_data[%d] = %d\n", i, i);
     }
     memcpy(&g_emulator.memory[0x2000], src_data, sizeof(src_data));
-    g_emulator.registers.regs[RV64_REG_A1] = 0x2000;
+    g_emulator.registers[RV64_REG_A1] = 0x2000;
     uint8_t input[] = { 0x07, 0xd0, 0x05, 0x02 }; // vle16.v v0, (a1)
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);
     cr_assert(1 == g_emulator.instructions_count);
     for (int i = 0; i < 8; i++) {
         src_data[i] = i;
-        printf("vregs[0][%d] = %d\n", i, g_emulator.registers.vregs[0][i]);
-        cr_assert(i == g_emulator.registers.vregs[0][i]);
+        //printf("vregs[0][%d] = %d\n", i, g_emulator.vector_registers[0].bytes[i]);
+        cr_assert(i == g_emulator.vector_registers[0].bytes[i]);
     }
 }

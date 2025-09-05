@@ -14,13 +14,13 @@ void rv64_emu_mulhu_default_setup(void) {
 
 Test(emu_rv64_emulate__mulhu__tests, mulhu_1, .init = rv64_emu_mulhu_default_setup)
 {
-    g_emulator.registers.regs[RV64_REG_T1] = 0xFFFFFFFFFFFFFFFF; // max uint64_t
-    g_emulator.registers.regs[RV64_REG_T2] = 2;
+    g_emulator.registers[RV64_REG_T1] = 0xFFFFFFFFFFFFFFFF; // max uint64_t
+    g_emulator.registers[RV64_REG_T2] = 2;
     uint8_t input[] = { 0xb3, 0x32, 0x73, 0x02 }; // mulhu t0, t1, t2
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);
     cr_assert(1 == g_emulator.instructions_count);
     // 2 * 0xFFFFFFFFFFFFFFFF = 0x1FFFFFFFFFFFFFFFE (0x0000000000000001FFFFFFFFFFFFFFFE)
     // mulhu returns the high 64 bits, so 0x1
-    cr_assert(1 == g_emulator.registers.regs[RV64_REG_T0]);
+    cr_assert(1 == g_emulator.registers[RV64_REG_T0]);
 }

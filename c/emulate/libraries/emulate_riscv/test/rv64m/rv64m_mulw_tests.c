@@ -15,11 +15,11 @@ void rv64_emu_mulw_default_setup(void) {
 
 Test(emu_rv64_emulate__mulw__tests, mul_simple, .init = rv64_emu_mulw_default_setup)
 {
-    g_emulator.registers.regs[RV64_REG_T1] = 3;
-    g_emulator.registers.regs[RV64_REG_T2] = 5; // 3 * 5 = 15
+    g_emulator.registers[RV64_REG_T1] = 3;
+    g_emulator.registers[RV64_REG_T2] = 5; // 3 * 5 = 15
     uint8_t input[] = { 0xbb, 0x02, 0x73, 0x02 }; // mulw t0, t1, t2
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);
     cr_assert(1 == g_emulator.instructions_count);
-    cr_assert(15 == g_emulator.registers.regs[RV64_REG_T0]);
+    cr_assert(15 == g_emulator.registers[RV64_REG_T0]);
 }

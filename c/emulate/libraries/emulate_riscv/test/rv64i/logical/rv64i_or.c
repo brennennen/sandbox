@@ -15,11 +15,11 @@ void rv64_emu_or_default_setup(void) {
 
 Test(emu_rv64_emulate__or__tests, or_1, .init = rv64_emu_or_default_setup)
 {
-    g_emulator.registers.regs[RV64_REG_T1] = 16; // 16 = 0001 0000
-    g_emulator.registers.regs[RV64_REG_T2] = 1; //   1 = 0000 0001
+    g_emulator.registers[RV64_REG_T1] = 16; // 16 = 0001 0000
+    g_emulator.registers[RV64_REG_T2] = 1; //   1 = 0000 0001
     uint8_t input[] = { 0xb3, 0x62, 0x73, 0x00 }; // `or t0, t1, t2`
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);
     cr_assert(1 == g_emulator.instructions_count);
-    cr_assert(17 == g_emulator.registers.regs[RV64_REG_T0]);
+    cr_assert(17 == g_emulator.registers[RV64_REG_T0]);
 }

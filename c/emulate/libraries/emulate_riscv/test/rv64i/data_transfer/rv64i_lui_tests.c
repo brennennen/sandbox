@@ -21,5 +21,5 @@ Test(emu_rv64_emulate__lui__tests, lui_1, .init = rv64_emu_lui_default_setup)
     debug_print_registers(&g_emulator);
     cr_assert(1 == g_emulator.instructions_count);
     int64_t res = 0x12345 << 12; // 0x12345 is the upper 20 bits, zero out the lower 12, then sign extend to 64 bits
-    cr_assert(res == g_emulator.registers.regs[RV64_REG_T0]);
+    cr_assert(res == g_emulator.registers[RV64_REG_T0]);
 }

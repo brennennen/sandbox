@@ -20,7 +20,7 @@ Test(emu_rv64_emulate__vsetvli__tests, vsetvli_1, .init = rv64_emu_vsetvli_defau
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);
     cr_assert(1 == g_emulator.instructions_count);
-    //cr_assert(0 == g_emulator.registers.regs[RV64_REG_T0]); // TODO: this might not be right, revise what to return here
+    //cr_assert(0 == g_emulator.registers[RV64_REG_T0]); // TODO: this might not be right, revise what to return here
     uint8_t vma = (g_emulator.csrs.vtype << 7) & 0b1;
     cr_assert(0 == vma); // ma = 0 = Mask agnostic
     uint8_t vta = (g_emulator.csrs.vtype << 6) & 0b1;

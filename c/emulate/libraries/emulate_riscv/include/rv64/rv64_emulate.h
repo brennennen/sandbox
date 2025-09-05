@@ -12,29 +12,8 @@
 #include "rv64/rv64_registers.h"
 #include "rv64/rv64_control_status_registers.h"
 
+#include "rv64/rv64_virtual_hardware_conf.h"
 #include "rv64/rv64_instructions.h"
-
-/**
- * XLEN is the width of the registers in bits and the width of what most instructions use
- * (if instructions operate on non-XLEN sized bits, they usually add an identifier that
- * describes the width to the instruction mnemonic (ex: H, W, D, Q)).
- * @see 2.1 Programmers' Model for Base Integer ISA (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_programmers_model_for_base_integer_isa)
- */
-#define XLEN 64
-
-/**
- * ELEN (Vector Element Length) is the number of elements to be operated on at one time by
- * vector operations. ELEN >= 8, and must be a power of 2. Part of the "V" extension.
- * @see 30.2 Implementation-defined Constant Parameters (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_implementation_defined_constant_parameters)
- */
-#define ELEN 8
-
-/**
- * VLEN (Vector Length) is the number of bits in a single vector register. VLEN >= ELEN, and
- * must be a power of 2, and must not be greater than 2^16. Part of the "V" extension.
- * @see 30.2 Implementation-defined Constant Parameters (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_implementation_defined_constant_parameters)
- */
-#define VLEN 128
 
 // TODO LMUL and SEW
 
@@ -49,8 +28,20 @@
 #define PROGRAM_START 0x100 // address '0' is usually a forced segfault, write program to some
                             // offset above and leave bytes around 0 for error detection.
 
+typedef union {
+    uint8_t bytes[VLEN_BYTES];
+    uint8_t elements_8[VLEN_BYTES / 1];
+    uint16_t elements_16[VLEN_BYTES / 2];
+    uint32_t elements_32[VLEN_BYTES / 4];
+    uint64_t elements_64[VLEN_BYTES / 8];
+} vector_register_t;
+
+
 typedef struct emulator_rv64_s {
-    registers_rv64_t registers;
+    uint64_t registers[32];
+    uint32_t pc;
+    vector_register_t vector_registers[32];
+    //registers_rv64_t registers;
     rv64_csrs_t csrs;
     int instructions_count;
     // uint16_t stack_size; // using a size here in case i want to make this dynamic/resizable later.

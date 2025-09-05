@@ -14,12 +14,12 @@ void rv64_emu_divw_default_setup(void) {
 
 Test(emu_rv64_emulate__divw__tests, div_1, .init = rv64_emu_divw_default_setup)
 {
-    g_emulator.registers.regs[RV64_REG_T1] = 12;
-    g_emulator.registers.regs[RV64_REG_T2] = 4;
+    g_emulator.registers[RV64_REG_T1] = 12;
+    g_emulator.registers[RV64_REG_T2] = 4;
     uint8_t input[] = { 0xbb, 0x42, 0x73, 0x02 }; // divw t0, t1, t2
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);
     cr_assert(1 == g_emulator.instructions_count);
     // 12 / 4 = 3
-    cr_assert(3 == g_emulator.registers.regs[RV64_REG_T0]);
+    cr_assert(3 == g_emulator.registers[RV64_REG_T0]);
 }

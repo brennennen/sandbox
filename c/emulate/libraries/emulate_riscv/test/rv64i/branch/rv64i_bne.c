@@ -33,8 +33,8 @@ Test(emu_rv64_emulate__bne__tests, bne_take_branch, .init = rv64_emu_bne_default
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
     debug_print_registers(&g_emulator);
     cr_assert(4 == g_emulator.instructions_count);
-    cr_assert(10 == g_emulator.registers.regs[RV64_REG_T1]);
-    cr_assert(20 == g_emulator.registers.regs[RV64_REG_T2]);
-    cr_assert(0 == g_emulator.registers.regs[RV64_REG_T3]); // we jumped over setting t3, so should be 0.
-    cr_assert(40 == g_emulator.registers.regs[RV64_REG_T4]);
+    cr_assert(10 == g_emulator.registers[RV64_REG_T1]);
+    cr_assert(20 == g_emulator.registers[RV64_REG_T2]);
+    cr_assert(0 == g_emulator.registers[RV64_REG_T3]); // we jumped over setting t3, so should be 0.
+    cr_assert(40 == g_emulator.registers[RV64_REG_T4]);
 }

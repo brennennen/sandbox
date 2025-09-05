@@ -62,14 +62,18 @@ static void rv64v_vsetvli(
     // Set "Vector Length"
     rv64v_vtype_t vtype;
     rv64_csr_decode_vtype(emulator->csrs.vtype, &vtype);
-    uint64_t avl = emulator->registers.regs[rs1];
+    uint64_t avl = emulator->registers[rs1];
     uint64_t vlmax = rv64v_calculate_vlmax(&vtype);
     emulator->csrs.vl = MIN(avl, vlmax);
 
     if (rd != 0) {
-        emulator->registers.regs[rd] = emulator->csrs.vl;
+        emulator->registers[rd] = emulator->csrs.vl;
     }
 }
+
+/*
+ * MARK: Loads
+ */
 
 /**
  *
@@ -97,10 +101,10 @@ static void rv64v_vle8_v(
         return;
     }
 
-    const uint64_t base_addr = emulator->registers.regs[rs1];
+    const uint64_t base_addr = emulator->registers[rs1];
     printf("%s:base_addr: %ld, mem: %d\n", __func__, base_addr, emulator->memory[base_addr]);
-    printf("%s:mem: %d, %d, %d, ...\n", __func__,
-        emulator->memory[base_addr], emulator->memory[base_addr + 1], emulator->memory[base_addr + 2]);
+    //printf("%s:mem: %d, %d, %d, ...\n", __func__,
+    //    emulator->memory[base_addr], emulator->memory[base_addr + 1], emulator->memory[base_addr + 2]);
 
     rv64v_vtype_t vtype;
     rv64_csr_decode_vtype(emulator->csrs.vtype, &vtype);
@@ -115,9 +119,9 @@ static void rv64v_vle8_v(
     for (uint64_t i = 0; i < emulator->csrs.vl; i++) {
         uint64_t physical_vd = vd + (i / vlen_bytes);
         uint64_t byte_offset = i % vlen_bytes;
-        emulator->registers.vregs[physical_vd][byte_offset] = emulator->memory[base_addr + i];
-        printf("%s:phys_vd: %ld, byte_offset: %ld, addr: %ld, mem: %d\n",
-            __func__, physical_vd, byte_offset, base_addr + i, emulator->memory[base_addr + i]);
+        emulator->vector_registers[physical_vd].bytes[byte_offset] = emulator->memory[base_addr + i];
+        //printf("%s:phys_vd: %ld, byte_offset: %ld, addr: %ld, mem: %d\n",
+        //    __func__, physical_vd, byte_offset, base_addr + i, emulator->memory[base_addr + i]);
     }
 }
 
@@ -139,20 +143,20 @@ static void rv64v_vle16_v(
     printf("%s\n", __func__);
 
     if (emulator->csrs.vl == 0) {
-        // trigger illegal trap?
+        // todo: trigger illegal trap?
         printf("%s: csrs.vl == 0! vector instruction has nothing to do!\n", __func__);
         return;
     }
 
-    const uint64_t base_addr = emulator->registers.regs[rs1];
+    const uint64_t base_addr = emulator->registers[rs1];
     printf("%s:base_addr: %ld, mem: %d\n", __func__, base_addr, emulator->memory[base_addr]);
-    printf("%s:mem: %d, %d, %d, ...\n", __func__,
-        emulator->memory[base_addr], emulator->memory[base_addr + 1], emulator->memory[base_addr + 2]);
+    //printf("%s:mem: %d, %d, %d, ...\n", __func__,
+    //    emulator->memory[base_addr], emulator->memory[base_addr + 1], emulator->memory[base_addr + 2]);
 
     rv64v_vtype_t vtype;
     rv64_csr_decode_vtype(emulator->csrs.vtype, &vtype);
     if (vtype.selected_element_width != RV64_SEW_16) {
-        // trigger illegal trap?
+        // todo: trigger illegal trap?
         printf("%s: sew != RV64_SEW_16! vector instruction undefined throw illegal trap!\n", __func__);
         return;
     }
@@ -163,11 +167,19 @@ static void rv64v_vle16_v(
     for (uint64_t i = 0; i < emulator->csrs.vl; i++) {
         uint64_t physical_vd = vd + (i / vlen_bytes);
         uint64_t byte_offset = i % vlen_bytes;
-        emulator->registers.vregs[physical_vd][byte_offset] = emulator->memory[base_addr + i];
-        printf("%s:phys_vd: %ld, byte_offset: %ld, addr: %ld, mem: %d\n",
-            __func__, physical_vd, byte_offset, base_addr + i, emulator->memory[base_addr + i]);
+        emulator->vector_registers[physical_vd].bytes[byte_offset] = emulator->memory[base_addr + i];
+        //printf("%s:phys_vd: %ld, byte_offset: %ld, addr: %ld, mem: %d\n",
+        //    __func__, physical_vd, byte_offset, base_addr + i, emulator->memory[base_addr + i]);
     }
 }
+
+// rv64v_vlse8_V
+
+
+
+/*
+ * MARK: Stores
+ */
 
 static void rv64v_vse8_v(
     emulator_rv64_t* emulator,
@@ -187,20 +199,20 @@ static void rv64v_vse8_v(
     printf("%s\n", __func__);
 
     if (emulator->csrs.vl == 0) {
-        // trigger illegal trap?
+        // todo: trigger illegal trap?
         printf("%s: csrs.vl == 0! vector instruction has nothing to do!\n", __func__);
         return;
     }
 
-    const uint64_t base_addr = emulator->registers.regs[rs1];
-    printf("%s:base_addr: %ld, mem: %d\n", __func__, base_addr, emulator->memory[base_addr]);
-    printf("%s:mem: %d, %d, %d, ...\n", __func__,
-        emulator->memory[base_addr], emulator->memory[base_addr + 1], emulator->memory[base_addr + 2]);
+    const uint64_t base_addr = emulator->registers[rs1];
+    //printf("%s:base_addr: %ld, mem: %d\n", __func__, base_addr, emulator->memory[base_addr]);
+    //printf("%s:mem: %d, %d, %d, ...\n", __func__,
+    //    emulator->memory[base_addr], emulator->memory[base_addr + 1], emulator->memory[base_addr + 2]);
 
     rv64v_vtype_t vtype;
     rv64_csr_decode_vtype(emulator->csrs.vtype, &vtype);
     if (vtype.selected_element_width != RV64_SEW_8) {
-        // trigger illegal trap?
+        // todo: trigger illegal trap?
         printf("%s: sew != SEW_8! vector instruction undefined throw illegal trap!\n", __func__);
         return;
     }
@@ -210,12 +222,98 @@ static void rv64v_vse8_v(
     for (uint64_t i = 0; i < emulator->csrs.vl; i++) {
         uint64_t physical_vd = vd + (i / vlen_bytes);
         uint64_t byte_offset = i % vlen_bytes;
-        emulator->memory[base_addr + i] = emulator->registers.vregs[physical_vd][byte_offset];
-        printf("%s:phys_vd: %ld, byte_offset: %ld, addr: %ld, mem: %d\n",
-            __func__, physical_vd, byte_offset, base_addr + i, emulator->memory[base_addr + i]);
+        emulator->memory[base_addr + i] = emulator->vector_registers[physical_vd].bytes[byte_offset];
+        //printf("%s:phys_vd: %ld, byte_offset: %ld, addr: %ld, mem: %d\n",
+        //    __func__, physical_vd, byte_offset, base_addr + i, emulator->memory[base_addr + i]);
     }
 }
 
+/*
+ * MARK: Arithmetic
+ */
+
+static void rv64v_vadd_vx(
+    emulator_rv64_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64_t tag
+) {
+    uint8_t vm = 0;
+    uint8_t vs2 = 0;
+    uint8_t rs1 = 0;
+    uint8_t vd = 0;
+    rv64v_decode_vector_scalar(raw_instruction, &vm, &vs2, &rs1, &vd);
+
+    if (emulator->csrs.vl == 0) {
+        // todo: trigger illegal trap?
+        printf("%s: csrs.vl == 0! vector instruction has nothing to do!\n", __func__);
+        return;
+    }
+
+    rv64v_vtype_t vtype;
+    rv64_csr_decode_vtype(emulator->csrs.vtype, &vtype);
+
+
+}
+
+
+/**
+ *
+ * 30.11.1. Vector Single-Width Integer Add and Subtract
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_single_width_integer_add_and_subtract
+ */
+static void rv64v_vadd_vi(
+    emulator_rv64_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64_t tag
+) {
+    uint8_t vm = 0;
+    uint8_t vs2_idx = 0;
+    uint8_t imm = 0;
+    uint8_t vd_idx = 0;
+    rv64v_decode_vector_immediate(raw_instruction, &vm, &vs2_idx, &imm, &vd_idx);
+
+    if (emulator->csrs.vl == 0) {
+        // todo: trigger illegal trap?
+        printf("%s: csrs.vl == 0! vector instruction has nothing to do!\n", __func__);
+        return;
+    }
+
+    //int64_t imm_se = (imm << (64 - 5)) >> (64 - 5); // sign extension
+    int64_t imm_se = imm; // skip sign extension for now
+
+    rv64v_vtype_t vtype;
+    rv64_csr_decode_vtype(emulator->csrs.vtype, &vtype);
+
+    vector_register_t* vs2 = &emulator->vector_registers[vs2_idx];
+    vector_register_t* vd = &emulator->vector_registers[vd_idx];
+
+    for (int i = 0; i < emulator->csrs.vl; i++) {
+        switch(vtype.selected_element_width) {
+            case RV64_SEW_8: {
+                vd->elements_8[i] = vs2->elements_8[i] + imm_se;
+                break;
+            }
+            case RV64_SEW_16: {
+                vd->elements_16[i] = vs2->elements_16[i] + imm_se;
+                break;
+            }
+            case RV64_SEW_32: {
+                vd->elements_32[i] = vs2->elements_32[i] + imm_se;
+                break;
+            }
+            case RV64_SEW_64: {
+                vd->elements_64[i] = vs2->elements_64[i] + imm_se;
+                break;
+            }
+        }
+    }
+}
+
+// todo
+
+/*
+ * MARK: Main
+ */
 
 emu_result_t rv64v_vector_emulate(
     emulator_rv64_t* emulator,
@@ -247,6 +345,11 @@ emu_result_t rv64v_vector_emulate(
             rv64v_vle16_v(emulator, raw_instruction, tag);
             break;
         }
+        // Constant stride...
+        // case I_RV64V_VLSE8_V: {
+        //     rv64v_vlse8_V(emulator, raw_instruction, tag);
+        //     break;
+        // }
         // ...
         // store
         case I_RV64V_VSE8_V: {
@@ -255,6 +358,14 @@ emu_result_t rv64v_vector_emulate(
         }
         // ...
         // arithmetic
+        case I_RV64V_VADD_IVX: {
+            rv64v_vadd_vx(emulator, raw_instruction, tag);
+            break;
+        }
+        case I_RV64V_VADD_IVI: {
+            rv64v_vadd_vi(emulator, raw_instruction, tag);
+            break;
+        }
 
         // todo: the rest of the owl
         default: {

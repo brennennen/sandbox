@@ -124,17 +124,17 @@ char* rv64_map_instruction_tag_mnemonic(instruction_tag_rv64_t tag) {
  * Reads 32 bits (4 bytes) from memory starting at the pc register in little-endian.
  */
 emu_result_t emu_rv64_read_m32(emulator_rv64_t* emulator, uint32_t* out_data) {
-    if (emulator->registers.pc + 1 >= emulator->memory_size) {
+    if (emulator->pc + 1 >= emulator->memory_size) {
         LOG(LOG_ERROR, "read m32: ER_OUT_OF_BOUNDS. ip (+ read size): (%d + 4) >= memory size: %d\n",
-            emulator->registers.pc, emulator->memory_size);
+            emulator->pc, emulator->memory_size);
         return(ER_OUT_OF_BOUNDS);
     }
-    *out_data = (emulator->memory[emulator->registers.pc + 3] << 24)
-        | (emulator->memory[emulator->registers.pc + 2] << 16)
-        | (emulator->memory[emulator->registers.pc + 1] << 8)
-        | (emulator->memory[emulator->registers.pc]);
+    *out_data = (emulator->memory[emulator->pc + 3] << 24)
+        | (emulator->memory[emulator->pc + 2] << 16)
+        | (emulator->memory[emulator->pc + 1] << 8)
+        | (emulator->memory[emulator->pc]);
     if (*out_data != 0) { // if we reached an empty instruction (end of program), don't increment pc.
-        emulator->registers.pc += 4;
+        emulator->pc += 4;
     }
     return(ER_SUCCESS);
 }
@@ -142,18 +142,18 @@ emu_result_t emu_rv64_read_m32(emulator_rv64_t* emulator, uint32_t* out_data) {
 void debug_print_registers(emulator_rv64_t* emulator) {
     printf("Registers:\n");
     for (int i = 0; i < 32; i++) {
-        if (emulator->registers.regs[i] != 0) {
-            printf("%s (%d): %lu\n", rv64_map_register_name(i), i, emulator->registers.regs[i]);
+        if (emulator->registers[i] != 0) {
+            printf("%s (%d): %lu\n", rv64_map_register_name(i), i, emulator->registers[i]);
         }
     }
-    printf("PC: %d\n", emulator->registers.pc);
+    printf("PC: %d\n", emulator->pc);
 }
 
 static result_iter_t emu_rv64_emulate_next(emulator_rv64_t* emulator) {
     uint32_t raw_instruction = 0;
     emu_result_t read_result = emu_rv64_read_m32(emulator, &raw_instruction);
-    LOGD("ip: %d, raw_instruction: %x", emulator->registers.pc - 4, raw_instruction);
-    //emulator->registers.pc += 1;
+    LOGD("ip: %d, raw_instruction: %x", emulator->pc - 4, raw_instruction);
+    //emulator->pc += 1;
     if (emulator->instructions_count >= 128) {
         printf("%s:sentinel infinite loop detected, exiting (%d)\n",
             __func__, emulator->instructions_count);
@@ -290,7 +290,9 @@ static result_iter_t emu_rv64_emulate_next(emulator_rv64_t* emulator) {
         case I_RV64V_VSETIVLI:
         case I_RV64V_VLE8_V:
         case I_RV64V_VLE16_V:
-        case I_RV64V_VSE8_V: {
+        case I_RV64V_VSE8_V:
+        case I_RV64V_VADD_IVX:
+        case I_RV64V_VADD_IVI: {
             result = rv64v_vector_emulate(emulator, raw_instruction, instruction_tag);
             break;
         }
@@ -322,18 +324,18 @@ result_t emu_rv64_emulate_file(emulator_rv64_t* emulator, char* input_path) {
         LOG(LOG_ERROR, "Failed to read file!\n");
         return FAILURE;
     }
-    emulator->registers.pc = PROGRAM_START;
+    emulator->pc = PROGRAM_START;
     result_t result = emu_rv64_emulate(emulator);
     return result;
 }
 
 result_t emu_rv64_emulate_chunk(emulator_rv64_t* emulator, char* in_buffer, size_t in_buffer_size) {
     memcpy(emulator->memory + PROGRAM_START, in_buffer, in_buffer_size);
-    emulator->registers.pc = PROGRAM_START;
+    emulator->pc = PROGRAM_START;
     // emulator runs until exit is called or a null byte is hit, set some bytes directly
     // after the program to null to facilitate this.
-    emulator->memory[emulator->registers.pc + in_buffer_size] = 0x00;
-    emulator->memory[emulator->registers.pc + in_buffer_size + 1] = 0x00;
+    emulator->memory[emulator->pc + in_buffer_size] = 0x00;
+    emulator->memory[emulator->pc + in_buffer_size + 1] = 0x00;
     return(emu_rv64_emulate(emulator));
 }
 
@@ -353,18 +355,18 @@ result_t emu_rv64_emulate(emulator_rv64_t* emulator) {
 }
 
 void emu_rv64_print_registers(emulator_rv64_t* emulator) {
-    printf("registers: [pc: %d] ", emulator->registers.pc);
+    printf("registers: [pc: %d] ", emulator->pc);
     for (int i = 0; i < 32; i++) {
-        printf("%s: %lu\n", rv64_map_register_name(i), emulator->registers.regs[i]);
+        printf("%s: %lu\n", rv64_map_register_name(i), emulator->registers[i]);
     }
 }
 
 void emu_rv64_print_registers_condensed(emulator_rv64_t* emulator) {
-    printf("registers: [pc: %d] ", emulator->registers.pc);
+    printf("registers: [pc: %d] ", emulator->pc);
     for (int i = 0; i < 32; i++) {
 
-        if (emulator->registers.regs[i] != 0) {
-            printf("%s: %lu, ", rv64_map_register_name(i), emulator->registers.regs[i]);
+        if (emulator->registers[i] != 0) {
+            printf("%s: %lu, ", rv64_map_register_name(i), emulator->registers[i]);
         }
     }
     printf("\n");

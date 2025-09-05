@@ -23,7 +23,7 @@
  */
 static inline void rv64i_lui(emulator_rv64_t* emulator, int32_t imm20, uint8_t rd) {
     // sign-extension for imm20 done in decode
-    emulator->registers.regs[rd] = imm20 << 12;
+    emulator->registers[rd] = imm20 << 12;
 }
 
 /**
@@ -38,7 +38,7 @@ static inline void rv64i_lui(emulator_rv64_t* emulator, int32_t imm20, uint8_t r
 static inline void rv64i_auipc(emulator_rv64_t* emulator, int32_t imm20, uint8_t rd) {
     // pc is incremented when the instruction is originally read, so need to decrement here.
     // sign-extension for imm20 done in decode
-    emulator->registers.regs[rd] = (imm20 << 12) + emulator->registers.pc - 4;
+    emulator->registers[rd] = (imm20 << 12) + emulator->pc - 4;
 }
 
 static emu_result_t rv64i_emulate_upper_immediate(
@@ -83,10 +83,10 @@ static emu_result_t rv64i_emulate_upper_immediate(
  */
 static inline void rv64i_jal(emulator_rv64_t* emulator, int32_t offset, uint8_t rd) {
     if (rd != 0) {
-        emulator->registers.regs[rd] = emulator->registers.pc; // point rd to the next instruction
+        emulator->registers[rd] = emulator->pc; // point rd to the next instruction
     }
-    emulator->registers.pc = emulator->registers.pc + offset - 4;
-    LOGD("%s: offset: %d (pc: %ld), rd: %d", __func__, offset, emulator->registers.pc, rd);
+    emulator->pc = emulator->pc + offset - 4;
+    LOGD("%s: offset: %d (pc: %ld), rd: %d", __func__, offset, emulator->pc, rd);
 }
 
 static emu_result_t rv64i_emulate_j_type(
@@ -122,12 +122,12 @@ static emu_result_t rv64i_emulate_j_type(
  */
 static inline void rv64i_jalr(emulator_rv64_t* emulator, int32_t imm12, uint8_t rs1, uint8_t rd) {
     if (rd != 0) {
-        emulator->registers.regs[rd] = emulator->registers.pc; // point rd to the next instruction
+        emulator->registers[rd] = emulator->pc; // point rd to the next instruction
     }
     LOGD("%s: imm12: %d, rs1: %ld (%d), rd: %d", __func__,
-        imm12, emulator->registers.regs[rs1], rs1, rd);
+        imm12, emulator->registers[rs1], rs1, rd);
     // TODO: does imm12 need to be left shifted 1 bit?
-    emulator->registers.pc = emulator->registers.regs[rs1] + imm12;
+    emulator->pc = emulator->registers[rs1] + imm12;
 }
 
 /*
@@ -145,9 +145,9 @@ static inline void rv64i_jalr(emulator_rv64_t* emulator, int32_t imm12, uint8_t 
  */
 static inline void rv64i_beq(emulator_rv64_t* emulator, int32_t offset, uint8_t rs1, uint8_t rs2) {
     LOGD("%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset,
-        emulator->registers.regs[rs1], emulator->registers.regs[rs2]);
-    if (emulator->registers.regs[rs1] == emulator->registers.regs[rs2]) {
-        emulator->registers.pc = emulator->registers.pc + offset - 4;
+        emulator->registers[rs1], emulator->registers[rs2]);
+    if (emulator->registers[rs1] == emulator->registers[rs2]) {
+        emulator->pc = emulator->pc + offset - 4;
     }
 }
 
@@ -162,41 +162,41 @@ static inline void rv64i_beq(emulator_rv64_t* emulator, int32_t offset, uint8_t 
  */
 static inline void rv64i_bne(emulator_rv64_t* emulator, int32_t offset, uint8_t rs1, uint8_t rs2) {
     LOGD("%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset,
-        emulator->registers.regs[rs1], emulator->registers.regs[rs2]);
-    if (emulator->registers.regs[rs1] != emulator->registers.regs[rs2]) {
-        emulator->registers.pc = emulator->registers.pc + offset - 4;
+        emulator->registers[rs1], emulator->registers[rs2]);
+    if (emulator->registers[rs1] != emulator->registers[rs2]) {
+        emulator->pc = emulator->pc + offset - 4;
     }
 }
 
 static inline void rv64i_blt(emulator_rv64_t* emulator, int32_t offset, uint8_t rs1, uint8_t rs2) {
     LOGD("%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset,
-        emulator->registers.regs[rs1], emulator->registers.regs[rs2]);
-    if ((int64_t)emulator->registers.regs[rs1] < (int64_t)emulator->registers.regs[rs2]) {
-        emulator->registers.pc = emulator->registers.pc + offset - 4;
+        emulator->registers[rs1], emulator->registers[rs2]);
+    if ((int64_t)emulator->registers[rs1] < (int64_t)emulator->registers[rs2]) {
+        emulator->pc = emulator->pc + offset - 4;
     }
 }
 
 static inline void rv64i_bge(emulator_rv64_t* emulator, int32_t offset, uint8_t rs1, uint8_t rs2) {
     LOGD("%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset,
-        emulator->registers.regs[rs1], emulator->registers.regs[rs2]);
-    if ((int64_t)emulator->registers.regs[rs1] >= (int64_t)emulator->registers.regs[rs2]) {
-        emulator->registers.pc = emulator->registers.pc + offset - 4;
+        emulator->registers[rs1], emulator->registers[rs2]);
+    if ((int64_t)emulator->registers[rs1] >= (int64_t)emulator->registers[rs2]) {
+        emulator->pc = emulator->pc + offset - 4;
     }
 }
 
 static inline void rv64i_bltu(emulator_rv64_t* emulator, int32_t offset, uint8_t rs1, uint8_t rs2) {
     LOGD("%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset,
-        emulator->registers.regs[rs1], emulator->registers.regs[rs2]);
-    if (emulator->registers.regs[rs1] < emulator->registers.regs[rs2]) {
-        emulator->registers.pc = emulator->registers.pc + offset - 4;
+        emulator->registers[rs1], emulator->registers[rs2]);
+    if (emulator->registers[rs1] < emulator->registers[rs2]) {
+        emulator->pc = emulator->pc + offset - 4;
     }
 }
 
 static inline void rv64i_bgeu(emulator_rv64_t* emulator, int32_t offset, uint8_t rs1, uint8_t rs2) {
     LOGD("%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset,
-        emulator->registers.regs[rs1], emulator->registers.regs[rs2]);
-    if (emulator->registers.regs[rs1] >= emulator->registers.regs[rs2]) {
-        emulator->registers.pc = emulator->registers.pc + offset - 4;
+        emulator->registers[rs1], emulator->registers[rs2]);
+    if (emulator->registers[rs1] >= emulator->registers[rs2]) {
+        emulator->pc = emulator->pc + offset - 4;
     }
 }
 
@@ -249,23 +249,23 @@ static emu_result_t rv64i_emulate_b_type(
  */
 
 static inline void rv64i_sb(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rs2) {
-    uint64_t address = emulator->registers.regs[rs1] + imm12;
-    emulator->memory[address] = emulator->registers.regs[rs2] & 0xFF;
+    uint64_t address = emulator->registers[rs1] + imm12;
+    emulator->memory[address] = emulator->registers[rs2] & 0xFF;
 }
 
 static inline void rv64i_sh(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rs2) {
-    uint64_t address = emulator->registers.regs[rs1] + imm12;
+    uint64_t address = emulator->registers[rs1] + imm12;
     // todo: just use memcpy? uses host machine endieness?
-    emulator->memory[address] = (uint8_t) (emulator->registers.regs[rs2] & 0xFF);
-    emulator->memory[address + 1] = (uint8_t) ((emulator->registers.regs[rs2] >> 8) & 0xFF);
+    emulator->memory[address] = (uint8_t) (emulator->registers[rs2] & 0xFF);
+    emulator->memory[address + 1] = (uint8_t) ((emulator->registers[rs2] >> 8) & 0xFF);
 }
 
 static inline void rv64i_sw(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rs2) {
-    uint64_t address = emulator->registers.regs[rs1] + imm12;
-    emulator->memory[address] = (uint8_t) (emulator->registers.regs[rs2] & 0xFF);
-    emulator->memory[address + 1] = (uint8_t) ((emulator->registers.regs[rs2] >> 8) & 0xFF);
-    emulator->memory[address + 2] = (uint8_t) ((emulator->registers.regs[rs2] >> 16) & 0xFF);
-    emulator->memory[address + 3] = (uint8_t) ((emulator->registers.regs[rs2] >> 24) & 0xFF);
+    uint64_t address = emulator->registers[rs1] + imm12;
+    emulator->memory[address] = (uint8_t) (emulator->registers[rs2] & 0xFF);
+    emulator->memory[address + 1] = (uint8_t) ((emulator->registers[rs2] >> 8) & 0xFF);
+    emulator->memory[address + 2] = (uint8_t) ((emulator->registers[rs2] >> 16) & 0xFF);
+    emulator->memory[address + 3] = (uint8_t) ((emulator->registers[rs2] >> 24) & 0xFF);
 }
 
 /**
@@ -276,15 +276,15 @@ static inline void rv64i_sw(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_load_and_store_instructions
  */
 static inline void rv64i_sd(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rs2) {
-    uint64_t address = emulator->registers.regs[rs1] + imm12;
-    emulator->memory[address] = (uint8_t) (emulator->registers.regs[rs2] & 0xFF);
-    emulator->memory[address + 1] = (uint8_t) ((emulator->registers.regs[rs2] >> 8) & 0xFF);
-    emulator->memory[address + 2] = (uint8_t) ((emulator->registers.regs[rs2] >> 16) & 0xFF);
-    emulator->memory[address + 3] = (uint8_t) ((emulator->registers.regs[rs2] >> 24) & 0xFF);
-    emulator->memory[address + 4] = (uint8_t) ((emulator->registers.regs[rs2] >> 32) & 0xFF);
-    emulator->memory[address + 5] = (uint8_t) ((emulator->registers.regs[rs2] >> 40) & 0xFF);
-    emulator->memory[address + 6] = (uint8_t) ((emulator->registers.regs[rs2] >> 48) & 0xFF);
-    emulator->memory[address + 7] = (uint8_t) ((emulator->registers.regs[rs2] >> 56) & 0xFF);
+    uint64_t address = emulator->registers[rs1] + imm12;
+    emulator->memory[address] = (uint8_t) (emulator->registers[rs2] & 0xFF);
+    emulator->memory[address + 1] = (uint8_t) ((emulator->registers[rs2] >> 8) & 0xFF);
+    emulator->memory[address + 2] = (uint8_t) ((emulator->registers[rs2] >> 16) & 0xFF);
+    emulator->memory[address + 3] = (uint8_t) ((emulator->registers[rs2] >> 24) & 0xFF);
+    emulator->memory[address + 4] = (uint8_t) ((emulator->registers[rs2] >> 32) & 0xFF);
+    emulator->memory[address + 5] = (uint8_t) ((emulator->registers[rs2] >> 40) & 0xFF);
+    emulator->memory[address + 6] = (uint8_t) ((emulator->registers[rs2] >> 48) & 0xFF);
+    emulator->memory[address + 7] = (uint8_t) ((emulator->registers[rs2] >> 56) & 0xFF);
 }
 
 static emu_result_t rv64i_emulate_s_type(
@@ -335,9 +335,9 @@ static emu_result_t rv64i_emulate_s_type(
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_load_and_store_instructions
  */
 static inline void rv64i_lb(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    uint64_t address = emulator->registers.regs[rs1] + imm12;
+    uint64_t address = emulator->registers[rs1] + imm12;
     // cast provides sign extension
-    emulator->registers.regs[rd] = (int8_t) emulator->memory[address];
+    emulator->registers[rd] = (int8_t) emulator->memory[address];
 }
 
 /**
@@ -348,11 +348,11 @@ static inline void rv64i_lb(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_load_and_store_instructions
  */
 static inline void rv64i_lh(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    uint64_t address = emulator->registers.regs[rs1] + imm12;
+    uint64_t address = emulator->registers[rs1] + imm12;
     uint16_t halfword = (uint16_t)emulator->memory[address] |
         ((uint16_t) emulator->memory[address + 1] << 8);
     // cast provides sign extension
-    emulator->registers.regs[rd] = (int16_t) halfword;
+    emulator->registers[rd] = (int16_t) halfword;
 }
 
 /**
@@ -364,13 +364,13 @@ static inline void rv64i_lh(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs
  */
 static inline void rv64i_lw(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
     // TODO: sign extend
-    uint64_t address = emulator->registers.regs[rs1] + imm12;
+    uint64_t address = emulator->registers[rs1] + imm12;
     uint32_t word = (uint32_t)emulator->memory[address] |
         ((uint32_t) emulator->memory[address + 1] << 24) |
         ((uint32_t) emulator->memory[address + 2] << 16) |
         ((uint32_t) emulator->memory[address + 3] << 8);
     // cast provides sign extension
-    emulator->registers.regs[rd] = (int32_t) word;
+    emulator->registers[rd] = (int32_t) word;
 }
 
 /**
@@ -381,8 +381,8 @@ static inline void rv64i_lw(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_load_and_store_instructions
  */
 static inline void rv64i_lbu(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    uint64_t address = emulator->registers.regs[rs1] + imm12;
-    emulator->registers.regs[rd] = emulator->memory[address];
+    uint64_t address = emulator->registers[rs1] + imm12;
+    emulator->registers[rd] = emulator->memory[address];
 }
 
 /**
@@ -393,8 +393,8 @@ static inline void rv64i_lbu(emulator_rv64_t* emulator, int16_t imm12, uint8_t r
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_load_and_store_instructions
  */
 static inline void rv64i_lhu(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    uint64_t address = emulator->registers.regs[rs1] + imm12;
-    emulator->registers.regs[rd] = (uint16_t)emulator->memory[address] |
+    uint64_t address = emulator->registers[rs1] + imm12;
+    emulator->registers[rd] = (uint16_t)emulator->memory[address] |
         ((uint16_t) emulator->memory[address + 1] << 8);
 }
 
@@ -407,12 +407,12 @@ static inline void rv64i_lhu(emulator_rv64_t* emulator, int16_t imm12, uint8_t r
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_load_and_store_instructions
  */
 static inline void rv64i_lwu(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    uint64_t address = emulator->registers.regs[rs1] + imm12;
+    uint64_t address = emulator->registers[rs1] + imm12;
     uint32_t word = (uint32_t)emulator->memory[address] |
         ((uint32_t) emulator->memory[address + 1] << 24) |
         ((uint32_t) emulator->memory[address + 2] << 16) |
         ((uint32_t) emulator->memory[address + 3] << 8);
-    emulator->registers.regs[rd] = word;
+    emulator->registers[rd] = word;
 }
 
 /**
@@ -423,7 +423,7 @@ static inline void rv64i_lwu(emulator_rv64_t* emulator, int16_t imm12, uint8_t r
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_load_and_store_instructions
  */
 static inline void rv64i_ld(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    uint64_t address = emulator->registers.regs[rs1] + imm12;
+    uint64_t address = emulator->registers[rs1] + imm12;
     // todo: why not just memcpy?
     uint64_t double_word = (uint64_t)emulator->memory[address] |
         ((uint64_t) emulator->memory[address + 1] << 56) |
@@ -433,14 +433,14 @@ static inline void rv64i_ld(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs
         ((uint64_t) emulator->memory[address + 6] << 24) |
         ((uint64_t) emulator->memory[address + 7] << 16) |
         ((uint64_t) emulator->memory[address + 8] << 8);
-    emulator->registers.regs[rd] = double_word;
+    emulator->registers[rd] = double_word;
 }
 
 /**
  * NOTE: NOP is encoded as `ADDI x0, x0, 0`.
  */
 static inline void rv64_addi(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    emulator->registers.regs[rd] = emulator->registers.regs[rs1] + imm12;
+    emulator->registers[rd] = emulator->registers[rs1] + imm12;
 }
 
 /**
@@ -448,13 +448,13 @@ static inline void rv64_addi(emulator_rv64_t* emulator, int16_t imm12, uint8_t r
  * both numbers are treated as signed.
  */
 static inline void rv64_slti(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    if ((int64_t)emulator->registers.regs[rs1] < (int64_t)imm12) {
-        emulator->registers.regs[rd] = 1;
+    if ((int64_t)emulator->registers[rs1] < (int64_t)imm12) {
+        emulator->registers[rd] = 1;
     } else {
-        emulator->registers.regs[rd] = 0;
+        emulator->registers[rd] = 0;
     }
-    LOGD("%s: rs1: %d, imm: %d, rd: %d", __func__, emulator->registers.regs[rs1],
-         imm12, emulator->registers.regs[rd]);
+    LOGD("%s: rs1: %d, imm: %d, rd: %d", __func__, emulator->registers[rs1],
+         imm12, emulator->registers[rd]);
 }
 
 /**
@@ -462,31 +462,31 @@ static inline void rv64_slti(emulator_rv64_t* emulator, int16_t imm12, uint8_t r
  * both numbers are treated as unsigned.
  */
 static inline void rv64_sltiu(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    if ((uint64_t)emulator->registers.regs[rs1] < (uint16_t) imm12) {
-        emulator->registers.regs[rd] = 1;
+    if ((uint64_t)emulator->registers[rs1] < (uint16_t) imm12) {
+        emulator->registers[rd] = 1;
     } else {
-        emulator->registers.regs[rd] = 0;
+        emulator->registers[rd] = 0;
     }
-    LOGD("%s: rs1: %d, imm: %d, rd: %d", __func__, emulator->registers.regs[rs1],
-         imm12, emulator->registers.regs[rd]);
+    LOGD("%s: rs1: %d, imm: %d, rd: %d", __func__, emulator->registers[rs1],
+         imm12, emulator->registers[rd]);
 }
 
 static inline void rv64_xori(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    emulator->registers.regs[rd] = emulator->registers.regs[rs1] ^ imm12;
+    emulator->registers[rd] = emulator->registers[rs1] ^ imm12;
 }
 
 /**
  * "logical/bitwise OR" - Both numbers sign extended.
  */
 static inline void rv64_ori(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    emulator->registers.regs[rd] = emulator->registers.regs[rs1] | imm12;
+    emulator->registers[rd] = emulator->registers[rs1] | imm12;
 }
 
 /**
  * "logical/bitwise AND" - Both numbers sign extended.
  */
 static inline void rv64_andi(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    emulator->registers.regs[rd] = emulator->registers.regs[rs1] & imm12;
+    emulator->registers[rd] = emulator->registers[rs1] & imm12;
 }
 
 static emu_result_t rv64_emulate_register_immediate(
@@ -571,7 +571,7 @@ static emu_result_t rv64_emulate_register_immediate(
  * (Section 2.4.1. Integer Register-Immediate Instructions)
  */
 static inline void rv64_slli(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    emulator->registers.regs[rd] = emulator->registers.regs[rs1] << imm12;
+    emulator->registers[rd] = emulator->registers[rs1] << imm12;
 }
 
 /**
@@ -580,7 +580,7 @@ static inline void rv64_slli(emulator_rv64_t* emulator, int16_t imm12, uint8_t r
  * (Section 2.4.1. Integer Register-Immediate Instructions)
  */
 static inline void rv64_srli(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    emulator->registers.regs[rd] = emulator->registers.regs[rs1] >> ((uint16_t)imm12);
+    emulator->registers[rd] = emulator->registers[rs1] >> ((uint16_t)imm12);
 }
 
 /**
@@ -589,7 +589,7 @@ static inline void rv64_srli(emulator_rv64_t* emulator, int16_t imm12, uint8_t r
  * (Section 2.4.1. Integer Register-Immediate Instructions)
  */
 static inline void rv64_srai(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    emulator->registers.regs[rd] = ((int64_t)emulator->registers.regs[rs1]) >> imm12;
+    emulator->registers[rd] = ((int64_t)emulator->registers[rs1]) >> imm12;
 }
 
 /**
@@ -599,7 +599,7 @@ static inline void rv64_srai(emulator_rv64_t* emulator, int16_t imm12, uint8_t r
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions
  */
 static inline void rv64i_slli(emulator_rv64_t* emulator, uint8_t imm5, uint8_t rs1, uint8_t rd) {
-    emulator->registers.regs[rd] = emulator->registers.regs[rs1] << imm5;
+    emulator->registers[rd] = emulator->registers[rs1] << imm5;
 }
 
 /**
@@ -609,7 +609,7 @@ static inline void rv64i_slli(emulator_rv64_t* emulator, uint8_t imm5, uint8_t r
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions
  */
 static inline void rv64i_srli(emulator_rv64_t* emulator, uint8_t imm5, uint8_t rs1, uint8_t rd) {
-    emulator->registers.regs[rd] = emulator->registers.regs[rs1] >> ((uint8_t)imm5);
+    emulator->registers[rd] = emulator->registers[rs1] >> ((uint8_t)imm5);
 }
 
 /**
@@ -619,7 +619,7 @@ static inline void rv64i_srli(emulator_rv64_t* emulator, uint8_t imm5, uint8_t r
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions
  */
 static inline void rv64i_srai(emulator_rv64_t* emulator, uint8_t imm5, uint8_t rs1, uint8_t rd) {
-    emulator->registers.regs[rd] = ((int64_t)emulator->registers.regs[rs1]) >> imm5;
+    emulator->registers[rd] = ((int64_t)emulator->registers[rs1]) >> imm5;
 }
 
 static emu_result_t rv64i_emulate_shift_immediate(
@@ -659,15 +659,15 @@ static emu_result_t rv64i_emulate_shift_immediate(
  */
 
 static inline void rv64i_add(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    emulator->registers.regs[rd] = emulator->registers.regs[rs1] + emulator->registers.regs[rs2];
+    emulator->registers[rd] = emulator->registers[rs1] + emulator->registers[rs2];
 }
 
 static inline void rv64i_sub(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    emulator->registers.regs[rd] = emulator->registers.regs[rs1] - emulator->registers.regs[rs2];
+    emulator->registers[rd] = emulator->registers[rs1] - emulator->registers[rs2];
 }
 
 static inline void rv64i_sll(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    emulator->registers.regs[rd] = emulator->registers.regs[rs1] << emulator->registers.regs[rs2];
+    emulator->registers[rd] = emulator->registers[rs1] << emulator->registers[rs2];
 }
 
 /**
@@ -675,10 +675,10 @@ static inline void rv64i_sll(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2
  * as signed numbers.
  */
 static inline void rv64i_slt(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    if (emulator->registers.regs[rs1] < emulator->registers.regs[rs2]) {
-        emulator->registers.regs[rd] = 1;
+    if (emulator->registers[rs1] < emulator->registers[rs2]) {
+        emulator->registers[rd] = 1;
     } else {
-        emulator->registers.regs[rd] = 0;
+        emulator->registers[rd] = 0;
     }
 }
 
@@ -687,33 +687,33 @@ static inline void rv64i_slt(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2
  * are treated as unsigned numbers.
  */
 static inline void rv64i_sltu(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    if ((uint64_t)emulator->registers.regs[rs1] < (uint64_t)emulator->registers.regs[rs2]) {
-        emulator->registers.regs[rd] = 1;
+    if ((uint64_t)emulator->registers[rs1] < (uint64_t)emulator->registers[rs2]) {
+        emulator->registers[rd] = 1;
     } else {
-        emulator->registers.regs[rd] = 0;
+        emulator->registers[rd] = 0;
     }
 }
 
 static inline void rv64i_xor(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    emulator->registers.regs[rd] = emulator->registers.regs[rs1] ^ emulator->registers.regs[rs2];
+    emulator->registers[rd] = emulator->registers[rs1] ^ emulator->registers[rs2];
 }
 
 // c shift right is logical when unsigned, arithmetic when signed (sign extension)
 static inline void rv64i_srl(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    emulator->registers.regs[rd] = emulator->registers.regs[rs1] >> emulator->registers.regs[rs2];
+    emulator->registers[rd] = emulator->registers[rs1] >> emulator->registers[rs2];
 }
 
 static inline void rv64i_sra(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    emulator->registers.regs[rd] = ((int64_t)emulator->registers.regs[rs1]) >>
-        ((int64_t)emulator->registers.regs[rs2]);
+    emulator->registers[rd] = ((int64_t)emulator->registers[rs1]) >>
+        ((int64_t)emulator->registers[rs2]);
 }
 
 static inline void rv64i_or(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    emulator->registers.regs[rd] = emulator->registers.regs[rs1] | emulator->registers.regs[rs2];
+    emulator->registers[rd] = emulator->registers[rs1] | emulator->registers[rs2];
 }
 
 static inline void rv64i_and(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    emulator->registers.regs[rd] = emulator->registers.regs[rs1] & emulator->registers.regs[rs2];
+    emulator->registers[rd] = emulator->registers[rs1] & emulator->registers[rs2];
 }
 
 static emu_result_t rv64_emulate_register_register(
@@ -949,18 +949,18 @@ emu_result_t rv64i_base_integer_emulate(
  */
 
 static inline void rv64i_csrrw(emulator_rv64_t* emulator, uint8_t csr, uint8_t rs1, uint8_t rd) {
-    uint64_t rs1_temp = emulator->registers.regs[rs1]; // need to use a local here incase rs1 and rd are the same register.
+    uint64_t rs1_temp = emulator->registers[rs1]; // need to use a local here incase rs1 and rd are the same register.
     if (rd != 0) {
-        emulator->registers.regs[rd] = rv64_get_csr_value(&emulator->csrs, csr);
+        emulator->registers[rd] = rv64_get_csr_value(&emulator->csrs, csr);
     }
     rv64_set_csr_value(&emulator->csrs, csr, rs1_temp);
 }
 
 static inline void rv64i_csrrs(emulator_rv64_t* emulator, uint8_t csr, uint8_t rs1, uint8_t rd) {
-    uint64_t rs1_mask = emulator->registers.regs[rs1]; // need to use a local here incase rs1 and rd are the same register.
+    uint64_t rs1_mask = emulator->registers[rs1]; // need to use a local here incase rs1 and rd are the same register.
     uint64_t result = rv64_get_csr_value(&emulator->csrs, csr);
     if (rd != 0) {
-        emulator->registers.regs[rd] = result;
+        emulator->registers[rd] = result;
     }
     if (rs1 != 0) {
         result = result ^ rs1_mask; // rs1 mask contains bits to clear
@@ -969,10 +969,10 @@ static inline void rv64i_csrrs(emulator_rv64_t* emulator, uint8_t csr, uint8_t r
 }
 
 static inline void rv64i_csrrc(emulator_rv64_t* emulator, uint8_t csr, uint8_t rs1, uint8_t rd) {
-    uint64_t rs1_mask = emulator->registers.regs[rs1]; // need to use a local here incase rs1 and rd are the same register.
+    uint64_t rs1_mask = emulator->registers[rs1]; // need to use a local here incase rs1 and rd are the same register.
     uint64_t result = rv64_get_csr_value(&emulator->csrs, csr);
     if (rd != 0) {
-        emulator->registers.regs[rd] = result;
+        emulator->registers[rd] = result;
     }
     if (rs1 != 0) {
         result = result & (~rs1_mask); // rs1 mask contains bits to clear
@@ -1016,7 +1016,7 @@ static emu_result_t rv64i_csr_register(
 
 static inline void rv64i_csrrwi(emulator_rv64_t* emulator, uint8_t csr, uint8_t uimm, uint8_t rd) {
     if (rd != 0) {
-        emulator->registers.regs[rd] = rv64_get_csr_value(&emulator->csrs, csr);
+        emulator->registers[rd] = rv64_get_csr_value(&emulator->csrs, csr);
     }
     rv64_set_csr_value(&emulator->csrs, csr, uimm);
 }
@@ -1024,7 +1024,7 @@ static inline void rv64i_csrrwi(emulator_rv64_t* emulator, uint8_t csr, uint8_t 
 static inline void rv64i_csrrsi(emulator_rv64_t* emulator, uint8_t csr, uint8_t uimm, uint8_t rd) {
     uint64_t result = rv64_get_csr_value(&emulator->csrs, csr);
     if (rd != 0) {
-        emulator->registers.regs[rd] = result;
+        emulator->registers[rd] = result;
     }
     if (uimm != 0) {
         result = result ^ uimm;
@@ -1035,7 +1035,7 @@ static inline void rv64i_csrrsi(emulator_rv64_t* emulator, uint8_t csr, uint8_t 
 static inline void rv64i_csrrci(emulator_rv64_t* emulator, uint8_t csr, uint8_t uimm, uint8_t rd) {
     uint64_t result = rv64_get_csr_value(&emulator->csrs, csr);
     if (rd != 0) {
-        emulator->registers.regs[rd] = result;
+        emulator->registers[rd] = result;
     }
     if (uimm != 0) {
         result = result & (~uimm); // uimm mask contains bits to clear

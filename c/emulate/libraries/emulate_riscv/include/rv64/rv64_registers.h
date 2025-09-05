@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 
+#include "rv64/rv64_virtual_hardware_conf.h"
 
 
 /**
@@ -46,30 +47,32 @@
 #define RV64_REG_T5 30
 #define RV64_REG_T6 31
 
-/**
- *
- * @see 2.1 Programmers' Model for Base Integer ISA (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_programmers_model_for_base_integer_isa)
- */
-typedef struct {
-    uint64_t regs[32];
-    uint32_t pc;
 
-    // TODO: CSR registers? or put those in a different struct?
-    //uint8_t csrs[4096];
+// /**
+//  *
+//  * @see 2.1 Programmers' Model for Base Integer ISA (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_programmers_model_for_base_integer_isa)
+//  */
+// typedef struct {
+//     uint64_t regs[32];
+//     uint32_t pc;
 
-    // RV64V
-    uint8_t vregs[32][16]; // faking 128 bit wide registers. 16 * 8 = 128 bits
-    uint8_t vta; // @see 30.3.4.3 Vector Tail Agnostic and Vector Mask Agnostic `vta` and `vma` (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#sec-agnostic)
-    uint8_t vma; // @see 30.3.4.3 Vector Tail Agnostic and Vector Mask Agnostic `vta` and `vma` (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#sec-agnostic)
-    uint8_t vill; // @see 30.3.4.4 Vector Type Illegal (vill) (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_type_illegal_vill)
-    uint16_t vl; // @see 30.3.5 Vector Length (vl) Register (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_length_vl_register)
-    uint64_t vlenb;
-    uint64_t vstart;
-    uint64_t vxrm;
-    uint8_t vxsat;
-    uint64_t vcsr;
-    // vtype, sew, lmul, vlmax?
-} registers_rv64_t;
+//     // TODO: CSR registers? or put those in a different struct?
+//     //uint8_t csrs[4096];
+
+//     // RV64V
+//     //uint8_t vregs[32][16]; // faking 128 bit wide registers. 16 * 8 = 128 bits
+//     vector_register_t vector_registers[32];
+//     uint8_t vta; // @see 30.3.4.3 Vector Tail Agnostic and Vector Mask Agnostic `vta` and `vma` (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#sec-agnostic)
+//     uint8_t vma; // @see 30.3.4.3 Vector Tail Agnostic and Vector Mask Agnostic `vta` and `vma` (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#sec-agnostic)
+//     uint8_t vill; // @see 30.3.4.4 Vector Type Illegal (vill) (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_type_illegal_vill)
+//     uint16_t vl; // @see 30.3.5 Vector Length (vl) Register (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_length_vl_register)
+//     uint64_t vlenb;
+//     uint64_t vstart;
+//     uint64_t vxrm;
+//     uint8_t vxsat;
+//     uint64_t vcsr;
+//     // vtype, sew, lmul, vlmax?
+// } registers_rv64_t;
 
 
 #endif // REGISTERS_RV64I_H

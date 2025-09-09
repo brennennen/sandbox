@@ -13,6 +13,22 @@
 
 #include "rv64/instructions/rv64v_vector.h"
 
+/*
+ * MARK: Helpers
+ */
+
+static uint8_t rv64v_selected_element_width(rv64v_selected_element_width_t sew) {
+    switch(sew) {
+        case RV64_SEW_8: return 8;
+        case RV64_SEW_16: return 16;
+        case RV64_SEW_32: return 32;
+        case RV64_SEW_64: return 64;
+        default: {
+            printf("%s: invalid sew enum: %d. defaulting to 8.\n", __func__, sew);
+            return 8;
+        }
+    }
+}
 
 /**
  * Calculates the Maximum Vector Length.
@@ -23,15 +39,87 @@
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#vector-register-grouping
  */
 static uint64_t rv64v_calculate_vlmax(rv64v_vtype_t* vtype) {
-    // start simple, vlmul == 0, is group size of 1.
-    if (vtype->vlmul == 0) {
-        // todo: avoid integer division, use a look up table?
-        return (uint64_t)(VLEN / (uint64_t)vtype->selected_element_width);
+    // todo: avoid integer division, use a look up table?
+    // if (vtype->selected_element_width == 0) {
+    //     printf("%s: \n", __func__);
+    //     return(0);
+    // }
+    uint8_t sew = rv64v_selected_element_width(vtype->selected_element_width);
+    uint64_t base_vlmax = (uint64_t)(VLEN / (uint64_t)sew);
+    uint64_t vlmax = 0;
+    switch(vtype->vlmul) {
+        case RV64_VLMUL_1: {
+            vlmax = base_vlmax;
+            break;
+        }
+        case RV64_VLMUL_2: {
+            vlmax = base_vlmax * 2;
+            break;
+        }
+        case RV64_VLMUL_4: {
+            vlmax = base_vlmax * 4;
+            break;
+        }
+        case RV64_VLMUL_8: {
+            vlmax = base_vlmax * 8;
+            break;
+        }
+        // TODO: fractional vlmuls
+        default: {
+            printf("%s: setting vlmax to 0, fractional vlmuls not supported yet\n", __func__);
+            vlmax = 0;
+        }
     }
-    // TODO: group sizes not 1
-    printf("setting vlmax to 0, 'group sizes != 1' is not supported!\n");
-    return 0;
+    printf("%s: vlmul: %d, vlmax: %ld\n", __func__, vtype->vlmul, vlmax);
+    return vlmax;
+
+    // start simple, vlmul == 0, is group size of 1.
+    // if (vtype->vlmul == RV64_VLMUL_1) {
+    //     // todo: avoid integer division, use a look up table?
+    //     return (uint64_t)(VLEN / (uint64_t)vtype->selected_element_width);
+    // }
+    // // TODO: group sizes not 1
+    // printf("setting vlmax to 0, 'group sizes != 1' is not supported!\n");
+    // return 0;
 }
+
+static bool rv64v_is_register_group_aligned(
+    uint8_t vector_register,
+    rv64v_vlmul_t vlmul
+) {
+    bool is_aligned = true;
+    switch(vlmul) {
+        case RV64_VLMUL_2: {
+            if (vector_register % 2 != 0) {
+                is_aligned = false;
+            }
+            break;
+        }
+        case RV64_VLMUL_4: {
+            if (vector_register % 4 != 0) {
+                is_aligned = false;
+            }
+            break;
+        }
+        case RV64_VLMUL_8: {
+            if (vector_register % 8 != 0) {
+                is_aligned = false;
+            }
+            break;
+        }
+        // TODO: fractional vlmuls?
+        default: {
+            printf("%s: unsupported vlmul\n", __func__);
+            is_aligned = false;
+            break;
+        }
+    }
+    return is_aligned;
+}
+
+/*
+ * MARK: Configure vtype/vl
+ */
 
 /**
  * Configures vector csrs (vl and vtype) for any upcoming vector instruction operations.
@@ -52,7 +140,7 @@ static void rv64v_vsetvli(
     uint8_t rs1 = 0;
     uint8_t rd = 0;
     uint16_t vtypei = 0;
-    rv64v_decode_vsetvli(raw_instruction, &rs1, &rd, &vtypei);
+    rv64v_decode_vsetvli(raw_instruction, &rd, &rs1, &vtypei);
 
     // Set Vector Type
     // todo: detect illegal vtype
@@ -64,7 +152,10 @@ static void rv64v_vsetvli(
     rv64_csr_decode_vtype(emulator->csrs.vtype, &vtype);
     uint64_t avl = emulator->registers[rs1];
     uint64_t vlmax = rv64v_calculate_vlmax(&vtype);
+
     emulator->csrs.vl = MIN(avl, vlmax);
+    printf("%s: avl reg/rs1: %d\n", __func__, rs1);
+    printf("%s: avl: %ld, vlmax: %ld, vl: %ld\n", __func__, avl, vlmax, emulator->csrs.vl);
 
     if (rd != 0) {
         emulator->registers[rd] = emulator->csrs.vl;
@@ -74,6 +165,27 @@ static void rv64v_vsetvli(
 /*
  * MARK: Loads
  */
+/*
+// Minimal implementation of a vector load without vector register grouping or masking.
+static void rv64v_vle8_v_simple_no_grouping_no_masking(
+    emulator_rv64_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64_t tag
+) {
+    uint8_t nf, mew, mop, vm, lumop, rs1, width, vd = 0;
+    rv64v_decode_load_unit_stride(raw_instruction, &nf, &mew, &mop, &vm, &lumop, &rs1, &width, &vd);
+    const uint64_t base_addr = emulator->registers[rs1];
+    uint8_t vlen_bytes = 16; // vlen = 128 bits
+    for (uint64_t i = 0; i < emulator->csrs.vl; i++) {
+        uint64_t physical_vd = vd + (i / vlen_bytes);
+        uint64_t byte_offset = i % vlen_bytes;
+        emulator->vector_registers[physical_vd].bytes[byte_offset] = emulator->memory[base_addr + i];
+    }
+}
+*/
+
+
+
 
 /**
  *
@@ -113,6 +225,13 @@ static void rv64v_vle8_v(
         printf("%s: sew != SEW_8! vector instruction undefined throw illegal trap!\n", __func__);
         return;
     }
+
+    if (!rv64v_is_register_group_aligned(vd, vtype.vlmul)) {
+        printf("%s: vegister group not aligned: %d, vlmul: %d\n", __func__, vd, vtype.vlmul);
+    }
+
+    // vector register grouping
+    // todo switch case around vtype.vlmul?
 
     // TODO: masking
     uint8_t vlen_bytes = 16; // vlen = 128 bits

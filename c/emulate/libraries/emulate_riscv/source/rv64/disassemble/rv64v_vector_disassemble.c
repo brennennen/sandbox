@@ -90,14 +90,14 @@ emu_result_t rv64v_disassemble_vsetvli(
     uint8_t rs1 = 0;
     uint8_t rd = 0;
     uint16_t vtypei = 0;
-    rv64v_decode_vsetvli(raw_instruction, &rs1, &rd, &vtypei);
+    rv64v_decode_vsetvli(raw_instruction, &rd, &rs1, &vtypei);
 
     char* rs1_name = rv64_map_register_name(rs1);
     char* rd_name = rv64_map_register_name(rd);
     char* tag_name = rv64_instruction_tag_mnemonic[tag];
 
     int written = snprintf(buffer + *index, buffer_size - *index,
-        "%s %s, %s, ", tag_name, rs1_name, rd_name);
+        "%s %s, %s, ", tag_name, rd_name, rs1_name);
     if (written < 0) {
         return(ER_FAILURE);
     }

@@ -15,6 +15,7 @@ void rv64_emu_vsetvli_default_setup(void) {
 Test(emu_rv64_emulate__vsetvli__tests, vsetvli_1, .init = rv64_emu_vsetvli_default_setup)
 {
     g_emulator.csrs.vtype = 0;
+    g_emulator.registers[RV64_REG_A2] = 8; // rs1 = avl
     uint8_t input[] = { 0xd7, 0x72, 0x36, 0x0c }; // vsetvli t0, a2, e8, m8, ta, ma
     // vtype bits: 20 - 30 = 00 1100 0011
     cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
@@ -29,4 +30,5 @@ Test(emu_rv64_emulate__vsetvli__tests, vsetvli_1, .init = rv64_emu_vsetvli_defau
     cr_assert(0 == vsew); // vsew = e8 = 0 = 0b000
     uint8_t vlmul = g_emulator.csrs.vtype & 0b111;
     cr_assert(3 == vlmul); // vlmul = m8 = 3 = 0b011
+    cr_assert(8 == g_emulator.csrs.vl);
 }

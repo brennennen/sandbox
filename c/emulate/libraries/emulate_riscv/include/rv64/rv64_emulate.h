@@ -36,12 +36,10 @@ typedef union {
     uint64_t elements_64[VLEN_BYTES / 8];
 } vector_register_t;
 
-
 typedef struct emulator_rv64_s {
     uint64_t registers[32];
     uint32_t pc;
     vector_register_t vector_registers[32];
-    //registers_rv64_t registers;
     rv64_csrs_t csrs;
     int instructions_count;
     // uint16_t stack_size; // using a size here in case i want to make this dynamic/resizable later.

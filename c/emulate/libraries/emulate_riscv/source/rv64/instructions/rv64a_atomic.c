@@ -13,15 +13,24 @@
 #include "rv64/instructions/rv64i_base_integer.h"
 #include "rv64/instructions/rv64m_multiplication.h"
 
- /**
-  * amoswap.w - Atomic Memory Operation SWAP (Word)
-  * `amoswap.w rd, rs2, (rs1)`
-  * `amoswap.w.aq rd, rs2, (rs1)`
-  * `amoswap.w.rl rd, rs2, (rs1)`
-  * Atomically swaps the value in memory at address rs1 and the value in register rs2.
-  * All `AMO` operations have lock aquire and release capabilities that are currently
-  * ignored by this emulator (emulator is currently a single hart).
-  */
+/*
+ * MARK: alrsc
+ */
+
+/*
+ * MARK: aamo
+ */
+
+
+/**
+ * amoswap.w - Atomic Memory Operation SWAP (Word)
+ * `amoswap.w rd, rs2, (rs1)`
+ * `amoswap.w.aq rd, rs2, (rs1)`
+ * `amoswap.w.rl rd, rs2, (rs1)`
+ * Atomically swaps the value in memory at address rs1 and the value in register rs2.
+ * All `AMO` operations have lock aquire and release capabilities that are currently
+ * ignored by this emulator (emulator is currently a single hart).
+ */
 static inline void rv64a_amoswap_w(
     emulator_rv64_t* emulator,
     uint8_t aquire,
@@ -65,6 +74,52 @@ static inline void rv64_amoadd_w(
 
 
 
+/*
+ * MARK: awrs
+ */
+
+/*
+ * MARK: acas
+ */
+
+/**
+ * amocas.w - Atomic Compare And Swap (Word)
+ * `amocas.w rd, rs2, (rs1)`
+ * Atomically loads a 32-bit value from address in `rs1`, compares the loaded value to the
+ * 32-bit value held in `rd`, and if equal, stores the value held in `rs2` to `rs1`.
+ */
+static inline void rv64a_amocas_w(
+    emulator_rv64_t* emulator,
+    uint8_t aquire,
+    uint8_t release,
+    uint8_t rs2,
+    uint8_t rs1,
+    uint8_t rd
+) {
+    if (aquire) {
+        // todo: if multi-threading is added, ...
+    }
+
+    uint64_t address = emulator->registers[rs1];
+    int32_t expected = (int32_t) emulator->registers[rd];
+    int32_t original_memory_value = 0;
+    memcpy(&original_memory_value, &emulator->memory[address], 4);
+    if (original_memory_value == expected) {
+        memcpy(&emulator->memory[address], &emulator->registers[rs2], 4);
+    }
+
+    if (release) {
+        // todo: if multi-threading is added, ...
+    }
+
+    if (rd != 0) {
+        emulator->registers[rd] = (int64_t)original_memory_value; // sign extend via cast
+    }
+}
+
+/*
+ * MARK: abha
+ */
 
 
 /*
@@ -89,6 +144,16 @@ emu_result_t rv64a_atomic_emulate(
         aquire, release, rs2, rs1, rd);
 
     switch(tag) {
+        // alrsc
+        case I_RV64ZALRSC_LR_W:
+        case I_RV64ZALRSC_SC_W:
+        case I_RV64ZALRSC_LR_D:
+        case I_RV64ZALRSC_SC_D: {
+            printf("%s: todo alrsc\n", __func__);
+            result = ER_FAILURE;
+            break;
+        }
+        // aamo
         case I_RV64ZAAMO_AMOSWAP_W: {
             rv64a_amoswap_w(emulator, aquire, release, rs2, rs1, rd);
             break;
@@ -97,11 +162,6 @@ emu_result_t rv64a_atomic_emulate(
             rv64_amoadd_w(emulator, aquire, release, rs2, rs1, rd);
             break;
         }
-
-        // tags todo:
-        case I_RV64ZALRSC_LR_W:
-        case I_RV64ZALRSC_SC_W:
-
         case I_RV64ZAAMO_AMOXOR_W:
         case I_RV64ZAAMO_AMOAND_W:
         case I_RV64ZAAMO_AMOOR_W:
@@ -109,8 +169,6 @@ emu_result_t rv64a_atomic_emulate(
         case I_RV64ZAAMO_AMOMAX_W:
         case I_RV64ZAAMO_AMOMINU_W:
         case I_RV64ZAAMO_AMOMAXU_W:
-        case I_RV64ZALRSC_LR_D:
-        case I_RV64ZALRSC_SC_D:
         case I_RV64ZAAMO_AMOSWAP_D:
         case I_RV64ZAAMO_AMOADD_D:
         case I_RV64ZAAMO_AMOXOR_D:
@@ -119,8 +177,58 @@ emu_result_t rv64a_atomic_emulate(
         case I_RV64ZAAMO_AMOMIN_D:
         case I_RV64ZAAMO_AMOMAX_D:
         case I_RV64ZAAMO_AMOMINU_D:
-        case I_RV64ZAAMO_AMOMAXU_D:
+        case I_RV64ZAAMO_AMOMAXU_D: {
+            printf("%s: todo aamo\n", __func__);
+            result = ER_FAILURE;
+            break;
+        }
+        // awrs
+        case I_RV64ZAWRS_WRS_NTO:
+        case I_RV64ZAWRS_WRS_STO: {
+            printf("%s: todo awrs\n", __func__);
+            result = ER_FAILURE;
+            break;
+        }
+        // acas
+        case I_RV64ZACAS_AMOCAS_W: {
+            rv64a_amocas_w(emulator, aquire, release, rs2, rs1, rd);
+            break;
+        }
+        case I_RV64ZACAS_AMOCAS_D:
+        case I_RV64ZACAS_AMOCAS_Q: {
+            printf("%s: todo acas\n", __func__);
+            result = ER_FAILURE;
+            break;
+        }
+        // abha
+        case I_RV64ZABHA_AMOSWAP_B:
+        case I_RV64ZABHA_AMOADD_B:
+        case I_RV64ZABHA_AMOAND_B:
+        case I_RV64ZABHA_AMOOR_B:
+        case I_RV64ZABHA_AMOXOR_B:
+        case I_RV64ZABHA_AMOMAX_B:
+        case I_RV64ZABHA_AMOMAXU_B:
+        case I_RV64ZABHA_AMOMIN_B:
+        case I_RV64ZABHA_AMOMINU_B:
+        case I_RV64ZABHA_AMOCAS_B:
+        case I_RV64ZABHA_AMOSWAP_H:
+        case I_RV64ZABHA_AMOADD_H:
+        case I_RV64ZABHA_AMOAND_H:
+        case I_RV64ZABHA_AMOOR_H:
+        case I_RV64ZABHA_AMOXOR_H:
+        case I_RV64ZABHA_AMOMAX_H:
+        case I_RV64ZABHA_AMOMAXU_H:
+        case I_RV64ZABHA_AMOMIN_H:
+        case I_RV64ZABHA_AMOMINU_H:
+        case I_RV64ZABHA_AMOCAS_H: {
+            printf("%s: todo abha\n", __func__);
+            result = ER_FAILURE;
+            break;
+        }
+        // ...
+
         default: {
+            printf("%s: todo default\n", __func__);
             result = ER_FAILURE;
             break;
         }

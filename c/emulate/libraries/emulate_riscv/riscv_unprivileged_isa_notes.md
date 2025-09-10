@@ -194,7 +194,50 @@ Compiled PDF Link: https://drive.google.com/file/d/1uviu1nH-tScFfgrovvFCrj7Omv8t
   * address accessed needs to be naturally aligned to the size of the operand.
     * if not aligned, raise an address-misaligned exception or an access-fault exception
   * TODO: read the "Misaligned atomicity granule PMA" in volume 2 (priviledged spec)
-* 14 "Zawrs" Extension for Wait-on-Reservation-Set instructions
-  *
+
+### 14. "Zawrs" Extension for Wait-on-Reservation-Set instructions
+* defines instructions used in polling loops to allow a core to enter a low-power state and wait on a store to a memory location.
+  * example usage patterns:
+    * contenders for a lock waiting for a lock variable to be updated
+    * consumers waiting on the tail of an empty queue for the producer to queue work/data.
+    * code waiting on a flag to be set in memory indicating an event occured.
+* 14.1 Wait-on-Reservation-Set Instructions
+  * wrs.nto - stall execution to save power, resume when memory address changes.
+  * wrs.sto - stall execution with short upper bound, resume when memory address changes.
+
+### 15. "Zacas" Extension for Atomic Compare-and-Swap (CAS) Instructions
+* c++11 atomic compare and exchange operation
+* provides tools to allow for lock-free algorithms
+  * less chance of deadlocks, better scaling
+* "ABA Problem" - todo
+* Zacas depends on Zaamo
+* 15.1 Word/Doubleword/Quadword CAS (AMOCAS.W/D/Q) Instructions
+  * amocas.w - atomically loads 32-bit data value from rs1, compares to rd, and if equal, stores the value in rs2 to the original address in rs1.
+* 15.2 Additional AMO PMAs
+  * PMA?
+
+### 16. "Zabha" Extension for Byte and Halfword Atomic Memory Operations
+* The previous atomic extensions thus far but for narrower sized types
+
+### 17. RVWMO Memory Consistency Model
+* RVWMO - RiscV Weak Memory Model
+* provide a memory model that is usable for both simple and complex designs (low power micro-controllers and cutting edge micro-processors).
+* "Program Order" - the order of operations directly in the assembly/machine code.
+* "Memory Operation" - load, store, or both simultaneously. always single-copy atomic.
+* "lr" and "sc" instructions are "paired" if the "lr" precedes the "sc" and there are no other "lr" or "sc"'s between.
+* "acquire-RCpc" -
+* "acquire-RCsc" -
+* todo the rest of this section
+* 17.1.2. Syntactic Dependencies
+* 17.1.3. Preserved Program Order
+* 17.1.4. Memory Model Axioms
+* 17.2 CSR Dependency Tracking Granularity
+* 17.3. Source and Destination Register Listings
+
+### 18. "Ztso" Extension for Total Store Ordering
+* todo
+
+### 19. "CMO" Extensions for Base Cache Management Operation ISA
+* todo
 
 

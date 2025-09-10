@@ -220,8 +220,8 @@ typedef enum ENUM_PACK_ATTRIBUTE {
      * MARK: Zawrs
      * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_zawrs_extension_for_wait_on_reservation_set_instructions_version_1_01
      */
-    I_RV64ZAWRS_WRS_NTO,
-    I_RV64ZAWRS_WRS_STO,
+    I_RV64ZAWRS_WRS_NTO, /** Stall execution to save power, resume when memory address changes. */
+    I_RV64ZAWRS_WRS_STO,/** Stall execution with short upper bound, resume when memory address changes. */
 
     /*
      * MARK: Zacas

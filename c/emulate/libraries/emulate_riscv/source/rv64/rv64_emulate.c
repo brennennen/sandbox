@@ -256,7 +256,6 @@ static result_iter_t emu_rv64_emulate_next(emulator_rv64_t* emulator) {
             result = rv64_multiplication_emulate(emulator, raw_instruction, instruction_tag);
             break;
         }
-        // TODO: RV64F float/double/quad
         // RV64A
         case I_RV64ZALRSC_LR_W:
         case I_RV64ZALRSC_SC_W:
@@ -279,10 +278,39 @@ static result_iter_t emu_rv64_emulate_next(emulator_rv64_t* emulator) {
         case I_RV64ZAAMO_AMOMIN_D:
         case I_RV64ZAAMO_AMOMAX_D:
         case I_RV64ZAAMO_AMOMINU_D:
-        case I_RV64ZAAMO_AMOMAXU_D: {
+        case I_RV64ZAAMO_AMOMAXU_D:
+        // Zawrs
+        case I_RV64ZAWRS_WRS_NTO:
+        case I_RV64ZAWRS_WRS_STO:
+        // Zacas
+        case I_RV64ZACAS_AMOCAS_W:
+        case I_RV64ZACAS_AMOCAS_D:
+        case I_RV64ZACAS_AMOCAS_Q:
+        // Zabha
+        case I_RV64ZABHA_AMOSWAP_B:
+        case I_RV64ZABHA_AMOADD_B:
+        case I_RV64ZABHA_AMOAND_B:
+        case I_RV64ZABHA_AMOOR_B:
+        case I_RV64ZABHA_AMOXOR_B:
+        case I_RV64ZABHA_AMOMAX_B:
+        case I_RV64ZABHA_AMOMAXU_B:
+        case I_RV64ZABHA_AMOMIN_B:
+        case I_RV64ZABHA_AMOMINU_B:
+        case I_RV64ZABHA_AMOCAS_B:
+        case I_RV64ZABHA_AMOSWAP_H:
+        case I_RV64ZABHA_AMOADD_H:
+        case I_RV64ZABHA_AMOAND_H:
+        case I_RV64ZABHA_AMOOR_H:
+        case I_RV64ZABHA_AMOXOR_H:
+        case I_RV64ZABHA_AMOMAX_H:
+        case I_RV64ZABHA_AMOMAXU_H:
+        case I_RV64ZABHA_AMOMIN_H:
+        case I_RV64ZABHA_AMOMINU_H:
+        case I_RV64ZABHA_AMOCAS_H: {
             result = rv64a_atomic_emulate(emulator, raw_instruction, instruction_tag);
             break;
         }
+        // TODO: RV64F float/double/quad
         // ...
         // RV64V
         case I_RV64V_VSETVLI:
@@ -290,6 +318,7 @@ static result_iter_t emu_rv64_emulate_next(emulator_rv64_t* emulator) {
         case I_RV64V_VSETIVLI:
         case I_RV64V_VLE8_V:
         case I_RV64V_VLE16_V:
+        case I_RV64V_VLE32_V:
         case I_RV64V_VSE8_V:
         case I_RV64V_VADD_IVX:
         case I_RV64V_VADD_IVI: {

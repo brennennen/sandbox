@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "shared/include/math_utilities.h"
 
@@ -188,7 +189,10 @@ static void rv64v_vle8_v_simple_no_grouping_no_masking(
 
 
 /**
- *
+ * `vle8.v` - Vector Load Element (8 bits each)
+ * `vle8.v vs1, (rs2)`
+ * Loads 8 bit elements from memory into vector registers with "unit striding"
+ * (no gaps/offsets between elements).
  */
 static void rv64v_vle8_v(
     emulator_rv64_t* emulator,
@@ -205,8 +209,6 @@ static void rv64v_vle8_v(
     uint8_t vd = 0;
     rv64v_decode_load_unit_stride(raw_instruction, &nf, &mew, &mop, &vm, &lumop, &rs1, &width, &vd);
 
-    printf("%s\n", __func__);
-
     if (emulator->csrs.vl == 0) {
         // trigger illegal trap?
         printf("%s: csrs.vl == 0! vector instruction has nothing to do!\n", __func__);
@@ -214,36 +216,34 @@ static void rv64v_vle8_v(
     }
 
     const uint64_t base_addr = emulator->registers[rs1];
-    printf("%s:base_addr: %ld, mem: %d\n", __func__, base_addr, emulator->memory[base_addr]);
-    //printf("%s:mem: %d, %d, %d, ...\n", __func__,
-    //    emulator->memory[base_addr], emulator->memory[base_addr + 1], emulator->memory[base_addr + 2]);
-
     rv64v_vtype_t vtype;
     rv64_csr_decode_vtype(emulator->csrs.vtype, &vtype);
-    if (vtype.selected_element_width != RV64_SEW_8) {
-        // trigger illegal trap?
-        printf("%s: sew != SEW_8! vector instruction undefined throw illegal trap!\n", __func__);
-        return;
-    }
-
     if (!rv64v_is_register_group_aligned(vd, vtype.vlmul)) {
         printf("%s: vegister group not aligned: %d, vlmul: %d\n", __func__, vd, vtype.vlmul);
     }
 
-    // vector register grouping
-    // todo switch case around vtype.vlmul?
-
-    // TODO: masking
     uint8_t vlen_bytes = 16; // vlen = 128 bits
     for (uint64_t i = 0; i < emulator->csrs.vl; i++) {
-        uint64_t physical_vd = vd + (i / vlen_bytes);
-        uint64_t byte_offset = i % vlen_bytes;
-        emulator->vector_registers[physical_vd].bytes[byte_offset] = emulator->memory[base_addr + i];
-        //printf("%s:phys_vd: %ld, byte_offset: %ld, addr: %ld, mem: %d\n",
-        //    __func__, physical_vd, byte_offset, base_addr + i, emulator->memory[base_addr + i]);
+        bool mask_elem_active = true;
+        if (vm == 0) {
+            // todo: set mask_elem_active accordingly
+        } else {
+            mask_elem_active = true; // masking disabled, so always load everything
+        }
+        if (mask_elem_active) {
+            uint64_t physical_vd = vd + (i / vlen_bytes);
+            uint64_t byte_offset = i % vlen_bytes;
+            emulator->vector_registers[physical_vd].bytes[byte_offset] = emulator->memory[base_addr + i];
+        }
     }
 }
 
+/**
+ * `vle16.v` - Vector Load Element (16 bits each)
+ * `vle16.v vs1, (rs2)`
+ * Loads 16 bit elements from memory into vector registers with "unit striding"
+ * (no gaps/offsets between elements).
+ */
 static void rv64v_vle16_v(
     emulator_rv64_t* emulator,
     uint32_t raw_instruction,
@@ -259,7 +259,58 @@ static void rv64v_vle16_v(
     uint8_t vd = 0;
     rv64v_decode_load_unit_stride(raw_instruction, &nf, &mew, &mop, &vm, &lumop, &rs1, &width, &vd);
 
-    printf("%s\n", __func__);
+    if (emulator->csrs.vl == 0) {
+        // todo: trigger illegal trap?
+        printf("%s: csrs.vl == 0! vector instruction has nothing to do!\n", __func__);
+        return;
+    }
+
+    const uint64_t base_addr = emulator->registers[rs1];
+    rv64v_vtype_t vtype;
+    rv64_csr_decode_vtype(emulator->csrs.vtype, &vtype);
+    if (!rv64v_is_register_group_aligned(vd, vtype.vlmul)) {
+        printf("%s: vegister group not aligned: %d, vlmul: %d\n", __func__, vd, vtype.vlmul);
+    }
+
+    uint8_t elements_per_vector = VLEN / 16; // assuming vlen=128: 128 / 16 = 8 elems per vector register
+    for (int i = 0; i < emulator->csrs.vl; i++) {
+        bool mask_elem_active = true;
+        if (vm == 0) {
+            // todo: set mask_elem_active accordingly
+        } else {
+            mask_elem_active = true; // masking disabled, so always load everything
+        }
+        if (mask_elem_active) {
+            uint8_t physical_vd = vd + (i / elements_per_vector);
+            uint16_t elem_offset = i % elements_per_vector;
+            uint64_t elem_address = base_addr + (uint64_t)(i * 2);
+            memcpy(&emulator->vector_registers[physical_vd].elements_16[elem_offset],
+                &emulator->memory[elem_address], 2);
+        }
+
+    }
+}
+
+/**
+ * `vle32.v` - Vector Load Element (32 bits each)
+ * `vle32.v vs1, (rs2)`
+ * Loads 32 bit elements from memory into vector registers with "unit striding"
+ * (no gaps/offsets between elements).
+ */
+static void rv64v_vle32_v(
+    emulator_rv64_t* emulator,
+    uint32_t raw_instruction,
+    instruction_tag_rv64_t tag
+) {
+    uint8_t nf = 0;
+    uint8_t mew = 0;
+    uint8_t mop = 0;
+    uint8_t vm = 0;
+    uint8_t lumop = 0;
+    uint8_t rs1 = 0;
+    uint8_t width = 0;
+    uint8_t vd = 0;
+    rv64v_decode_load_unit_stride(raw_instruction, &nf, &mew, &mop, &vm, &lumop, &rs1, &width, &vd);
 
     if (emulator->csrs.vl == 0) {
         // todo: trigger illegal trap?
@@ -268,29 +319,30 @@ static void rv64v_vle16_v(
     }
 
     const uint64_t base_addr = emulator->registers[rs1];
-    printf("%s:base_addr: %ld, mem: %d\n", __func__, base_addr, emulator->memory[base_addr]);
-    //printf("%s:mem: %d, %d, %d, ...\n", __func__,
-    //    emulator->memory[base_addr], emulator->memory[base_addr + 1], emulator->memory[base_addr + 2]);
-
     rv64v_vtype_t vtype;
     rv64_csr_decode_vtype(emulator->csrs.vtype, &vtype);
-    if (vtype.selected_element_width != RV64_SEW_16) {
-        // todo: trigger illegal trap?
-        printf("%s: sew != RV64_SEW_16! vector instruction undefined throw illegal trap!\n", __func__);
-        return;
+    if (!rv64v_is_register_group_aligned(vd, vtype.vlmul)) {
+        printf("%s: vegister group not aligned: %d, vlmul: %d\n", __func__, vd, vtype.vlmul);
     }
 
-    // TODO: masking
-
-    uint8_t vlen_bytes = 8; // vlen = 128 bits
-    for (uint64_t i = 0; i < emulator->csrs.vl; i++) {
-        uint64_t physical_vd = vd + (i / vlen_bytes);
-        uint64_t byte_offset = i % vlen_bytes;
-        emulator->vector_registers[physical_vd].bytes[byte_offset] = emulator->memory[base_addr + i];
-        //printf("%s:phys_vd: %ld, byte_offset: %ld, addr: %ld, mem: %d\n",
-        //    __func__, physical_vd, byte_offset, base_addr + i, emulator->memory[base_addr + i]);
+    uint8_t elements_per_vector = VLEN / 32; // assuming vlen=128: 128 / 32 = 4 elems per vector register
+    for (int i = 0; i < emulator->csrs.vl; i++) {
+        bool mask_elem_active = true;
+        if (vm == 0) {
+            // todo: set mask_elem_active accordingly
+        } else {
+            mask_elem_active = true; // masking disabled, so always load everything
+        }
+        if (mask_elem_active) {
+            uint8_t physical_vd = vd + (i / elements_per_vector);
+            uint16_t elem_offset = i % elements_per_vector;
+            uint64_t elem_address = base_addr + (uint64_t)(i * 4);
+            memcpy(&emulator->vector_registers[physical_vd].elements_32[elem_offset],
+                &emulator->memory[elem_address], 4);
+        }
     }
 }
+
 
 // rv64v_vlse8_V
 
@@ -462,6 +514,10 @@ emu_result_t rv64v_vector_emulate(
         }
         case I_RV64V_VLE16_V: {
             rv64v_vle16_v(emulator, raw_instruction, tag);
+            break;
+        }
+        case I_RV64V_VLE32_V: {
+            rv64v_vle32_v(emulator, raw_instruction, tag);
             break;
         }
         // Constant stride...

@@ -518,7 +518,35 @@ static result_iter_t emu_rv64_disassemble_next(
         case I_RV64ZAAMO_AMOMIN_D:
         case I_RV64ZAAMO_AMOMAX_D:
         case I_RV64ZAAMO_AMOMINU_D:
-        case I_RV64ZAAMO_AMOMAXU_D: {
+        case I_RV64ZAAMO_AMOMAXU_D:
+        // Zawrs
+        case I_RV64ZAWRS_WRS_NTO:
+        case I_RV64ZAWRS_WRS_STO:
+        // Zacas
+        case I_RV64ZACAS_AMOCAS_W:
+        case I_RV64ZACAS_AMOCAS_D:
+        case I_RV64ZACAS_AMOCAS_Q:
+        // Zabha
+        case I_RV64ZABHA_AMOSWAP_B:
+        case I_RV64ZABHA_AMOADD_B:
+        case I_RV64ZABHA_AMOAND_B:
+        case I_RV64ZABHA_AMOOR_B:
+        case I_RV64ZABHA_AMOXOR_B:
+        case I_RV64ZABHA_AMOMAX_B:
+        case I_RV64ZABHA_AMOMAXU_B:
+        case I_RV64ZABHA_AMOMIN_B:
+        case I_RV64ZABHA_AMOMINU_B:
+        case I_RV64ZABHA_AMOCAS_B:
+        case I_RV64ZABHA_AMOSWAP_H:
+        case I_RV64ZABHA_AMOADD_H:
+        case I_RV64ZABHA_AMOAND_H:
+        case I_RV64ZABHA_AMOOR_H:
+        case I_RV64ZABHA_AMOXOR_H:
+        case I_RV64ZABHA_AMOMAX_H:
+        case I_RV64ZABHA_AMOMAXU_H:
+        case I_RV64ZABHA_AMOMIN_H:
+        case I_RV64ZABHA_AMOMINU_H:
+        case I_RV64ZABHA_AMOCAS_H: {
             result = rv64a_atomic_disassemble(emulator, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
             break;
         }

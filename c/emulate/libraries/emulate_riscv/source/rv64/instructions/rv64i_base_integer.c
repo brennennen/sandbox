@@ -21,9 +21,9 @@
  * with zeros. The 32-bit result is sign-extended to 64 bits.
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions_2
  */
-static inline void rv64i_lui(emulator_rv64_t* emulator, int32_t imm20, uint8_t rd) {
+static inline void rv64i_lui(rv64_hart_t* hart, int32_t imm20, uint8_t rd) {
     // sign-extension for imm20 done in decode
-    emulator->registers[rd] = imm20 << 12;
+    hart->registers[rd] = imm20 << 12;
 }
 
 /**
@@ -35,14 +35,14 @@ static inline void rv64i_lui(emulator_rv64_t* emulator, int32_t imm20, uint8_t r
  * in register rd.
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions_2
  */
-static inline void rv64i_auipc(emulator_rv64_t* emulator, int32_t imm20, uint8_t rd) {
+static inline void rv64i_auipc(rv64_hart_t* hart, int32_t imm20, uint8_t rd) {
     // pc is incremented when the instruction is originally read, so need to decrement here.
     // sign-extension for imm20 done in decode
-    emulator->registers[rd] = (imm20 << 12) + emulator->pc - 4;
+    hart->registers[rd] = (imm20 << 12) + hart->pc - 4;
 }
 
 static emu_result_t rv64i_emulate_upper_immediate(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
@@ -53,11 +53,11 @@ static emu_result_t rv64i_emulate_upper_immediate(
 
     switch(tag) {
         case I_RV64I_LUI: {
-            rv64i_lui(emulator, imm20, rd);
+            rv64i_lui(hart, imm20, rd);
             break;
         }
         case I_RV64I_AUIPC: {
-            rv64i_auipc(emulator, imm20, rd);
+            rv64i_auipc(hart, imm20, rd);
             break;
         }
         default: {
@@ -81,16 +81,16 @@ static emu_result_t rv64i_emulate_upper_immediate(
  * Store pc 1 instruction after jump to rd, and jumps (sets pc) to offset.
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_unconditional_jumps
  */
-static inline void rv64i_jal(emulator_rv64_t* emulator, int32_t offset, uint8_t rd) {
+static inline void rv64i_jal(rv64_hart_t* hart, int32_t offset, uint8_t rd) {
     if (rd != 0) {
-        emulator->registers[rd] = emulator->pc; // point rd to the next instruction
+        hart->registers[rd] = hart->pc; // point rd to the next instruction
     }
-    emulator->pc = emulator->pc + offset - 4;
-    LOGD("%s: offset: %d (pc: %ld), rd: %d", __func__, offset, emulator->pc, rd);
+    hart->pc = hart->pc + offset - 4;
+    LOGD("%s: offset: %d (pc: %ld), rd: %d", __func__, offset, hart->pc, rd);
 }
 
 static emu_result_t rv64i_emulate_j_type(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
@@ -101,7 +101,7 @@ static emu_result_t rv64i_emulate_j_type(
 
     switch(tag) {
         case I_RV64I_JAL: {
-            rv64i_jal(emulator, offset, rd);
+            rv64i_jal(hart, offset, rd);
             break;
         }
         default: {
@@ -120,14 +120,14 @@ static emu_result_t rv64i_emulate_j_type(
  * Store pc 1 instruction after jump to rd, and jumps (sets pc) to rs1 + offset
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_unconditional_jumps
  */
-static inline void rv64i_jalr(emulator_rv64_t* emulator, int32_t imm12, uint8_t rs1, uint8_t rd) {
+static inline void rv64i_jalr(rv64_hart_t* hart, int32_t imm12, uint8_t rs1, uint8_t rd) {
     if (rd != 0) {
-        emulator->registers[rd] = emulator->pc; // point rd to the next instruction
+        hart->registers[rd] = hart->pc; // point rd to the next instruction
     }
     LOGD("%s: imm12: %d, rs1: %ld (%d), rd: %d", __func__,
-        imm12, emulator->registers[rs1], rs1, rd);
+        imm12, hart->registers[rs1], rs1, rd);
     // TODO: does imm12 need to be left shifted 1 bit?
-    emulator->pc = emulator->registers[rs1] + imm12;
+    hart->pc = hart->registers[rs1] + imm12;
 }
 
 /*
@@ -143,11 +143,11 @@ static inline void rv64i_jalr(emulator_rv64_t* emulator, int32_t imm12, uint8_t 
  * execution flow).
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_conditional_branches
  */
-static inline void rv64i_beq(emulator_rv64_t* emulator, int32_t offset, uint8_t rs1, uint8_t rs2) {
+static inline void rv64i_beq(rv64_hart_t* hart, int32_t offset, uint8_t rs1, uint8_t rs2) {
     LOGD("%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset,
-        emulator->registers[rs1], emulator->registers[rs2]);
-    if (emulator->registers[rs1] == emulator->registers[rs2]) {
-        emulator->pc = emulator->pc + offset - 4;
+        hart->registers[rs1], hart->registers[rs2]);
+    if (hart->registers[rs1] == hart->registers[rs2]) {
+        hart->pc = hart->pc + offset - 4;
     }
 }
 
@@ -160,48 +160,48 @@ static inline void rv64i_beq(emulator_rv64_t* emulator, int32_t offset, uint8_t 
  * execution flow).
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_conditional_branches
  */
-static inline void rv64i_bne(emulator_rv64_t* emulator, int32_t offset, uint8_t rs1, uint8_t rs2) {
+static inline void rv64i_bne(rv64_hart_t* hart, int32_t offset, uint8_t rs1, uint8_t rs2) {
     LOGD("%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset,
-        emulator->registers[rs1], emulator->registers[rs2]);
-    if (emulator->registers[rs1] != emulator->registers[rs2]) {
-        emulator->pc = emulator->pc + offset - 4;
+        hart->registers[rs1], hart->registers[rs2]);
+    if (hart->registers[rs1] != hart->registers[rs2]) {
+        hart->pc = hart->pc + offset - 4;
     }
 }
 
-static inline void rv64i_blt(emulator_rv64_t* emulator, int32_t offset, uint8_t rs1, uint8_t rs2) {
+static inline void rv64i_blt(rv64_hart_t* hart, int32_t offset, uint8_t rs1, uint8_t rs2) {
     LOGD("%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset,
-        emulator->registers[rs1], emulator->registers[rs2]);
-    if ((int64_t)emulator->registers[rs1] < (int64_t)emulator->registers[rs2]) {
-        emulator->pc = emulator->pc + offset - 4;
+        hart->registers[rs1], hart->registers[rs2]);
+    if ((int64_t)hart->registers[rs1] < (int64_t)hart->registers[rs2]) {
+        hart->pc = hart->pc + offset - 4;
     }
 }
 
-static inline void rv64i_bge(emulator_rv64_t* emulator, int32_t offset, uint8_t rs1, uint8_t rs2) {
+static inline void rv64i_bge(rv64_hart_t* hart, int32_t offset, uint8_t rs1, uint8_t rs2) {
     LOGD("%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset,
-        emulator->registers[rs1], emulator->registers[rs2]);
-    if ((int64_t)emulator->registers[rs1] >= (int64_t)emulator->registers[rs2]) {
-        emulator->pc = emulator->pc + offset - 4;
+        hart->registers[rs1], hart->registers[rs2]);
+    if ((int64_t)hart->registers[rs1] >= (int64_t)hart->registers[rs2]) {
+        hart->pc = hart->pc + offset - 4;
     }
 }
 
-static inline void rv64i_bltu(emulator_rv64_t* emulator, int32_t offset, uint8_t rs1, uint8_t rs2) {
+static inline void rv64i_bltu(rv64_hart_t* hart, int32_t offset, uint8_t rs1, uint8_t rs2) {
     LOGD("%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset,
-        emulator->registers[rs1], emulator->registers[rs2]);
-    if (emulator->registers[rs1] < emulator->registers[rs2]) {
-        emulator->pc = emulator->pc + offset - 4;
+        hart->registers[rs1], hart->registers[rs2]);
+    if (hart->registers[rs1] < hart->registers[rs2]) {
+        hart->pc = hart->pc + offset - 4;
     }
 }
 
-static inline void rv64i_bgeu(emulator_rv64_t* emulator, int32_t offset, uint8_t rs1, uint8_t rs2) {
+static inline void rv64i_bgeu(rv64_hart_t* hart, int32_t offset, uint8_t rs1, uint8_t rs2) {
     LOGD("%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset,
-        emulator->registers[rs1], emulator->registers[rs2]);
-    if (emulator->registers[rs1] >= emulator->registers[rs2]) {
-        emulator->pc = emulator->pc + offset - 4;
+        hart->registers[rs1], hart->registers[rs2]);
+    if (hart->registers[rs1] >= hart->registers[rs2]) {
+        hart->pc = hart->pc + offset - 4;
     }
 }
 
 static emu_result_t rv64i_emulate_b_type(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
@@ -213,27 +213,27 @@ static emu_result_t rv64i_emulate_b_type(
 
     switch(tag) {
         case I_RV64I_BEQ: {
-            rv64i_beq(emulator, offset, rs1, rs2);
+            rv64i_beq(hart, offset, rs1, rs2);
             break;
         }
         case I_RV64I_BNE: {
-            rv64i_bne(emulator, offset, rs1, rs2);
+            rv64i_bne(hart, offset, rs1, rs2);
             break;
         }
         case I_RV64I_BLT: {
-            rv64i_blt(emulator, offset, rs1, rs2);
+            rv64i_blt(hart, offset, rs1, rs2);
             break;
         }
         case I_RV64I_BGE: {
-            rv64i_bge(emulator, offset, rs1, rs2);
+            rv64i_bge(hart, offset, rs1, rs2);
             break;
         }
         case I_RV64I_BLTU: {
-            rv64i_bltu(emulator, offset, rs1, rs2);
+            rv64i_bltu(hart, offset, rs1, rs2);
             break;
         }
         case I_RV64I_BGEU: {
-            rv64i_bgeu(emulator, offset, rs1, rs2);
+            rv64i_bgeu(hart, offset, rs1, rs2);
             break;
         }
         default: {
@@ -248,24 +248,24 @@ static emu_result_t rv64i_emulate_b_type(
  * MARK: S-Type
  */
 
-static inline void rv64i_sb(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rs2) {
-    uint64_t address = emulator->registers[rs1] + imm12;
-    emulator->memory[address] = emulator->registers[rs2] & 0xFF;
+static inline void rv64i_sb(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rs2) {
+    uint64_t address = hart->registers[rs1] + imm12;
+    hart->shared_system->memory[address] = hart->registers[rs2] & 0xFF;
 }
 
-static inline void rv64i_sh(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rs2) {
-    uint64_t address = emulator->registers[rs1] + imm12;
+static inline void rv64i_sh(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rs2) {
+    uint64_t address = hart->registers[rs1] + imm12;
     // todo: just use memcpy? uses host machine endieness?
-    emulator->memory[address] = (uint8_t) (emulator->registers[rs2] & 0xFF);
-    emulator->memory[address + 1] = (uint8_t) ((emulator->registers[rs2] >> 8) & 0xFF);
+    hart->shared_system->memory[address] = (uint8_t) (hart->registers[rs2] & 0xFF);
+    hart->shared_system->memory[address + 1] = (uint8_t) ((hart->registers[rs2] >> 8) & 0xFF);
 }
 
-static inline void rv64i_sw(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rs2) {
-    uint64_t address = emulator->registers[rs1] + imm12;
-    emulator->memory[address] = (uint8_t) (emulator->registers[rs2] & 0xFF);
-    emulator->memory[address + 1] = (uint8_t) ((emulator->registers[rs2] >> 8) & 0xFF);
-    emulator->memory[address + 2] = (uint8_t) ((emulator->registers[rs2] >> 16) & 0xFF);
-    emulator->memory[address + 3] = (uint8_t) ((emulator->registers[rs2] >> 24) & 0xFF);
+static inline void rv64i_sw(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rs2) {
+    uint64_t address = hart->registers[rs1] + imm12;
+    hart->shared_system->memory[address] = (uint8_t) (hart->registers[rs2] & 0xFF);
+    hart->shared_system->memory[address + 1] = (uint8_t) ((hart->registers[rs2] >> 8) & 0xFF);
+    hart->shared_system->memory[address + 2] = (uint8_t) ((hart->registers[rs2] >> 16) & 0xFF);
+    hart->shared_system->memory[address + 3] = (uint8_t) ((hart->registers[rs2] >> 24) & 0xFF);
 }
 
 /**
@@ -275,20 +275,20 @@ static inline void rv64i_sw(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs
  * RV64I Additional Instruction (Not in RV32I)
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_load_and_store_instructions
  */
-static inline void rv64i_sd(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rs2) {
-    uint64_t address = emulator->registers[rs1] + imm12;
-    emulator->memory[address] = (uint8_t) (emulator->registers[rs2] & 0xFF);
-    emulator->memory[address + 1] = (uint8_t) ((emulator->registers[rs2] >> 8) & 0xFF);
-    emulator->memory[address + 2] = (uint8_t) ((emulator->registers[rs2] >> 16) & 0xFF);
-    emulator->memory[address + 3] = (uint8_t) ((emulator->registers[rs2] >> 24) & 0xFF);
-    emulator->memory[address + 4] = (uint8_t) ((emulator->registers[rs2] >> 32) & 0xFF);
-    emulator->memory[address + 5] = (uint8_t) ((emulator->registers[rs2] >> 40) & 0xFF);
-    emulator->memory[address + 6] = (uint8_t) ((emulator->registers[rs2] >> 48) & 0xFF);
-    emulator->memory[address + 7] = (uint8_t) ((emulator->registers[rs2] >> 56) & 0xFF);
+static inline void rv64i_sd(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rs2) {
+    uint64_t address = hart->registers[rs1] + imm12;
+    hart->shared_system->memory[address] = (uint8_t) (hart->registers[rs2] & 0xFF);
+    hart->shared_system->memory[address + 1] = (uint8_t) ((hart->registers[rs2] >> 8) & 0xFF);
+    hart->shared_system->memory[address + 2] = (uint8_t) ((hart->registers[rs2] >> 16) & 0xFF);
+    hart->shared_system->memory[address + 3] = (uint8_t) ((hart->registers[rs2] >> 24) & 0xFF);
+    hart->shared_system->memory[address + 4] = (uint8_t) ((hart->registers[rs2] >> 32) & 0xFF);
+    hart->shared_system->memory[address + 5] = (uint8_t) ((hart->registers[rs2] >> 40) & 0xFF);
+    hart->shared_system->memory[address + 6] = (uint8_t) ((hart->registers[rs2] >> 48) & 0xFF);
+    hart->shared_system->memory[address + 7] = (uint8_t) ((hart->registers[rs2] >> 56) & 0xFF);
 }
 
 static emu_result_t rv64i_emulate_s_type(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
@@ -300,19 +300,19 @@ static emu_result_t rv64i_emulate_s_type(
 
     switch(tag) {
         case I_RV64I_SB: {
-            rv64i_sb(emulator, offset, rs1, rs2);
+            rv64i_sb(hart, offset, rs1, rs2);
             break;
         }
         case I_RV64I_SH: {
-            rv64i_sh(emulator, offset, rs1, rs2);
+            rv64i_sh(hart, offset, rs1, rs2);
             break;
         }
         case I_RV64I_SW: {
-            rv64i_sw(emulator, offset, rs1, rs2);
+            rv64i_sw(hart, offset, rs1, rs2);
             break;
         }
         case I_RV64I_SD: {
-            rv64i_sd(emulator, offset, rs1, rs2);
+            rv64i_sd(hart, offset, rs1, rs2);
             break;
         }
         default: {
@@ -334,10 +334,10 @@ static emu_result_t rv64i_emulate_s_type(
  * stores it in rd.
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_load_and_store_instructions
  */
-static inline void rv64i_lb(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    uint64_t address = emulator->registers[rs1] + imm12;
+static inline void rv64i_lb(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rd) {
+    uint64_t address = hart->registers[rs1] + imm12;
     // cast provides sign extension
-    emulator->registers[rd] = (int8_t) emulator->memory[address];
+    hart->registers[rd] = (int8_t) hart->shared_system->memory[address];
 }
 
 /**
@@ -347,12 +347,12 @@ static inline void rv64i_lb(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs
  * stores it in rd.
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_load_and_store_instructions
  */
-static inline void rv64i_lh(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    uint64_t address = emulator->registers[rs1] + imm12;
-    uint16_t halfword = (uint16_t)emulator->memory[address] |
-        ((uint16_t) emulator->memory[address + 1] << 8);
+static inline void rv64i_lh(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rd) {
+    uint64_t address = hart->registers[rs1] + imm12;
+    uint16_t halfword = (uint16_t)hart->shared_system->memory[address] |
+        ((uint16_t) hart->shared_system->memory[address + 1] << 8);
     // cast provides sign extension
-    emulator->registers[rd] = (int16_t) halfword;
+    hart->registers[rd] = (int16_t) halfword;
 }
 
 /**
@@ -362,15 +362,15 @@ static inline void rv64i_lh(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs
  * stores it in rd.
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_load_and_store_instructions
  */
-static inline void rv64i_lw(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
+static inline void rv64i_lw(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rd) {
     // TODO: sign extend
-    uint64_t address = emulator->registers[rs1] + imm12;
-    uint32_t word = (uint32_t)emulator->memory[address] |
-        ((uint32_t) emulator->memory[address + 1] << 24) |
-        ((uint32_t) emulator->memory[address + 2] << 16) |
-        ((uint32_t) emulator->memory[address + 3] << 8);
+    uint64_t address = hart->registers[rs1] + imm12;
+    uint32_t word = (uint32_t)hart->shared_system->memory[address] |
+        ((uint32_t) hart->shared_system->memory[address + 1] << 24) |
+        ((uint32_t) hart->shared_system->memory[address + 2] << 16) |
+        ((uint32_t) hart->shared_system->memory[address + 3] << 8);
     // cast provides sign extension
-    emulator->registers[rd] = (int32_t) word;
+    hart->registers[rd] = (int32_t) word;
 }
 
 /**
@@ -380,9 +380,9 @@ static inline void rv64i_lw(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs
  * stores it in rd.
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_load_and_store_instructions
  */
-static inline void rv64i_lbu(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    uint64_t address = emulator->registers[rs1] + imm12;
-    emulator->registers[rd] = emulator->memory[address];
+static inline void rv64i_lbu(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rd) {
+    uint64_t address = hart->registers[rs1] + imm12;
+    hart->registers[rd] = hart->shared_system->memory[address];
 }
 
 /**
@@ -392,10 +392,10 @@ static inline void rv64i_lbu(emulator_rv64_t* emulator, int16_t imm12, uint8_t r
  * stores it in rd.
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_load_and_store_instructions
  */
-static inline void rv64i_lhu(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    uint64_t address = emulator->registers[rs1] + imm12;
-    emulator->registers[rd] = (uint16_t)emulator->memory[address] |
-        ((uint16_t) emulator->memory[address + 1] << 8);
+static inline void rv64i_lhu(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rd) {
+    uint64_t address = hart->registers[rs1] + imm12;
+    hart->registers[rd] = (uint16_t)hart->shared_system->memory[address] |
+        ((uint16_t) hart->shared_system->memory[address + 1] << 8);
 }
 
 /**
@@ -406,13 +406,13 @@ static inline void rv64i_lhu(emulator_rv64_t* emulator, int16_t imm12, uint8_t r
  * RV64I Additional Instruction (Not in RV32I)
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_load_and_store_instructions
  */
-static inline void rv64i_lwu(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    uint64_t address = emulator->registers[rs1] + imm12;
-    uint32_t word = (uint32_t)emulator->memory[address] |
-        ((uint32_t) emulator->memory[address + 1] << 24) |
-        ((uint32_t) emulator->memory[address + 2] << 16) |
-        ((uint32_t) emulator->memory[address + 3] << 8);
-    emulator->registers[rd] = word;
+static inline void rv64i_lwu(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rd) {
+    uint64_t address = hart->registers[rs1] + imm12;
+    uint32_t word = (uint32_t)hart->shared_system->memory[address] |
+        ((uint32_t) hart->shared_system->memory[address + 1] << 24) |
+        ((uint32_t) hart->shared_system->memory[address + 2] << 16) |
+        ((uint32_t) hart->shared_system->memory[address + 3] << 8);
+    hart->registers[rd] = word;
 }
 
 /**
@@ -422,75 +422,75 @@ static inline void rv64i_lwu(emulator_rv64_t* emulator, int16_t imm12, uint8_t r
  * RV64I Additional Instruction (Not in RV32I)
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_load_and_store_instructions
  */
-static inline void rv64i_ld(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    uint64_t address = emulator->registers[rs1] + imm12;
+static inline void rv64i_ld(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rd) {
+    uint64_t address = hart->registers[rs1] + imm12;
     // todo: why not just memcpy?
-    uint64_t double_word = (uint64_t)emulator->memory[address] |
-        ((uint64_t) emulator->memory[address + 1] << 56) |
-        ((uint64_t) emulator->memory[address + 3] << 48) |
-        ((uint64_t) emulator->memory[address + 4] << 40) |
-        ((uint64_t) emulator->memory[address + 5] << 32) |
-        ((uint64_t) emulator->memory[address + 6] << 24) |
-        ((uint64_t) emulator->memory[address + 7] << 16) |
-        ((uint64_t) emulator->memory[address + 8] << 8);
-    emulator->registers[rd] = double_word;
+    uint64_t double_word = (uint64_t)hart->shared_system->memory[address] |
+        ((uint64_t) hart->shared_system->memory[address + 1] << 56) |
+        ((uint64_t) hart->shared_system->memory[address + 3] << 48) |
+        ((uint64_t) hart->shared_system->memory[address + 4] << 40) |
+        ((uint64_t) hart->shared_system->memory[address + 5] << 32) |
+        ((uint64_t) hart->shared_system->memory[address + 6] << 24) |
+        ((uint64_t) hart->shared_system->memory[address + 7] << 16) |
+        ((uint64_t) hart->shared_system->memory[address + 8] << 8);
+    hart->registers[rd] = double_word;
 }
 
 /**
  * NOTE: NOP is encoded as `ADDI x0, x0, 0`.
  */
-static inline void rv64_addi(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    emulator->registers[rd] = emulator->registers[rs1] + imm12;
+static inline void rv64_addi(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rd) {
+    hart->registers[rd] = hart->registers[rs1] + imm12;
 }
 
 /**
  * "Set Less Than Immediate" - Set rd to 1 if rs1 is less than the provided immediate when
  * both numbers are treated as signed.
  */
-static inline void rv64_slti(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    if ((int64_t)emulator->registers[rs1] < (int64_t)imm12) {
-        emulator->registers[rd] = 1;
+static inline void rv64_slti(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rd) {
+    if ((int64_t)hart->registers[rs1] < (int64_t)imm12) {
+        hart->registers[rd] = 1;
     } else {
-        emulator->registers[rd] = 0;
+        hart->registers[rd] = 0;
     }
-    LOGD("%s: rs1: %d, imm: %d, rd: %d", __func__, emulator->registers[rs1],
-         imm12, emulator->registers[rd]);
+    LOGD("%s: rs1: %d, imm: %d, rd: %d", __func__, hart->registers[rs1],
+         imm12, hart->registers[rd]);
 }
 
 /**
  * "Set Less Than Immediate Unsigned" - Set rd to 1 if rs1 is less than the immedate when
  * both numbers are treated as unsigned.
  */
-static inline void rv64_sltiu(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    if ((uint64_t)emulator->registers[rs1] < (uint16_t) imm12) {
-        emulator->registers[rd] = 1;
+static inline void rv64_sltiu(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rd) {
+    if ((uint64_t)hart->registers[rs1] < (uint16_t) imm12) {
+        hart->registers[rd] = 1;
     } else {
-        emulator->registers[rd] = 0;
+        hart->registers[rd] = 0;
     }
-    LOGD("%s: rs1: %d, imm: %d, rd: %d", __func__, emulator->registers[rs1],
-         imm12, emulator->registers[rd]);
+    LOGD("%s: rs1: %d, imm: %d, rd: %d", __func__, hart->registers[rs1],
+         imm12, hart->registers[rd]);
 }
 
-static inline void rv64_xori(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    emulator->registers[rd] = emulator->registers[rs1] ^ imm12;
+static inline void rv64_xori(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rd) {
+    hart->registers[rd] = hart->registers[rs1] ^ imm12;
 }
 
 /**
  * "logical/bitwise OR" - Both numbers sign extended.
  */
-static inline void rv64_ori(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    emulator->registers[rd] = emulator->registers[rs1] | imm12;
+static inline void rv64_ori(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rd) {
+    hart->registers[rd] = hart->registers[rs1] | imm12;
 }
 
 /**
  * "logical/bitwise AND" - Both numbers sign extended.
  */
-static inline void rv64_andi(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    emulator->registers[rd] = emulator->registers[rs1] & imm12;
+static inline void rv64_andi(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rd) {
+    hart->registers[rd] = hart->registers[rs1] & imm12;
 }
 
 static emu_result_t rv64_emulate_register_immediate(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
@@ -502,59 +502,59 @@ static emu_result_t rv64_emulate_register_immediate(
 
     switch(tag) {
         case I_RV64I_JALR: {
-            rv64i_jalr(emulator, imm12, rs1, rd);
+            rv64i_jalr(hart, imm12, rs1, rd);
             break;
         }
         case I_RV64I_LB: {
-            rv64i_lb(emulator, imm12, rs1, rd);
+            rv64i_lb(hart, imm12, rs1, rd);
             break;
         }
         case I_RV64I_LH: {
-            rv64i_lh(emulator, imm12, rs1, rd);
+            rv64i_lh(hart, imm12, rs1, rd);
             break;
         }
         case I_RV64I_LW: {
-            rv64i_lw(emulator, imm12, rs1, rd);
+            rv64i_lw(hart, imm12, rs1, rd);
             break;
         }
         case I_RV64I_LBU: {
-            rv64i_lbu(emulator, imm12, rs1, rd);
+            rv64i_lbu(hart, imm12, rs1, rd);
             break;
         }
         case I_RV64I_LHU: {
-            rv64i_lhu(emulator, imm12, rs1, rd);
+            rv64i_lhu(hart, imm12, rs1, rd);
             break;
         }
         case I_RV64I_ADDI: {
-            rv64_addi(emulator, imm12, rs1, rd);
+            rv64_addi(hart, imm12, rs1, rd);
             break;
         }
         case I_RV64I_SLTI: {
-            rv64_slti(emulator, imm12, rs1, rd);
+            rv64_slti(hart, imm12, rs1, rd);
             break;
         }
         case I_RV64I_SLTIU: {
-            rv64_sltiu(emulator, imm12, rs1, rd);
+            rv64_sltiu(hart, imm12, rs1, rd);
             break;
         }
         case I_RV64I_XORI: {
-            rv64_xori(emulator, imm12, rs1, rd);
+            rv64_xori(hart, imm12, rs1, rd);
             break;
         }
         case I_RV64I_ORI: {
-            rv64_ori(emulator, imm12, rs1, rd);
+            rv64_ori(hart, imm12, rs1, rd);
             break;
         }
         case I_RV64I_ANDI: {
-            rv64_andi(emulator, imm12, rs1, rd);
+            rv64_andi(hart, imm12, rs1, rd);
             break;
         }
         case I_RV64I_LWU: {
-            rv64i_lwu(emulator, imm12, rs1, rd);
+            rv64i_lwu(hart, imm12, rs1, rd);
             break;
         }
         case I_RV64I_LD: {
-            rv64i_ld(emulator, imm12, rs1, rd);
+            rv64i_ld(hart, imm12, rs1, rd);
             break;
         }
         default: {
@@ -570,8 +570,8 @@ static emu_result_t rv64_emulate_register_immediate(
  * Zeros are shifted into the lower bits.
  * (Section 2.4.1. Integer Register-Immediate Instructions)
  */
-static inline void rv64_slli(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    emulator->registers[rd] = emulator->registers[rs1] << imm12;
+static inline void rv64_slli(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rd) {
+    hart->registers[rd] = hart->registers[rs1] << imm12;
 }
 
 /**
@@ -579,8 +579,8 @@ static inline void rv64_slli(emulator_rv64_t* emulator, int16_t imm12, uint8_t r
  * Zeros are shifted into the upper bits.
  * (Section 2.4.1. Integer Register-Immediate Instructions)
  */
-static inline void rv64_srli(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    emulator->registers[rd] = emulator->registers[rs1] >> ((uint16_t)imm12);
+static inline void rv64_srli(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rd) {
+    hart->registers[rd] = hart->registers[rs1] >> ((uint16_t)imm12);
 }
 
 /**
@@ -588,8 +588,8 @@ static inline void rv64_srli(emulator_rv64_t* emulator, int16_t imm12, uint8_t r
  * The original sign bit is copied into the vacated upper bits.
  * (Section 2.4.1. Integer Register-Immediate Instructions)
  */
-static inline void rv64_srai(emulator_rv64_t* emulator, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    emulator->registers[rd] = ((int64_t)emulator->registers[rs1]) >> imm12;
+static inline void rv64_srai(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rd) {
+    hart->registers[rd] = ((int64_t)hart->registers[rs1]) >> imm12;
 }
 
 /**
@@ -598,8 +598,8 @@ static inline void rv64_srai(emulator_rv64_t* emulator, int16_t imm12, uint8_t r
  * Zeros are shifted into the lower bits.
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions
  */
-static inline void rv64i_slli(emulator_rv64_t* emulator, uint8_t imm5, uint8_t rs1, uint8_t rd) {
-    emulator->registers[rd] = emulator->registers[rs1] << imm5;
+static inline void rv64i_slli(rv64_hart_t* hart, uint8_t imm5, uint8_t rs1, uint8_t rd) {
+    hart->registers[rd] = hart->registers[rs1] << imm5;
 }
 
 /**
@@ -608,8 +608,8 @@ static inline void rv64i_slli(emulator_rv64_t* emulator, uint8_t imm5, uint8_t r
  * Zeros are shifted into the lower bits.
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions
  */
-static inline void rv64i_srli(emulator_rv64_t* emulator, uint8_t imm5, uint8_t rs1, uint8_t rd) {
-    emulator->registers[rd] = emulator->registers[rs1] >> ((uint8_t)imm5);
+static inline void rv64i_srli(rv64_hart_t* hart, uint8_t imm5, uint8_t rs1, uint8_t rd) {
+    hart->registers[rd] = hart->registers[rs1] >> ((uint8_t)imm5);
 }
 
 /**
@@ -618,12 +618,12 @@ static inline void rv64i_srli(emulator_rv64_t* emulator, uint8_t imm5, uint8_t r
  * The original sign bit is copied into the vacated upper bits (sign extension).
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions
  */
-static inline void rv64i_srai(emulator_rv64_t* emulator, uint8_t imm5, uint8_t rs1, uint8_t rd) {
-    emulator->registers[rd] = ((int64_t)emulator->registers[rs1]) >> imm5;
+static inline void rv64i_srai(rv64_hart_t* hart, uint8_t imm5, uint8_t rs1, uint8_t rd) {
+    hart->registers[rd] = ((int64_t)hart->registers[rs1]) >> imm5;
 }
 
 static emu_result_t rv64i_emulate_shift_immediate(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
@@ -635,15 +635,15 @@ static emu_result_t rv64i_emulate_shift_immediate(
 
     switch(tag) {
         case I_RV64I_SLLI: {
-            rv64i_slli(emulator, imm5, rs1, rd);
+            rv64i_slli(hart, imm5, rs1, rd);
             break;
         }
         case I_RV64I_SRLI: {
-            rv64i_srli(emulator, imm5, rs1, rd);
+            rv64i_srli(hart, imm5, rs1, rd);
             break;
         }
         case I_RV64I_SRAI: {
-            rv64i_srai(emulator, imm5, rs1, rd);
+            rv64i_srai(hart, imm5, rs1, rd);
             break;
         }
         default: {
@@ -658,27 +658,27 @@ static emu_result_t rv64i_emulate_shift_immediate(
  * MARK: R-Type
  */
 
-static inline void rv64i_add(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    emulator->registers[rd] = emulator->registers[rs1] + emulator->registers[rs2];
+static inline void rv64i_add(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+    hart->registers[rd] = hart->registers[rs1] + hart->registers[rs2];
 }
 
-static inline void rv64i_sub(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    emulator->registers[rd] = emulator->registers[rs1] - emulator->registers[rs2];
+static inline void rv64i_sub(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+    hart->registers[rd] = hart->registers[rs1] - hart->registers[rs2];
 }
 
-static inline void rv64i_sll(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    emulator->registers[rd] = emulator->registers[rs1] << emulator->registers[rs2];
+static inline void rv64i_sll(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+    hart->registers[rd] = hart->registers[rs1] << hart->registers[rs2];
 }
 
 /**
  * "Set Less Than" - Set rd to 1 if rs1 is less than rs2 when both registers are treated
  * as signed numbers.
  */
-static inline void rv64i_slt(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    if (emulator->registers[rs1] < emulator->registers[rs2]) {
-        emulator->registers[rd] = 1;
+static inline void rv64i_slt(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+    if (hart->registers[rs1] < hart->registers[rs2]) {
+        hart->registers[rd] = 1;
     } else {
-        emulator->registers[rd] = 0;
+        hart->registers[rd] = 0;
     }
 }
 
@@ -686,38 +686,38 @@ static inline void rv64i_slt(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2
  * "Set Less Than Unsigned" - Set rd to 1 if rs1 is less than rs2 when both registers
  * are treated as unsigned numbers.
  */
-static inline void rv64i_sltu(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    if ((uint64_t)emulator->registers[rs1] < (uint64_t)emulator->registers[rs2]) {
-        emulator->registers[rd] = 1;
+static inline void rv64i_sltu(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+    if ((uint64_t)hart->registers[rs1] < (uint64_t)hart->registers[rs2]) {
+        hart->registers[rd] = 1;
     } else {
-        emulator->registers[rd] = 0;
+        hart->registers[rd] = 0;
     }
 }
 
-static inline void rv64i_xor(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    emulator->registers[rd] = emulator->registers[rs1] ^ emulator->registers[rs2];
+static inline void rv64i_xor(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+    hart->registers[rd] = hart->registers[rs1] ^ hart->registers[rs2];
 }
 
 // c shift right is logical when unsigned, arithmetic when signed (sign extension)
-static inline void rv64i_srl(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    emulator->registers[rd] = emulator->registers[rs1] >> emulator->registers[rs2];
+static inline void rv64i_srl(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+    hart->registers[rd] = hart->registers[rs1] >> hart->registers[rs2];
 }
 
-static inline void rv64i_sra(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    emulator->registers[rd] = ((int64_t)emulator->registers[rs1]) >>
-        ((int64_t)emulator->registers[rs2]);
+static inline void rv64i_sra(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+    hart->registers[rd] = ((int64_t)hart->registers[rs1]) >>
+        ((int64_t)hart->registers[rs2]);
 }
 
-static inline void rv64i_or(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    emulator->registers[rd] = emulator->registers[rs1] | emulator->registers[rs2];
+static inline void rv64i_or(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+    hart->registers[rd] = hart->registers[rs1] | hart->registers[rs2];
 }
 
-static inline void rv64i_and(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    emulator->registers[rd] = emulator->registers[rs1] & emulator->registers[rs2];
+static inline void rv64i_and(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+    hart->registers[rd] = hart->registers[rs1] & hart->registers[rs2];
 }
 
 static emu_result_t rv64_emulate_register_register(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
@@ -729,43 +729,43 @@ static emu_result_t rv64_emulate_register_register(
 
     switch(tag) {
         case I_RV64I_ADD: {
-            rv64i_add(emulator, rs1, rs2, rd);
+            rv64i_add(hart, rs1, rs2, rd);
             break;
         }
         case I_RV64I_SUB: {
-            rv64i_sub(emulator, rs1, rs2, rd);
+            rv64i_sub(hart, rs1, rs2, rd);
             break;
         }
         case I_RV64I_SLL: {
-            rv64i_sll(emulator, rs1, rs2, rd);
+            rv64i_sll(hart, rs1, rs2, rd);
             break;
         }
         case I_RV64I_SLT: {
-            rv64i_slt(emulator, rs1, rs2, rd);
+            rv64i_slt(hart, rs1, rs2, rd);
             break;
         }
         case I_RV64I_SLTU: {
-            rv64i_sltu(emulator, rs1, rs2, rd);
+            rv64i_sltu(hart, rs1, rs2, rd);
             break;
         }
         case I_RV64I_XOR: {
-            rv64i_xor(emulator, rs1, rs2, rd);
+            rv64i_xor(hart, rs1, rs2, rd);
             break;
         }
         case I_RV64I_SRL: {
-            rv64i_srl(emulator, rs1, rs2, rd);
+            rv64i_srl(hart, rs1, rs2, rd);
             break;
         }
         case I_RV64I_SRA: {
-            rv64i_sra(emulator, rs1, rs2, rd);
+            rv64i_sra(hart, rs1, rs2, rd);
             break;
         }
         case I_RV64I_OR: {
-            rv64i_or(emulator, rs1, rs2, rd);
+            rv64i_or(hart, rs1, rs2, rd);
             break;
         }
         case I_RV64I_AND: {
-            rv64i_and(emulator, rs1, rs2, rd);
+            rv64i_and(hart, rs1, rs2, rd);
             break;
         }
         default: {
@@ -781,7 +781,7 @@ static emu_result_t rv64_emulate_register_register(
  */
 
 static emu_result_t rv64i_fence(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
@@ -791,7 +791,7 @@ static emu_result_t rv64i_fence(
 }
 
 static emu_result_t rv64i_fence_tso(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
@@ -801,7 +801,7 @@ static emu_result_t rv64i_fence_tso(
 }
 
 static emu_result_t rv64i_pause(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
@@ -811,7 +811,7 @@ static emu_result_t rv64i_pause(
 }
 
 static emu_result_t rv64i_ecall(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
@@ -821,7 +821,7 @@ static emu_result_t rv64i_ecall(
 }
 
 static emu_result_t rv64i_ebreak(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
@@ -835,7 +835,7 @@ static emu_result_t rv64i_ebreak(
  */
 
 emu_result_t rv64i_base_integer_emulate(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
@@ -844,16 +844,16 @@ emu_result_t rv64i_base_integer_emulate(
         // Core Format "U" - "upper-immediate"
         case I_RV64I_LUI:
         case I_RV64I_AUIPC: {
-            result = rv64i_emulate_upper_immediate(emulator, raw_instruction, tag);
+            result = rv64i_emulate_upper_immediate(hart, raw_instruction, tag);
             break;
         }
         // Core Format "J" - "jump"
         case I_RV64I_JAL: {
-            result = rv64i_emulate_j_type(emulator, raw_instruction, tag);
+            result = rv64i_emulate_j_type(hart, raw_instruction, tag);
             break;
         }
         case I_RV64I_JALR: {
-            result = rv64_emulate_register_immediate(emulator, raw_instruction, tag);
+            result = rv64_emulate_register_immediate(hart, raw_instruction, tag);
             break;
         }
 
@@ -864,7 +864,7 @@ emu_result_t rv64i_base_integer_emulate(
         case I_RV64I_BGE:
         case I_RV64I_BLTU:
         case I_RV64I_BGEU: {
-            result = rv64i_emulate_b_type(emulator, raw_instruction, tag);
+            result = rv64i_emulate_b_type(hart, raw_instruction, tag);
             break;
         }
 
@@ -873,7 +873,7 @@ emu_result_t rv64i_base_integer_emulate(
         case I_RV64I_SH:
         case I_RV64I_SW:
         case I_RV64I_SD: {
-            result = rv64i_emulate_s_type(emulator, raw_instruction, tag);
+            result = rv64i_emulate_s_type(hart, raw_instruction, tag);
             break;
         }
 
@@ -891,14 +891,14 @@ emu_result_t rv64i_base_integer_emulate(
         case I_RV64I_ANDI:
         case I_RV64I_LWU:
         case I_RV64I_LD: {
-            result = rv64_emulate_register_immediate(emulator, raw_instruction, tag);
+            result = rv64_emulate_register_immediate(hart, raw_instruction, tag);
             break;
         }
         // Special "shift immediate" format
         case I_RV64I_SLLI:
         case I_RV64I_SRLI:
         case I_RV64I_SRAI: {
-            result = rv64i_emulate_shift_immediate(emulator, raw_instruction, tag);
+            result = rv64i_emulate_shift_immediate(hart, raw_instruction, tag);
             break;
         }
         // Core Format "R" - "register-register"
@@ -912,28 +912,28 @@ emu_result_t rv64i_base_integer_emulate(
         case I_RV64I_SRA:
         case I_RV64I_OR:
         case I_RV64I_AND: {
-            result = rv64_emulate_register_register(emulator, raw_instruction, tag);
+            result = rv64_emulate_register_register(hart, raw_instruction, tag);
             break;
         }
         // misc
         case I_RV64I_FENCE: {
-            result = rv64i_fence(emulator, raw_instruction, tag);
+            result = rv64i_fence(hart, raw_instruction, tag);
             break;
         }
         case I_RV64I_FENCE_TSO: {
-            result = rv64i_fence_tso(emulator, raw_instruction, tag);
+            result = rv64i_fence_tso(hart, raw_instruction, tag);
             break;
         }
         case I_RV64I_PAUSE: {
-            result = rv64i_pause(emulator, raw_instruction, tag);
+            result = rv64i_pause(hart, raw_instruction, tag);
             break;
         }
         case I_RV64I_ECALL: {
-            result = rv64i_ecall(emulator, raw_instruction, tag);
+            result = rv64i_ecall(hart, raw_instruction, tag);
             break;
         }
         case I_RV64I_EBREAK: {
-            result = rv64i_ebreak(emulator, raw_instruction, tag);
+            result = rv64i_ebreak(hart, raw_instruction, tag);
             break;
         }
         default: {
@@ -948,40 +948,40 @@ emu_result_t rv64i_base_integer_emulate(
  * MARK: Zicsr
  */
 
-static inline void rv64i_csrrw(emulator_rv64_t* emulator, uint8_t csr, uint8_t rs1, uint8_t rd) {
-    uint64_t rs1_temp = emulator->registers[rs1]; // need to use a local here incase rs1 and rd are the same register.
+static inline void rv64i_csrrw(rv64_hart_t* hart, uint8_t csr, uint8_t rs1, uint8_t rd) {
+    uint64_t rs1_temp = hart->registers[rs1]; // need to use a local here incase rs1 and rd are the same register.
     if (rd != 0) {
-        emulator->registers[rd] = rv64_get_csr_value(&emulator->csrs, csr);
+        hart->registers[rd] = rv64_get_csr_value(&hart->csrs, csr);
     }
-    rv64_set_csr_value(&emulator->csrs, csr, rs1_temp);
+    rv64_set_csr_value(&hart->csrs, csr, rs1_temp);
 }
 
-static inline void rv64i_csrrs(emulator_rv64_t* emulator, uint8_t csr, uint8_t rs1, uint8_t rd) {
-    uint64_t rs1_mask = emulator->registers[rs1]; // need to use a local here incase rs1 and rd are the same register.
-    uint64_t result = rv64_get_csr_value(&emulator->csrs, csr);
+static inline void rv64i_csrrs(rv64_hart_t* hart, uint8_t csr, uint8_t rs1, uint8_t rd) {
+    uint64_t rs1_mask = hart->registers[rs1]; // need to use a local here incase rs1 and rd are the same register.
+    uint64_t result = rv64_get_csr_value(&hart->csrs, csr);
     if (rd != 0) {
-        emulator->registers[rd] = result;
+        hart->registers[rd] = result;
     }
     if (rs1 != 0) {
         result = result ^ rs1_mask; // rs1 mask contains bits to clear
-        rv64_set_csr_value(&emulator->csrs, csr, result);
+        rv64_set_csr_value(&hart->csrs, csr, result);
     }
 }
 
-static inline void rv64i_csrrc(emulator_rv64_t* emulator, uint8_t csr, uint8_t rs1, uint8_t rd) {
-    uint64_t rs1_mask = emulator->registers[rs1]; // need to use a local here incase rs1 and rd are the same register.
-    uint64_t result = rv64_get_csr_value(&emulator->csrs, csr);
+static inline void rv64i_csrrc(rv64_hart_t* hart, uint8_t csr, uint8_t rs1, uint8_t rd) {
+    uint64_t rs1_mask = hart->registers[rs1]; // need to use a local here incase rs1 and rd are the same register.
+    uint64_t result = rv64_get_csr_value(&hart->csrs, csr);
     if (rd != 0) {
-        emulator->registers[rd] = result;
+        hart->registers[rd] = result;
     }
     if (rs1 != 0) {
         result = result & (~rs1_mask); // rs1 mask contains bits to clear
-        rv64_set_csr_value(&emulator->csrs, csr, result);
+        rv64_set_csr_value(&hart->csrs, csr, result);
     }
 }
 
 static emu_result_t rv64i_csr_register(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
@@ -995,15 +995,15 @@ static emu_result_t rv64i_csr_register(
 
     switch(tag) {
         case I_RV64ZICSR_CSRRW: {
-            rv64i_csrrw(emulator, csr, rs1, rd);
+            rv64i_csrrw(hart, csr, rs1, rd);
             break;
         }
         case I_RV64ZICSR_CSRRS: {
-            rv64i_csrrs(emulator, csr, rs1, rd);
+            rv64i_csrrs(hart, csr, rs1, rd);
             break;
         }
         case I_RV64ZICSR_CSRRC: {
-            rv64i_csrrc(emulator, csr, rs1, rd);
+            rv64i_csrrc(hart, csr, rs1, rd);
             break;
         }
         default: {
@@ -1014,37 +1014,37 @@ static emu_result_t rv64i_csr_register(
     return(ER_SUCCESS);
 }
 
-static inline void rv64i_csrrwi(emulator_rv64_t* emulator, uint8_t csr, uint8_t uimm, uint8_t rd) {
+static inline void rv64i_csrrwi(rv64_hart_t* hart, uint8_t csr, uint8_t uimm, uint8_t rd) {
     if (rd != 0) {
-        emulator->registers[rd] = rv64_get_csr_value(&emulator->csrs, csr);
+        hart->registers[rd] = rv64_get_csr_value(&hart->csrs, csr);
     }
-    rv64_set_csr_value(&emulator->csrs, csr, uimm);
+    rv64_set_csr_value(&hart->csrs, csr, uimm);
 }
 
-static inline void rv64i_csrrsi(emulator_rv64_t* emulator, uint8_t csr, uint8_t uimm, uint8_t rd) {
-    uint64_t result = rv64_get_csr_value(&emulator->csrs, csr);
+static inline void rv64i_csrrsi(rv64_hart_t* hart, uint8_t csr, uint8_t uimm, uint8_t rd) {
+    uint64_t result = rv64_get_csr_value(&hart->csrs, csr);
     if (rd != 0) {
-        emulator->registers[rd] = result;
+        hart->registers[rd] = result;
     }
     if (uimm != 0) {
         result = result ^ uimm;
-        rv64_set_csr_value(&emulator->csrs, csr, result);
+        rv64_set_csr_value(&hart->csrs, csr, result);
     }
 }
 
-static inline void rv64i_csrrci(emulator_rv64_t* emulator, uint8_t csr, uint8_t uimm, uint8_t rd) {
-    uint64_t result = rv64_get_csr_value(&emulator->csrs, csr);
+static inline void rv64i_csrrci(rv64_hart_t* hart, uint8_t csr, uint8_t uimm, uint8_t rd) {
+    uint64_t result = rv64_get_csr_value(&hart->csrs, csr);
     if (rd != 0) {
-        emulator->registers[rd] = result;
+        hart->registers[rd] = result;
     }
     if (uimm != 0) {
         result = result & (~uimm); // uimm mask contains bits to clear
-        rv64_set_csr_value(&emulator->csrs, csr, result);
+        rv64_set_csr_value(&hart->csrs, csr, result);
     }
 }
 
 static emu_result_t rv64i_csr_immediate(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
@@ -1059,15 +1059,15 @@ static emu_result_t rv64i_csr_immediate(
 
     switch(tag) {
         case I_RV64ZICSR_CSRRWI: {
-            rv64i_csrrwi(emulator, csr, uimm, rd);
+            rv64i_csrrwi(hart, csr, uimm, rd);
             break;
         }
         case I_RV64ZICSR_CSRRSI: {
-            rv64i_csrrsi(emulator, csr, uimm, rd);
+            rv64i_csrrsi(hart, csr, uimm, rd);
             break;
         }
         case I_RV64ZICSR_CSRRCI: {
-            rv64i_csrrci(emulator, csr, uimm, rd);
+            rv64i_csrrci(hart, csr, uimm, rd);
             break;
         }
         default: {
@@ -1079,7 +1079,7 @@ static emu_result_t rv64i_csr_immediate(
 }
 
 emu_result_t rv64i_zicsr_emulate(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
@@ -1088,13 +1088,13 @@ emu_result_t rv64i_zicsr_emulate(
         case I_RV64ZICSR_CSRRW:
         case I_RV64ZICSR_CSRRS:
         case I_RV64ZICSR_CSRRC: {
-            result = rv64i_csr_register(emulator, raw_instruction, tag);
+            result = rv64i_csr_register(hart, raw_instruction, tag);
             break;
         }
         case I_RV64ZICSR_CSRRWI:
         case I_RV64ZICSR_CSRRSI:
         case I_RV64ZICSR_CSRRCI: {
-            result = rv64i_csr_immediate(emulator, raw_instruction, tag);
+            result = rv64i_csr_immediate(hart, raw_instruction, tag);
             break;
         }
         default: {

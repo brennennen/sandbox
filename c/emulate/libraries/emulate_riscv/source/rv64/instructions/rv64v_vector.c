@@ -134,7 +134,7 @@ static bool rv64v_is_register_group_aligned(
  * `vsetvli rd, rs1, e8, m8, ta, ma`
  */
 static void rv64v_vsetvli(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
@@ -146,20 +146,20 @@ static void rv64v_vsetvli(
     // Set Vector Type
     // todo: detect illegal vtype
     // todo: going from vtypei (10 bits) to vtype (64 bits) do we need to do something while widening?
-    emulator->csrs.vtype = vtypei;
+    hart->csrs.vtype = vtypei;
 
     // Set "Vector Length"
     rv64v_vtype_t vtype;
-    rv64_csr_decode_vtype(emulator->csrs.vtype, &vtype);
-    uint64_t avl = emulator->registers[rs1];
+    rv64_csr_decode_vtype(hart->csrs.vtype, &vtype);
+    uint64_t avl = hart->registers[rs1];
     uint64_t vlmax = rv64v_calculate_vlmax(&vtype);
 
-    emulator->csrs.vl = MIN(avl, vlmax);
+    hart->csrs.vl = MIN(avl, vlmax);
     printf("%s: avl reg/rs1: %d\n", __func__, rs1);
-    printf("%s: avl: %ld, vlmax: %ld, vl: %ld\n", __func__, avl, vlmax, emulator->csrs.vl);
+    printf("%s: avl: %ld, vlmax: %ld, vl: %ld\n", __func__, avl, vlmax, hart->csrs.vl);
 
     if (rd != 0) {
-        emulator->registers[rd] = emulator->csrs.vl;
+        hart->registers[rd] = hart->csrs.vl;
     }
 }
 
@@ -169,18 +169,18 @@ static void rv64v_vsetvli(
 /*
 // Minimal implementation of a vector load without vector register grouping or masking.
 static void rv64v_vle8_v_simple_no_grouping_no_masking(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
     uint8_t nf, mew, mop, vm, lumop, rs1, width, vd = 0;
     rv64v_decode_load_unit_stride(raw_instruction, &nf, &mew, &mop, &vm, &lumop, &rs1, &width, &vd);
-    const uint64_t base_addr = emulator->registers[rs1];
+    const uint64_t base_addr = hart->registers[rs1];
     uint8_t vlen_bytes = 16; // vlen = 128 bits
-    for (uint64_t i = 0; i < emulator->csrs.vl; i++) {
+    for (uint64_t i = 0; i < hart->csrs.vl; i++) {
         uint64_t physical_vd = vd + (i / vlen_bytes);
         uint64_t byte_offset = i % vlen_bytes;
-        emulator->vector_registers[physical_vd].bytes[byte_offset] = emulator->memory[base_addr + i];
+        hart->vector_registers[physical_vd].bytes[byte_offset] = hart->memory[base_addr + i];
     }
 }
 */
@@ -195,7 +195,7 @@ static void rv64v_vle8_v_simple_no_grouping_no_masking(
  * (no gaps/offsets between elements).
  */
 static void rv64v_vle8_v(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
@@ -209,21 +209,21 @@ static void rv64v_vle8_v(
     uint8_t vd = 0;
     rv64v_decode_load_unit_stride(raw_instruction, &nf, &mew, &mop, &vm, &lumop, &rs1, &width, &vd);
 
-    if (emulator->csrs.vl == 0) {
+    if (hart->csrs.vl == 0) {
         // trigger illegal trap?
         printf("%s: csrs.vl == 0! vector instruction has nothing to do!\n", __func__);
         return;
     }
 
-    const uint64_t base_addr = emulator->registers[rs1];
+    const uint64_t base_addr = hart->registers[rs1];
     rv64v_vtype_t vtype;
-    rv64_csr_decode_vtype(emulator->csrs.vtype, &vtype);
+    rv64_csr_decode_vtype(hart->csrs.vtype, &vtype);
     if (!rv64v_is_register_group_aligned(vd, vtype.vlmul)) {
         printf("%s: vegister group not aligned: %d, vlmul: %d\n", __func__, vd, vtype.vlmul);
     }
 
     uint8_t vlen_bytes = 16; // vlen = 128 bits
-    for (uint64_t i = 0; i < emulator->csrs.vl; i++) {
+    for (uint64_t i = 0; i < hart->csrs.vl; i++) {
         bool mask_elem_active = true;
         if (vm == 0) {
             // todo: set mask_elem_active accordingly
@@ -233,7 +233,7 @@ static void rv64v_vle8_v(
         if (mask_elem_active) {
             uint64_t physical_vd = vd + (i / vlen_bytes);
             uint64_t byte_offset = i % vlen_bytes;
-            emulator->vector_registers[physical_vd].bytes[byte_offset] = emulator->memory[base_addr + i];
+            hart->vector_registers[physical_vd].bytes[byte_offset] = hart->shared_system->memory[base_addr + i];
         }
     }
 }
@@ -245,7 +245,7 @@ static void rv64v_vle8_v(
  * (no gaps/offsets between elements).
  */
 static void rv64v_vle16_v(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
@@ -259,21 +259,21 @@ static void rv64v_vle16_v(
     uint8_t vd = 0;
     rv64v_decode_load_unit_stride(raw_instruction, &nf, &mew, &mop, &vm, &lumop, &rs1, &width, &vd);
 
-    if (emulator->csrs.vl == 0) {
+    if (hart->csrs.vl == 0) {
         // todo: trigger illegal trap?
         printf("%s: csrs.vl == 0! vector instruction has nothing to do!\n", __func__);
         return;
     }
 
-    const uint64_t base_addr = emulator->registers[rs1];
+    const uint64_t base_addr = hart->registers[rs1];
     rv64v_vtype_t vtype;
-    rv64_csr_decode_vtype(emulator->csrs.vtype, &vtype);
+    rv64_csr_decode_vtype(hart->csrs.vtype, &vtype);
     if (!rv64v_is_register_group_aligned(vd, vtype.vlmul)) {
         printf("%s: vegister group not aligned: %d, vlmul: %d\n", __func__, vd, vtype.vlmul);
     }
 
     uint8_t elements_per_vector = VLEN / 16; // assuming vlen=128: 128 / 16 = 8 elems per vector register
-    for (int i = 0; i < emulator->csrs.vl; i++) {
+    for (int i = 0; i < hart->csrs.vl; i++) {
         bool mask_elem_active = true;
         if (vm == 0) {
             // todo: set mask_elem_active accordingly
@@ -284,8 +284,8 @@ static void rv64v_vle16_v(
             uint8_t physical_vd = vd + (i / elements_per_vector);
             uint16_t elem_offset = i % elements_per_vector;
             uint64_t elem_address = base_addr + (uint64_t)(i * 2);
-            memcpy(&emulator->vector_registers[physical_vd].elements_16[elem_offset],
-                &emulator->memory[elem_address], 2);
+            memcpy(&hart->vector_registers[physical_vd].elements_16[elem_offset],
+                &hart->shared_system->memory[elem_address], 2);
         }
 
     }
@@ -298,7 +298,7 @@ static void rv64v_vle16_v(
  * (no gaps/offsets between elements).
  */
 static void rv64v_vle32_v(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
@@ -312,21 +312,21 @@ static void rv64v_vle32_v(
     uint8_t vd = 0;
     rv64v_decode_load_unit_stride(raw_instruction, &nf, &mew, &mop, &vm, &lumop, &rs1, &width, &vd);
 
-    if (emulator->csrs.vl == 0) {
+    if (hart->csrs.vl == 0) {
         // todo: trigger illegal trap?
         printf("%s: csrs.vl == 0! vector instruction has nothing to do!\n", __func__);
         return;
     }
 
-    const uint64_t base_addr = emulator->registers[rs1];
+    const uint64_t base_addr = hart->registers[rs1];
     rv64v_vtype_t vtype;
-    rv64_csr_decode_vtype(emulator->csrs.vtype, &vtype);
+    rv64_csr_decode_vtype(hart->csrs.vtype, &vtype);
     if (!rv64v_is_register_group_aligned(vd, vtype.vlmul)) {
         printf("%s: vegister group not aligned: %d, vlmul: %d\n", __func__, vd, vtype.vlmul);
     }
 
     uint8_t elements_per_vector = VLEN / 32; // assuming vlen=128: 128 / 32 = 4 elems per vector register
-    for (int i = 0; i < emulator->csrs.vl; i++) {
+    for (int i = 0; i < hart->csrs.vl; i++) {
         bool mask_elem_active = true;
         if (vm == 0) {
             // todo: set mask_elem_active accordingly
@@ -337,8 +337,8 @@ static void rv64v_vle32_v(
             uint8_t physical_vd = vd + (i / elements_per_vector);
             uint16_t elem_offset = i % elements_per_vector;
             uint64_t elem_address = base_addr + (uint64_t)(i * 4);
-            memcpy(&emulator->vector_registers[physical_vd].elements_32[elem_offset],
-                &emulator->memory[elem_address], 4);
+            memcpy(&hart->vector_registers[physical_vd].elements_32[elem_offset],
+                &hart->shared_system->memory[elem_address], 4);
         }
     }
 }
@@ -353,7 +353,7 @@ static void rv64v_vle32_v(
  */
 
 static void rv64v_vse8_v(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
@@ -369,19 +369,16 @@ static void rv64v_vse8_v(
 
     printf("%s\n", __func__);
 
-    if (emulator->csrs.vl == 0) {
+    if (hart->csrs.vl == 0) {
         // todo: trigger illegal trap?
         printf("%s: csrs.vl == 0! vector instruction has nothing to do!\n", __func__);
         return;
     }
 
-    const uint64_t base_addr = emulator->registers[rs1];
-    //printf("%s:base_addr: %ld, mem: %d\n", __func__, base_addr, emulator->memory[base_addr]);
-    //printf("%s:mem: %d, %d, %d, ...\n", __func__,
-    //    emulator->memory[base_addr], emulator->memory[base_addr + 1], emulator->memory[base_addr + 2]);
+    const uint64_t base_addr = hart->registers[rs1];
 
     rv64v_vtype_t vtype;
-    rv64_csr_decode_vtype(emulator->csrs.vtype, &vtype);
+    rv64_csr_decode_vtype(hart->csrs.vtype, &vtype);
     if (vtype.selected_element_width != RV64_SEW_8) {
         // todo: trigger illegal trap?
         printf("%s: sew != SEW_8! vector instruction undefined throw illegal trap!\n", __func__);
@@ -390,12 +387,10 @@ static void rv64v_vse8_v(
 
     // TODO: masking
     uint8_t vlen_bytes = 16; // vlen = 128 bits
-    for (uint64_t i = 0; i < emulator->csrs.vl; i++) {
+    for (uint64_t i = 0; i < hart->csrs.vl; i++) {
         uint64_t physical_vd = vd + (i / vlen_bytes);
         uint64_t byte_offset = i % vlen_bytes;
-        emulator->memory[base_addr + i] = emulator->vector_registers[physical_vd].bytes[byte_offset];
-        //printf("%s:phys_vd: %ld, byte_offset: %ld, addr: %ld, mem: %d\n",
-        //    __func__, physical_vd, byte_offset, base_addr + i, emulator->memory[base_addr + i]);
+        hart->shared_system->memory[base_addr + i] = hart->vector_registers[physical_vd].bytes[byte_offset];
     }
 }
 
@@ -404,7 +399,7 @@ static void rv64v_vse8_v(
  */
 
 static void rv64v_vadd_vx(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
@@ -414,16 +409,14 @@ static void rv64v_vadd_vx(
     uint8_t vd = 0;
     rv64v_decode_vector_scalar(raw_instruction, &vm, &vs2, &rs1, &vd);
 
-    if (emulator->csrs.vl == 0) {
+    if (hart->csrs.vl == 0) {
         // todo: trigger illegal trap?
         printf("%s: csrs.vl == 0! vector instruction has nothing to do!\n", __func__);
         return;
     }
 
     rv64v_vtype_t vtype;
-    rv64_csr_decode_vtype(emulator->csrs.vtype, &vtype);
-
-
+    rv64_csr_decode_vtype(hart->csrs.vtype, &vtype);
 }
 
 
@@ -433,7 +426,7 @@ static void rv64v_vadd_vx(
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_single_width_integer_add_and_subtract
  */
 static void rv64v_vadd_vi(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
@@ -443,7 +436,7 @@ static void rv64v_vadd_vi(
     uint8_t vd_idx = 0;
     rv64v_decode_vector_immediate(raw_instruction, &vm, &vs2_idx, &imm, &vd_idx);
 
-    if (emulator->csrs.vl == 0) {
+    if (hart->csrs.vl == 0) {
         // todo: trigger illegal trap?
         printf("%s: csrs.vl == 0! vector instruction has nothing to do!\n", __func__);
         return;
@@ -453,12 +446,12 @@ static void rv64v_vadd_vi(
     int64_t imm_se = imm; // skip sign extension for now
 
     rv64v_vtype_t vtype;
-    rv64_csr_decode_vtype(emulator->csrs.vtype, &vtype);
+    rv64_csr_decode_vtype(hart->csrs.vtype, &vtype);
 
-    vector_register_t* vs2 = &emulator->vector_registers[vs2_idx];
-    vector_register_t* vd = &emulator->vector_registers[vd_idx];
+    vector_register_t* vs2 = &hart->vector_registers[vs2_idx];
+    vector_register_t* vd = &hart->vector_registers[vd_idx];
 
-    for (int i = 0; i < emulator->csrs.vl; i++) {
+    for (int i = 0; i < hart->csrs.vl; i++) {
         switch(vtype.selected_element_width) {
             case RV64_SEW_8: {
                 vd->elements_8[i] = vs2->elements_8[i] + imm_se;
@@ -487,7 +480,7 @@ static void rv64v_vadd_vi(
  */
 
 emu_result_t rv64v_vector_emulate(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
@@ -496,49 +489,49 @@ emu_result_t rv64v_vector_emulate(
     switch (tag) {
         // vector admin/config
         case I_RV64V_VSETVLI: {
-            rv64v_vsetvli(emulator, raw_instruction, tag);
+            rv64v_vsetvli(hart, raw_instruction, tag);
             break;
         }
         // case I_RV64V_VSETIVLI: {
-        //     rv64v_emulate_vsetivli(emulator, raw_instruction, tag);
+        //     rv64v_emulate_vsetivli(hart, raw_instruction, tag);
         //     break;
         // }
         // case I_RV64V_VSETVL: {
-        //     rv64v_emulate_vsetvl(emulator, raw_instruction, tag);
+        //     rv64v_emulate_vsetvl(hart, raw_instruction, tag);
         //     break;
         // }
         // load
         case I_RV64V_VLE8_V: {
-            rv64v_vle8_v(emulator, raw_instruction, tag);
+            rv64v_vle8_v(hart, raw_instruction, tag);
             break;
         }
         case I_RV64V_VLE16_V: {
-            rv64v_vle16_v(emulator, raw_instruction, tag);
+            rv64v_vle16_v(hart, raw_instruction, tag);
             break;
         }
         case I_RV64V_VLE32_V: {
-            rv64v_vle32_v(emulator, raw_instruction, tag);
+            rv64v_vle32_v(hart, raw_instruction, tag);
             break;
         }
         // Constant stride...
         // case I_RV64V_VLSE8_V: {
-        //     rv64v_vlse8_V(emulator, raw_instruction, tag);
+        //     rv64v_vlse8_V(hart, raw_instruction, tag);
         //     break;
         // }
         // ...
         // store
         case I_RV64V_VSE8_V: {
-            rv64v_vse8_v(emulator, raw_instruction, tag);
+            rv64v_vse8_v(hart, raw_instruction, tag);
             break;
         }
         // ...
         // arithmetic
         case I_RV64V_VADD_IVX: {
-            rv64v_vadd_vx(emulator, raw_instruction, tag);
+            rv64v_vadd_vx(hart, raw_instruction, tag);
             break;
         }
         case I_RV64V_VADD_IVI: {
-            rv64v_vadd_vi(emulator, raw_instruction, tag);
+            rv64v_vadd_vi(hart, raw_instruction, tag);
             break;
         }
 

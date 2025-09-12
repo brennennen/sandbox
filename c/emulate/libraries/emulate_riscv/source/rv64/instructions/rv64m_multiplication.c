@@ -15,8 +15,8 @@
  * in the destination register.
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_multiplication_operations
  */
-static inline void rv64m_mul(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    emulator->registers[rd] = emulator->registers[rs1] * emulator->registers[rs2];
+static inline void rv64m_mul(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+    hart->registers[rd] = hart->registers[rs1] * hart->registers[rs2];
 }
 
 /**
@@ -25,10 +25,10 @@ static inline void rv64m_mul(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2
  * returns the upper 64 bits.
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_multiplication_operations
  */
-static inline void rv64m_mulh(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+static inline void rv64m_mulh(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
 #if defined(__GNUC__) || defined(__clang)
-    __int128_t product = (__int128_t)emulator->registers[rs1] * (__int128_t)emulator->registers[rs2];
-    emulator->registers[rd] = (uint64_t)(product >> 64);
+    __int128_t product = (__int128_t)hart->registers[rs1] * (__int128_t)hart->registers[rs2];
+    hart->registers[rd] = (uint64_t)(product >> 64);
 #else
     // TODO: fallback
     LOG(LOG_ERROR, "rv64m_mulh: fallback not implemeneted for non gcc/clang compilers.");
@@ -42,11 +42,11 @@ static inline void rv64m_mulh(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs
  * returns the upper 64 bits.
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_multiplication_operations
  */
-static inline void rv64m_mulhsu(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+static inline void rv64m_mulhsu(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
 #if defined(__GNUC__) || defined(__clang)
     // need casting for sign extension
-    __int128_t product = (__int128_t)((int64_t)emulator->registers[rs1] * (__uint128_t)emulator->registers[rs2]);
-    emulator->registers[rd] = (int64_t)(product >> 64);
+    __int128_t product = (__int128_t)((int64_t)hart->registers[rs1] * (__uint128_t)hart->registers[rs2]);
+    hart->registers[rd] = (int64_t)(product >> 64);
 #else
     // TODO: fallback
     LOG(LOG_ERROR, "rv64m_mulhsu: fallback not implemeneted for non gcc/clang compilers.");
@@ -60,10 +60,10 @@ static inline void rv64m_mulhsu(emulator_rv64_t* emulator, uint8_t rs1, uint8_t 
  * returns the upper 64 bits.
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_multiplication_operations
  */
-static inline void rv64m_mulhu(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+static inline void rv64m_mulhu(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
 #if defined(__GNUC__) || defined(__clang)
-    __uint128_t product = (__uint128_t)emulator->registers[rs1] * (__uint128_t)emulator->registers[rs2];
-    emulator->registers[rd] = (uint64_t)(product >> 64);
+    __uint128_t product = (__uint128_t)hart->registers[rs1] * (__uint128_t)hart->registers[rs2];
+    hart->registers[rd] = (uint64_t)(product >> 64);
 #else
     // TODO: fallback
     LOG(LOG_ERROR, "rv64m_mulhu: fallback not implemeneted for non gcc/clang compilers.");
@@ -81,20 +81,20 @@ static inline void rv64m_mulhu(emulator_rv64_t* emulator, uint8_t rs1, uint8_t r
  * * Signed division overflow: res = -2^(63)
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_division_operations
  */
-static inline void rv64m_div(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+static inline void rv64m_div(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
     // divide by 0
-    if (emulator->registers[rs2] == 0) {
-        emulator->registers[rd] = -1;
+    if (hart->registers[rs2] == 0) {
+        hart->registers[rd] = -1;
     }
     // signed integer overflow
-    else if ( emulator->registers[rs1] == 0x8000000000000000 && \
-                (int64_t)(emulator->registers[rs2]) == -1)
+    else if ( hart->registers[rs1] == 0x8000000000000000 && \
+                (int64_t)(hart->registers[rs2]) == -1)
     {
-        emulator->registers[rd] = 0x8000000000000000;
+        hart->registers[rd] = 0x8000000000000000;
     }
     // common case
     else {
-        emulator->registers[rd] = ((int64_t)emulator->registers[rs1]) / ((int64_t)emulator->registers[rs2]);
+        hart->registers[rd] = ((int64_t)hart->registers[rs1]) / ((int64_t)hart->registers[rs2]);
     }
 }
 
@@ -107,14 +107,14 @@ static inline void rv64m_div(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2
  * * Divide by 0: res = max uint
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_division_operations
  */
-static inline void rv64m_divu(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+static inline void rv64m_divu(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
     // divide by 0
-    if (emulator->registers[rs2] == 0) {
-        emulator->registers[rd] = 0xFFFFFFFFFFFFFFFF; // 2^64 - 1
+    if (hart->registers[rs2] == 0) {
+        hart->registers[rd] = 0xFFFFFFFFFFFFFFFF; // 2^64 - 1
     }
     // common case
     else {
-        emulator->registers[rd] = emulator->registers[rs1] / emulator->registers[rs2];
+        hart->registers[rd] = hart->registers[rs1] / hart->registers[rs2];
     }
 }
 
@@ -127,19 +127,19 @@ static inline void rv64m_divu(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs
  * * Signed division overflow: res = 0
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_division_operations
  */
-static inline void rv64m_rem(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+static inline void rv64m_rem(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
     // divide by 0
-    if (emulator->registers[rs2] == 0) {
-        emulator->registers[rd] = emulator->registers[rs1];
+    if (hart->registers[rs2] == 0) {
+        hart->registers[rd] = hart->registers[rs1];
     }
     // signed division overflow
-    else if ( emulator->registers[rs1] == 0x8000000000000000 && \
-                (int64_t)(emulator->registers[rs2]) == -1)
+    else if ( hart->registers[rs1] == 0x8000000000000000 && \
+                (int64_t)(hart->registers[rs2]) == -1)
     {
-        emulator->registers[rd] = 0;
+        hart->registers[rd] = 0;
     }
     // common case
-    emulator->registers[rd] = emulator->registers[rs1] % emulator->registers[rs2];
+    hart->registers[rd] = hart->registers[rs1] % hart->registers[rs2];
 }
 
 /**
@@ -150,57 +150,57 @@ static inline void rv64m_rem(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2
  * * Divide by 0: res = x
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_division_operations
  */
-static inline void rv64m_remu(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+static inline void rv64m_remu(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
     // divide by 0
-    if (emulator->registers[rs2] == 0) {
-        emulator->registers[rd] = emulator->registers[rs1];
+    if (hart->registers[rs2] == 0) {
+        hart->registers[rd] = hart->registers[rs1];
     }
     // common case
-    emulator->registers[rd] = emulator->registers[rs1] % emulator->registers[rs2];
+    hart->registers[rd] = hart->registers[rs1] % hart->registers[rs2];
 }
 
 /**
  * mulw - MULtiply Word
  * 32 bit mul
  */
-static inline void rv64m_mulw(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    int32_t rs1_value = emulator->registers[rs1];
-    int32_t rs2_value = emulator->registers[rs2];
-    emulator->registers[rd] = (int32_t) rs1_value * rs2_value;
+static inline void rv64m_mulw(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+    int32_t rs1_value = hart->registers[rs1];
+    int32_t rs2_value = hart->registers[rs2];
+    hart->registers[rd] = (int32_t) rs1_value * rs2_value;
 }
 
-static inline void rv64m_divw(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    int32_t rs1_value = emulator->registers[rs1];
-    int32_t rs2_value = emulator->registers[rs2];
-    emulator->registers[rd] = (int32_t) rs1_value / rs2_value;
+static inline void rv64m_divw(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+    int32_t rs1_value = hart->registers[rs1];
+    int32_t rs2_value = hart->registers[rs2];
+    hart->registers[rd] = (int32_t) rs1_value / rs2_value;
 }
 
-static inline void rv64m_divuw(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    uint32_t rs1_value = emulator->registers[rs1];
-    uint32_t rs2_value = emulator->registers[rs2];
-    emulator->registers[rd] = (uint32_t) rs1_value / rs2_value;
-}
-
-// "REMW and REMUW are RV64 instructions that provide the corresponding signed and unsigned
-// remainder operations. Both REMW and REMUW always sign-extend the 32-bit result to 64 bits,
-// including on a divide by zero."
-static inline void rv64m_remw(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    int32_t rs1_value = emulator->registers[rs1];
-    int32_t rs2_value = emulator->registers[rs2];
-    emulator->registers[rd] = (int32_t) rs1_value % rs2_value;
+static inline void rv64m_divuw(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+    uint32_t rs1_value = hart->registers[rs1];
+    uint32_t rs2_value = hart->registers[rs2];
+    hart->registers[rd] = (uint32_t) rs1_value / rs2_value;
 }
 
 // "REMW and REMUW are RV64 instructions that provide the corresponding signed and unsigned
 // remainder operations. Both REMW and REMUW always sign-extend the 32-bit result to 64 bits,
 // including on a divide by zero."
-static inline void rv64m_remuw(emulator_rv64_t* emulator, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    uint32_t rs1_value = emulator->registers[rs1];
-    uint32_t rs2_value = emulator->registers[rs2];
-    emulator->registers[rd] = (uint32_t) rs1_value % rs2_value;
+static inline void rv64m_remw(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+    int32_t rs1_value = hart->registers[rs1];
+    int32_t rs2_value = hart->registers[rs2];
+    hart->registers[rd] = (int32_t) rs1_value % rs2_value;
+}
+
+// "REMW and REMUW are RV64 instructions that provide the corresponding signed and unsigned
+// remainder operations. Both REMW and REMUW always sign-extend the 32-bit result to 64 bits,
+// including on a divide by zero."
+static inline void rv64m_remuw(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+    uint32_t rs1_value = hart->registers[rs1];
+    uint32_t rs2_value = hart->registers[rs2];
+    hart->registers[rd] = (uint32_t) rs1_value % rs2_value;
 }
 
 emu_result_t rv64_multiplication_emulate(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
@@ -212,55 +212,55 @@ emu_result_t rv64_multiplication_emulate(
 
     switch(tag) {
         case I_RV64M_MUL: {
-            rv64m_mul(emulator, rs1, rs2, rd);
+            rv64m_mul(hart, rs1, rs2, rd);
             break;
         }
         case I_RV64M_MULH: {
-            rv64m_mulh(emulator, rs1, rs2, rd);
+            rv64m_mulh(hart, rs1, rs2, rd);
             break;
         }
         case I_RV64M_MULHSU: {
-            rv64m_mulhsu(emulator, rs1, rs2, rd);
+            rv64m_mulhsu(hart, rs1, rs2, rd);
             break;
         }
         case I_RV64M_MULHU: {
-            rv64m_mulhu(emulator, rs1, rs2, rd);
+            rv64m_mulhu(hart, rs1, rs2, rd);
             break;
         }
         case I_RV64M_DIV: {
-            rv64m_div(emulator, rs1, rs2, rd);
+            rv64m_div(hart, rs1, rs2, rd);
             break;
         }
         case I_RV64M_DIVU: {
-            rv64m_divu(emulator, rs1, rs2, rd);
+            rv64m_divu(hart, rs1, rs2, rd);
             break;
         }
         case I_RV64M_REM: {
-            rv64m_rem(emulator, rs1, rs2, rd);
+            rv64m_rem(hart, rs1, rs2, rd);
             break;
         }
         case I_RV64M_REMU: {
-            rv64m_remu(emulator, rs1, rs2, rd);
+            rv64m_remu(hart, rs1, rs2, rd);
             break;
         }
         case I_RV64M_MULW: {
-            rv64m_mulw(emulator, rs1, rs2, rd);
+            rv64m_mulw(hart, rs1, rs2, rd);
             break;
         }
         case I_RV64M_DIVW: {
-            rv64m_divw(emulator, rs1, rs2, rd);
+            rv64m_divw(hart, rs1, rs2, rd);
             break;
         }
         case I_RV64M_DIVUW: {
-            rv64m_divuw(emulator, rs1, rs2, rd);
+            rv64m_divuw(hart, rs1, rs2, rd);
             break;
         }
         case I_RV64M_REMW: {
-            rv64m_remw(emulator, rs1, rs2, rd);
+            rv64m_remw(hart, rs1, rs2, rd);
             break;
         }
         case I_RV64M_REMUW: {
-            rv64m_remuw(emulator, rs1, rs2, rd);
+            rv64m_remuw(hart, rs1, rs2, rd);
             break;
         }
         default: {

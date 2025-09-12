@@ -4,7 +4,7 @@
 #include "rv64/rv64_control_status_registers.h"
 
 
-// void write_csrs(emulator_rv64_t* emulator, uint8_t *data, int32_t data_size) {
+// void write_csrs(rv64_emulator_t* emulator, uint8_t *data, int32_t data_size) {
 //     data[0x001] = emulator.csrs.float_csrs.fflags;
 //     // TODO
 // }

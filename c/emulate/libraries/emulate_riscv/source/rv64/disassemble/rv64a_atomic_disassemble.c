@@ -17,7 +17,7 @@
  */
 
 emu_result_t rv64a_atomic_disassemble(
-    emulator_rv64_t* emulator,
+    rv64_disassembler_t* disassembler,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag,
     char* buffer,

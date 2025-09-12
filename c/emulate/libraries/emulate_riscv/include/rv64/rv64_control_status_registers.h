@@ -6,7 +6,7 @@
 
 //#include "rv64/rv64_emulate.h"
 
-typedef struct emulator_rv64_s emulator_rv64_t; // forward declare
+typedef struct emulator_rv64_s rv64_emulator_t; // forward declare
 
 typedef struct {
     /*

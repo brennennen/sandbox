@@ -16,13 +16,13 @@
 #include "rv64/rv64_instructions.h"
 
 emu_result_t rv64i_base_integer_emulate(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 );
 
 emu_result_t rv64i_zicsr_emulate(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 );

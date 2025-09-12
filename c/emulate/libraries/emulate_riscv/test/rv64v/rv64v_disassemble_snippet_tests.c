@@ -6,11 +6,11 @@
 #include "rv64/rv64_emulate.h"
 #include "rv64/rv64_disassemble.h"
 
-static emulator_rv64_t g_emulator;
+static rv64_disassembler_t g_disassembler;
 
 void rv64v_disassemble_snippets_default_setup(void) {
-    memset(&g_emulator, 0, sizeof(emulator_rv64_t));
-    emu_rv64_init(&g_emulator);
+    memset(&g_disassembler, 0, sizeof(rv64_disassembler_t));
+    rv64_disassemble_init(&g_disassembler);
 }
 
 #define ASSERT_STR_WITH_LOG(expected, actual, max_count) \
@@ -45,8 +45,8 @@ jalr zero, ra, 0\n";
         0xb3, 0x86, 0x56, 0x00, 0xe3, 0x14, 0x06, 0xfe, 0x67, 0x80, 0x00, 0x00
     };
     char output[256] = { '\0' };
-    cr_assert(SUCCESS == emu_rv64_disassemble_chunk(
-        &g_emulator, input, sizeof(input), output, sizeof(output)));
-    cr_assert(9 == g_emulator.instructions_count);
+    cr_assert(SUCCESS == rv64_disassemble_chunk(
+        &g_disassembler, input, sizeof(input), output, sizeof(output)));
+    cr_assert(9 == g_disassembler.instructions_count);
     ASSERT_STR_WITH_LOG(expected, output, sizeof(output));
 }

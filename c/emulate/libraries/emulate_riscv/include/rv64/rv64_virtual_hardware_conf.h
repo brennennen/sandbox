@@ -10,6 +10,11 @@
 #define XLEN 64
 
 /**
+ * Number of harts (what riscv land calls cpu cores).
+ */
+#define HART_COUNT 2
+
+/**
  * ELEN (Vector Element Length) is the number of elements to be operated on at one time by
  * vector operations. ELEN >= 8, and must be a power of 2. Part of the "V" extension.
  * @see 30.2 Implementation-defined Constant Parameters (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_implementation_defined_constant_parameters)
@@ -23,6 +28,7 @@
  */
 #define VLEN 128
 #define VLEN_BYTES 16
+
 
 #endif // RV64_VIRTUAL_HARDWARE_CONF_H
 

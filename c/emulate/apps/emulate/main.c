@@ -61,11 +61,11 @@ int main(int argc, char* argv[]) {
             break;
         }
         case ARCH_RV64: {
-            emulator_rv64_t emulator_rv64;
-            emu_rv64_init(&emulator_rv64);
-            result = emu_rv64_emulate_file(&emulator_rv64, input_path);
-            printf("instruction count: %d\n", emulator_rv64.instructions_count);
-            emu_rv64_print_registers_condensed(&emulator_rv64);
+            rv64_emulator_t rv64_emulator;
+            rv64_emulator_init(&rv64_emulator);
+            result = rv64_emulate_file_single_core(&rv64_emulator, input_path);
+            printf("instruction count: %d\n", rv64_emulator.harts[0].instructions_count);
+            rv64_print_registers_condensed(&rv64_emulator.harts[0]);
             break;
         }
         default: {

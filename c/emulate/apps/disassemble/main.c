@@ -89,10 +89,10 @@ int main(int argc, char* argv[]) {
             break;
         }
         case ARCH_RV64: {
-            emulator_rv64_t emulator_rv64;
-            emu_rv64_init(&emulator_rv64);
-            result_t result = emu_rv64_disassemble_file(&emulator_rv64, input_path, out_buffer, sizeof(out_buffer));
-            printf("Disassemble result: %s, instructions: %d\n", result_strings[result], emulator_rv64.instructions_count);
+            rv64_disassembler_t rv64_disassembler;
+            rv64_disassemble_init(&rv64_disassembler);
+            result_t result = rv64_disassemble_file(&rv64_disassembler, input_path, out_buffer, sizeof(out_buffer));
+            printf("Disassemble result: %s, instructions: %d\n", result_strings[result], rv64_disassembler.instructions_count);
             break;
         }
         default: {

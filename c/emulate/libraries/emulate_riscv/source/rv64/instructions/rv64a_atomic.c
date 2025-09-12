@@ -28,39 +28,37 @@
  * `amoswap.w.aq rd, rs2, (rs1)`
  * `amoswap.w.rl rd, rs2, (rs1)`
  * Atomically swaps the value in memory at address rs1 and the value in register rs2.
- * All `AMO` operations have lock aquire and release capabilities that are currently
- * ignored by this emulator (emulator is currently a single hart).
  */
 static inline void rv64a_amoswap_w(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint8_t aquire,
     uint8_t release,
     uint8_t rs2,
     uint8_t rs1,
     uint8_t rd
 ) {
-    uint64_t address = emulator->registers[rs1];
-    uint64_t value = emulator->registers[rs2];
+    uint64_t address = hart->registers[rs1];
+    uint64_t value = hart->registers[rs2];
 
     if (aquire) {
         // todo: if multi-threading is added, ...
     }
 
     int32_t memory_value = 0;
-    memcpy(&memory_value, &emulator->memory[address], 4);
-    memcpy(&emulator->memory[address], &value, 4);
+    memcpy(&memory_value, &hart->shared_system->memory[address], 4);
+    memcpy(&hart->shared_system->memory[address], &value, 4);
 
     if (release) {
         // todo: if multi-threading is added, ...
     }
 
     if (rd != 0) {
-        emulator->registers[rd] = (int64_t)memory_value; // sign extend via cast
+        hart->registers[rd] = (int64_t)memory_value; // sign extend via cast
     }
 }
 
 static inline void rv64_amoadd_w(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint8_t aquire,
     uint8_t release,
     uint8_t rs2,
@@ -89,7 +87,7 @@ static inline void rv64_amoadd_w(
  * 32-bit value held in `rd`, and if equal, stores the value held in `rs2` to `rs1`.
  */
 static inline void rv64a_amocas_w(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint8_t aquire,
     uint8_t release,
     uint8_t rs2,
@@ -100,12 +98,12 @@ static inline void rv64a_amocas_w(
         // todo: if multi-threading is added, ...
     }
 
-    uint64_t address = emulator->registers[rs1];
-    int32_t expected = (int32_t) emulator->registers[rd];
+    uint64_t address = hart->registers[rs1];
+    int32_t expected = (int32_t) hart->registers[rd];
     int32_t original_memory_value = 0;
-    memcpy(&original_memory_value, &emulator->memory[address], 4);
+    memcpy(&original_memory_value, &hart->shared_system->memory[address], 4);
     if (original_memory_value == expected) {
-        memcpy(&emulator->memory[address], &emulator->registers[rs2], 4);
+        memcpy(&hart->shared_system->memory[address], &hart->registers[rs2], 4);
     }
 
     if (release) {
@@ -113,7 +111,7 @@ static inline void rv64a_amocas_w(
     }
 
     if (rd != 0) {
-        emulator->registers[rd] = (int64_t)original_memory_value; // sign extend via cast
+        hart->registers[rd] = (int64_t)original_memory_value; // sign extend via cast
     }
 }
 
@@ -127,7 +125,7 @@ static inline void rv64a_amocas_w(
  */
 
 emu_result_t rv64a_atomic_emulate(
-    emulator_rv64_t* emulator,
+    rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
@@ -155,11 +153,11 @@ emu_result_t rv64a_atomic_emulate(
         }
         // aamo
         case I_RV64ZAAMO_AMOSWAP_W: {
-            rv64a_amoswap_w(emulator, aquire, release, rs2, rs1, rd);
+            rv64a_amoswap_w(hart, aquire, release, rs2, rs1, rd);
             break;
         }
         case I_RV64ZAAMO_AMOADD_W: {
-            rv64_amoadd_w(emulator, aquire, release, rs2, rs1, rd);
+            rv64_amoadd_w(hart, aquire, release, rs2, rs1, rd);
             break;
         }
         case I_RV64ZAAMO_AMOXOR_W:
@@ -191,7 +189,7 @@ emu_result_t rv64a_atomic_emulate(
         }
         // acas
         case I_RV64ZACAS_AMOCAS_W: {
-            rv64a_amocas_w(emulator, aquire, release, rs2, rs1, rd);
+            rv64a_amocas_w(hart, aquire, release, rs2, rs1, rd);
             break;
         }
         case I_RV64ZACAS_AMOCAS_D:

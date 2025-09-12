@@ -6,11 +6,11 @@
 
 #include "rv64/rv64_emulate.h"
 
-static emulator_rv64_t g_emulator;
+static rv64_emulator_t g_emulator;
 
 void rv64_emu_jal_default_setup(void) {
-    memset(&g_emulator, 0, sizeof(emulator_rv64_t));
-    emu_rv64_init(&g_emulator);
+    memset(&g_emulator, 0, sizeof(rv64_emulator_t));
+    rv64_emulator_init(&g_emulator);
 }
 
 Test(emu_rv64_emulate__jal__tests, jal_1, .init = rv64_emu_jal_default_setup)
@@ -23,11 +23,10 @@ Test(emu_rv64_emulate__jal__tests, jal_1, .init = rv64_emu_jal_default_setup)
                                 // next:
         0x13, 0x0e, 0xe0, 0x01, // li t3, 30
     };
-    cr_assert(SUCCESS == emu_rv64_emulate_chunk(&g_emulator, input, sizeof(input)));
-    debug_print_registers(&g_emulator);
-    cr_assert(3 == g_emulator.instructions_count);
-    cr_assert(PROGRAM_START + 4 + 4 == g_emulator.registers[RV64_REG_RA]);
-    cr_assert(10 == g_emulator.registers[RV64_REG_T1]);
-    cr_assert(0 == g_emulator.registers[RV64_REG_T2]); // we jumped over setting t2, so should be 0.
-    cr_assert(30 == g_emulator.registers[RV64_REG_T3]);
+    cr_assert(SUCCESS == rv64_emulate_chunk_single_core(&g_emulator, input, sizeof(input)));
+    cr_assert(3 == g_emulator.harts[0].instructions_count);
+    cr_assert(PROGRAM_START + 4 + 4 == g_emulator.harts[0].registers[RV64_REG_RA]);
+    cr_assert(10 == g_emulator.harts[0].registers[RV64_REG_T1]);
+    cr_assert(0 == g_emulator.harts[0].registers[RV64_REG_T2]); // we jumped over setting t2, so should be 0.
+    cr_assert(30 == g_emulator.harts[0].registers[RV64_REG_T3]);
 }

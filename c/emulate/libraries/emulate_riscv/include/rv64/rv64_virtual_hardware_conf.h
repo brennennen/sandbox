@@ -15,11 +15,17 @@
 #define HART_COUNT 2
 
 /**
- * ELEN (Vector Element Length) is the number of elements to be operated on at one time by
- * vector operations. ELEN >= 8, and must be a power of 2. Part of the "V" extension.
+ * MARK: Vector Config/Notes
+ * Extension: Zvl128b
+ */
+
+/**
+ * ELEN (Element Length) Maximum size in bits of a vector element that any operation can
+ * produce or consume.
+ * ELEN >= 8, and must be a power of 2. Part of the "V" extension.
  * @see 30.2 Implementation-defined Constant Parameters (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_implementation_defined_constant_parameters)
  */
-#define ELEN 8
+#define ELEN 64
 
 /**
  * VLEN (Vector Length) is the number of bits in a single vector register. VLEN >= ELEN, and

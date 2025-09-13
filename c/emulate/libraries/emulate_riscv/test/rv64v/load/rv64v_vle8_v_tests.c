@@ -20,8 +20,7 @@ void rv64_emu_vle8_v_default_setup(void) {
 Test(emu_rv64_emulate__vle8_v__tests, vle8_v_1, .init = rv64_emu_vle8_v_default_setup)
 {
     // arrange
-    // mock a vset config instruction: vsetvli t0, a2, e8, m1, ta, ma
-    rv64v_vtype_t vtype = {
+    rv64v_vtype_t vtype = { // mock: vsetvli t0, a2, e8, m1, ta, ma
         .vma = 0, .vta = 0, .selected_element_width = RV64_SEW_8, .vlmul = RV64_VLMUL_1
     };
     g_emulator.harts[0].csrs.vtype = rv64_csr_encode_vtype(&vtype);
@@ -55,8 +54,7 @@ Test(emu_rv64_emulate__vle8_v__tests, vle8_v_1, .init = rv64_emu_vle8_v_default_
 Test(emu_rv64_emulate__vle8_v__tests, vle8_v_vlmul2, .init = rv64_emu_vle8_v_default_setup)
 {
     // arrange
-    // mock a vset config instruction: vsetvli t0, a2, e8, m2, ta, ma
-    rv64v_vtype_t vtype = {
+    rv64v_vtype_t vtype = { // mock: vsetvli t0, a2, e8, m2, ta, ma
         .vma = 0, .vta = 0, .selected_element_width = RV64_SEW_8, .vlmul = RV64_VLMUL_2
     };
     g_emulator.harts[0].csrs.vtype = rv64_csr_encode_vtype(&vtype);
@@ -97,8 +95,7 @@ Test(emu_rv64_emulate__vle8_v__tests, vle8_v_vlmul2, .init = rv64_emu_vle8_v_def
 Test(emu_rv64_emulate__vle8_v__tests, vle8_v_vlmul4, .init = rv64_emu_vle8_v_default_setup)
 {
     // arrange
-    // mock a vset config instruction: vsetvli t0, a2, e8, m4, ta, ma
-    rv64v_vtype_t vtype = {
+    rv64v_vtype_t vtype = { // mock: vsetvli t0, a2, e8, m4, ta, ma
         .vma = 0, .vta = 0, .selected_element_width = RV64_SEW_8, .vlmul = RV64_VLMUL_4
     };
     g_emulator.harts[0].csrs.vtype = rv64_csr_encode_vtype(&vtype);
@@ -137,8 +134,7 @@ Test(emu_rv64_emulate__vle8_v__tests, vle8_v_vlmul4, .init = rv64_emu_vle8_v_def
 Test(emu_rv64_emulate__vle8_v__tests, vle8_v_vlmul8, .init = rv64_emu_vle8_v_default_setup)
 {
     // arrange
-    // mock a vset config instruction: vsetvli t0, a2, e8, m4, ta, ma
-    rv64v_vtype_t vtype = {
+    rv64v_vtype_t vtype = { // mock: vsetvli t0, a2, e8, m4, ta, ma
         .vma = 0, .vta = 0, .selected_element_width = RV64_SEW_8, .vlmul = RV64_VLMUL_8
     };
     g_emulator.harts[0].csrs.vtype = rv64_csr_encode_vtype(&vtype);

@@ -4,10 +4,15 @@
 #include "rv64/rv64_control_status_registers.h"
 
 
+
+
+
+
 // void write_csrs(rv64_emulator_t* emulator, uint8_t *data, int32_t data_size) {
 //     data[0x001] = emulator.csrs.float_csrs.fflags;
 //     // TODO
 // }
+
 
 
 /**
@@ -24,17 +29,17 @@ uint64_t rv64_get_csr_value(rv64_csrs_t* csrs, int32_t address) {
         /*
          * MARK: Unsupervised
          */
-        case 0x001: return(csrs->fflags);
-        case 0x002: return(csrs->frm);
-        case 0x003: return(csrs->fcsr);
+        case RV64_CSR_FFLAGS: return(csrs->fflags);
+        case RV64_CSR_FRM: return(csrs->frm);
+        case RV64_CSR_FCSR: return(csrs->fcsr);
         // Unprivileged Vector CSRs
-        case 0x008: return(csrs->vstart);
-        case 0x009: return(csrs->vxsat);
-        case 0x00A: return(csrs->vxrm);
-        case 0x00F: return(csrs->vcsr);
-        case 0xc20: return(csrs->vl);
-        case 0xc21: return(csrs->vtype);
-        case 0xc22: return(csrs->vlenb);
+        case RV64_CSR_VSTART: return(csrs->vstart);
+        case RV64_CSR_VXSAT: return(csrs->vxsat);
+        case RV64_CSR_VXRM: return(csrs->vxrm);
+        case RV64_CSR_VCSR: return(csrs->vcsr);
+        case RV64_CSR_VL: return(csrs->vl);
+        case RV64_CSR_VTYPE: return(csrs->vtype);
+        case RV64_CSR_VLENB: return(csrs->vlenb);
         // Unprivileged Zicfiss
         case 0x011: return(csrs->ssp);
         // Unprivileged seed for cryptographic random bit generators
@@ -52,13 +57,13 @@ uint64_t rv64_get_csr_value(rv64_csrs_t* csrs, int32_t address) {
          * MARK: Machine
          */
         // Machine Information Registers
-        case 0xf11: return(csrs->mvendorid);
-        case 0xf12: return(csrs->marchid);
-        case 0xf13: return(csrs->mimpid);
-        case 0xf14: return(csrs->mhartid);
-        case 0xf15: return(csrs->mconfigptr);
+        case RV64_CSR_MVENDORID: return(csrs->mvendorid);
+        case RV64_CSR_MARCHID: return(csrs->marchid);
+        case RV64_CSR_MIMPID: return(csrs->mimpid);
+        case RV64_CSR_MHARID: return(csrs->mhartid);
+        case RV64_CSR_MCONFIGPTR: return(csrs->mconfigptr);
         // Machine Trap Setup
-        case 0x300: return(csrs->mstatus);
+        case RV64_CSR_MSTATUS: return(csrs->mstatus);
         case 0x301: return(csrs->misa);
         case 0x302: return(csrs->medeleg);
         case 0x303: return(csrs->mideleg);
@@ -180,18 +185,17 @@ void rv64_set_csr_value(rv64_csrs_t* csrs, int32_t address, uint64_t value) {
         /*
          * MARK: Unsupervised
          */
-        case 0x001: {
-            csrs->fflags = value;
-            break;
-        }
-        case 0x002: {
-            csrs->frm = value;
-            break;
-        }
-        case 0x003: {
-            csrs->fcsr = value;
-            break;
-        }
+        case RV64_CSR_FFLAGS: { csrs->fflags = value; break; }
+        case RV64_CSR_FRM: { csrs->frm = value; break; }
+        case RV64_CSR_FCSR: { csrs->fcsr = value; break; }
+        case RV64_CSR_VSTART: { csrs->vstart = value; break; }
+        case RV64_CSR_VXSAT: { csrs->vxsat = value; break; }
+        case RV64_CSR_VXRM: { csrs->vxrm = value; break; }
+        case RV64_CSR_VCSR: { csrs->vcsr = value; break; }
+        case RV64_CSR_VL: { csrs->vl = value; break; }
+        case RV64_CSR_VTYPE: { csrs->vtype = value; break; }
+        case RV64_CSR_VLENB: { csrs->vlenb = value; break; }
+        // ...
         /*
          * MARK: Supervisor
          */
@@ -206,7 +210,7 @@ void rv64_set_csr_value(rv64_csrs_t* csrs, int32_t address, uint64_t value) {
         // Machine Infromation Registers
         // mvendorid, marchid, mimpid, mhartid, and mconfigptr are all read only.
         // Machine Trap Setup
-        case 0x300: {
+        case RV64_CSR_MSTATUS: {
             rv64_csr_set_mstatus(&csrs->mstatus, value);
             break;
         }
@@ -220,7 +224,6 @@ void rv64_set_csr_value(rv64_csrs_t* csrs, int32_t address, uint64_t value) {
             break;
         }
 
-
         // ...
         default: {
             // todo: log error
@@ -228,6 +231,15 @@ void rv64_set_csr_value(rv64_csrs_t* csrs, int32_t address, uint64_t value) {
     }
 }
 
+// todo: encode/decode mstatus
+typedef struct rv64_mstatus_s {
+    // ...
+    uint8_t vs;
+} rv64_mstatus_t;
+
+void rv64_csr_decode_mstatus(uint64_t mstatus_raw, rv64_mstatus_t* mstatus) {
+    mstatus->vs = (mstatus_raw >> 9) & 0b11;
+}
 
 /*
  * Set initial (mostly read only) data

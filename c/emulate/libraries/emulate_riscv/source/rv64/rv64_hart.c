@@ -109,6 +109,10 @@ void rv64_hart_set_default_machine_csrs(rv64_hart_t* hart, uint8_t hart_index) {
     // ...
 }
 
+void rv64_hart_set_default_vector_csrs(rv64_hart_t* hart, uint8_t hart_index) {
+    rv64_set_csr_value(&hart->csrs, RV64_CSR_VLENB, VLEN / 8);
+}
+
 /**
  * Reads 32 bits (4 bytes) from memory starting at the pc register in little-endian.
  */

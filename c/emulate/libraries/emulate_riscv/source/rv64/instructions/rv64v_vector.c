@@ -452,22 +452,30 @@ static void rv64v_vadd_vi(
     vector_register_t* vd = &hart->vector_registers[vd_idx];
 
     for (int i = 0; i < hart->csrs.vl; i++) {
-        switch(vtype.selected_element_width) {
-            case RV64_SEW_8: {
-                vd->elements_8[i] = vs2->elements_8[i] + imm_se;
-                break;
-            }
-            case RV64_SEW_16: {
-                vd->elements_16[i] = vs2->elements_16[i] + imm_se;
-                break;
-            }
-            case RV64_SEW_32: {
-                vd->elements_32[i] = vs2->elements_32[i] + imm_se;
-                break;
-            }
-            case RV64_SEW_64: {
-                vd->elements_64[i] = vs2->elements_64[i] + imm_se;
-                break;
+        bool mask_elem_active = true;
+        if (vm == 0) {
+            // todo: set mask_elem_active accordingly
+        } else {
+            mask_elem_active = true; // masking disabled, so always load everything
+        }
+        if (mask_elem_active) {
+            switch(vtype.selected_element_width) {
+                case RV64_SEW_8: {
+                    vd->elements_8[i] = vs2->elements_8[i] + imm_se;
+                    break;
+                }
+                case RV64_SEW_16: {
+                    vd->elements_16[i] = vs2->elements_16[i] + imm_se;
+                    break;
+                }
+                case RV64_SEW_32: {
+                    vd->elements_32[i] = vs2->elements_32[i] + imm_se;
+                    break;
+                }
+                case RV64_SEW_64: {
+                    vd->elements_64[i] = vs2->elements_64[i] + imm_se;
+                    break;
+                }
             }
         }
     }
@@ -485,6 +493,14 @@ emu_result_t rv64v_vector_emulate(
     instruction_tag_rv64_t tag
 ) {
     printf("%s\n", __func__);
+
+    // todo: clean this up, maybe make a cached helper csr with mstatus already decoded
+    uint64_t mstatus_raw = rv64_get_csr_value(&hart->csrs, RV64_CSR_MSTATUS);
+    uint8_t vs = (mstatus_raw >> 9) & 0b11;
+    if (vs != 0) { // 0 = off, 1 = initial, 2, = clean, 3 = dirty
+        // TODO: illegal instruction!
+    } // todo: change to/from initial/clean/dirty. mstatus.sd is also modified. see: 30.3.2
+
     // RV64V
     switch (tag) {
         // vector admin/config

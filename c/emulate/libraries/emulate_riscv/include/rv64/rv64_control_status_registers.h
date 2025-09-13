@@ -8,6 +8,43 @@
 
 typedef struct emulator_rv64_s rv64_emulator_t; // forward declare
 
+/**
+ * MARK: Addresses
+ */
+
+// Unsupervised
+#define RV64_CSR_FFLAGS     0x001
+#define RV64_CSR_FRM        0x002
+#define RV64_CSR_FCSR       0x003
+#define RV64_CSR_VSTART     0x008
+#define RV64_CSR_VXSAT      0x009
+#define RV64_CSR_VXRM       0x00A
+#define RV64_CSR_VCSR       0x00F
+#define RV64_CSR_VL         0xC20
+#define RV64_CSR_VTYPE      0xC21
+#define RV64_CSR_VLENB      0xC22
+// ...
+// Supervisor
+// ...
+// Hypervisor
+// ...
+// Machine
+// Machine Information Registers
+#define RV64_CSR_MVENDORID  0xF11
+#define RV64_CSR_MARCHID    0xF12
+#define RV64_CSR_MIMPID     0xF13
+#define RV64_CSR_MHARID     0xF14
+#define RV64_CSR_MCONFIGPTR 0xF15
+// Machine Trap Setup
+#define RV64_CSR_MSTATUS    0x300
+// ...
+// ...
+
+
+/*
+ * MARK: CSR Struct
+ */
+
 typedef struct {
     /*
      * MARK: Unprivileged

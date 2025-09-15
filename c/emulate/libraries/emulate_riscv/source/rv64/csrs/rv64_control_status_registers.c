@@ -231,12 +231,6 @@ void rv64_set_csr_value(rv64_csrs_t* csrs, int32_t address, uint64_t value) {
     }
 }
 
-// todo: encode/decode mstatus
-typedef struct rv64_mstatus_s {
-    // ...
-    uint8_t vs;
-} rv64_mstatus_t;
-
 void rv64_csr_decode_mstatus(uint64_t mstatus_raw, rv64_mstatus_t* mstatus) {
     mstatus->vs = (mstatus_raw >> 9) & 0b11;
 }

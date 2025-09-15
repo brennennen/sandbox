@@ -29,7 +29,6 @@ Test(emu_rv64_emulate__vle16_v__tests, vle16_v_1, .init = rv64_emu_vle16_v_defau
     uint16_t src_data[8];
     for (int i = 0; i < 8; i++) {
         src_data[i] = i;
-        printf("%s: src_data[%d]: %d\n", __func__, i, src_data[i]);
     }
     memcpy(&(g_emulator.harts[0].shared_system->memory[0x2000]), src_data, sizeof(src_data));
     g_emulator.harts[0].registers[RV64_REG_A1] = 0x2000;

@@ -25,7 +25,6 @@ Test(emu_rv64_emulate__vse8_v__tests, vse8_v_1, .init = rv64_emu_vse8_v_default_
     uint8_t src_data[16];
     for (int i = 0; i < 16; i++) {
         src_data[i] = i;
-        printf("src_data[%d] = %d\n", i, i);
     }
     memcpy(&g_emulator.harts[0].vector_registers[0], src_data, sizeof(src_data));
     g_emulator.harts[0].registers[RV64_REG_A1] = 0x2000;

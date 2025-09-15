@@ -398,16 +398,21 @@ static void rv64v_vse8_v(
  * MARK: Arithmetic
  */
 
-static void rv64v_vadd_vx(
+/**
+ * Vector-vector addition
+ * 30.11.1. Vector Single-Width Integer Add and Subtract
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_single_width_integer_add_and_subtract
+ */
+static void rv64v_vadd_vv(
     rv64_hart_t* hart,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag
 ) {
     uint8_t vm = 0;
-    uint8_t vs2 = 0;
-    uint8_t rs1 = 0;
-    uint8_t vd = 0;
-    rv64v_decode_vector_scalar(raw_instruction, &vm, &vs2, &rs1, &vd);
+    uint8_t vs2_idx = 0;
+    uint8_t vs1_idx = 0;
+    uint8_t vd_idx = 0;
+    rv64v_decode_vector_vector(raw_instruction, &vm, &vs2_idx, &vs1_idx, &vd_idx);
 
     if (hart->csrs.vl == 0) {
         // todo: trigger illegal trap?
@@ -417,11 +422,102 @@ static void rv64v_vadd_vx(
 
     rv64v_vtype_t vtype;
     rv64_csr_decode_vtype(hart->csrs.vtype, &vtype);
+
+    vector_register_t* vs1 = &hart->vector_registers[vs1_idx];
+    vector_register_t* vs2 = &hart->vector_registers[vs2_idx];
+    vector_register_t* vd = &hart->vector_registers[vd_idx];
+
+    for (int i = 0; i < hart->csrs.vl; i++) {
+        bool mask_elem_active = true;
+        if (vm == 0) {
+            // todo: set mask_elem_active accordingly
+        } else {
+            mask_elem_active = true; // masking disabled, so always load everything
+        }
+        if (mask_elem_active) {
+            switch(vtype.selected_element_width) {
+                case RV64_SEW_8: {
+                    vd->elements_8[i] = vs2->elements_8[i] + vs1->elements_8[i];
+                    break;
+                }
+                case RV64_SEW_16: {
+                    vd->elements_16[i] = vs2->elements_16[i] + vs1->elements_16[i];
+                    break;
+                }
+                case RV64_SEW_32: {
+                    vd->elements_32[i] = vs2->elements_32[i] + vs1->elements_32[i];
+                    break;
+                }
+                case RV64_SEW_64: {
+                    vd->elements_64[i] = vs2->elements_64[i] + vs1->elements_64[i];
+                    break;
+                }
+            }
+        }
+    }
 }
 
+/**
+ * Vector-scalar addition
+ * 30.11.1. Vector Single-Width Integer Add and Subtract
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_single_width_integer_add_and_subtract
+ */
+static void rv64v_vadd_vx(
+    rv64_hart_t* hart,
+    uint32_t raw_instruction,
+    instruction_tag_rv64_t tag
+) {
+    uint8_t vm = 0;
+    uint8_t vs2_idx = 0;
+    uint8_t rs1_idx = 0;
+    uint8_t vd_idx = 0;
+    rv64v_decode_vector_scalar(raw_instruction, &vm, &vs2_idx, &rs1_idx, &vd_idx);
+
+    if (hart->csrs.vl == 0) {
+        // todo: trigger illegal trap?
+        printf("%s: csrs.vl == 0! vector instruction has nothing to do!\n", __func__);
+        return;
+    }
+
+    rv64v_vtype_t vtype;
+    rv64_csr_decode_vtype(hart->csrs.vtype, &vtype);
+
+    int64_t rs1 = hart->registers[rs1_idx];
+    vector_register_t* vs2 = &hart->vector_registers[vs2_idx];
+    vector_register_t* vd = &hart->vector_registers[vd_idx];
+
+    for (int i = 0; i < hart->csrs.vl; i++) {
+        bool mask_elem_active = true;
+        if (vm == 0) {
+            // todo: set mask_elem_active accordingly
+        } else {
+            mask_elem_active = true; // masking disabled, so always load everything
+        }
+        if (mask_elem_active) {
+            switch(vtype.selected_element_width) {
+                case RV64_SEW_8: {
+                    vd->elements_8[i] = vs2->elements_8[i] + rs1;
+                    break;
+                }
+                case RV64_SEW_16: {
+                    vd->elements_16[i] = vs2->elements_16[i] + rs1;
+                    break;
+                }
+                case RV64_SEW_32: {
+                    vd->elements_32[i] = vs2->elements_32[i] + rs1;
+                    break;
+                }
+                case RV64_SEW_64: {
+                    vd->elements_64[i] = vs2->elements_64[i] + rs1;
+                    break;
+                }
+            }
+        }
+    }
+}
 
 /**
- *
+ * Vector immediate addition
  * 30.11.1. Vector Single-Width Integer Add and Subtract
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_single_width_integer_add_and_subtract
  */
@@ -542,6 +638,10 @@ emu_result_t rv64v_vector_emulate(
         }
         // ...
         // arithmetic
+        case I_RV64V_VADD_IVV: {
+            rv64v_vadd_vv(hart, raw_instruction, tag);
+            break;
+        }
         case I_RV64V_VADD_IVX: {
             rv64v_vadd_vx(hart, raw_instruction, tag);
             break;

@@ -16,9 +16,12 @@ typedef union {
 } vector_register_t;
 
 typedef struct rv64_hart_s {
-    uint64_t registers[32];
     uint64_t pc;
-    vector_register_t vector_registers[32];
+    uint64_t registers[32];
+    float float32_registers[32]; // "F" module
+    double float64_registers[32]; // "D" module
+    // todo: "Q" module 128 bit float
+    vector_register_t vector_registers[32]; // "V" module
     rv64_csrs_t csrs;
     int instructions_count;
     rv64_shared_system_t* shared_system;

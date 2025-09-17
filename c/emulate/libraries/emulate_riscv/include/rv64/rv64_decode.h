@@ -4,6 +4,8 @@
 
 #include <stdint.h>
 
+#include "rv64_common.h"
+
 /**
  * Decodes the "U-type" instruction format.
  */
@@ -147,9 +149,10 @@ static inline void rv64_decode_csr_immediate(
     *rd = (raw_instruction >> 7) & 0b11111;
 }
 
-/**
+/*
  * MARK: RV64A
  */
+
 static inline void rv64a_decode_atomic(
     uint32_t raw_instruction,
     uint8_t* aquire,
@@ -165,8 +168,56 @@ static inline void rv64a_decode_atomic(
     *rd = (raw_instruction >> 7) & 0b11111;
 }
 
+/*
+ * MARK: RV64F
+ */
+static inline void rv64f_decode_i_type(
+    uint32_t raw_instruction,
+    int16_t* imm12,
+    uint8_t* rs1,
+    rv64f_width_t* width,
+    uint8_t* rd
+) {
+    *imm12 = (int16_t)((raw_instruction >> 20) & 0x0FFF);
+    *rs1 = (raw_instruction >> 15) & 0b11111;
+    *width = (rv64f_width_t)((raw_instruction >> 12) & 0b111);
+    *rd = (raw_instruction >> 7) & 0b11111;
+}
 
-/**
+
+static inline void rv64f_decode_s_type(
+    uint32_t raw_instruction,
+    int16_t* offset,
+    uint8_t* rs2,
+    uint8_t* rs1,
+    uint8_t* width
+) {
+    uint8_t imm7 = (raw_instruction >> 25) & 0b1111111;
+    uint8_t imm5 = (raw_instruction >> 7) & 0b11111;
+    *offset = (imm7 << 5) | imm5;
+    *offset = (*offset << (16 - 12)) >> (16 - 12); // Sign extend
+    *rs2 = (raw_instruction >> 20) & 0b11111;
+    *rs1 = (raw_instruction >> 15) & 0b11111;
+    *width = (raw_instruction >> 12) & 0b111;
+}
+
+static inline void rv64f_decode_r_type(
+    uint32_t raw_instruction,
+    uint8_t* rs2,
+    uint8_t* rs1,
+    uint8_t* rm,
+    uint8_t* rd
+) {
+    *rs2 = (raw_instruction >> 20) & 0b11111;
+    *rs1 = (raw_instruction >> 15) & 0b11111;
+    *rm = (raw_instruction >> 12) & 0b111;
+    *rd = (raw_instruction >> 7) & 0b11111;
+}
+
+
+
+
+/*
  * MARK: RV64V
  */
 

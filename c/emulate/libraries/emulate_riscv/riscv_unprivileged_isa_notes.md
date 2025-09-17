@@ -240,6 +240,50 @@ Compiled PDF Link: https://drive.google.com/file/d/1uviu1nH-tScFfgrovvFCrj7Omv8t
 ### 19. "CMO" Extensions for Base Cache Management Operation ISA
 * todo
 
+### 20. "F" Extension for Single-Precision Floating-Point
+
+* 20.1. F Register State
+  * adds 32 floating-point registers, f0-f31, each 32 bits wide (not XLEN!, fixed as 32 bit even on 64 bit machine).
+    * FLEN - float register length, 32 for "F"
+* 20.2. Floating-Point Control and Status Register
+  * `fcsr` register read and written with `frcsr` and `fscsr` instructions
+    * `frcsr` copys `fcsr` into rd
+    * `fscsr` swaps the value in `fcsr` with the value in rd
+  * `frrm` reads the rounding mode field `frm` (fcsr bits 7 - 5), copies to least significant 3 bits of rd. then writes a new value obtained from the 3 least-significant bits of rs1 to `frm`.
+    * `frflags` and `fsflags` are the same, but for `fflags`
+* static or dynamic rounding modes. frm encodings:
+  * 000 - RNE - round to nearest, ties to even
+  * 001 - RTZ - round towards zero
+  * 010 - RDN - round down (toward negative infinity)
+  * 011 - RUP - round up (toward positive infinity)
+  * 100 - RMM - round to nearest, ties to max magnitude
+  * 111 - DYN - if set in instruction, select dynamic rounding mode
+* accrued exception flags
+  * NV - invalid operation
+  * DZ - divide by zero
+  * OF - overflow
+  * UF - underflow
+  * NX - inexact
+* 20.3 NaN Generation and Propagation
+  * if the result of a floating-point operation is NAN, it is the canonical NAN.
+  * all significand bits clear except the MSB (a.k.a the quiet bit)
+    * for 32 bit floats: `0x7fc00000`
+* 20.4 Subnormal Arithmetic
+  * todo: read IEEE 754-2008 standard
+* 20.5 Single-Precision Load and Store Instructions
+  * `flw` - floating point load word
+  * `fsw` - floating point store word
+* 20.6 Single-Precision Floating-Point Computational Instructions
+  * 2 bit floating-point format field `fmt`:
+    * 00 - S - 32 bit
+    * 01 - D - 64 bit
+    * 10 - H - 16 bit
+    * 11 - Q - 128 bit
+  * `fmin.s` - write the lesser of rs1 or rs2 (-0.0 is less than +0.0)
+  * `fmax.s` - write the greater of rs1 or rs2 (+0.0 is greater than -0.0)
+  * 
+
+
 // ...
 
 ### 30. "V" Standard Extension for Vector Operations

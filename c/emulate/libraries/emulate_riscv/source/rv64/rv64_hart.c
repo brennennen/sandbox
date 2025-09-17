@@ -319,6 +319,7 @@ static result_iter_t rv64_hart_emulate_next(rv64_hart_t* hart) {
         case I_RV64V_VLE16_V:
         case I_RV64V_VLE32_V:
         case I_RV64V_VSE8_V:
+        case I_RV64V_VADD_IVV:
         case I_RV64V_VADD_IVX:
         case I_RV64V_VADD_IVI: {
             result = rv64v_vector_emulate(hart, raw_instruction, instruction_tag);

@@ -1,5 +1,5 @@
 # Circular Wait (Dining Philosophers)
-At the root of the dining philosopher problem is a "circular wait" deadlock issue. This folder explores solutions to this same issue.
+At the root of the dining philosopher problem is a "circular wait" deadlock issue. This folder explores solutions to this issue.
 
 I've contextualized the problem as a consumer/producer problem because that's typically what I see most in the wild in my lived experience. You have some large system with chunks of data being handled by separate distinct pieces. In my experience the vast majority of problems that involve mutexes/semaphores that I see can be re-contextualized as worker threads that communicate via producing/consuming from some shared resource.
 

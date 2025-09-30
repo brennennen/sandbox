@@ -13,6 +13,7 @@
 #include "rv64/instructions/rv64i_base_integer.h"
 #include "rv64/instructions/rv64m_multiplication.h"
 #include "rv64/instructions/rv64a_atomic.h"
+#include "rv64/instructions/rv64f_float.h"
 #include "rv64/instructions/rv64v_vector.h"
 
 
@@ -310,6 +311,11 @@ static result_iter_t rv64_hart_emulate_next(rv64_hart_t* hart) {
             break;
         }
         // TODO: RV64F float/double/quad
+        // RV64F
+        case I_RV64F_FLW: {
+            result = rv64f_float_emulate(hart, raw_instruction, instruction_tag);
+            break;
+        }
         // ...
         // RV64V
         case I_RV64V_VSETVLI:

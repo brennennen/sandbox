@@ -26,7 +26,6 @@ static void set_default_csrs(rv64_emulator_t* emulator) {
 }
 
 emu_result_t rv64_emulator_init(rv64_emulator_t* emulator) {
-    emulator->memory_size = MEMORY_SIZE;
     emulator->hart_count = HART_COUNT;
     emulator->shared_system.memory_size = MEMORY_SIZE;
 

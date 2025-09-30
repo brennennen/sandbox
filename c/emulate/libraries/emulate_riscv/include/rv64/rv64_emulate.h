@@ -35,8 +35,6 @@
 typedef struct emulator_rv64_s {
     uint8_t hart_count;
     rv64_hart_t harts[HART_COUNT];
-    uint16_t memory_size;
-    uint8_t memory[MEMORY_SIZE];
     rv64_shared_system_t shared_system;
 } rv64_emulator_t;
 

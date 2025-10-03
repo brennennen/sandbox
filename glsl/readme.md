@@ -16,7 +16,7 @@ All files in this folder should be executable via the "shadertoy" vscode plugin 
 ## Shader Processors
 GLSL contains several "API Processor Pipelines" to handle several different tasks to be performed on a GPU: Vertex, Tessellation Control, Tessellation Evaluation, Geometry, Fragment, and Compute.
 
-Scrips written for each processor are called "shaders" and compiled into "shader executables. For example, the "Vertex Processor" is a programmable unit that operates on incoming vertices and their associated data. Scripts written to run on the vertex processor are called "Vertex Shaders". When the vertex shader is compiled and linked, they result in a "Vertex Shader Executable".
+Scripts written for each processor are called "shaders" and compiled into "shader executables. For example, the "Vertex Processor" is a programmable unit that operates on incoming vertices and their associated data. Scripts written to run on the vertex processor are called "Vertex Shaders". When the vertex shader is compiled and linked, they result in a "Vertex Shader Executable".
 
 Processors
  * Vertex - Operates on vertices and their associated data. Operates on a single vertex at a time.
@@ -24,7 +24,7 @@ Processors
  * Tessellation Evaluation - Operates on data emitted by the "Tessellation Primitive Generator", which is controlled by the "Tesselation Control" processor, and determines where to actually place the vertices defined in the control processor.
  * Geometry - Operates on a "primitive" with a fixed number of vertices and emits a variable number of vertices that are assembled into primitives of a declared output primitive type.
  * Fragment - Operates on fragment values and their associated data. Fragment shaders can NOT change a gragment's (x, y) position. Access to neighboring fragments is NOT allowed. The values computed are ultimately used to update framebuffer memory or texture memory. Often called "pixel shader".
- * Compute - Operates independently from the other shaders. Operates on textures, buffers, image variables, and atomic counters. Outputs/side-effects are through changes to images, storage buffers, and atomic counters. 
+ * Compute - Operates independently from the other shaders. Operates on textures, buffers, image variables, and atomic counters. Outputs/side-effects are through changes to images, storage buffers, and atomic counters.
 
 
 ### Vertex Processor
@@ -32,7 +32,7 @@ Processors
 
 ### Tessellation Control Processor
 Notes:
- * Run once for every vertex in a patch. 
+ * Run once for every vertex in a patch.
  * Data in a patch is shared by all vertices in the patch.
  * Sits between vertex and fragment shaders, ex: vertex -> tessellation control -> tessellation evaluation -> fragment
 
@@ -52,11 +52,11 @@ Layout arguments:
    * `quad`
    * `triangle`
    * `isoline`
- * Vertex Spacing: 
+ * Vertex Spacing:
    * `equal_spacing`
    * `fractional_even_spacing`
    * `fractional_odd_spacing`
- * Order: 
+ * Order:
    * `ccw` - Counter Clockwise
    * `cw` - Clockwise
 
@@ -82,8 +82,8 @@ Operates on a group of "work items" called a "workgroup".
  * Varying - Different values can be passed to every function execution in a batch(ex: pixel shader functions can get different values `FragColor`.).
 
 ### Input Variables
- * iTime - 
- * FragCoord - 
+ * iTime -
+ * FragCoord -
 
 
 ### Output Variables
@@ -122,4 +122,5 @@ precision lowp float;
  * Shader Exercise Website - https://shader-tutorial.dev/
    * A handful of exercises gradually increasing in complexity to learn glsl (a little bit like rustlings/ziglings).
  * The Book of Shaders - https://thebookofshaders.com
- * Graphing tool - 
+ * 3D Game Shaders For Beginners - https://lettier.github.io/3d-game-shaders-for-beginners/index.html
+ * Graphing tool - https://www.geogebra.org/calculator

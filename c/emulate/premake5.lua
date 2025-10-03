@@ -14,6 +14,7 @@ workspace "EmulateWorkspace"
     filter { "system:linux", "action:gmake" }
         toolset "gcc"
         buildoptions { "-std=c23" }
+        links { "m" } -- link with math library on linux, automatic on windows
 
 -- MARK: Libraries
 project "logger"

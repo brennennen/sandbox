@@ -175,12 +175,12 @@ static inline void rv64f_decode_i_type(
     uint32_t raw_instruction,
     int16_t* imm12,
     uint8_t* rs1,
-    rv64f_width_t* width,
+    uint8_t* width,
     uint8_t* rd
 ) {
     *imm12 = (int16_t)((raw_instruction >> 20) & 0x0FFF);
     *rs1 = (raw_instruction >> 15) & 0b11111;
-    *width = (rv64f_width_t)((raw_instruction >> 12) & 0b111);
+    *width = (raw_instruction >> 12) & 0b111;
     *rd = (raw_instruction >> 7) & 0b11111;
 }
 
@@ -214,8 +214,22 @@ static inline void rv64f_decode_r_type(
     *rd = (raw_instruction >> 7) & 0b11111;
 }
 
-
-
+static inline void rv64_decode_r4_type(
+    uint32_t raw_instruction,
+    uint8_t* rs3,
+    uint8_t* fmt,
+    uint8_t* rs2,
+    uint8_t* rs1,
+    uint8_t* rm,
+    uint8_t* rd
+) {
+    *rs3 = (raw_instruction >> 27) & 0b11111;
+    *fmt = (raw_instruction >> 25) & 0b11;
+    *rs2 = (raw_instruction >> 20) & 0b11111;
+    *rs1 = (raw_instruction >> 15) & 0b11111;
+    *rm = (raw_instruction >> 12) & 0b111;
+    *rd = (raw_instruction >> 7) & 0b11111;
+}
 
 /*
  * MARK: RV64V

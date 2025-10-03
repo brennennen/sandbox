@@ -14,6 +14,10 @@
  * are using and probably the most common convention.
  */
 
+/**
+ * MARK: General Purpose Registers
+ */
+
 #define RV64_REG_ZERO 0
 #define RV64_REG_RA 1
 #define RV64_REG_SP 2
@@ -46,6 +50,19 @@
 #define RV64_REG_T4 29
 #define RV64_REG_T5 30
 #define RV64_REG_T6 31
+
+
+/**
+ * MARK: Floating Point Registers
+ */
+#define RV64_REG_F0 0
+#define RV64_REG_F1 1
+#define RV64_REG_F2 2
+#define RV64_REG_F3 3
+#define RV64_REG_F4 4
+
+#define RV64_REF_FA0 10
+
 
 
 // /**

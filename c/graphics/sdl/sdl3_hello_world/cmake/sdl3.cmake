@@ -1,15 +1,9 @@
 
-set(SDL3_VERSION "3.2.24" CACHE STRING "SDL3 version to download")
-if(NOT VENDOR_DIR)
-    set(VENDOR_DIR "${CMAKE_SOURCE_DIR}/.vendor" CACHE PATH "Directory for downloaded libraries")
-endif()
-message(STATUS "Using vendor directory: ${VENDOR_DIR}")
-
-include(FetchContent)
-set(FETCHCONTENT_BASE_DIR ${VENDOR_DIR}/_deps CACHE PATH "Persistent location for downloaded dependencies")
+set(SDL3_VERSION "3.2.24")
 
 if(NOT TARGET SDL3::SDL3)
     message(STATUS "Attempting to find or build SDL3...")
+
     # For windows, download pre-compiled binaries
     if(WIN32)
         set(SDL3_ARCHIVE_NAME "SDL3-devel-${SDL3_VERSION}-mingw.zip")
@@ -22,13 +16,13 @@ if(NOT TARGET SDL3::SDL3)
         )
         FetchContent_MakeAvailable(sdl3_binary)
         set(SDL3_DIST_DIR "${sdl3_binary_SOURCE_DIR}/x86_64-w64-mingw32")
-        
-        # Create an INTERFACE library to represent the downloaded SDL3
+
         add_library(SDL3::SDL3 INTERFACE IMPORTED GLOBAL)
         target_include_directories(SDL3::SDL3 INTERFACE "${SDL3_DIST_DIR}/include")
         target_link_libraries(SDL3::SDL3 INTERFACE "${SDL3_DIST_DIR}/lib/libSDL3.dll.a")
 
-        set(SDL3_DLL_PATH "${SDL3_DIST_DIR}/bin/SDL3.dll" CACHE FILEPATH "Path to SDL3.dll")
+        set(SDL3_DLL_PATH "${SDL3_DIST_DIR}/bin/SDL3.dll")
+
     # For linux, build from source
     elseif(UNIX AND NOT APPLE)
         find_package(PkgConfig QUIET)
@@ -54,7 +48,6 @@ if(NOT TARGET SDL3::SDL3)
     endif()
 endif()
 
-# --- Final Status ---
 if(TARGET SDL3::SDL3)
     message(STATUS "SDL3 setup complete. Use SDL3::SDL3 target for linking.")
 endif()

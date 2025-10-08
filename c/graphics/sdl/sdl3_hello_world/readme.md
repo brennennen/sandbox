@@ -8,7 +8,7 @@ Minimal SDL3 project to locally test out examples. See `https://examples.libsdl.
 ```
 
 ## Linux
-Builds sdl3 from source.
+Reference system packages and pkg-config (`pkg-config --list-all | grep -i sdl`).
 
 ## Windows
 Requires MinGW/w64devkit: https://github.com/skeeto/w64devkit/releases

@@ -1,9 +1,8 @@
 
-set(SDL3_IMAGE_VERSION "3.2.4")
-
 if(NOT TARGET SDL3_IMAGE::SDL3_IMAGE)
+    set(SDL3_IMAGE_VERSION "3.2.4")
     message(STATUS "Attempting to find or build SDL3_image...")
-    # For windows, download pre-compiled binaries and use those
+
     if(WIN32)
         set(SDL3_IMAGE_ARCHIVE_NAME "SDL3_image-devel-${SDL3_IMAGE_VERSION}-mingw.zip")
         # https://github.com/libsdl-org/SDL_image/releases/download/release-3.2.4/SDL3_image-devel-3.2.4-mingw.zip
@@ -21,25 +20,20 @@ if(NOT TARGET SDL3_IMAGE::SDL3_IMAGE)
         target_link_libraries(SDL3_image::SDL3_image INTERFACE "${SDL3_IMAGE_DIST_DIR}/lib/libSDL3_image.dll.a")
         set(SDL3_IMAGE_DLL_PATH "${SDL3_IMAGE_DIST_DIR}/bin/SDL3_image.dll")
 
-    # For linux, build from source
     elseif(UNIX AND NOT APPLE)
-        find_package(PkgConfig QUIET)
+        find_package(PkgConfig)
         if (PKG_CONFIG_FOUND)
-            pkg_check_modules(PC_SDL3 QUIET sdl3)
-        endif()
-
-        if (PC_SDL3_FOUND)
-            message(STATUS "Found system-wide SDL3_image via pkg-config")
-            find_package(SDL3_image CONFIG REQUIRED)
+            pkg_check_modules(PC_SDL3_IMAGE sdl3-image)
+            if(PC_SDL3_IMAGE_FOUND)
+                add_library(SDL3_image::SDL3_image INTERFACE IMPORTED) 
+                target_include_directories(SDL3_image::SDL3_image INTERFACE ${PC_SDL3_IMAGE_INCLUDE_DIRS})
+                target_link_libraries(SDL3_image::SDL3_image INTERFACE ${PC_SDL3_IMAGE_LIBRARIES})
+                target_link_libraries(SDL3_image::SDL3_image INTERFACE SDL3::SDL3)
+            else()
+                message(FATAL_ERROR "SDL3_image not found via pkg-config or source build logic.")
+            endif()
         else()
-            message(STATUS "SDL3_image not found via pkg-config. Building from source...")
-            include(FetchContent)
-            FetchContent_Declare(
-                sdl3_image_source
-                GIT_REPOSITORY https://github.com/libsdl-org/SDL_image.git
-                GIT_TAG        release-${SDL3_IMAGE_VERSION}
-            )
-            FetchContent_MakeAvailable(sdl3_image_source)
+            message(FATAL_ERROR "pkg-config not found!")
         endif()
     else()
         message(FATAL_ERROR "Unsupported platform for automatic SDL3 setup.")

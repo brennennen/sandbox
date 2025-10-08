@@ -1,10 +1,9 @@
 
-set(SDL3_TTF_VERSION "3.2.2")
-
 if(NOT TARGET SDL3_TTF::SDL3_TTF)
     message(STATUS "Attempting to find or build SDL3_ttf...")
-    # For windows, download pre-compiled binaries and use those
+
     if(WIN32)
+        set(SDL3_TTF_VERSION "3.2.2")
         set(SDL3_TTF_ARCHIVE_NAME "SDL3_ttf-devel-${SDL3_TTF_VERSION}-mingw.zip")
         # https://github.com/libsdl-org/SDL_ttf/releases/download/release-3.2.2/SDL3_ttf-devel-3.2.2-mingw.zip
         set(SDL3_TTF_URL "https://github.com/libsdl-org/SDL_ttf/releases/download/release-${SDL3_TTF_VERSION}/${SDL3_TTF_ARCHIVE_NAME}")
@@ -21,25 +20,20 @@ if(NOT TARGET SDL3_TTF::SDL3_TTF)
         target_link_libraries(SDL3_ttf::SDL3_ttf INTERFACE "${SDL3_TTF_DIST_DIR}/lib/libSDL3_ttf.dll.a")
         set(SDL3_TTF_DLL_PATH "${SDL3_TTF_DIST_DIR}/bin/SDL3_ttf.dll")
 
-    # For linux, build from source
     elseif(UNIX AND NOT APPLE)
-        find_package(PkgConfig QUIET)
+        find_package(PkgConfig)
         if (PKG_CONFIG_FOUND)
-            pkg_check_modules(PC_SDL3 QUIET sdl3)
-        endif()
-
-        if (PC_SDL3_FOUND)
-            message(STATUS "Found system-wide SDL3_ttf via pkg-config")
-            find_package(SDL3_ttf CONFIG REQUIRED)
+            pkg_check_modules(PC_SDL3_TTF sdl3-ttf)
+            if(PC_SDL3_TTF_FOUND)
+                add_library(SDL3_ttf::SDL3_ttf INTERFACE IMPORTED) 
+                target_include_directories(SDL3_ttf::SDL3_ttf INTERFACE ${PC_SDL3_TTF_INCLUDE_DIRS})
+                target_link_libraries(SDL3_ttf::SDL3_ttf INTERFACE ${PC_SDL3_TTF_LIBRARIES})
+                target_link_libraries(SDL3_ttf::SDL3_ttf INTERFACE SDL3::SDL3)
+            else()
+                message(FATAL_ERROR "SDL3_ttf not found via pkg-config or source build logic.")
+            endif()
         else()
-            message(STATUS "SDL3_ttf not found via pkg-config. Building from source...")
-            include(FetchContent)
-            FetchContent_Declare(
-                sdl3_ttf_source
-                GIT_REPOSITORY https://github.com/libsdl-org/SDL_ttf.git
-                GIT_TAG        release-${SDL3_TTF_VERSION}
-            )
-            FetchContent_MakeAvailable(sdl3_ttf_source)
+            message(FATAL_ERROR "pkg-config not found!")
         endif()
     else()
         message(FATAL_ERROR "Unsupported platform for automatic SDL3 setup.")

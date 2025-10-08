@@ -1,11 +1,10 @@
 
-set(SDL3_VERSION "3.2.24")
-
 if(NOT TARGET SDL3::SDL3)
     message(STATUS "Attempting to find or build SDL3...")
 
     # For windows, download pre-compiled binaries
     if(WIN32)
+        set(SDL3_VERSION "3.2.24")
         set(SDL3_ARCHIVE_NAME "SDL3-devel-${SDL3_VERSION}-mingw.zip")
         set(SDL3_URL "https://github.com/libsdl-org/SDL/releases/download/release-${SDL3_VERSION}/${SDL3_ARCHIVE_NAME}")
         FetchContent_Declare(
@@ -23,26 +22,9 @@ if(NOT TARGET SDL3::SDL3)
 
         set(SDL3_DLL_PATH "${SDL3_DIST_DIR}/bin/SDL3.dll")
 
-    # For linux, build from source
+    # For linux, use find_package
     elseif(UNIX AND NOT APPLE)
-        find_package(PkgConfig QUIET)
-        if (PKG_CONFIG_FOUND)
-            pkg_check_modules(PC_SDL3 QUIET sdl3)
-        endif()
-
-        if (PC_SDL3_FOUND)
-            message(STATUS "Found system-wide SDL3 via pkg-config")
-            find_package(SDL3 CONFIG REQUIRED)
-        else()
-            message(STATUS "SDL3 not found via pkg-config. Building from source...")
-            include(FetchContent)
-            FetchContent_Declare(
-                sdl3_source
-                GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-                GIT_TAG        release-${SDL3_VERSION}
-            )
-            FetchContent_MakeAvailable(sdl3_source)
-        endif()
+        find_package(SDL3 CONFIG REQUIRED)
     else()
         message(FATAL_ERROR "Unsupported platform for automatic SDL3 setup.")
     endif()

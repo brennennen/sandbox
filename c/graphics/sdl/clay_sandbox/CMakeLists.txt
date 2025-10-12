@@ -11,7 +11,9 @@ include(sdl3_ttf)
 include(sdl3_image)
 include(clay)
 
-add_executable(main main.c)
+
+
+add_executable(main ./source/main.c ./source/clay_renderer_sdl3.c ./source/clay_sandbox_ui.c)
 target_include_directories(main PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 target_link_libraries(main PRIVATE 

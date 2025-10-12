@@ -8,11 +8,8 @@
 
 #include <stdio.h>
 
-/**
- * "unity build" - https://en.wikipedia.org/wiki/Unity_build
- */
-#include "./clay_renderer_SDL3.c"
-#include "./clay-video-demo.c"
+#include "./clay_renderer_sdl3.h"
+#include "./clay_sandbox_ui.h"
 
 static const Uint32 FONT_ID = 0;
 
@@ -23,7 +20,7 @@ static const Clay_Color COLOR_LIGHT     = (Clay_Color) {224, 215, 210, 255};
 typedef struct app_state {
     SDL_Window *window;
     Clay_SDL3RendererData rendererData;
-    ClayVideoDemo_Data demoData;
+    clay_sandbox_data_t sandbox_data;
 } AppState;
 
 SDL_Texture *sample_image;
@@ -94,7 +91,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     }
     *appstate = state;
 
-    if (!SDL_CreateWindowAndRenderer("Clay Demo", 640, 480, 0, &state->window, &state->rendererData.renderer)) {
+    if (!SDL_CreateWindowAndRenderer("Clay Sandbox", 640, 480, 0, &state->window, &state->rendererData.renderer)) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create window and renderer: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
@@ -138,7 +135,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     Clay_Initialize(clayMemory, (Clay_Dimensions) { (float) width, (float) height }, (Clay_ErrorHandler) { HandleClayErrors });
     Clay_SetMeasureTextFunction(SDL_MeasureText, state->rendererData.fonts);
 
-    state->demoData = ClayVideoDemo_Initialize();
+    state->sandbox_data = sandbox_data_initialize();
 
     *appstate = state;
     return SDL_APP_CONTINUE;
@@ -181,11 +178,7 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event)
 SDL_AppResult SDL_AppIterate(void *appstate)
 {
     AppState *state = appstate;
-
-    Clay_RenderCommandArray render_commands = (show_demo
-        ? ClayVideoDemo_CreateLayout(&state->demoData)
-        : ClayImageSample_CreateLayout()
-    );
+    Clay_RenderCommandArray render_commands = sandbox_create_layout(&state->sandbox_data);
 
     SDL_SetRenderDrawColor(state->rendererData.renderer, 0, 0, 0, 255);
     SDL_RenderClear(state->rendererData.renderer);

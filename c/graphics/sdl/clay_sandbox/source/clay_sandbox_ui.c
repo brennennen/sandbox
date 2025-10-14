@@ -1,29 +1,40 @@
 
-#include "./clay.h"
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <SDL3/SDL.h>
+#include "clay.h"
 
 #include "clay_sandbox_ui.h"
+
+
 
 static const int FONT_ID_BODY_16 = 0;
 static Clay_Color COLOR_WHITE = { 255, 255, 255, 255};
 
-static document_t documents_raw[5];
-static document_array_t documents = {
-    .length = 5,
-    .documents = documents_raw
-};
+typedef enum {
+    MAIN_CONTENT_NONE,
+    MAIN_CONTENT_FLY
+} main_content_t;
 
-clay_sandbox_data_t sandbox_data_initialize() {
-    documents.documents[0] = (document_t){ .title = CLAY_STRING("Squirrels"), .contents = CLAY_STRING("The Secret Life of Squirrels: Nature's Clever Acrobats\n""Squirrels are often overlooked creatures, dismissed as mere park inhabitants or backyard nuisances. Yet, beneath their fluffy tails and twitching noses lies an intricate world of cunning, agility, and survival tactics that are nothing short of fascinating. As one of the most common mammals in North America, squirrels have adapted to a wide range of environments from bustling urban centers to tranquil forests and have developed a variety of unique behaviors that continue to intrigue scientists and nature enthusiasts alike.\n""\n""Master Tree Climbers\n""At the heart of a squirrel's skill set is its impressive ability to navigate trees with ease. Whether they're darting from branch to branch or leaping across wide gaps, squirrels possess an innate talent for acrobatics. Their powerful hind legs, which are longer than their front legs, give them remarkable jumping power. With a tail that acts as a counterbalance, squirrels can leap distances of up to ten times the length of their body, making them some of the best aerial acrobats in the animal kingdom.\n""But it's not just their agility that makes them exceptional climbers. Squirrels' sharp, curved claws allow them to grip tree bark with precision, while the soft pads on their feet provide traction on slippery surfaces. Their ability to run at high speeds and scale vertical trunks with ease is a testament to the evolutionary adaptations that have made them so successful in their arboreal habitats.\n""\n""Food Hoarders Extraordinaire\n""Squirrels are often seen frantically gathering nuts, seeds, and even fungi in preparation for winter. While this behavior may seem like instinctual hoarding, it is actually a survival strategy that has been honed over millions of years. Known as \"scatter hoarding,\" squirrels store their food in a variety of hidden locations, often burying it deep in the soil or stashing it in hollowed-out tree trunks.\n""Interestingly, squirrels have an incredible memory for the locations of their caches. Research has shown that they can remember thousands of hiding spots, often returning to them months later when food is scarce. However, they don't always recover every stash some forgotten caches eventually sprout into new trees, contributing to forest regeneration. This unintentional role as forest gardeners highlights the ecological importance of squirrels in their ecosystems.\n""\n""The Great Squirrel Debate: Urban vs. Wild\n""While squirrels are most commonly associated with rural or wooded areas, their adaptability has allowed them to thrive in urban environments as well. In cities, squirrels have become adept at finding food sources in places like parks, streets, and even garbage cans. However, their urban counterparts face unique challenges, including traffic, predators, and the lack of natural shelters. Despite these obstacles, squirrels in urban areas are often observed using human infrastructure such as buildings, bridges, and power lines as highways for their acrobatic escapades.\n""There is, however, a growing concern regarding the impact of urban life on squirrel populations. Pollution, deforestation, and the loss of natural habitats are making it more difficult for squirrels to find adequate food and shelter. As a result, conservationists are focusing on creating squirrel-friendly spaces within cities, with the goal of ensuring these resourceful creatures continue to thrive in both rural and urban landscapes.\n""\n""A Symbol of Resilience\n""In many cultures, squirrels are symbols of resourcefulness, adaptability, and preparation. Their ability to thrive in a variety of environments while navigating challenges with agility and grace serves as a reminder of the resilience inherent in nature. Whether you encounter them in a quiet forest, a city park, or your own backyard, squirrels are creatures that never fail to amaze with their endless energy and ingenuity.\n""In the end, squirrels may be small, but they are mighty in their ability to survive and thrive in a world that is constantly changing. So next time you spot one hopping across a branch or darting across your lawn, take a moment to appreciate the remarkable acrobat at work a true marvel of the natural world.\n") };
-    documents.documents[1] = (document_t){ .title = CLAY_STRING("Lorem Ipsum"), .contents = CLAY_STRING("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.") };
-    documents.documents[2] = (document_t){ .title = CLAY_STRING("Vacuum Instructions"), .contents = CLAY_STRING("Chapter 3: Getting Started - Unpacking and Setup\n""\n""Congratulations on your new SuperClean Pro 5000 vacuum cleaner! In this section, we will guide you through the simple steps to get your vacuum up and running. Before you begin, please ensure that you have all the components listed in the \"Package Contents\" section on page 2.\n""\n""1. Unboxing Your Vacuum\n""Carefully remove the vacuum cleaner from the box. Avoid using sharp objects that could damage the product. Once removed, place the unit on a flat, stable surface to proceed with the setup. Inside the box, you should find:\n""\n""    The main vacuum unit\n""    A telescoping extension wand\n""    A set of specialized cleaning tools (crevice tool, upholstery brush, etc.)\n""    A reusable dust bag (if applicable)\n""    A power cord with a 3-prong plug\n""    A set of quick-start instructions\n""\n""2. Assembling Your Vacuum\n""Begin by attaching the extension wand to the main body of the vacuum cleaner. Line up the connectors and twist the wand into place until you hear a click. Next, select the desired cleaning tool and firmly attach it to the wand's end, ensuring it is securely locked in.\n""\n""For models that require a dust bag, slide the bag into the compartment at the back of the vacuum, making sure it is properly aligned with the internal mechanism. If your vacuum uses a bagless system, ensure the dust container is correctly seated and locked in place before use.\n""\n""3. Powering On\n""To start the vacuum, plug the power cord into a grounded electrical outlet. Once plugged in, locate the power switch, usually positioned on the side of the handle or body of the unit, depending on your model. Press the switch to the \"On\" position, and you should hear the motor begin to hum. If the vacuum does not power on, check that the power cord is securely plugged in, and ensure there are no blockages in the power switch.\n""\n""Note: Before first use, ensure that the vacuum filter (if your model has one) is properly installed. If unsure, refer to \"Section 5: Maintenance\" for filter installation instructions.") };
-    documents.documents[3] = (document_t){ .title = CLAY_STRING("Article 4"), .contents = CLAY_STRING("Article 4") };
-    documents.documents[4] = (document_t){ .title = CLAY_STRING("Article 5"), .contents = CLAY_STRING("Article 5") };
+clay_sandbox_ui_data_t sandbox_data_initialize() {
+    char* memory = malloc(1024);
+    if (memory == NULL) {
+        printf("sandbox_data_initialize failed to malloc!\n");
+    }
 
-    clay_sandbox_data_t data = {
-        .frameArena = { .memory = (intptr_t)malloc(1024) }
+    clay_sandbox_ui_data_t data = {
+        .frameArena = { .memory = (char*) memory },
+        .should_quit = false,
+        .fps_text_data = { 0 },
+        .fps_text = {
+            .chars = data.fps_text_data,
+            .isStaticallyAllocated = true,
+            .length = 2
+        }
     };
-    return data;
+    data.fps_text = (Clay_String) { .length = 0, .chars = data.fps_text_data };
+    return(data);
 }
 
 typedef struct {
@@ -46,15 +57,47 @@ static void HandleSidebarInteraction(
     Clay_PointerData pointerData,
     intptr_t userData
 ) {
-    sidebar_click_data_t *clickData = (sidebar_click_data_t*)userData;
-    if (pointerData.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME) {
-        if (clickData->requested_index >= 0 && clickData->requested_index < documents.length) {
-            *clickData->selected_index = clickData->requested_index;
+    // sidebar_click_data_t *clickData = (sidebar_click_data_t*)userData;
+    // if (pointerData.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME) {
+    //     if (clickData->requested_index >= 0 && clickData->requested_index < documents.length) {
+    //         *clickData->selected_index = clickData->requested_index;
+    //     }
+    // }
+}
+
+static void handle_close_button_interaction(
+    Clay_ElementId element_id,
+    Clay_PointerData pointer_data,
+    intptr_t user_data
+) {
+    clay_sandbox_ui_data_t *data = (clay_sandbox_ui_data_t*)user_data;
+    if (pointer_data.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME) {
+        //SDL_Event quit_event;
+        //quit_event.type = SDL_EVENT_QUIT;
+        //SDL_PushEvent(&quit_event); 
+        //SDL_Quit();     
+        data->should_quit = true;
+    }
+}
+
+static void handle_game_area_interaction(
+    Clay_ElementId element_id,
+    Clay_PointerData pointer_data,
+    intptr_t user_data
+) {
+    app_state_t *state = (app_state_t *)user_data;
+    if (pointer_data.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME) {
+        printf("%s: clicked inside main content\n", __func__);
+        if (!state->is_mouse_locked) {
+            state->is_mouse_locked = true;
+            SDL_SetWindowRelativeMouseMode(state->window, true);
+            state->game_state.has_mouse_context = true;
         }
     }
 }
 
-Clay_RenderCommandArray sandbox_create_layout(clay_sandbox_data_t *data) {
+Clay_RenderCommandArray sandbox_create_layout(app_state_t *app_state) {
+    clay_sandbox_ui_data_t *data = &app_state->sandbox_ui_data;
     data->frameArena.offset = 0;
 
     Clay_BeginLayout();
@@ -87,8 +130,8 @@ Clay_RenderCommandArray sandbox_create_layout(clay_sandbox_data_t *data) {
                     .y = CLAY_ALIGN_Y_CENTER
                 }
             },
-            .backgroundColor = contentBackgroundColor,
-            .cornerRadius = CLAY_CORNER_RADIUS(8)
+            .backgroundColor = { 200, 200, 200, 255 },
+            .cornerRadius = CLAY_CORNER_RADIUS(2)
         }) {
             // header bar children here:
             CLAY(CLAY_ID("FileButton"), {
@@ -130,12 +173,36 @@ Clay_RenderCommandArray sandbox_create_layout(clay_sandbox_data_t *data) {
                             .cornerRadius = CLAY_CORNER_RADIUS(8)
                         }) {
                             // Render dropdown items here
-                            RenderDropdownMenuItem(CLAY_STRING("New"));
-                            RenderDropdownMenuItem(CLAY_STRING("Open"));
+                            //RenderDropdownMenuItem(CLAY_STRING("New"));
+                            //RenderDropdownMenuItem(CLAY_STRING("Open"));
                             RenderDropdownMenuItem(CLAY_STRING("Close"));
                         }
                     }
                 }
+            }
+            CLAY(CLAY_ID("fps"), {
+                .layout = { .padding = { 8, 8, 2, 2 }},
+            }) {
+                CLAY_TEXT(data->fps_text, CLAY_TEXT_CONFIG({
+                    .fontId = FONT_ID_BODY_16,
+                    .fontSize = 16,
+                    .textColor = { 255, 255, 255, 255 }
+                }));
+            }
+
+            CLAY_AUTO_ID({ .layout = { .sizing = { .width = CLAY_SIZING_GROW(0) } } }) {}
+
+            CLAY(CLAY_ID("CloseButton"), {
+                .layout = { .padding = { 8, 8, 2, 2 }},
+                .backgroundColor = Clay_Hovered() ? (Clay_Color){160, 160, 160, 255} : (Clay_Color){140, 140, 140, 255},
+                .cornerRadius = CLAY_CORNER_RADIUS(2)
+            }) {
+                Clay_OnHover(handle_close_button_interaction, (intptr_t) data);
+                CLAY_TEXT(CLAY_STRING("x"), CLAY_TEXT_CONFIG({
+                    .fontId = FONT_ID_BODY_16,
+                    .fontSize = 16,
+                    .textColor =  Clay_Hovered() ? (Clay_Color){255, 50, 50, 255} : (Clay_Color){ 255, 255, 255, 255 }
+                }));
             }
         }
         // everything below the file bar
@@ -149,71 +216,34 @@ Clay_RenderCommandArray sandbox_create_layout(clay_sandbox_data_t *data) {
                     .padding = CLAY_PADDING_ALL(16),
                     .childGap = 8,
                     .sizing = {
-                        .width = CLAY_SIZING_FIXED(250),
+                        .width = CLAY_SIZING_FIXED(120),
                         .height = CLAY_SIZING_GROW(0)
                     }
                 }
             }) {
-                for (int i = 0; i < documents.length; i++) {
-                    document_t document = documents.documents[i];
-                    Clay_LayoutConfig sidebarButtonLayout = {
-                        .sizing = { .width = CLAY_SIZING_GROW(0) },
-                        .padding = CLAY_PADDING_ALL(16)
-                    };
-
-                    if (i == data->selectedDocumentIndex) {
-                        CLAY_AUTO_ID({
-                            .layout = sidebarButtonLayout,
-                            .backgroundColor = {120, 120, 120, 255 },
-                            .cornerRadius = CLAY_CORNER_RADIUS(8)
-                        }) {
-                            CLAY_TEXT(document.title, CLAY_TEXT_CONFIG({
-                                .fontId = FONT_ID_BODY_16,
-                                .fontSize = 20,
-                                .textColor = { 255, 255, 255, 255 }
-                            }));
-                        }
-                    } else {
-                        sidebar_click_data_t *clickData = (sidebar_click_data_t *)(data->frameArena.memory + data->frameArena.offset);
-                        *clickData = (sidebar_click_data_t) { .requested_index = i, .selected_index = &data->selectedDocumentIndex };
-                        data->frameArena.offset += sizeof(sidebar_click_data_t);
-                        CLAY_AUTO_ID({ 
-                            .layout = sidebarButtonLayout, 
-                            .backgroundColor = (Clay_Color) { 120, 120, 120, Clay_Hovered() ? 120 : 0 }, 
-                            .cornerRadius = CLAY_CORNER_RADIUS(8) 
-                        }) {
-                            Clay_OnHover(HandleSidebarInteraction, (intptr_t)clickData);
-                            CLAY_TEXT(document.title, CLAY_TEXT_CONFIG({
-                                .fontId = FONT_ID_BODY_16,
-                                .fontSize = 20,
-                                .textColor = { 255, 255, 255, 255 }
-                            }));
-                        }
-                    }
+                // not sure where i want to put the fps yet...
+                CLAY(CLAY_ID("fps2"), {
+                    .layout = { .padding = { 8, 8, 2, 2 }},
+                }) {
+                    CLAY_TEXT(data->fps_text, CLAY_TEXT_CONFIG({
+                        .fontId = FONT_ID_BODY_16,
+                        .fontSize = 16,
+                        .textColor = { 255, 255, 255, 255 }
+                    }));
                 }
+                // TODO: different games/experiences/demos based on what's selected on the sidebar?
             }
-            
             CLAY(CLAY_ID("MainContent"), {
-                .backgroundColor = contentBackgroundColor,
-                .clip = { .vertical = true, .childOffset = Clay_GetScrollOffset() },
+                .backgroundColor = { 20, 20, 20, 255 }, // Dark background for the game
                 .layout = {
-                    .layoutDirection = CLAY_TOP_TO_BOTTOM,
-                    .childGap = 16,
-                    .padding = CLAY_PADDING_ALL(16),
-                    .sizing = layoutExpand
+                    .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) },
                 }
             }) {
-                document_t selectedDocument = documents.documents[data->selectedDocumentIndex];
-                CLAY_TEXT(selectedDocument.title, CLAY_TEXT_CONFIG({
-                    .fontId = FONT_ID_BODY_16,
-                    .fontSize = 24,
-                    .textColor = COLOR_WHITE
-                }));
-                CLAY_TEXT(selectedDocument.contents, CLAY_TEXT_CONFIG({
-                    .fontId = FONT_ID_BODY_16,
-                    .fontSize = 24,
-                    .textColor = COLOR_WHITE
-                }));
+                Clay_OnHover(handle_game_area_interaction, (intptr_t)app_state);
+                CLAY_AUTO_ID({
+                    .layout = { .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) } },
+                    .image = { .imageData = data->game_texture }
+                });
             }
         }
     }

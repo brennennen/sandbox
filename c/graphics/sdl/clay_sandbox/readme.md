@@ -1,10 +1,10 @@
 # SDL Sandbox
-Sandbox for clay ui library explorations (using SDL3 as a renderer/resource loader).
+Sandbox for clay ui library explorations (using SDL3 as a window/renderer/resource loader).
 
 ## Build/Run
 ```sh
 ./build.py
-./.build/bin/main
+cd ./.build/bin && ./main
 ```
 
 ## Linux

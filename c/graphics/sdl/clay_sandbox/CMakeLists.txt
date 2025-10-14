@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.15)
 cmake_policy(SET CMP0135 NEW)
 project(SDL3_App C)
+
+
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Debug)
+endif()
+
 set(VENDOR_DIR "${CMAKE_SOURCE_DIR}/.vendor")
 include(FetchContent)
 set(FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/.vendor/_deps")
@@ -11,9 +17,7 @@ include(sdl3_ttf)
 include(sdl3_image)
 include(clay)
 
-
-
-add_executable(main ./source/main.c ./source/clay_renderer_sdl3.c ./source/clay_sandbox_ui.c)
+add_executable(main ./source/main.c ./source/clay_renderer_sdl3.c ./source/clay_sandbox_ui.c ./source/game.c)
 target_include_directories(main PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 target_link_libraries(main PRIVATE 

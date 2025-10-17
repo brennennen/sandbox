@@ -6,9 +6,9 @@
 // GCC-14 bug. Release note says that with adding "-std=c23", __STDC_VERSION__
 // is set to 202311L. __STDC_VERSION__ is "202000L".
 //#if __STDC_VERSION__ >= 202311L
-#if __STDC_VERSION__ >= 202000L
-#include <stdbit.h>
-#endif
+// #if __STDC_VERSION__ >= 202000L
+// #include <stdbit.h>
+// #endif
 
 // Useful pattern for printing out a byte in a binary representation.
 // Usage: `printf("byte: "BYTE_TO_BINARY_PATTERN"\n", BYTE_TO_BINARY(byte));`
@@ -37,17 +37,39 @@
 #define PACK_ATTRIBUTE
 #endif
 
-// TODO define a compiler agnostic popcount?
-#ifndef pop_count
-    // GCC-14 bug. Release note says that with adding "-std=c23", __STDC_VERSION__
-    // is set to 202311L. __STDC_VERSION__ is "202000L".
-    //#if __STDC_VERSION__ >= 202311L
-    #if __STDC_VERSION__ >= 202000L
+// MARK: popcount
+#if defined(__has_include)
+    #if __has_include(<stdbit.h>)
+        #include <stdbit.h>
         #define pop_count_uint16(x) stdc_count_ones_us(x)
-    #else
-        #define pop_count_uint16(x) pop_count_uint16_fallback(x)
+        #define HAVE_POPCOUNT 1
     #endif
-#endif // pop_count
+#endif
+
+#ifndef HAVE_POPCOUNT
+    #if defined(__GNUC__) || defined(__clang__)
+        #define pop_count_uint16(x) __builtin_popcount(x)
+    #elif defined(_MSC_VER)
+        #include <intrin.h.>
+        #define popcount_16(x) __popcnt16(x)
+    #endif
+#endif
+
+
+// // TODO define a compiler agnostic popcount?
+// #ifndef pop_count
+//     // GCC-14 bug. Release note says that with adding "-std=c23", __STDC_VERSION__
+//     // is set to 202311L. __STDC_VERSION__ is "202000L".
+//     //#if __STDC_VERSION__ >= 202311L
+//     #if __STDC_VERSION__ >= 202000L
+//         #define pop_count_uint16(x) stdc_count_ones_us(x)
+//     #else
+//         #define pop_count_uint16(x) pop_count_uint16_fallback(x)
+//     #endif
+// #endif // pop_count
+
+
+// MARK: bswap
 
 #ifndef bswap_32
     #define bswap_32(x) __builtin_bswap32(x)

@@ -6,6 +6,15 @@
 
 #include "logger.h"
 
+static void portable_localtime(time_t* time, struct tm* timeinfo) {
+#if defined(_WIN32) || defined(_WIN64)
+    localtime_s(timeinfo, time);
+#else
+    localtime_r(time, timeinfo);
+#endif
+}
+
+
 void log_message(log_level_t level, const char* format, ...) {
     time_t now;
     struct tm timeinfo;
@@ -13,7 +22,8 @@ void log_message(log_level_t level, const char* format, ...) {
     char message[MAX_LOG_MESSAGE_LENGTH];
 
     time(&now);
-    localtime_r(&now, &timeinfo);
+
+    portable_localtime(&now, &timeinfo);
     strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%S", &timeinfo);
 
     va_list args;
@@ -33,7 +43,8 @@ void log_debug_message(const char* func, const char* format, ...) {
     char message[MAX_LOG_MESSAGE_LENGTH];
 
     time(&now);
-    localtime_r(&now, &timeinfo);
+    portable_localtime(&now, &timeinfo);
+    //localtime_r(&now, &timeinfo);
     strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%S", &timeinfo);
 
     va_list args;
@@ -63,7 +74,8 @@ void log_memory(char* data, int data_start, int data_size, const char* format, .
     char message[MAX_LOG_MESSAGE_LENGTH];
 
     time(&now);
-    localtime_r(&now, &timeinfo);
+    portable_localtime(&now, &timeinfo);
+    //localtime_r(&now, &timeinfo);
     strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%S", &timeinfo);
 
     va_list args;

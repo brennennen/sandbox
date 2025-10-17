@@ -3,7 +3,7 @@ workspace "EmulateWorkspace"
     configurations { "Debug", "Release" }
     location ".build"
     defines { "DO_LOG" }
-    sanitize { "Address" }
+
     -- symbols "On"
     filter "configurations:Debug"
         defines { "DEBUG", "DO_DEBUG_LOG" }
@@ -14,7 +14,18 @@ workspace "EmulateWorkspace"
     filter { "system:linux", "action:gmake" }
         toolset "gcc"
         buildoptions { "-std=c23" }
-        links { "m" } -- link with math library on linux, automatic on windows
+        sanitize { "Address" }
+        links { "m" }
+    filter { "system:windows", "action:gmake" }
+        toolset "gcc"
+        buildoptions { "-std=c23" }
+        defines { "CRITERION_DLL" }
+        includedirs { "C:/include" }
+        libdirs     { "C:/libs", "C:/lib" }
+        links { "m" }
+        postbuildcommands {
+            "cp C:/bin/libcriterion-3.dll %{cfg.targetdir}"
+        }
 
 -- MARK: Libraries
 project "logger"
@@ -27,6 +38,20 @@ project "logger"
     }
     includedirs {
         "./libraries/logger/include",
+        "./shared/include",
+        "."
+    }
+
+project "device_tree"
+    kind "StaticLib"
+    language "C"
+    targetdir "bin/%{cfg.buildcfg}"
+    files {
+        "./libraries/device_tree/include/**.h",
+        "./libraries/device_tree/source/**.c"
+    }
+    includedirs {
+        "./libraries/device_tree/include",
         "./shared/include",
         "."
     }
@@ -79,10 +104,7 @@ project "emulate_riscv"
     }
     links { "logger" }
 
-
-
 -- MARK: Applications
-
 project "test_emulate_intel"
     kind "ConsoleApp"
     language "C"

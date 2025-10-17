@@ -7,7 +7,7 @@ these c23 features on linux. I used premake with the intention to support any OS
 
 Linux
 ```sh
-# One time
+# One time - use a modern gcc to access c23 features (skip if your gcc already supports c23)
 sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
 
 # Clean intermediate files
@@ -27,6 +27,24 @@ make config=release -C ./.build/
 ./bin/Debug/test_emulate_arm
 ./bin/Debug/test_emulate_riscv
 ./bin/Debug/test
+```
+
+Windows
+```sh
+# use mingw/w64devkit
+# requires criterion, no prebuilt packages exist for this, requires building from source.
+# build criterion notes:
+# git clone criterion
+# criterion build scripts use "patch --version" which w64devkit chokes up on, if you have git, you can use that version of patch, otherwise msys2 mingw shouldn't have this problem.
+# $env:Path = "C:\Program Files\Git\usr\bin;" + $env:Path
+# If you're using a modern gcc, criterion had build errors without this line.
+# $env:CFLAGS = "-Wno-incompatible-pointer-types"
+# meson setup build
+# meson compile -C build
+# meson install -C build
+premake5 gmake
+premake5 --os=windows gmake
+make -C ./.build/
 ```
 
 ## Build env Setup

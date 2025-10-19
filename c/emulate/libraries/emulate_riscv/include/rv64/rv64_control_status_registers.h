@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 
+#include "rv64/rv64_common.h"
 //#include "rv64/rv64_emulate.h"
 
 typedef struct emulator_rv64_s rv64_emulator_t; // forward declare
@@ -360,6 +361,8 @@ void rv64_csr_set_initial_marchid(rv64_csrs_t* csrs, uint64_t arch_id);
 void rv64_csr_set_initial_mimpid(rv64_csrs_t* csrs, uint64_t mimpid);
 void rv64_csr_set_initial_mhartid(rv64_csrs_t* csrs, uint64_t mhartid);
 void rv64_csr_set_initial_mconfigptr(rv64_csrs_t* csrs, uint64_t mconfigptr);
+void rv64_csr_set_initial_frm(rv64_csrs_t* csrs, rv64f_rounding_mode_t frm);
+
 
 /*
  * Set functions (these can probably be static? not even in the header file?)

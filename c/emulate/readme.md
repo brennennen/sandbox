@@ -26,6 +26,7 @@ make config=release -C ./.build/
 ./bin/Debug/test_emulate_intel
 ./bin/Debug/test_emulate_arm
 ./bin/Debug/test_emulate_riscv
+./bin/Debug/test_emulate_riscv --filter "*fcvt*"
 ./bin/Debug/test
 ```
 

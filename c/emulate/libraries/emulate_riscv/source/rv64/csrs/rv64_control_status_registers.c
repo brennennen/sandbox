@@ -1,6 +1,7 @@
 
 #include <stdio.h>
 
+#include "rv64/rv64_common.h"
 #include "rv64/rv64_control_status_registers.h"
 
 
@@ -266,6 +267,12 @@ void rv64_csr_set_initial_mhartid(rv64_csrs_t* csrs, uint64_t mhartid) {
 
 void rv64_csr_set_initial_mconfigptr(rv64_csrs_t* csrs, uint64_t mconfigptr) {
     csrs->mconfigptr = mconfigptr;
+}
+
+void rv64_csr_set_initial_frm(rv64_csrs_t* csrs, rv64f_rounding_mode_t rm) {
+    uint64_t frm_clear_mask = ~(0b111 << 5);
+    csrs->fcsr = (csrs->fcsr & ~frm_clear_mask) | ((uint64_t)rm << 5);
+    csrs->frm = rm;
 }
 
 

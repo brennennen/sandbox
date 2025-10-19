@@ -4,6 +4,7 @@
 #include "shared/include/result.h"
 #include "logger.h"
 
+#include "rv64/rv64_common.h"
 #include "rv64/rv64_hart.h"
 #include "rv64/rv64_shared_system.h"
 #include "rv64/rv64_instructions.h"
@@ -95,6 +96,15 @@ char* rv64_map_vector_register_name(uint8_t vector_reg_id) {
     }
 }
 
+static void rv64f_hart_set_default_float_csrs(rv64_hart_t* hart) {
+    // todo: set FRM to RNE
+    rv64_csr_set_initial_frm(&hart->csrs, RV64F_ROUND_TO_NEAREST_TIES_EVEN);
+}
+
+static void rv64_hart_set_default_vector_csrs(rv64_hart_t* hart) {
+    rv64_set_csr_value(&hart->csrs, RV64_CSR_VLENB, VLEN / 8);
+}
+
 void rv64_hart_set_default_machine_csrs(rv64_hart_t* hart, uint8_t hart_index) {
     rv_mxl_t mxl = RV_MXL_64;
     uint32_t extensions = 0;
@@ -108,11 +118,10 @@ void rv64_hart_set_default_machine_csrs(rv64_hart_t* hart, uint8_t hart_index) {
     // Machine Trap Setup
     rv64_csr_set_initial_misa(&hart->csrs, RV_MXL_64, extensions);
     // ...
+    rv64f_hart_set_default_float_csrs(hart);
+    rv64_hart_set_default_vector_csrs(hart);
 }
 
-void rv64_hart_set_default_vector_csrs(rv64_hart_t* hart, uint8_t hart_index) {
-    rv64_set_csr_value(&hart->csrs, RV64_CSR_VLENB, VLEN / 8);
-}
 
 /**
  * Reads 32 bits (4 bytes) from memory starting at the pc register in little-endian.

@@ -41,4 +41,16 @@ typedef enum {
     RV64F_ROUND_DYNAMIC = 7
 } rv64f_rounding_mode_t;
 
+/**
+ * `fcsr` bit flags.
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_floating_point_control_and_status_register
+ */
+typedef enum {
+    RV64F_FCSR_INEXACT = 0, // NX
+    RV64F_FCSR_UNDERFLOW = 1, // UF
+    RV64F_FCSR_OVERFLOW = 2, // OF
+    RV64F_FCSR_DIVIDE_BY_ZERO = 3, // DZ
+    RV64F_FCSR_INVALID_OPERATION = 4 // NV
+} rv64f_fcsr_flags_t;
+
 #endif // RV64_COMMON_H

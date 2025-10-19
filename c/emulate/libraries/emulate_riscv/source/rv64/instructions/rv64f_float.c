@@ -109,12 +109,20 @@ emu_result_t rv64_emulate_s_type(
     return(ER_SUCCESS);
 }
 
-static void rv64f_set_fenv_rounding_mode(
+/**
+ * Sets c library floating point environment variables to describe how to
+ * handle rounding based on an instructions `rm` (rounding mode) or the
+ * rounding mode CSR if a dynamic rounding mode is requested.
+ * 
+ * @return Target rounding mode, either the rm passed in or the csr if
+ *          rm is set to dynamic. Can be ignored.
+ */
+static rv64f_rounding_mode_t rv64f_set_fenv_rounding_mode(
     rv64_hart_t* hart,
     rv64f_rounding_mode_t rounding_mode
 ) {
     rv64f_rounding_mode_t target_rounding_mode = rounding_mode;
-    if (target_rounding_mode = RV64F_ROUND_DYNAMIC) {
+    if (target_rounding_mode == RV64F_ROUND_DYNAMIC) {
         target_rounding_mode = (hart->csrs.fcsr >> 5) & 0x7; // TODO: break csrs out into structs?
     }
 
@@ -146,6 +154,7 @@ static void rv64f_set_fenv_rounding_mode(
             break;
         }
     }
+    return(target_rounding_mode);
 }
 
 /*
@@ -169,7 +178,7 @@ static void rv64f_fmadd_s(
     rv64f_rounding_mode_t rm
 ) {
     int host_rounding_mode = fegetround();
-    rv64f_set_fenv_rounding_mode(hart, rm);
+    (void)rv64f_set_fenv_rounding_mode(hart, rm);
     hart->float32_registers[rd] = fmaf(
         hart->float32_registers[rs1],
         hart->float32_registers[rs2],
@@ -196,7 +205,7 @@ static void rv64f_fmsub_s(
     uint8_t rm
 ) {
     int host_rounding_mode = fegetround();
-    rv64f_set_fenv_rounding_mode(hart, rm);
+    (void)rv64f_set_fenv_rounding_mode(hart, rm);
     hart->float32_registers[rd] = fmaf(
         hart->float32_registers[rs1],
         hart->float32_registers[rs2],
@@ -324,8 +333,59 @@ static void rv64f_fmax_s(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd
     printf("todo: rv64f_fmin_s\n");
 }
 
-static void rv64f_fcvt_w_s(rv64_hart_t* hart, uint8_t rs1, uint8_t rm, uint8_t rd) {
-    printf("todo: rv64f_fcvt_w_s\n");
+static float rv64f_round_to_nearest_ties_max_magnitude(float val) {
+    if (val > 0.0f) {
+        return(floorf(val + 0.5f));
+    } else {
+        return(ceilf(val - 0.5f));
+    }
+}
+
+static float rv64f_nearbyintf(float val, rv64f_rounding_mode_t rm) {
+    if (rm == RV64F_ROUND_TO_NEAREST_TIES_MAX_MAGNITUDE) {
+        return rv64f_round_to_nearest_ties_max_magnitude(val);
+    } else {
+        // let fenv handle the other cases (fesetround called in `rv64f_set_fenv_rounding_mode`).
+        return(nearbyintf(val));
+    }
+}
+
+/**
+ * fcvt.w.s - Floating-point ConVert to signed Word from Single-precision
+ * `fcvt.w.s rd, rs1, [rm]`
+ * Convert a single-precision floating-point number from a fpu register into 
+ * a 32-bit signed integer general purpose register.
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_single_precision_floating_point_conversion_and_move_instructions
+ */
+static void rv64f_fcvt_w_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rm) {
+    float rs1_float = (float) hart->float32_registers[rs1];
+    float rs1_float_rounded = 0.0f;
+    int32_t result_int = 0;
+    if (isnan(rs1_float) || isinf(rs1_float)) {
+        hart->csrs.fcsr |= RV64F_FCSR_INVALID_OPERATION;
+        result_int = INT32_MAX;
+    } else {
+        int host_rounding_mode = fegetround();
+        rv64f_rounding_mode_t target_rm = rv64f_set_fenv_rounding_mode(hart, rm);
+        rs1_float_rounded = rv64f_nearbyintf(rs1_float, target_rm);
+
+        if (rs1_float_rounded != rs1_float) {
+            hart->csrs.fcsr |= RV64F_FCSR_INEXACT;
+        }
+
+        if (rs1_float_rounded > (float)INT32_MAX) {
+            hart->csrs.fcsr |= RV64F_FCSR_INVALID_OPERATION;
+            result_int = INT32_MAX;
+        } else if (rs1_float_rounded < (float)INT32_MIN) {
+            hart->csrs.fcsr |= RV64F_FCSR_INVALID_OPERATION;
+            result_int = INT32_MIN;
+        } else {
+            result_int = (int32_t) rs1_float_rounded;
+        }
+        
+        fesetround(host_rounding_mode); // reset back to the original host rounding mode.
+    }
+    hart->registers[rd] = (uint64_t)(int64_t)result_int; // double cast for sign extension
 }
 
 static void rv64f_fcvt_wu_s(rv64_hart_t* hart, uint8_t rs1, uint8_t rm, uint8_t rd) {
@@ -434,7 +494,7 @@ emu_result_t rv64f_emulate_r_type(
             break;
         }
         case I_RV64F_FCVT_W_S: {
-            rv64f_fcvt_w_s(hart, rs1, rm, rd);
+            rv64f_fcvt_w_s(hart, rd, rs1, rm);
             break;
         }
         case I_RV64F_FCVT_WU_S: {

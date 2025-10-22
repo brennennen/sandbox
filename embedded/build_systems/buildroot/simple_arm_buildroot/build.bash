@@ -7,7 +7,8 @@
 #set -x
 set -e
 
-OUT_DIR="/tmp/simple_arm_buildroot"
+# don't put in /tmp, runs out of inodes.
+OUT_DIR="$HOME/temp/simple_arm_buildroot"
 SCRIPT_PATH="$(realpath "$0")"
 SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 EXTERNAL_DIR="${SCRIPT_DIR}/external"
@@ -16,12 +17,6 @@ mkdir -p ${OUT_DIR}
 mkdir -p ${OUT_DIR}/.build
 cd ${OUT_DIR}
 
-# windows uses case insensitive names (foo.txt == Foo.txt) by default. Case sensitivity is
-# supported on the default wsl mounted drives/spaces (i.e. use ~/home/*, don't use /mnt/c/*)
-#
-# wsl adds some windows specific paths to PATH that have spaces in the name that buildroot
-# does not like.
-export PATH=/bin:/usr/local/bin:/usr/bin
 
 # Clone down buildroot, maybe checkout a specific branch.
 if [ ! -d ${OUT_DIR}/buildroot ] ; then

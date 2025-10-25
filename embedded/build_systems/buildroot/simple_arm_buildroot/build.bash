@@ -53,7 +53,11 @@ cp -r ${SCRIPT_DIR}/external/packages/hello/src/* ${OUT_DIR}/hello/src
 
 # Build buildroot
 cd ${OUT_DIR}/buildroot
-make BR2_EXTERNAL=${EXTERNAL_DIR} BR2_DEFCONFIG=${OUT_DIR}/my_arm_qemu_defconfig O=${OUT_DIR}/.build
+make BR2_EXTERNAL=${EXTERNAL_DIR} \
+    BR2_DEFCONFIG=${OUT_DIR}/my_arm_qemu_defconfig \
+    BR2_ROOTFS_OVERLAY=${SCRIPT_DIR}/rootfs_overlay \
+    BR2_ROOTFS_POST_BUILD_SCRIPT=${SCRIPT_DIR}/rootfs_post_build.bash \
+    O=${OUT_DIR}/.build
 
 # A sdk/toolchain can be generated and distributed to team members building the userland
 # business logic of the system.
@@ -66,8 +70,11 @@ echo "qemu-system-aarch64 \
     -M virt  \
     -cpu cortex-a53 -nographic -smp 1 \
     -kernel ./.build/images/Image \
-    -append "rootwait root=/dev/vda console=ttyAMA0" \
+    -append \"rootwait root=/dev/vda console=ttyAMA0\" \
     -netdev user,id=eth0,hostfwd=tcp::10022-:22 \
     -device virtio-net-device,netdev=eth0 \
     -drive file=./.build/images/rootfs.ext4,if=none,format=raw,id=hd0 \
     -device virtio-blk-device,drive=hd0 -device virtio-rng-pci"
+
+# Qemu cheat sheet:
+# quit: Ctrl + a -> c -> q

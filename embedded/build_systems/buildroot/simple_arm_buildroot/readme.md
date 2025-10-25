@@ -4,3 +4,4 @@ The goal with this repo is to create a simple ARM embedded linux kernal image, w
 # Resources
 * Buildroot manual (10 stars, some of the best documentation I've seen) - https://buildroot.org/downloads/manual/manual.html
 * https://petermalmgren.com/qemu-buildroot/
+* bootlin: https://bootlin.com/doc/training/buildroot/buildroot-slides.pdf

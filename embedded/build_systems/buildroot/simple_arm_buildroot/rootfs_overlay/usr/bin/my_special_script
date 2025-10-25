@@ -1,0 +1,4 @@
+#!/bin/sh
+echo "doing work"
+sleep 1
+echo "did work"

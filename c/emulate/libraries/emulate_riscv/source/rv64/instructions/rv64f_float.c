@@ -1,4 +1,3 @@
-
 #include <stdint.h>
 #include <assert.h>
 #include <string.h>
@@ -13,6 +12,29 @@
 #include "rv64/rv64_instructions.h"
 
 #include "rv64/instructions/rv64m_multiplication.h"
+
+static void rv64f_update_fcsr_flags(rv64_hart_t* hart, int fenv_flags) {
+    uint64_t riscv_flags = 0;
+
+    if (fenv_flags & FE_INEXACT) {
+        riscv_flags |= (1 << RV64F_FCSR_INEXACT);
+    }
+    if (fenv_flags & FE_UNDERFLOW) {
+        riscv_flags |= (1 << RV64F_FCSR_UNDERFLOW);
+    }
+    if (fenv_flags & FE_OVERFLOW) {
+        riscv_flags |= (1 << RV64F_FCSR_OVERFLOW);
+    }
+    if (fenv_flags & FE_DIVBYZERO) {
+        riscv_flags |= (1 << RV64F_FCSR_DIVIDE_BY_ZERO);
+    }
+    if (fenv_flags & FE_INVALID) {
+        riscv_flags |= (1 << RV64F_FCSR_INVALID_OPERATION);
+    }
+    
+    // TODO: set fflags too? or just use fcsr?
+    hart->csrs.fcsr |= riscv_flags;
+}
 
 /*
  * MARK: I-Type
@@ -179,12 +201,13 @@ static void rv64f_fmadd_s(
 ) {
     int host_rounding_mode = fegetround();
     (void)rv64f_set_fenv_rounding_mode(hart, rm);
+    feclearexcept(FE_ALL_EXCEPT);
     hart->float32_registers[rd] = fmaf(
         hart->float32_registers[rs1],
         hart->float32_registers[rs2],
         hart->float32_registers[rs3]
     );
-    // TOOD: set fcsr flags, use <fenv.h> to access these.
+    rv64f_update_fcsr_flags(hart, fetestexcept(FE_ALL_EXCEPT));
     fesetround(host_rounding_mode); // reset back to the original host rounding mode.
 }
 
@@ -206,15 +229,25 @@ static void rv64f_fmsub_s(
 ) {
     int host_rounding_mode = fegetround();
     (void)rv64f_set_fenv_rounding_mode(hart, rm);
+    feclearexcept(FE_ALL_EXCEPT);
     hart->float32_registers[rd] = fmaf(
         hart->float32_registers[rs1],
         hart->float32_registers[rs2],
         (hart->float32_registers[rs3] * -1)
     );
-    // TOOD: set fcsr flags, use <fenv.h> to access these.
+    rv64f_update_fcsr_flags(hart, fetestexcept(FE_ALL_EXCEPT));
     fesetround(host_rounding_mode); // reset back to the original host rounding mode.
 }
 
+/**
+ * `fnmsub.s rd, rs1, rs2, rs3`
+ * `fnmsub.s rd, rs1, rs2, rs3, rm`
+ * Single-precision fused negated multiply subtract `rd = -(rs1 * rs2)) + rs3`.
+ * WARNING: FNMSUB and FNMADD ARE COUNTERINTUITIVELY NAMED, NOTE THE "+ rs3".
+ * Multiplies rs1 and rs2, then multiplies by -1, then adds rs3, then rounds.
+ * "Fused" = rounding occurs once at the end.
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#single-float-compute
+ */
 static void rv64f_fnmsub_s(
     rv64_hart_t* hart,
     uint8_t rd,
@@ -223,9 +256,29 @@ static void rv64f_fnmsub_s(
     uint8_t rs3,
     uint8_t rm
 ) {
-    printf("todo: rv64f_fnmsub_s\n");
+    int host_rounding_mode = fegetround();
+    (void)rv64f_set_fenv_rounding_mode(hart, rm);
+    feclearexcept(FE_ALL_EXCEPT);
+    // TODO: currently not following spec order of operations, investigate if this is ok.
+    // rd = ((-1 * rs1) * rs2)) + rs3
+    hart->float32_registers[rd] = fmaf(
+        (hart->float32_registers[rs1] * -1),
+        hart->float32_registers[rs2],
+        hart->float32_registers[rs3]
+    );
+    rv64f_update_fcsr_flags(hart, fetestexcept(FE_ALL_EXCEPT));
+    fesetround(host_rounding_mode); // reset back to the original host rounding mode.
 }
 
+/**
+ * `fnmadd.s rd, rs1, rs2, rs3`
+ * `fnmadd.s rd, rs1, rs2, rs3, rm`
+ * Single-precision fused negated multiply subtract `rd = -(rs1 * rs2)) - rs3`.
+ * WARNING: FNMSUB and FNMADD ARE COUNTERINTUITIVELY NAMED, NOTE THE "- rs3".
+ * Multiplies rs1 and rs2, then multiplies by -1, then adds rs3, then rounds.
+ * "Fused" = rounding occurs once at the end.
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#single-float-compute
+ */
 static void rv64f_fnmadd_s(
     rv64_hart_t* hart,
     uint8_t rd,
@@ -234,7 +287,18 @@ static void rv64f_fnmadd_s(
     uint8_t rs3,
     uint8_t rm
 ) {
-    printf("todo: rv64f_fnmadd_s\n");
+    int host_rounding_mode = fegetround();
+    (void)rv64f_set_fenv_rounding_mode(hart, rm);
+    feclearexcept(FE_ALL_EXCEPT);
+    // TODO: currently not following spec order of operations, investigate if this is ok.
+    // rd = ((-1 * rs1) * rs2)) - rs3
+    hart->float32_registers[rd] = fmaf(
+        (hart->float32_registers[rs1]* -1),
+        hart->float32_registers[rs2],
+        (hart->float32_registers[rs3] * -1)
+    );
+    rv64f_update_fcsr_flags(hart, fetestexcept(FE_ALL_EXCEPT));
+    fesetround(host_rounding_mode); // reset back to the original host rounding mode.
 }
 
 emu_result_t rv64_emulate_r4_type(
@@ -282,19 +346,22 @@ emu_result_t rv64_emulate_r4_type(
  * MARK: R-Type
  */
 
- /**
-  * fadd.s - Float ADD (Single-precision)
-  * `fadd.s rd, rs1, rs2`
-  * Add 2 single-precision floating point numbers from float registers together and
-  * store the result in a float register.
-  * @see 20.6. Single-Precision Floating-Point Computational Instructions (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#single-float-compute)
-  */
+/**
+ * fadd.s - Float ADD (Single-precision)
+ * `fadd.s rd, rs1, rs2`
+ * Add 2 single-precision floating point numbers from float registers together and
+ * store the result in a float register.
+ * @see 20.6. Single-Precision Floating-Point Computational Instructions (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#single-float-compute)
+ */
 static void rv64f_fadd_s(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rm, uint8_t rd) {
+    int host_rounding_mode = fegetround();
+    (void)rv64f_set_fenv_rounding_mode(hart, rm);
+    feclearexcept(FE_ALL_EXCEPT);
     float f1 = hart->float32_registers[rs1];
     float f2 = hart->float32_registers[rs2];
-    // todo: rounding mode
-    // todo: update fflag exceptions
     hart->float32_registers[rd] = f1 + f2;
+    rv64f_update_fcsr_flags(hart, fetestexcept(FE_ALL_EXCEPT));
+    fesetround(host_rounding_mode); // reset back to the original host rounding mode.
 }
 
 static void rv64f_fsub_s(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rm, uint8_t rd) {

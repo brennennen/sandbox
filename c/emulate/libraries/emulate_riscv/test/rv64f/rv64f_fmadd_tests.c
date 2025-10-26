@@ -26,7 +26,7 @@ Test(emu_rv64_emulate__fmadd__tests, fmadd_1, .init = rv64_emu_fmadd_default_set
     // assert
     cr_assert(SUCCESS == result);
     cr_assert(1 == g_emulator.harts[0].instructions_count);
-    cr_assert_float_eq(13, g_emulator.harts[0].float32_registers[0], 1e-6); // (5 * 2) + 3 = 13
+    cr_assert_float_eq(13.0f, g_emulator.harts[0].float32_registers[0], 1e-6); // (5 * 2) + 3 = 13
 }
 
 // TODO: write some tests that explore the rounding modes

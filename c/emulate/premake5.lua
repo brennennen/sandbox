@@ -31,7 +31,7 @@ workspace "EmulateWorkspace"
 project "logger"
     kind "StaticLib"
     language "C"
-    targetdir "bin/%{cfg.buildcfg}"
+    targetdir ".build/bin/%{cfg.buildcfg}"
     files {
         "./libraries/logger/include/**.h",
         "./libraries/logger/source/**.c"
@@ -45,7 +45,7 @@ project "logger"
 project "device_tree"
     kind "StaticLib"
     language "C"
-    targetdir "bin/%{cfg.buildcfg}"
+    targetdir ".build/bin/%{cfg.buildcfg}"
     files {
         "./libraries/device_tree/include/**.h",
         "./libraries/device_tree/source/**.c"
@@ -59,7 +59,7 @@ project "device_tree"
 project "emulate_intel"
     kind "StaticLib"
     language "C"
-    targetdir "bin/%{cfg.buildcfg}"
+    targetdir ".build/bin/%{cfg.buildcfg}"
     files {
         "./libraries/emulate_intel/include/**.h",
         "./libraries/emulate_intel/source/**.c"
@@ -75,7 +75,7 @@ project "emulate_intel"
 project "emulate_arm"
     kind "StaticLib"
     language "C"
-    targetdir "bin/%{cfg.buildcfg}"
+    targetdir ".build/bin/%{cfg.buildcfg}"
     files {
         "./libraries/emulate_arm/include/**.h",
         "./libraries/emulate_arm/source/**.c"
@@ -91,7 +91,7 @@ project "emulate_arm"
 project "emulate_riscv"
     kind "StaticLib"
     language "C"
-    targetdir "bin/%{cfg.buildcfg}"
+    targetdir ".build/bin/%{cfg.buildcfg}"
     files {
         "./libraries/emulate_riscv/include/**.h",
         "./libraries/emulate_riscv/source/**.c"
@@ -108,7 +108,7 @@ project "emulate_riscv"
 project "test_emulate_intel"
     kind "ConsoleApp"
     language "C"
-    targetdir "bin/%{cfg.buildcfg}"
+    targetdir ".build/bin/%{cfg.buildcfg}"
     files {
         "./libraries/emulate_intel/test/**.h",
         "./libraries/emulate_intel/test/**.c"
@@ -128,7 +128,7 @@ project "test_emulate_intel"
 project "test_emulate_arm"
     kind "ConsoleApp"
     language "C"
-    targetdir "bin/%{cfg.buildcfg}"
+    targetdir ".build/bin/%{cfg.buildcfg}"
     files {
         "./libraries/emulate_arm/test/**.h",
         "./libraries/emulate_arm/test/**.c"
@@ -148,7 +148,7 @@ project "test_emulate_arm"
 project "test_emulate_riscv"
     kind "ConsoleApp"
     language "C"
-    targetdir "bin/%{cfg.buildcfg}"
+    targetdir ".build/bin/%{cfg.buildcfg}"
     files {
         "./libraries/emulate_riscv/test/**.h",
         "./libraries/emulate_riscv/test/**.c"
@@ -168,7 +168,7 @@ project "test_emulate_riscv"
 project "disassemble"
     kind "ConsoleApp"
     language "C"
-    targetdir "bin/%{cfg.buildcfg}"
+    targetdir ".build/bin/%{cfg.buildcfg}"
     files { "./apps/disassemble/**.h", "./apps/disassemble/**.c" }
     includedirs {
         "./libraries/logger/include",
@@ -182,7 +182,7 @@ project "disassemble"
 project "emulate"
     kind "ConsoleApp"
     language "C"
-    targetdir "bin/%{cfg.buildcfg}"
+    targetdir ".build/bin/%{cfg.buildcfg}"
     files { "./apps/emulate/**.h", "./apps/emulate/**.c" }
     includedirs {
         "./libraries/logger/include",

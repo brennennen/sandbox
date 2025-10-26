@@ -324,6 +324,10 @@ static result_iter_t rv64_hart_emulate_next(rv64_hart_t* hart) {
         case I_RV64F_FLW:
         case I_RV64F_FSW:
         case I_RV64F_FMADD_S: 
+        case I_RV64F_FMSUB_S: 
+        case I_RV64F_FNMADD_S: 
+        case I_RV64F_FNMSUB_S: 
+        case I_RV64F_FADD_S: 
         case I_RV64F_FCVT_W_S: {
             result = rv64f_float_emulate(hart, raw_instruction, instruction_tag);
             break;

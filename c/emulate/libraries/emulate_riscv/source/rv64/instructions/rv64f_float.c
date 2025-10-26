@@ -313,7 +313,6 @@ emu_result_t rv64_emulate_r4_type(
     uint8_t rm = 0;
     uint8_t rd = 0;
 
-    // todo
     rv64_decode_r4_type(raw_instruction, &rs3, &fmt, &rs2, &rs1, &rm, &rd);
 
     switch(tag) {
@@ -353,51 +352,106 @@ emu_result_t rv64_emulate_r4_type(
  * store the result in a float register.
  * @see 20.6. Single-Precision Floating-Point Computational Instructions (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#single-float-compute)
  */
-static void rv64f_fadd_s(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rm, uint8_t rd) {
+static void rv64f_fadd_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rs2, uint8_t rm) {
     int host_rounding_mode = fegetround();
     (void)rv64f_set_fenv_rounding_mode(hart, rm);
     feclearexcept(FE_ALL_EXCEPT);
-    float f1 = hart->float32_registers[rs1];
-    float f2 = hart->float32_registers[rs2];
-    hart->float32_registers[rd] = f1 + f2;
+    hart->float32_registers[rd] = hart->float32_registers[rs1] 
+                                + hart->float32_registers[rs2];
     rv64f_update_fcsr_flags(hart, fetestexcept(FE_ALL_EXCEPT));
     fesetround(host_rounding_mode); // reset back to the original host rounding mode.
 }
 
-static void rv64f_fsub_s(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rm, uint8_t rd) {
-    printf("todo: rv64f_fsub_s\n");
+static void rv64f_fsub_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rs2, uint8_t rm) {
+    int host_rounding_mode = fegetround();
+    (void)rv64f_set_fenv_rounding_mode(hart, rm);
+    feclearexcept(FE_ALL_EXCEPT);
+    hart->float32_registers[rd] = hart->float32_registers[rs1] 
+                                - hart->float32_registers[rs2];
+    rv64f_update_fcsr_flags(hart, fetestexcept(FE_ALL_EXCEPT));
+    fesetround(host_rounding_mode); // reset back to the original host rounding mode.
 }
 
-static void rv64f_fmul_s(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rm, uint8_t rd) {
-    printf("todo: rv64f_fmul_s\n");
+static void rv64f_fmul_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rs2, uint8_t rm) {
+    int host_rounding_mode = fegetround();
+    (void)rv64f_set_fenv_rounding_mode(hart, rm);
+    feclearexcept(FE_ALL_EXCEPT);
+    hart->float32_registers[rd] = hart->float32_registers[rs1] 
+                                * hart->float32_registers[rs2];
+    rv64f_update_fcsr_flags(hart, fetestexcept(FE_ALL_EXCEPT));
+    fesetround(host_rounding_mode); // reset back to the original host rounding mode.
 }
 
-static void rv64f_fdiv_s(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rm, uint8_t rd) {
-    printf("todo: rv64f_fdiv_s\n");
+static void rv64f_fdiv_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rs2, uint8_t rm) {
+    int host_rounding_mode = fegetround();
+    (void)rv64f_set_fenv_rounding_mode(hart, rm);
+    feclearexcept(FE_ALL_EXCEPT);
+    hart->float32_registers[rd] = hart->float32_registers[rs1] 
+                                / hart->float32_registers[rs2];
+    rv64f_update_fcsr_flags(hart, fetestexcept(FE_ALL_EXCEPT));
+    fesetround(host_rounding_mode); // reset back to the original host rounding mode.
 }
 
-static void rv64f_fsqrt_s(rv64_hart_t* hart, uint8_t rs1, uint8_t rm, uint8_t rd) {
-    printf("todo: rv64f_fsqrt_s\n");
+static void rv64f_fsqrt_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rm) {
+    int host_rounding_mode = fegetround();
+    (void)rv64f_set_fenv_rounding_mode(hart, rm);
+    feclearexcept(FE_ALL_EXCEPT);
+    hart->float32_registers[rd] = sqrt(hart->float32_registers[rs1]);
+    rv64f_update_fcsr_flags(hart, fetestexcept(FE_ALL_EXCEPT));
+    fesetround(host_rounding_mode); // reset back to the original host rounding mode.
 }
 
-static void rv64f_fsgnj_s(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    printf("todo: rv64f_fsgnj_s\n");
+/**
+ * fsgnj.s - Float SiGN inJection (Single-precision)
+ * `fsgnj.s rd, rs1, rs2`
+ * Takes the sign bit of rs2 and applies it to rs1, putting the result in rd.
+ * @see 20.7. Single-Precision Floating-Point Conversion and Move Instructions (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_single_precision_floating_point_conversion_and_move_instructions)
+ */
+static void rv64f_fsgnj_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rs2) {
+    hart->float32_registers[rd] = copysignf(
+        fabsf(hart->float32_registers[rs1]),
+        hart->float32_registers[rs2]
+    );
 }
 
-static void rv64f_fsgnjn_s(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    printf("todo: rv64f_fsgnjn_s\n");
+/**
+ * fsgnjn.s - Float SiGN inJection Negated (Single-precision)
+ * `fsgnjn.s rd, rs1, rs2`
+ * Takes the opposite sign bit of rs2 and applies it to rs1, putting the result in rd.
+ * @see 20.7. Single-Precision Floating-Point Conversion and Move Instructions (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_single_precision_floating_point_conversion_and_move_instructions)
+ */
+static void rv64f_fsgnjn_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rs2) {
+    hart->float32_registers[rd] = copysignf(
+        fabsf(hart->float32_registers[rs1]),
+        (-1 * hart->float32_registers[rs2])
+    );
 }
 
-static void rv64f_fsgnjx_s(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    printf("todo: rv64f_fsgnjx_s\n");
+/**
+ * fsgnjx.s - Float SiGN inJection Xor (Single-precision)
+ * `fsgnjx.s rd, rs1, rs2`
+ * Takes the sign bit of `rs1 xor rs2` and applies it to rs1, putting the result in rd.
+ * @see 20.7. Single-Precision Floating-Point Conversion and Move Instructions (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_single_precision_floating_point_conversion_and_move_instructions)
+ */
+static void rv64f_fsgnjx_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rs2) {
+    hart->float32_registers[rd] = copysignf(
+        fabsf(hart->float32_registers[rs1]),
+        (hart->float32_registers[rs1] * hart->float32_registers[rs2])
+    );
 }
 
-static void rv64f_fmin_s(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    printf("todo: rv64f_fmin_s\n");
+static void rv64f_fmin_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rs2) {
+    feclearexcept(FE_ALL_EXCEPT);
+    // TODO: handle NaNs and 0.0 vs -0.0 per spec
+    hart->float32_registers[rd] = fminf(hart->float32_registers[rs1], hart->float32_registers[rs2]);
+    rv64f_update_fcsr_flags(hart, fetestexcept(FE_ALL_EXCEPT));
 }
 
-static void rv64f_fmax_s(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    printf("todo: rv64f_fmin_s\n");
+static void rv64f_fmax_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rs2) {
+    feclearexcept(FE_ALL_EXCEPT);
+    // TODO: handle NaNs and 0.0 vs -0.0 per spec
+    hart->float32_registers[rd] = fmaxf(hart->float32_registers[rs1], hart->float32_registers[rs2]);
+    rv64f_update_fcsr_flags(hart, fetestexcept(FE_ALL_EXCEPT));
 }
 
 static float rv64f_round_to_nearest_ties_max_magnitude(float val) {
@@ -521,43 +575,43 @@ emu_result_t rv64f_emulate_r_type(
 
     switch(tag) {
         case I_RV64F_FADD_S: {
-            rv64f_fadd_s(hart, rs1, rs2, rm, rd);
+            rv64f_fadd_s(hart, rd, rs1, rs2, rm);
             break;
         }
         case I_RV64F_FSUB_S: {
-            rv64f_fsub_s(hart, rs1, rs2, rm, rd);
+            rv64f_fsub_s(hart, rd, rs1, rs2, rm);
             break;
         }
         case I_RV64F_FMUL_S: {
-            rv64f_fmul_s(hart, rs1, rs2, rm, rd);
+            rv64f_fmul_s(hart, rd, rs1, rs2, rm);
             break;
         }
         case I_RV64F_FDIV_S: {
-            rv64f_fdiv_s(hart, rs1, rs2, rm, rd);
+            rv64f_fdiv_s(hart, rd, rs1, rs2, rm);
             break;
         }
         case I_RV64F_FSQRT_S: {
-            rv64f_fsqrt_s(hart, rs1, rm, rd);
+            rv64f_fsqrt_s(hart, rd, rs1, rm);
             break;
         }
         case I_RV64F_FSGNJ_S: {
-            rv64f_fsgnj_s(hart, rs1, rs2, rd);
+            rv64f_fsgnj_s(hart, rd, rs1, rs2);
             break;
         }
         case I_RV64F_FSGNJN_S: {
-            rv64f_fsgnjn_s(hart, rs1, rs2, rd);
+            rv64f_fsgnjn_s(hart, rd, rs1, rs2);
             break;
         }
         case I_RV64F_FSGNJX_S: {
-            rv64f_fsgnjx_s(hart, rs1, rs2, rd);
+            rv64f_fsgnjx_s(hart, rd, rs1, rs2);
             break;
         }
         case I_RV64F_FMIN_S: {
-            rv64f_fmin_s(hart, rs1, rs2, rd);
+            rv64f_fmin_s(hart, rd, rs1, rs2);
             break;
         }
         case I_RV64F_FMAX_S: {
-            rv64f_fmax_s(hart, rs1, rs2, rd);
+            rv64f_fmax_s(hart, rd, rs1, rs2);
             break;
         }
         case I_RV64F_FCVT_W_S: {

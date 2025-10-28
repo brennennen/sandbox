@@ -509,55 +509,84 @@ static void rv64f_fcvt_w_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t r
     hart->registers[rd] = (uint64_t)(int64_t)result_int; // double cast for sign extension
 }
 
-static void rv64f_fcvt_wu_s(rv64_hart_t* hart, uint8_t rs1, uint8_t rm, uint8_t rd) {
+static void rv64f_fcvt_wu_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rm) {
     printf("todo: rv64f_fcvt_wu_s\n");
 }
 
-static void rv64f_fmv_x_w(rv64_hart_t* hart, uint8_t rs1, uint8_t rd) {
+static void rv64f_fmv_x_w(rv64_hart_t* hart, uint8_t rd, uint8_t rs1) {
     printf("todo: rv64f_fmv_x_w\n");
 }
 
-static void rv64f_feq_s(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    printf("todo: rv64f_feq_s\n");
+/**
+ * feq.s - Float EQuality
+ * `feq.s rd, rs1, rs2`
+ * Compares 2 floats, sets rd to 1 if these floats are equal, sets rd to 0 otherwise.
+ * @see 20.8. Single-Precision Floating-Point Compare Instructions (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_single_precision_floating_point_compare_instructions)
+ */
+static void rv64f_feq_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rs2) {
+    feclearexcept(FE_ALL_EXCEPT);
+    hart->registers[rd] = (hart->float32_registers[rs1] == hart->float32_registers[rs2]);
+    // TODO: handle qNan and sNaN
+    rv64f_update_fcsr_flags(hart, fetestexcept(FE_ALL_EXCEPT));
 }
 
-static void rv64f_flt_s(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    printf("todo: rv64f_flt_s\n");
+/**
+ * flt.s - Float Less Than
+ * `flt.s rd, rs1, rs2`
+ * Compares 2 floats, sets rd to 1 if the first float is less than the second float, 
+ * sets rd to 0 otherwise.
+ * @see 20.8. Single-Precision Floating-Point Compare Instructions (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_single_precision_floating_point_compare_instructions)
+ */
+static void rv64f_flt_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rs2) {
+    feclearexcept(FE_ALL_EXCEPT);
+    hart->registers[rd] = (hart->float32_registers[rs1] < hart->float32_registers[rs2]);
+    // TODO: handle qNan and sNaN
+    rv64f_update_fcsr_flags(hart, fetestexcept(FE_ALL_EXCEPT));
 }
 
-static void rv64f_fle_s(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    printf("todo: rv64f_fle_s\n");
+/**
+ * fle.s - Float Less than or Equal
+ * `fle.s rd, rs1, rs2`
+ * Compares 2 floats, sets rd to 1 if the first float is less than or equal to the second 
+ * float, sets rd to 0 otherwise.
+ * @see 20.8. Single-Precision Floating-Point Compare Instructions (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_single_precision_floating_point_compare_instructions)
+ */
+static void rv64f_fle_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rs2) {
+    feclearexcept(FE_ALL_EXCEPT);
+    hart->registers[rd] = (hart->float32_registers[rs1] <= hart->float32_registers[rs2]);
+    // TODO: handle qNan and sNaN
+    rv64f_update_fcsr_flags(hart, fetestexcept(FE_ALL_EXCEPT));
 }
 
-static void rv64f_fclass_s(rv64_hart_t* hart, uint8_t rs1, uint8_t rd) {
+static void rv64f_fclass_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1) {
     printf("todo: rv64f_fclass_s\n");
 }
 
-static void rv64f_fcvt_s_w(rv64_hart_t* hart, uint8_t rs1, uint8_t rm, uint8_t rd) {
+static void rv64f_fcvt_s_w(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rm) {
     printf("todo: rv64f_fcvt_s_w\n");
 }
 
-static void rv64f_fcvt_s_wu(rv64_hart_t* hart, uint8_t rs1, uint8_t rm, uint8_t rd) {
+static void rv64f_fcvt_s_wu(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rm) {
     printf("todo: rv64f_fcvt_s_wu\n");
 }
 
-static void rv64f_fmv_w_x(rv64_hart_t* hart, uint8_t rs1, uint8_t rd) {
+static void rv64f_fmv_w_x(rv64_hart_t* hart, uint8_t rd, uint8_t rs1) {
     printf("todo: rv64f_fmv_w_x\n");
 }
 
-static void rv64f_fcvt_l_s(rv64_hart_t* hart, uint8_t rs1, uint8_t rm, uint8_t rd) {
+static void rv64f_fcvt_l_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rm) {
     printf("todo: rv64f_fcvt_l_s\n");
 }
 
-static void rv64f_fcvt_lu_s(rv64_hart_t* hart, uint8_t rs1, uint8_t rm, uint8_t rd) {
+static void rv64f_fcvt_lu_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rm) {
     printf("todo: rv64f_fcvt_lu_s\n");
 }
 
-static void rv64f_fcvt_s_l(rv64_hart_t* hart, uint8_t rs1, uint8_t rm, uint8_t rd) {
+static void rv64f_fcvt_s_l(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rm) {
     printf("todo: rv64f_fcvt_s_l\n");
 }
 
-static void rv64f_fcvt_s_lu(rv64_hart_t* hart, uint8_t rs1, uint8_t rm, uint8_t rd) {
+static void rv64f_fcvt_s_lu(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rm) {
     printf("todo: rv64f_fcvt_s_lu\n");
 }
 
@@ -619,55 +648,55 @@ emu_result_t rv64f_emulate_r_type(
             break;
         }
         case I_RV64F_FCVT_WU_S: {
-            rv64f_fcvt_wu_s(hart, rs1, rm, rd);
+            rv64f_fcvt_wu_s(hart, rd, rs1, rm);
             break;
         }
         case I_RV64F_FMV_X_W: {
-            rv64f_fmv_x_w(hart, rs1, rd);
+            rv64f_fmv_x_w(hart, rd, rs1);
             break;
         }
         case I_RV64F_FEQ_S: {
-            rv64f_feq_s(hart, rs1, rs2, rd);
+            rv64f_feq_s(hart, rd, rs1, rs2);
             break;
         }
         case I_RV64F_FLT_S: {
-            rv64f_flt_s(hart, rs1, rs2, rd);
+            rv64f_flt_s(hart, rd, rs1, rs2);
             break;
         }
         case I_RV64F_FLE_S: {
-            rv64f_fle_s(hart, rs1, rs2, rd);
+            rv64f_fle_s(hart, rd, rs1, rs2);
             break;
         }
         case I_RV64F_FCLASS_S: {
-            rv64f_fclass_s(hart, rs1, rd);
+            rv64f_fclass_s(hart, rd, rs1);
             break;
         }
         case I_RV64F_FCVT_S_W: {
-            rv64f_fcvt_s_w(hart, rs1, rs2, rd);
+            rv64f_fcvt_s_w(hart, rd, rs1, rs2);
             break;
         }
         case I_RV64F_FCVT_S_WU: {
-            rv64f_fcvt_s_wu(hart, rs1, rs2, rd);
+            rv64f_fcvt_s_wu(hart, rd, rs1, rs2);
             break;
         }
         case I_RV64F_FMV_W_X: {
-            rv64f_fmv_w_x(hart, rs1, rd);
+            rv64f_fmv_w_x(hart, rd, rs1);
             break;
         }
         case I_RV64F_FCVT_L_S: {
-            rv64f_fcvt_l_s(hart, rs1, rs2, rd);
+            rv64f_fcvt_l_s(hart, rd, rs1, rs2);
             break;
         }
         case I_RV64F_FCVT_LU_S: {
-            rv64f_fcvt_lu_s(hart, rs1, rs2, rd);
+            rv64f_fcvt_lu_s(hart, rd, rs1, rs2);
             break;
         }
         case I_RV64F_FCVT_S_L: {
-            rv64f_fcvt_s_l(hart, rs1, rs2, rd);
+            rv64f_fcvt_s_l(hart, rd, rs1, rs2);
             break;
         }
         case I_RV64F_FCVT_S_LU: {
-            rv64f_fcvt_s_lu(hart, rs1, rs2, rd);
+            rv64f_fcvt_s_lu(hart, rd, rs1, rs2);
             break;
         }
         default: {

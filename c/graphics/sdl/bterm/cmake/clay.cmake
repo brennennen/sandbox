@@ -1,6 +1,6 @@
 
 set(CLAY_GIT_REPO "https://github.com/nicbarker/clay.git")
-set(CLAY_GIT_COMMIT "588b93196cc7a182a024a9ef08ba8e352904a1bd")
+set(CLAY_GIT_COMMIT "fd97d8179e329be597bd8f7a1a9a2382d191ff1f")
 
 if(NOT TARGET clay::clay)
     FetchContent_Declare(

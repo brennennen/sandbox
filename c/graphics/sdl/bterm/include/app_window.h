@@ -19,9 +19,11 @@ typedef struct {
     int resize_edges;
     SDL_Rect action_start_window_rect;
     SDL_Point action_start_mouse_pos;
+
     app_cursors_t* cursors;
 } app_window_t;
 
+int get_window_resize_edges(int mouse_x, int mouse_y, int win_w, int win_h);
 SDL_AppResult app_window_sdl_event(app_window_t* window, SDL_Event *event);
 
 #endif // APP_WINDOW_H

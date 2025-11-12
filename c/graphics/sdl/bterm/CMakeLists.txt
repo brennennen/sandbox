@@ -16,10 +16,12 @@ include(sdl3)
 include(sdl3_ttf)
 include(sdl3_image)
 include(clay)
+find_package(Threads REQUIRED) # required for libssh
+find_package(libssh REQUIRED)
 
-#find_package(libssh REQUIRED)
-
-add_executable(bterm ./source/main.c ./source/clay_renderer_sdl3.c ./source/bterm_ui.c ./source/app_window.c)
+set(C_SOURCE_FILES "")
+file(GLOB_RECURSE C_SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/source/*.c")
+add_executable(bterm ${C_SOURCE_FILES})
 target_include_directories(bterm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 target_link_libraries(bterm PRIVATE 
@@ -27,7 +29,7 @@ target_link_libraries(bterm PRIVATE
     SDL3_ttf::SDL3_ttf
     SDL3_image::SDL3_image
     clay::clay
-    #libssh
+    ssh
 )
 
 if(WIN32)

@@ -7,9 +7,7 @@
 #define RESIZE_BORDER_THICKNESS 8
 #define DRAG_HANDLE_HEIGHT 30
 
-
-
-static int get_window_resize_edges(int mouse_x, int mouse_y, int win_w, int win_h) {
+int get_window_resize_edges(int mouse_x, int mouse_y, int win_w, int win_h) {
     int edges = 0;
     if (mouse_x < RESIZE_BORDER_THICKNESS) {
         edges |= WINDOW_RESIZE_LEFT;
@@ -32,6 +30,7 @@ static void manage_window_resize_cursor(app_window_t* window, SDL_Event *event) 
     SDL_GetWindowSize(window->sdl_window, &win_w, &win_h);
     int edges = get_window_resize_edges(event->motion.x, event->motion.y, win_w, win_h);
     SDL_Cursor *cursor_to_set = window->cursors->arrow;
+    //SDL_Cursor *cursor_to_set = NULL;
 
     switch (edges) {
         case WINDOW_RESIZE_TOP: cursor_to_set = window->cursors->ns_resize; break;
@@ -45,7 +44,9 @@ static void manage_window_resize_cursor(app_window_t* window, SDL_Event *event) 
         default:
             break;
     }
-    SDL_SetCursor(cursor_to_set);
+    if (cursor_to_set) {
+        SDL_SetCursor(cursor_to_set);
+    }
 }
 
 static void event_mouse_button_up(app_window_t *window, SDL_Event *event) {
@@ -81,7 +82,7 @@ static void event_mouse_button_down(app_window_t *window, SDL_Event *event) {
     }
 }
 
-static void event_mouse_motion(app_window_t* window, SDL_Event *event) {
+static void event_mouse_motion(app_window_t* window, SDL_Event *event, bool set_cursor) {
     if (window->is_dragging) {
         float global_mouse_x;
         float global_mouse_y;
@@ -123,9 +124,10 @@ static void event_mouse_motion(app_window_t* window, SDL_Event *event) {
 
         SDL_SetWindowPosition(window->sdl_window, new_x, new_y);
         SDL_SetWindowSize(window->sdl_window, new_w, new_h);
-    } else {
-        manage_window_resize_cursor(window, event);
-    }
+    } 
+    // else {
+    //     manage_window_resize_cursor(window, event);
+    // }
 }
 
 SDL_AppResult app_window_sdl_event(app_window_t* window, SDL_Event *event) {
@@ -136,7 +138,7 @@ SDL_AppResult app_window_sdl_event(app_window_t* window, SDL_Event *event) {
             ret_val = SDL_APP_SUCCESS;
             break;
         case SDL_EVENT_MOUSE_MOTION: {
-            event_mouse_motion(window, event);
+            event_mouse_motion(window, event, true);
             break;
         }
         case SDL_EVENT_MOUSE_BUTTON_DOWN: {

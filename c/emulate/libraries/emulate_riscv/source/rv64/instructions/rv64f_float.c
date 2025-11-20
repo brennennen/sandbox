@@ -11,7 +11,7 @@
 #include "rv64/rv64_emulate.h"
 #include "rv64/rv64_instructions.h"
 
-#include "rv64/instructions/rv64m_multiplication.h"
+#include "rv64/instructions/rv64f_float.h"
 
 static void rv64f_update_fcsr_flags(rv64_hart_t* hart, int fenv_flags) {
     uint64_t riscv_flags = 0;
@@ -558,8 +558,44 @@ static void rv64f_fle_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rs2)
     rv64f_update_fcsr_flags(hart, fetestexcept(FE_ALL_EXCEPT));
 }
 
+
+
+
+/**
+ * fclass.s - Float CLASSify
+ * `fclass.s rd, rs1`
+ * Classifies a float into one of a 9 categories and stores that classification in rd.
+ * @see 20.9 Single-Precision Floating-Point Classify Instruction (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_single_precision_floating_point_classify_instruction)
+ */
 static void rv64f_fclass_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1) {
-    printf("todo: rv64f_fclass_s\n");
+    int fpclass = fpclassify(hart->float32_registers[rs1]);
+
+    if (isnan(hart->float32_registers[rs1])) {
+        hart->registers[rd] = RV64F_CLASS_SIGNALING_NAN;
+    }
+    // TODO: quiet nan?
+
+    if (hart->float32_registers[rs1] < 0.0f) {
+        if (fpclass == FP_INFINITE) {
+            hart->registers[rd] = RV64F_CLASS_NEGATIVE_INFINITY;
+        } else if (fpclass == FP_NORMAL){
+            hart->registers[rd] = RV64F_CLASS_NEGATIVE_NORMAL;
+        } else if (fpclass == FP_SUBNORMAL) {
+            hart->registers[rd] = RV64F_CLASS_NEGATIVE_SUBNORMAL;
+        } else if (fpclass == FP_ZERO) {
+            hart->registers[rd] = RV64F_CLASS_NEGATIVE_ZERO;
+        }
+    } else {
+        if (fpclass == FP_INFINITE) {
+            hart->registers[rd] = RV64F_CLASS_POSITIVE_INFINITY;
+        } else if (fpclass == FP_NORMAL){
+            hart->registers[rd] = RV64F_CLASS_POSITIVE_NORMAL;
+        } else if (fpclass == FP_SUBNORMAL) {
+            hart->registers[rd] = RV64F_CLASS_POSITIVE_SUBNORMAL;
+        } else if (fpclass == FP_ZERO) {
+            hart->registers[rd] = RV64F_CLASS_POSITIVE_ZERO;
+        }
+    }
 }
 
 static void rv64f_fcvt_s_w(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rm) {

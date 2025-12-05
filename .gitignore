@@ -3,6 +3,7 @@ obj
 .build
 *.exe
 *.vendor
+.temp/
 
 # C
 *.out

@@ -1,10 +1,55 @@
-/**
- * The structs/defines follow ARM CMSIS.
+/*
+ * ST provided ARM CMSIS file for the STM32U0 (apache license)
+ * I've built this by copy pasting just the bits needed for a single
+ * test from the ~11k loc file in an effort to understand the CMSIS
+ * effort.
  */
 #include <stdint.h>
 
 #define     __O     volatile             /*!< Defines 'write only' permissions */
 #define     __IO    volatile             /*!< Defines 'read / write' permissions */
+
+/*
+ * MARK: Device Specific Peripheral Address Map
+ */
+#define PERIPH_BASE         (0x40000000UL)
+#define APBPERIPH_BASE        PERIPH_BASE
+#define AHBPERIPH_BASE      (PERIPH_BASE + 0x00020000UL)
+
+#define RCC_BASE            (AHBPERIPH_BASE + 0x1000UL)
+#define RCC                 ((RCC_TypeDef *) RCC_BASE)
+
+#define USART2_BASE           (APBPERIPH_BASE + 0x4400UL)
+#define USART2              ((USART_TypeDef *) USART2_BASE)
+
+/*
+ * MARK: Reset and Clock Control
+ */
+
+// Bit definition for RCC_CR register
+#define RCC_CR_HSION_Pos                     (8UL)
+#define RCC_CR_HSION_Msk                     (0x1UL << RCC_CR_HSION_Pos)       /*!< 0x00000100 */
+#define RCC_CR_HSION                         RCC_CR_HSION_Msk                  /*!< Internal High Speed oscillator (HSI16) clock enable */
+#define RCC_CR_HSIRDY_Pos                    (10UL)
+#define RCC_CR_HSIRDY_Msk                    (0x1UL << RCC_CR_HSIRDY_Pos)      /*!< 0x00000400 */
+#define RCC_CR_HSIRDY                        RCC_CR_HSIRDY_Msk                 /*!< Internal High Speed oscillator (HSI16) clock ready flag */
+
+// Bit definition for RCC_CFGR register
+// SW configuration
+#define RCC_CFGR_SW_Pos                (0UL)
+#define RCC_CFGR_SW_Msk                (0x7UL << RCC_CFGR_SW_Pos)              /*!< 0x00000007 */
+#define RCC_CFGR_SW                    RCC_CFGR_SW_Msk                         /*!< SW[2:0] bits (System clock Switch) */
+#define RCC_CFGR_SW_0                  (0x1UL << RCC_CFGR_SW_Pos)              /*!< 0x00000001 */
+#define RCC_CFGR_SW_1                  (0x2UL << RCC_CFGR_SW_Pos)              /*!< 0x00000002 */
+#define RCC_CFGR_SW_2                  (0x4UL << RCC_CFGR_SW_Pos)              /*!< 0x00000004 */
+// SWS configuration
+#define RCC_CFGR_SWS_Pos               (3UL)
+#define RCC_CFGR_SWS_Msk               (0x7UL << RCC_CFGR_SWS_Pos)             /*!< 0x00000038 */
+#define RCC_CFGR_SWS                   RCC_CFGR_SWS_Msk                        /*!< SWS[2:0] bits (System Clock Switch Status) */
+#define RCC_CFGR_SWS_0                 (0x1UL << RCC_CFGR_SWS_Pos)             /*!< 0x00000008 */
+#define RCC_CFGR_SWS_1                 (0x2UL << RCC_CFGR_SWS_Pos)             /*!< 0x00000010 */
+#define RCC_CFGR_SWS_2                 (0x4UL << RCC_CFGR_SWS_Pos)             /*!< 0x00000020 */
+
 
 /**
   * @brief Reset and Clock Control
@@ -49,10 +94,10 @@ typedef struct
   __IO uint32_t CRRCR;          /*!< RCC clock recovery RC register,                                         Address offset: 0x98 */
 } RCC_TypeDef;
 
-#define PERIPH_BASE         (0x40000000UL)
-#define AHBPERIPH_BASE      (PERIPH_BASE + 0x00020000UL)
-#define RCC_BASE            (AHBPERIPH_BASE + 0x1000UL)
-#define RCC                 ((RCC_TypeDef *) RCC_BASE)
+
+/*
+ * MARK: GPIO
+ */
 
 /**
   * @brief General Purpose I/O
@@ -81,6 +126,18 @@ typedef struct
 #define RCC_IOPENR_GPIOAEN          RCC_IOPENR_GPIOAEN_Msk
 
 // Bits definition for GPIO_MODER register
+#define GPIO_MODER_MODE2_Pos           (4UL)
+#define GPIO_MODER_MODE2_Msk           (0x3UL << GPIO_MODER_MODE2_Pos)         /*!< 0x00000030 */
+#define GPIO_MODER_MODE2               GPIO_MODER_MODE2_Msk
+#define GPIO_MODER_MODE2_0             (0x1UL << GPIO_MODER_MODE2_Pos)          /*!< 0x00000010 */
+#define GPIO_MODER_MODE2_1             (0x2UL << GPIO_MODER_MODE2_Pos)          /*!< 0x00000020 */
+
+#define GPIO_MODER_MODE3_Pos           (6UL)
+#define GPIO_MODER_MODE3_Msk           (0x3UL << GPIO_MODER_MODE3_Pos)         /*!< 0x000000C0 */
+#define GPIO_MODER_MODE3               GPIO_MODER_MODE3_Msk
+#define GPIO_MODER_MODE3_0             (0x1UL << GPIO_MODER_MODE3_Pos)          /*!< 0x00000040 */
+#define GPIO_MODER_MODE3_1             (0x2UL << GPIO_MODER_MODE3_Pos)          /*!< 0x00000080 */
+
 #define GPIO_MODER_MODE5_Pos        (10UL)
 #define GPIO_MODER_MODE5_Msk        (0x3UL << GPIO_MODER_MODE5_Pos)         /*!< 0x00000C00 */
 #define GPIO_MODER_MODE5            GPIO_MODER_MODE5_Msk
@@ -92,26 +149,53 @@ typedef struct
 #define GPIO_ODR_OD5_Msk            (0x1UL << GPIO_ODR_OD5_Pos)             /*!< 0x00000020 */
 #define GPIO_ODR_OD5                GPIO_ODR_OD5_Msk
 
-void delay(volatile uint32_t count) {
-    while(count--) {
-        __asm("nop");
-    }
-}
+// Bit definition for GPIO_AFRL register
+#define GPIO_AFRL_AFSEL3_Pos           (12UL)
+#define GPIO_AFRL_AFSEL3_Msk           (0xFUL << GPIO_AFRL_AFSEL3_Pos)         /*!< 0x0000F000 */
+#define GPIO_AFRL_AFSEL3               GPIO_AFRL_AFSEL3_Msk
+#define GPIO_AFRL_AFSEL3_0             (0x1UL << GPIO_AFRL_AFSEL3_Pos)          /*!< 0x00001000 */
+#define GPIO_AFRL_AFSEL3_1             (0x2UL << GPIO_AFRL_AFSEL3_Pos)          /*!< 0x00002000 */
+#define GPIO_AFRL_AFSEL3_2             (0x4UL << GPIO_AFRL_AFSEL3_Pos)          /*!< 0x00004000 */
+#define GPIO_AFRL_AFSEL3_3             (0x8UL << GPIO_AFRL_AFSEL3_Pos)          /*!< 0x00008000 */
 
-int main(void) {
-    // Initialize the GPIO A controller
-    RCC->IOPENR |= RCC_IOPENR_GPIOAEN;
 
-    // Initialize the LED (GPIO A - pin 5)
-    GPIOA->MODER &= ~GPIO_MODER_MODE5;
-    GPIOA->MODER |= GPIO_MODER_MODE5_0;
+/**
+ * MARK: USART
+ */
 
-    // Turn on the LED
-    GPIOA->ODR |= GPIO_ODR_OD5;
+/**
+  * @brief Universal Synchronous Asynchronous Receiver Transmitter
+  */
+typedef struct
+{
+  __IO uint32_t CR1;    /*!< USART Control register 1,                 Address offset: 0x00 */
+  __IO uint32_t CR2;    /*!< USART Control register 2,                 Address offset: 0x04 */
+  __IO uint32_t CR3;    /*!< USART Control register 3,                 Address offset: 0x08 */
+  __IO uint32_t BRR;    /*!< USART Baud rate register,                 Address offset: 0x0C */
+  __IO uint32_t GTPR;   /*!< USART Guard time and prescaler register,  Address offset: 0x10 */
+  __IO uint32_t RTOR;   /*!< USART Receiver Time Out register,         Address offset: 0x14 */
+  __IO uint32_t RQR;    /*!< USART Request register,                   Address offset: 0x18 */
+  __IO uint32_t ISR;    /*!< USART Interrupt and status register,      Address offset: 0x1C */
+  __IO uint32_t ICR;    /*!< USART Interrupt flag Clear register,      Address offset: 0x20 */
+  __IO uint32_t RDR;    /*!< USART Receive Data register,              Address offset: 0x24 */
+  __IO uint32_t TDR;    /*!< USART Transmit Data register,             Address offset: 0x28 */
+  __IO uint32_t PRESC;  /*!< USART clock Prescaler register,           Address offset: 0x2C */
+} USART_TypeDef;
 
-    // Toggle the LED every ~1(ish) seconds
-    while (1) {
-        GPIOA->ODR ^= GPIO_ODR_OD5;
-        delay(500000);
-    }
-}
+// Bits to configure multi-feature pins to be uart
+#define GPIO_AFRL_AFSEL2_Pos           (8UL)
+#define GPIO_AFRL_AFSEL2_Msk           (0xFUL << GPIO_AFRL_AFSEL2_Pos)         /*!< 0x00000F00 */
+#define GPIO_AFRL_AFSEL2               GPIO_AFRL_AFSEL2_Msk
+
+#define RCC_APBENR1_USART2EN_Pos       (17UL)
+#define RCC_APBENR1_USART2EN_Msk       (0x1UL << RCC_APBENR1_USART2EN_Pos)     /*!< 0x00020000 */
+#define RCC_APBENR1_USART2EN           RCC_APBENR1_USART2EN_Msk
+
+// USART Control Bits
+#define USART_CR1_UE            (1UL << 0)  // USART Enable
+#define USART_CR1_RE            (1UL << 2)  // Receiver Enable
+#define USART_CR1_TE            (1UL << 3)  // Transmitter Enable
+
+// USART Status Bits (ISR)
+#define USART_ISR_RXNE_RXFNE    (1UL << 5)  // Read data register not empty
+#define USART_ISR_TXE_TXFNF     (1UL << 7)  // Transmit data register empty

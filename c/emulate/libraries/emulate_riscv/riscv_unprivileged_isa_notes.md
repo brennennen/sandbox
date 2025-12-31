@@ -283,31 +283,58 @@ Compiled PDF Link: https://drive.google.com/file/d/1uviu1nH-tScFfgrovvFCrj7Omv8t
   * `fmax.s` - write the greater of rs1 or rs2 (+0.0 is greater than -0.0)
   * 
 
-
 // ...
 
-### 30. "V" Standard Extension for Vector Operations
-* 30.2. Implementation-defined Constant Parameters
+### 28. "C" Extension for Compressed Instructions
+* Adds 16-bit aliases for some instructions to reduce code size and improve bottlenecks around instruction pipelining (instruction fetch bandwidth).
+* 28.1 Overview
+  * Compression scheme is used when:
+    * the immediate or address offset is small
+    * or one of the registers is x0, x1, or x2
+    * or the dest register is the first source register
+    * or the registers used are the 8 most popular ones
+  * "IALIGN=16"
+  * RVC was designed that each compressed instruction expands into a single 32-bit instruction in the base or a standard extension.
+* 28.2 Compressed Instruction Formats
+* 28.3 Load and Store Instructions
+* 28.4 Control Transfer Instructions
+* 28.5 Integer Computational Instructions
+* 28.6 Usage of C Instructions in LR/SC Sequences
+* 28.7 HINT Instructions
+* 28.8 RVC Instruction Set Listings
+  * IMPORTANT! - Table 38 RVC opcode map instructions
+    * Shows how the "op" quadrant and "funct3" values map to each instruction
+  * IMPORTANT! - Figure3, Figure4, Figure5
+    * Shows the format of each RVC instruction
+
+### 29. "Zc*" Extension for code Size Reduction
+* more compressed instructions (skipping for now)
+
+### 30. Bit Manipulation Extensions
+* todo
+
+### 31. "V" Standard Extension for Vector Operations
+* 31.2. Implementation-defined Constant Parameters
   * ELEN - Maximum size in bits of a vector element that any operation can produce or consume.
     * must be power of 2, must be >= 8.
   * VLEN - The number of bits in a single vector register
     * must be a power of 2, must be >= ELEN, must be no greater than 2^16
-* 30.3 Vector Extension Programmer's Model
+* 31.3 Vector Extension Programmer's Model
   * 7 new unprivileged csrs
-  * 30.3.1 Vector Registers
+  * 31.3.1 Vector Registers
     * 32 vector registers, each VLEN bits long
-  * 30.3.2 Vector Cosntext Status in `mstatus`
+  * 31.3.2 Vector Cosntext Status in `mstatus`
     * `mstatus[10:9]` = "VS" - Vector context status
       * shadowed in `sstatus[10:9]`
       * Analogously defined to floating-point context status field `FS` (TODO)
       * if mstatus.vs is set to Off, raise an illegal instruction.
       * if mstatus.vs is dirty, mstatus.sd is 1
       * todo: misa.V field
-* 30.3.3 Vector Context Status `vsstatus`
+* 31.3.3 Vector Context Status `vsstatus`
   * hypervisor only
   * `VS` is added to `vsstatus[10:9]`
   * todo: read this section if/when implementing hypervisor, skipping for now.
-* 30.3.4 Vector Type (`vtype`) Register
+* 31.3.4 Vector Type (`vtype`) Register
   * vtype has 5 fields: vill, vma, vta, vsew, vlmul
     * vill: illegal if set
     * vma: vector mask agnostic
@@ -315,14 +342,14 @@ Compiled PDF Link: https://drive.google.com/file/d/1uviu1nH-tScFfgrovvFCrj7Omv8t
     * vsew: selected element width
     * vlmul: vector register group multiplier
   * vsew/vlmul can be different bit widths depending on specific ELEN implementation. currently targeting `Zvl128b` so both are 3 bits
-* 30.3.4.1 Vector Selected Elemenbt Width
+* 31.3.4.1 Vector Selected Elemenbt Width
   * `vsew[2:0]`
     * 0b000: sew8 - 8 bit vector elements
     * 0b001: sew16 - 16 bit vector elements
     * 0b010: sew32 - 32 bit vector elements
     * 0b011: sew64 - 64 bit vector elements
     * 0b1xx: reserved
-* 30.3.4.2 Vector Register Grouping (`vlmul[2:0]`)
+* 31.3.4.2 Vector Register Grouping (`vlmul[2:0]`)
   * performing operations across multiple vector registers (up to 8 at a time! lots of throughput)
   * LMUL - Vector Length Multiplier
   * EMUL - Effective Vector Length Multiplier
@@ -331,9 +358,9 @@ Compiled PDF Link: https://drive.google.com/file/d/1uviu1nH-tScFfgrovvFCrj7Omv8t
   * LMUL can be fractional (for narrowing? this is getting really confusing, skipping fractional lmul for now)
   * lmul = `2^(vlmul[2:0])`
   * very useful table in this section.
-* 30.3.4.3 Vector Tail Agnostic and Vector Mask Agnostic `vta` and `vma`
+* 31.3.4.3 Vector Tail Agnostic and Vector Mask Agnostic `vta` and `vma`
   * modify the behavior of destination tail elements and destination inactive masked-off elements
-  * see 30.5.4
+  * see 31.5.4
   * vta: 0 = undisturbed (tu), 1 = agnostic (ta)
   * vma: 0 = undisturbed (mu), 1 = agnostic (ma)
   * all 4 permutations of these 2 flags need to be supported
@@ -342,15 +369,38 @@ Compiled PDF Link: https://drive.google.com/file/d/1uviu1nH-tScFfgrovvFCrj7Omv8t
   * a simple "in-order" implementation can ignore the settings and siply execute all vector instructions using the undisturbed policty (going this route to start!)
     * todo: replace all existing tests with undisturbed flags (tu, mu).
     * these features are used by out-of-order execution tools to reduce complexity
-* 30.3.7. Vector Start Index (`vstart`) Register
-  * see 30.5.4
+* 31.3.7. Vector Start Index (`vstart`) Register
+  * see 31.5.4
   * first element to be executed by a vector instruction as described in section 30.5.4
   * normally only written by hardware on a trap. where the execution should resume after the trap
   * all vector instructions are defined to begin execution with the element number given in the vstart csr, leaving earlier elements in the destination vector undisturbed, and to reset csr to zero at the end of execution
     * making vstart visible to unprivileged code supports user-level threading libraries. todo: research this
   * some implementations will not take interrupts during vector operations, they wait until after the vector operation is finished. these implementations are allowed to throw an illegal-instruction exception when vstart is nonzero.
     * going this route for now because it's simpler.
-* 30.3.8 Vector Fixed-Point Rounding Mode (`vxrm`) Register
+* 31.3.8 Vector Fixed-Point Rounding Mode (`vxrm`) Register
 ...
-* 30.5.4. Prestart, Active, Inactive, Body, and Tail Element Definitions
+* 31.5.4. Prestart, Active, Inactive, Body, and Tail Element Definitions
   * todo
+
+### 32. Cryptography Extensions: Scalar & Entropy Source Instructions
+* todo
+
+### 33. Cryptography Extensions: Vector Instructions
+* todo
+
+### 34. Control-flow Integrity (CFI)
+* todo
+
+### 35. Zilsd, Zclsd Extensions for Load/Store pair for RV32
+* not part of RV64? ignoring for now.
+
+### 36. RV32/64G Instruction Set Listings
+* Table showing instruction formats and opcode mapping, very useful for writing an emulator!
+
+### 37. ISA Extension Naming Conventions
+* todo
+
+### Appendix A: RVWMO
+* todo
+
+// ...

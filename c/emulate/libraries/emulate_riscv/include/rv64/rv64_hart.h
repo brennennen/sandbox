@@ -2,6 +2,7 @@
 #define RV64_HART_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "rv64/rv64_control_status_registers.h"
 #include "rv64/rv64_virtual_hardware_conf.h"
@@ -16,6 +17,7 @@ typedef union {
 } vector_register_t;
 
 typedef struct rv64_hart_s {
+    bool rv64c_enabled;
     uint64_t pc;
     uint64_t registers[32];
     float float32_registers[32]; // "F" module

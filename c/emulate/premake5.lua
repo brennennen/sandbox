@@ -1,8 +1,13 @@
+
+-- "export compile commands" - used for clangd highlighting/code navigation
+require "ecc/ecc"
+
 -- MARK: Workspace
 workspace "EmulateWorkspace"
     configurations { "Debug", "Release" }
     location ".build"
     defines { "DO_LOG" }
+    buildoptions { "-std=c23" }
 
     -- symbols "On"
     filter "configurations:Debug"
@@ -13,12 +18,10 @@ workspace "EmulateWorkspace"
         optimize "On"
     filter { "system:linux", "action:gmake" }
         toolset "gcc"
-        buildoptions { "-std=c23" }
         sanitize { "Address" }
         links { "m" }
     filter { "system:windows", "action:gmake" }
         toolset "gcc"
-        buildoptions { "-std=c23" }
         defines { "CRITERION_DLL" }
         includedirs { "C:/include" }
         libdirs     { "C:/libs", "C:/lib" }

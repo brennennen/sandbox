@@ -11,6 +11,8 @@
 #include "rv64/rv64_decode.h"
 #include "rv64/rv64_disassemble.h"
 
+#include "rv64/instructions/rv64c_compressed.h"
+
 #include "rv64/disassemble/rv64a_atomic_disassemble.h"
 #include "rv64/disassemble/rv64v_vector_disassemble.h"
 
@@ -321,6 +323,37 @@ emu_result_t rv64_disassemble_csr_immediate(
  */
 
 // TODO: move to shared func
+emu_result_t rv64_disassemble_peek_quadrant(rv64_disassembler_t *disassembler, uint8_t* out_data) {
+    if (disassembler->pc >= disassembler->memory_size) {
+        LOG(LOG_ERROR, "%s: ER_OUT_OF_BOUNDS. pc: %d >= memory size: %d\n",
+            __func__, disassembler->pc, disassembler->memory_size);
+        return ER_OUT_OF_BOUNDS;
+    }
+
+    // Read a single byte, mask the first 2 bits
+    uint8_t byte = disassembler->memory[disassembler->pc];
+    *out_data = byte & 0x03;
+
+    return ER_SUCCESS;
+}
+
+// TODO: move to shared func
+emu_result_t rv64_disassemble_read_m16(rv64_disassembler_t *disassembler, uint16_t* out_data) {
+    if (disassembler->pc + 1 >= disassembler->memory_size) {
+        LOG(LOG_ERROR, "%s: ER_OUT_OF_BOUNDS. ip (+ read size): (%d + 4) >= memory size: %d\n",
+            __func__, disassembler->pc, disassembler->memory_size);
+        return(ER_OUT_OF_BOUNDS);
+    }
+    // TODO: mutex/lock?
+    *out_data = (disassembler->memory[disassembler->pc + 1] << 8)
+        | (disassembler->memory[disassembler->pc]);
+    if (*out_data != 0) { // if we reached an empty instruction (end of program), don't increment pc.
+        disassembler->pc += 2;
+    }
+    return(ER_SUCCESS);
+}
+
+// TODO: move to shared func
 emu_result_t rv64_disassemble_read_m32(rv64_disassembler_t *disassembler, uint32_t* out_data) {
     if (disassembler->pc + 1 >= disassembler->memory_size) {
         LOG(LOG_ERROR, "read m32: ER_OUT_OF_BOUNDS. ip (+ read size): (%d + 4) >= memory size: %d\n",
@@ -337,14 +370,36 @@ emu_result_t rv64_disassemble_read_m32(rv64_disassembler_t *disassembler, uint32
     return(ER_SUCCESS);
 }
 
+#define RV64C_COMPRESSED_ENABLED 1
+
 static result_iter_t rv64_disassemble_next(
     rv64_disassembler_t *disassembler,
     char* out_buffer,
     int* index,
     size_t out_buffer_size
 ) {
-    uint32_t raw_instruction = 0;
+        uint32_t raw_instruction = 0;
+#ifdef RV64C_COMPRESSED_ENABLED
+// TODO: if compressed, don't read 4 bytes, just read 2 bytes?
+    uint8_t quadrant = 0; 
+    emu_result_t read_result = rv64_disassemble_peek_quadrant(disassembler, &quadrant);
+    // TODO: check read result
+    if ((quadrant & 0b11) == 0b11) {
+        // standard 32 bit instruction.
+        read_result = rv64_disassemble_read_m32(disassembler, &raw_instruction);
+        // TODO: check read result
+    } else {
+        // compressed 16 bit instruction.
+        // TODO: expand the 16 bit instruction into 32 bits to use the same logic.
+        uint16_t compressed_instruction = 0;
+        read_result = rv64_disassemble_read_m16(disassembler, &compressed_instruction);
+        // TODO: check read result
+        raw_instruction = rv64c_expand(compressed_instruction);
+    }
+#else
     emu_result_t read_result = rv64_disassemble_read_m32(disassembler, &raw_instruction);
+#endif
+    // TODO: rv64c 2 byte instructions
     //LOGD("ip: %d, raw_instruction: %x", disassembler->pc - 4, raw_instruction);
 
     // If we reach an empty byte, assume we've hit the end of the program.

@@ -16,6 +16,7 @@
 #include "rv64/instructions/rv64a_atomic.h"
 #include "rv64/instructions/rv64f_float.h"
 #include "rv64/instructions/rv64v_vector.h"
+#include "rv64/instructions/rv64c_compressed.h"
 
 
 
@@ -122,13 +123,49 @@ void rv64_hart_set_default_machine_csrs(rv64_hart_t* hart, uint8_t hart_index) {
     rv64_hart_set_default_vector_csrs(hart);
 }
 
+/**
+ * Peek 2 bits into the next instruction without incrementing pc.
+ * Used to determine if an instruction is compressed or full width.
+ */
+emu_result_t emu_rv64_peek_quadrant(rv64_hart_t* hart, uint8_t* out_data) {
+    if (hart->pc >= hart->shared_system->memory_size) {
+        LOG(LOG_ERROR, "%s: ER_OUT_OF_BOUNDS. pc: %d >= memory size: %d\n",
+            __func__, hart->pc, hart->shared_system->memory_size);
+        return ER_OUT_OF_BOUNDS;
+    }
+
+    // Read a single byte, mask the first 2 bits
+    uint8_t byte = hart->shared_system->memory[hart->pc];
+    *out_data = byte & 0x03;
+
+    return ER_SUCCESS;
+}
+
+/**
+ * Reads 16 bites (2 bytes) from memory starting at the pc register in little endian.
+ * Used for the "C" compressed module.
+ */
+emu_result_t emu_rv64_read_m16(rv64_hart_t* hart, uint16_t* out_data) {
+    if (hart->pc + 1 >= hart->shared_system->memory_size) {
+        LOG(LOG_ERROR, "%s: ER_OUT_OF_BOUNDS. ip (+ read size): (%d + 4) >= memory size: %d\n",
+            __func__, hart->pc, hart->shared_system->memory_size);
+        return(ER_OUT_OF_BOUNDS);
+    }
+    // TODO: mutex/lock?
+    *out_data = (hart->shared_system->memory[hart->pc + 1] << 8)
+        | (hart->shared_system->memory[hart->pc]);
+    if (*out_data != 0) { // if we reached an empty instruction (end of program), don't increment pc.
+        hart->pc += 2;
+    }
+    return(ER_SUCCESS);
+}
 
 /**
  * Reads 32 bits (4 bytes) from memory starting at the pc register in little-endian.
  */
 emu_result_t emu_rv64_read_m32(rv64_hart_t* hart, uint32_t* out_data) {
-    if (hart->pc + 1 >= hart->shared_system->memory_size) {
-        LOG(LOG_ERROR, "%s: ER_OUT_OF_BOUNDS. ip (+ read size): (%d + 4) >= memory size: %d\n",
+    if (hart->pc + 3 >= hart->shared_system->memory_size) {
+        LOG(LOG_ERROR, "%s: ER_OUT_OF_BOUNDS. ip (+ read size): (%d + 3) >= memory size: %d\n",
             __func__, hart->pc, hart->shared_system->memory_size);
         return(ER_OUT_OF_BOUNDS);
     }
@@ -159,9 +196,53 @@ void debug_print_registers(rv64_hart_t* hart) {
     printf("PC: %ld\n", hart->pc);
 }
 
+#define RV64C_COMPRESSED_ENABLED 1
+
+static emu_result_t rv64_hart_get_next_instruction(rv64_hart_t* hart, uint32_t* instruction) {
+    if (hart->rv64c_enabled) {
+        uint8_t quadrant = 0; 
+        if (emu_rv64_peek_quadrant(hart, &quadrant) != ER_SUCCESS) {
+            return(ER_FAILURE);
+        }
+        if ((quadrant & 0b11) == 0b11) { // standard 32 bit instruction.
+            if (emu_rv64_read_m32(hart, instruction) != ER_SUCCESS) {
+                return(ER_FAILURE);
+            }
+        } else { // compressed 16 bit instruction.
+            uint16_t compressed_instruction = 0;
+            if(emu_rv64_read_m16(hart, &compressed_instruction) != ER_SUCCESS) {
+                return(ER_FAILURE);
+            }
+            *instruction = rv64c_expand(compressed_instruction);
+            return(ER_SUCCESS);
+        }
+    } else {
+        return(emu_rv64_read_m32(hart, instruction));
+    }
+}
+
 static result_iter_t rv64_hart_emulate_next(rv64_hart_t* hart) {
     uint32_t raw_instruction = 0;
+#ifdef RV64C_COMPRESSED_ENABLED
+// TODO: if compressed, don't read 4 bytes, just read 2 bytes?
+    uint8_t quadrant = 0; 
+    emu_result_t read_result = emu_rv64_peek_quadrant(hart, &quadrant);
+    // TODO: check read result
+    if ((quadrant & 0b11) == 0b11) {
+        // standard 32 bit instruction.
+        read_result = emu_rv64_read_m32(hart, &raw_instruction);
+        // TODO: check read result
+    } else {
+        // compressed 16 bit instruction.
+        // TODO: expand the 16 bit instruction into 32 bits to use the same logic.
+        uint16_t compressed_instruction = 0;
+        read_result = emu_rv64_read_m16(hart, &compressed_instruction);
+        // TODO: check read result
+        raw_instruction = rv64c_expand(compressed_instruction);
+    }
+#else
     emu_result_t read_result = emu_rv64_read_m32(hart, &raw_instruction);
+#endif
     LOGD("%s: ip: %d, raw_instruction: %x", __func__, hart->pc - 4, raw_instruction);
     if (hart->instructions_count >= 128) {
         printf("%s: sentinel infinite loop detected, exiting (%d)\n",

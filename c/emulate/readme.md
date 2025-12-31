@@ -50,11 +50,16 @@ make -C ./.build/
 
 ## Build env Setup
 * Tooling:
-  * premake - https://premake.github.io
+  * premake - Portable meta-build toolchain
+    * https://premake.github.io
+  * clangd - language server for highlighting/code navigation that supports c23.
+    * https://github.com/clangd/clangd/releases
+  * premake-ecc - Generates "compile_commands.json" for clangd support.
+    * navigate to premake5 bin and add a lua folder, then clone the following (or install this wherever premake5 looks, it states where it looks in the error log).
+    * `git clone https://github.com/MattBystrin/premake-ecc ecc`
 * Dependencies:
-  * criterion - https://github.com/Snaipe/Criterion
-* Misc:
-  * nasm - https://www.nasm.us/
+  * criterion - Unit testing library
+    * https://github.com/Snaipe/Criterion
 
 Linux (Ubuntu):
 ```sh

@@ -5,6 +5,10 @@ obj
 *.vendor
 .temp/
 
+# clang
+.cache
+compile_commands.json
+
 # C
 *.out
 

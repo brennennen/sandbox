@@ -243,7 +243,7 @@ static result_iter_t rv64_hart_emulate_next(rv64_hart_t* hart) {
 #else
     emu_result_t read_result = emu_rv64_read_m32(hart, &raw_instruction);
 #endif
-    LOGD("%s: ip: %d, raw_instruction: %x", __func__, hart->pc - 4, raw_instruction);
+    LOGD("%s: ip: %d, raw_instruction: 0x%08x", __func__, hart->pc - 4, raw_instruction);
     if (hart->instructions_count >= 128) {
         printf("%s: sentinel infinite loop detected, exiting (%d)\n",
             __func__, hart->instructions_count);
@@ -505,7 +505,7 @@ result_t rv64_hart_emulate_file(
 result_t rv64_hart_emulate_chunk(
     rv64_hart_t* hart,
     uint64_t memory_address,
-    char* in_buffer,
+    uint8_t* in_buffer,
     size_t in_buffer_size
 ) {
     memcpy(hart->shared_system->memory + memory_address, in_buffer, in_buffer_size);

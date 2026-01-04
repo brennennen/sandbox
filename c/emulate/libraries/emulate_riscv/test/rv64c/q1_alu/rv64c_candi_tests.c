@@ -1,0 +1,21 @@
+#include <string.h>
+#include <criterion/criterion.h>
+#include "rv64/rv64_emulate.h"
+#include "rv64/rv64_registers.h"
+
+static rv64_emulator_t g_emulator;
+
+void rv64_emu_candi_default_setup(void) {
+    memset(&g_emulator, 0, sizeof(rv64_emulator_t));
+    rv64_emulator_init(&g_emulator);
+    g_emulator.harts[0].rv64c_enabled = true;
+}
+
+Test(emu_rv64c_emulate__candi__tests, candi_1, .init = rv64_emu_candi_default_setup)
+{
+    g_emulator.harts[0].registers[RV64_REG_A0] = 0x19; // 0b0001 1001
+    uint8_t input[] = { 0x21, 0x89 }; // c.andi a0, a0, 8
+    cr_assert(SUCCESS == rv64_emulate_chunk_single_core(&g_emulator, input, sizeof(input)));
+    cr_assert(1 == g_emulator.harts[0].instructions_count);
+    cr_assert(8 == g_emulator.harts[0].registers[RV64_REG_A0]);
+}

@@ -76,8 +76,11 @@ static inline void rv64_decode_store(
     uint8_t* rs2
 ) {
     uint8_t imm7 = (raw_instruction >> 25) & 0b1111111;
-    uint8_t imm4 = (raw_instruction >> 7) & 0b1111;
-    *offset = (imm7 << 5) | imm4;
+    uint8_t imm5 = (raw_instruction >> 7) & 0b11111;
+    *offset = (imm7 << 5) | imm5;
+    if (*offset & 0x800) { // sign extend
+        *offset |= 0xF000;
+    }
     *rs1 = (raw_instruction >> 15) & 0b11111;
     *rs2 = (raw_instruction >> 20) & 0b11111;
 }

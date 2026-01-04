@@ -44,6 +44,6 @@ result_t rv64_emulate_file_single_core(rv64_emulator_t* emulator, char* input_pa
     return(rv64_hart_emulate_file(&emulator->harts[0], PROGRAM_START, input_path));
 }
 
-result_t rv64_emulate_chunk_single_core(rv64_emulator_t* emulator, char* in_buffer, size_t in_buffer_size) {
+result_t rv64_emulate_chunk_single_core(rv64_emulator_t* emulator, uint8_t* in_buffer, size_t in_buffer_size) {
     return(rv64_hart_emulate_chunk(&emulator->harts[0], PROGRAM_START, in_buffer, in_buffer_size));
 }

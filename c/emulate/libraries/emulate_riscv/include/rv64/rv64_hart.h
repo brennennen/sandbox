@@ -43,7 +43,7 @@ void rv64_hart_set_default_machine_csrs(rv64_hart_t* hart, uint8_t hart_index);
 void debug_print_registers(rv64_hart_t* hart);
 
 result_t rv64_hart_emulate_file(rv64_hart_t* hart, uint64_t memory_address, char* input_path);
-result_t rv64_hart_emulate_chunk(rv64_hart_t* hart, uint64_t memory_address, char* in_buffer, size_t in_buffer_size);
+result_t rv64_hart_emulate_chunk(rv64_hart_t* hart, uint64_t memory_address, uint8_t* in_buffer, size_t in_buffer_size);
 result_t rv64_hart_emulate(rv64_hart_t* hart);
 
 void rv64_print_registers(rv64_hart_t* hart);

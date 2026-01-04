@@ -45,7 +45,7 @@ char* rv64_map_vector_register_name(uint8_t vector_reg_id);
 char* rv64_map_instruction_tag_mnemonic(instruction_tag_rv64_t tag);
 
 result_t rv64_emulate_file_single_core(rv64_emulator_t* emulator, char* input_path);
-result_t rv64_emulate_chunk_single_core(rv64_emulator_t* emulator, char* in_buffer, size_t in_buffer_size);
+result_t rv64_emulate_chunk_single_core(rv64_emulator_t* emulator, uint8_t* in_buffer, size_t in_buffer_size);
 result_t rv64_emulate(rv64_emulator_t* emulator);
 
 #endif // EMULATE_RV64I_H

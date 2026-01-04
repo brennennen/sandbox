@@ -63,11 +63,11 @@ constexpr uint8_t OPGRP_ALU_IMMED__F3GRP_SHIFT_RIGHT =            0b101;
 constexpr uint8_t OPGRP_ALU_IMMED__F3GRP_SHIFT_RIGHT__F7_SRLI =   0b0000000;
 constexpr uint8_t OPGRP_ALU_IMMED__F3GRP_SHIFT_RIGHT__F7_SRAI =   0b0100000;
 
-constexpr uint8_t OPGRP_MATH_REG =                              0b0110011;
-constexpr uint8_t OPGRP_MATH_REG__F3GRP_MATH =               0b000;
-constexpr uint8_t OPGRP_MATH_REG__F3GRP_MATH__F7_ADD =       0b0000000;
-constexpr uint8_t OPGRP_MATH_REG__F3GRP_MATH__F7_SUB =       0b0100000;
-constexpr uint8_t OPGRP_MATH_REG__F3GRP_MATH__F7_MUL =       0b0000001;
+constexpr uint8_t OPGRP_MATH_REG =                      0b0110011;
+constexpr uint8_t OPGRP_MATH_REG__F3GRP_MATH =          0b000;
+constexpr uint8_t OPGRP_MATH_REG__F3GRP_MATH__F7_ADD =  0b0000000;
+constexpr uint8_t OPGRP_MATH_REG__F3GRP_MATH__F7_SUB =  0b0100000;
+constexpr uint8_t OPGRP_MATH_REG__F3GRP_MATH__F7_MUL =  0b0000001;
 // ...
 constexpr uint8_t OPGRP_MATH_REG__F3GRP100 = 0b100;
 constexpr uint8_t OPGRP_MATH_REG__F3GRP100__F7_XOR = 0b0000000;

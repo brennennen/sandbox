@@ -437,6 +437,15 @@ static inline void rv64i_ld(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8
 }
 
 /**
+ * Adds sign extended 12-bit immediate to register rs1 and sign extends as a 32 bit result.
+ * RV64I Additional Instruction (Not in RV32I)
+ * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions_2
+ */
+static inline void rv64i_addiw(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rd) {
+    hart->registers[rd] = (int32_t)(hart->registers[rs1] + imm12);
+}
+
+/**
  * NOTE: NOP is encoded as `ADDI x0, x0, 0`.
  */
 static inline void rv64_addi(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rd) {
@@ -556,6 +565,9 @@ static emu_result_t rv64_emulate_register_immediate(
         case I_RV64I_LD: {
             rv64i_ld(hart, imm12, rs1, rd);
             break;
+        }
+        case I_RV64I_ADDIW: {
+            rv64i_addiw(hart, imm12, rs1, rd);
         }
         default: {
             LOG(LOG_ERROR, "rv64i_emulate_register_immediate: instruction not implemented");
@@ -716,6 +728,29 @@ static inline void rv64i_and(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_
     hart->registers[rd] = hart->registers[rs1] & hart->registers[rs2];
 }
 
+static inline void rv64i_addw(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+    hart->registers[rd] = (int32_t)(hart->registers[rs1] + hart->registers[rs2]);
+}
+
+static inline void rv64i_subw(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+    hart->registers[rd] = (int32_t)(hart->registers[rs1] - hart->registers[rs2]);
+}
+
+static inline void rv64i_sllw(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+    uint32_t shamt = hart->registers[rs2] & 0x1F;
+    hart->registers[rd] = (int32_t)(hart->registers[rs1] << shamt);
+}
+
+static inline void rv64i_srlw(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+    uint32_t shamt = hart->registers[rs2] & 0x1F;
+    hart->registers[rd] = (int32_t)((uint32_t)hart->registers[rs1] >> shamt);
+}
+
+static inline void rv64i_sraw(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
+    uint32_t shamt = hart->registers[rs2] & 0x1F;
+    hart->registers[rd] = (int32_t)((int32_t)hart->registers[rs1] >> shamt);
+}
+
 static emu_result_t rv64_emulate_register_register(
     rv64_hart_t* hart,
     uint32_t raw_instruction,
@@ -766,6 +801,26 @@ static emu_result_t rv64_emulate_register_register(
         }
         case I_RV64I_AND: {
             rv64i_and(hart, rs1, rs2, rd);
+            break;
+        }
+        case I_RV64I_ADDW: {
+            rv64i_addw(hart, rs1, rs2, rd);
+            break;
+        }
+        case I_RV64I_SUBW: {
+            rv64i_subw(hart, rs1, rs2, rd);
+            break;
+        }
+        case I_RV64I_SLLW: {
+            rv64i_sllw(hart, rs1, rs2, rd);
+            break;
+        }
+        case I_RV64I_SRLW: {
+            rv64i_srlw(hart, rs1, rs2, rd);
+            break;
+        }
+        case I_RV64I_SRAW: {
+            rv64i_sraw(hart, rs1, rs2, rd);
             break;
         }
         default: {
@@ -890,7 +945,8 @@ emu_result_t rv64i_base_integer_emulate(
         case I_RV64I_ORI:
         case I_RV64I_ANDI:
         case I_RV64I_LWU:
-        case I_RV64I_LD: {
+        case I_RV64I_LD: 
+        case I_RV64I_ADDIW: {
             result = rv64_emulate_register_immediate(hart, raw_instruction, tag);
             break;
         }
@@ -911,7 +967,12 @@ emu_result_t rv64i_base_integer_emulate(
         case I_RV64I_SRL:
         case I_RV64I_SRA:
         case I_RV64I_OR:
-        case I_RV64I_AND: {
+        case I_RV64I_AND: 
+        case I_RV64I_ADDW: 
+        case I_RV64I_SUBW:
+        case I_RV64I_SLLW:
+        case I_RV64I_SRLW:
+        case I_RV64I_SRAW: {
             result = rv64_emulate_register_register(hart, raw_instruction, tag);
             break;
         }

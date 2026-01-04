@@ -6,7 +6,7 @@
 #include "rv64/rv64_instructions.h"
 #include "rv64/rv64_disassemble.h"
 #include "rv64/rv64_decode_instruction.h"
-#include "rv64/instructions/rv64c_compressed.h"
+#include "rv64/modules/rv64c_compressed.h"
 
 #define ASSERT_STR_WITH_LOG(expected, actual, max_count) \
     cr_assert(strncmp(expected, actual, max_count) == 0, \

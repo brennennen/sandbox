@@ -9,10 +9,10 @@
 #include "rv64/rv64_emulate.h"
 #include "rv64/rv64_decode_instruction.h"
 
-#include "rv64/instructions/rv64i_base_integer.h"
-#include "rv64/instructions/rv64m_multiplication.h"
-#include "rv64/instructions/rv64a_atomic.h"
-#include "rv64/instructions/rv64v_vector.h"
+#include "rv64/modules/rv64i_base_integer.h"
+#include "rv64/modules/rv64m_multiplication.h"
+#include "rv64/modules/rv64a_atomic.h"
+#include "rv64/modules/rv64v_vector.h"
 
 
 /**

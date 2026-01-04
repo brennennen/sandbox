@@ -12,7 +12,7 @@
 #include "rv64/rv64_emulate.h"
 #include "rv64/rv64_instructions.h"
 
-#include "rv64/instructions/rv64v_vector.h"
+#include "rv64/modules/rv64v_vector.h"
 
 /*
  * MARK: Helpers

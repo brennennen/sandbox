@@ -11,7 +11,7 @@
 #include "rv64/rv64_decode.h"
 #include "rv64/rv64_disassemble.h"
 
-#include "rv64/instructions/rv64c_compressed.h"
+#include "rv64/modules/rv64c_compressed.h"
 
 #include "rv64/disassemble/rv64a_atomic_disassemble.h"
 #include "rv64/disassemble/rv64v_vector_disassemble.h"

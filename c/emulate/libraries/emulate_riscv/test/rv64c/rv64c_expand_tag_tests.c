@@ -2,7 +2,7 @@
 
 #include "rv64/rv64_instructions.h"
 #include "rv64/rv64_decode_instruction.h"
-#include "rv64/instructions/rv64c_compressed.h"
+#include "rv64/modules/rv64c_compressed.h"
 
 Test(emu_rv64c_expand_tag_tests, expand_instruction_tests) {
     // MARK: Q0

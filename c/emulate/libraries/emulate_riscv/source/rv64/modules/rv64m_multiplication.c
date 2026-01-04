@@ -8,7 +8,7 @@
 #include "rv64/rv64_emulate.h"
 #include "rv64/rv64_instructions.h"
 
-#include "rv64/instructions/rv64m_multiplication.h"
+#include "rv64/modules/rv64m_multiplication.h"
 
 /**
  * MUL performs a 64 bit by 64 bit multiplication of rs1 by rs2 and places the lower 64 bits
@@ -264,7 +264,7 @@ emu_result_t rv64_multiplication_emulate(
             break;
         }
         default: {
-            LOG(LOG_ERROR, "rv64i_emulate_register_register: instruction not implemented");
+            LOG(LOG_ERROR, "%s: instruction not implemented", __func__);
             return(ER_FAILURE);
         }
     }

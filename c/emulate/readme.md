@@ -33,6 +33,7 @@ make config=release -C ./.build/
 Windows
 ```sh
 # use mingw/w64devkit
+
 # requires criterion, no prebuilt packages exist for this, requires building from source.
 # build criterion notes:
 # git clone criterion
@@ -43,9 +44,14 @@ Windows
 # meson setup build
 # meson compile -C build
 # meson install -C build
+
 premake5 gmake
 premake5 --os=windows gmake
 make -C ./.build/
+python ./build.py
+./bin/Debug/test_emulate_riscv -j1 # run tests sequentially instead of in parallel
+# linux uses process forking, windows uses threads, threads share stdout which 
+# turns to garbage when running multiple tests without `-j1`.
 ```
 
 ## Build env Setup

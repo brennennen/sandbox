@@ -11,7 +11,7 @@
 #include "rv64/rv64_emulate.h"
 #include "rv64/rv64_instructions.h"
 
-#include "rv64/instructions/rv64f_float.h"
+#include "rv64/modules/rv64f_float.h"
 
 static void rv64f_update_fcsr_flags(rv64_hart_t* hart, int fenv_flags) {
     uint64_t riscv_flags = 0;

@@ -56,6 +56,11 @@ typedef enum
 } IRQn_Type;
 
 /*
+ * MARK: STM32U0xx_Peripheral_memory_map
+ */
+#define FLASH_BASE            (0x08000000UL)              /*!< FLASH base address */
+
+/*
  * MARK: Device Specific Peripheral Address Map
  */
 #define PERIPH_BASE         (0x40000000UL)
@@ -245,6 +250,12 @@ typedef struct
 #define FLASH_SR_PROGERR_Pos                (3UL)
 #define FLASH_SR_PROGERR_Msk                (0x1UL << FLASH_SR_PROGERR_Pos)         /*!< 0x00000008 */
 #define FLASH_SR_PROGERR                    FLASH_SR_PROGERR_Msk
+#define FLASH_SR_WRPERR_Pos                 (4UL)
+#define FLASH_SR_WRPERR_Msk                 (0x1UL << FLASH_SR_WRPERR_Pos)          /*!< 0x00000010 */
+#define FLASH_SR_WRPERR                     FLASH_SR_WRPERR_Msk
+#define FLASH_SR_PGAERR_Pos                 (5UL)
+#define FLASH_SR_PGAERR_Msk                 (0x1UL << FLASH_SR_PGAERR_Pos)          /*!< 0x00000020 */
+#define FLASH_SR_PGAERR                     FLASH_SR_PGAERR_Msk
 #define FLASH_SR_BSY1_Pos                   (16UL)
 #define FLASH_SR_BSY1_Msk                   (0x1UL << FLASH_SR_BSY1_Pos)            /*!< 0x00010000 */
 #define FLASH_SR_BSY1                       FLASH_SR_BSY1_Msk
@@ -253,6 +264,15 @@ typedef struct
 #define FLASH_CR_PG_Pos                     (0UL)
 #define FLASH_CR_PG_Msk                     (0x1UL << FLASH_CR_PG_Pos)              /*!< 0x00000001 */
 #define FLASH_CR_PG                         FLASH_CR_PG_Msk
+#define FLASH_CR_PER_Pos                    (1UL)
+#define FLASH_CR_PER_Msk                    (0x1UL << FLASH_CR_PER_Pos)             /*!< 0x00000002 */
+#define FLASH_CR_PER                        FLASH_CR_PER_Msk
+#define FLASH_CR_PNB_Pos                    (3UL)
+#define FLASH_CR_PNB_Msk                    (0x7FUL << FLASH_CR_PNB_Pos)            /*!< 0x000003F8 */
+#define FLASH_CR_PNB                        FLASH_CR_PNB_Msk
+#define FLASH_CR_STRT_Pos                   (16UL)
+#define FLASH_CR_STRT_Msk                   (0x1UL << FLASH_CR_STRT_Pos)            /*!< 0x00010000 */
+#define FLASH_CR_STRT                       FLASH_CR_STRT_Msk
 #define FLASH_CR_LOCK_Pos                   (31UL)
 #define FLASH_CR_LOCK_Msk                   (0x1UL << FLASH_CR_LOCK_Pos)            /*!< 0x80000000 */
 #define FLASH_CR_LOCK                       FLASH_CR_LOCK_Msk

@@ -17,14 +17,29 @@
  * 
  * Flash:
  * pyocd flash --pack ./../.temp/Keil.STM32U0xx_DFP.2.1.0.pack -t stm32u083rctx ./flash_test.elf
+ * 
+ * Connect:
+ * * windows: plink -serial COM3 -sercfg 115200,8,n,1,N
+ * * linux: picocom -b 115200 /dev/ttyACM0
+ *
+ * Example commands:
+ * * peek 0x0803c000 - Reads the first 4 bytes of page 120
+ * * poke 0x0803c000 0x00000012 - Writes 12 to the first 4 bytes of page 120
+ * * erase_page 120 - Erases page 120
+ * * peek_page 120 - Reads data around the start and end of page 120
+ *
  */
 
 #include <stdint.h>
 #include "stm32u083xx.h"
 #include "core_cm0plus.h"
 
+
 #define FLASH_KEY1 0x45670123U
 #define FLASH_KEY2 0xCDEF89ABU
+#define PAGE_SIZE 2048U
+#define CMD_BUFFER_SIZE 64
+
 
 void lazy_delay(volatile uint32_t count) {
     while(count--) {
@@ -100,18 +115,43 @@ void uart_send_str(const char* str) {
     }
 }
 
-void uart_print_hex(uint32_t val) {
+void uart_send_uint32(uint32_t val) {
+    char buffer[12];
+    int i = 0;
+    if (val == 0) {
+        uart_send_char('0');
+        return;
+    }
+    while (val > 0) {
+        buffer[i++] = (val % 10) + '0';
+        val /= 10;
+    }
+    while (--i >= 0) {
+        uart_send_char(buffer[i]);
+    }
+}
+
+void uart_send_hex8(uint8_t val) {
+    uint8_t nibble = (val >> 4) & 0xF;
+    uart_send_char(nibble < 10 ? '0' + nibble : 'A' + (nibble - 10));
+    nibble = val & 0xF;
+    uart_send_char(nibble < 10 ? '0' + nibble : 'A' + (nibble - 10));
+}
+
+void uart_send_hex32(uint32_t val) {
     uart_send_str("0x");
     for (int i = 28; i >= 0; i -= 4) {
         uint8_t nibble = (val >> i) & 0xF;
-        if (nibble < 10) uart_send_char('0' + nibble);
-        else uart_send_char('A' + (nibble - 10));
+        if (nibble < 10) {
+            uart_send_char('0' + nibble);
+        } else {
+            uart_send_char('A' + (nibble - 10));
+        }
     }
 }
 
 int uart_read_char_nonblocking(char *c) {
-    // Check Read Data Register Not Empty (RXNE)
-    if (USART2->ISR & USART_ISR_RXNE_RXFNE) {
+    if (USART2->ISR & USART_ISR_RXNE_RXFNE) { // Check Read Data Register Not Empty (RXNE)
         *c = (char)(USART2->RDR);
         return 1;
     }
@@ -125,16 +165,37 @@ int str_starts_with(const char *str, const char *prefix) {
     return 1;
 }
 
-// Convert Hex String ("40001000") to Uint32
-// TODO: support "0x40001000" and strip out "0x".
-uint32_t parse_hex_str(char *str) {
+uint32_t parse_dec_str(char *str) {
     uint32_t result = 0;
     while (*str) {
         char c = *str++;
-        result <<= 4; // Shift 4 bits for next hex digit
-        if (c >= '0' && c <= '9') result |= (c - '0');
-        else if (c >= 'a' && c <= 'f') result |= (c - 'a' + 10);
-        else if (c >= 'A' && c <= 'F') result |= (c - 'A' + 10);
+        if (c >= '0' && c <= '9') {
+            result = result * 10 + (c - '0');
+        } else {
+            break; 
+        }
+    }
+    return result;
+}
+
+uint32_t parse_hex_str(char *str) {
+    if (str[0] == '0' && (str[1] == 'x' || str[1] == 'X')) {
+        str += 2;
+    }
+
+    uint32_t result = 0;
+    while (*str) {
+        char c = *str++;
+        result = result << 4; // Shift 4 bits for next hex digit
+        if (c >= '0' && c <= '9') {
+            result |= (c - '0');
+        }
+        else if (c >= 'a' && c <= 'f') {
+            result |= (c - 'a' + 10);
+        }
+        else if (c >= 'A' && c <= 'F') {
+            result |= (c - 'A' + 10);
+        }
         else {
             // Stop parsing on non-hex char (like space or null)
             result >>= 4; // Revert the shift
@@ -159,7 +220,9 @@ void flash_lock(void) {
 // Programs a Double-Word (64-bit).
 // We set the target 'addr' to 'data', and the neighbor (addr+4) to 0x00000000
 void flash_program(uint32_t addr, uint32_t data) {
-    while (FLASH->SR & FLASH_SR_BSY1);
+    while (FLASH->SR & FLASH_SR_BSY1) {
+        // do nothing
+    }
     flash_unlock();
     FLASH->CR |= FLASH_CR_PG;
 
@@ -168,7 +231,9 @@ void flash_program(uint32_t addr, uint32_t data) {
     *(volatile uint32_t*)addr = data;
     __asm("dmb"); // Data Memory Barrier to ensure ordering
     *(volatile uint32_t*)(addr + 4) = 0x00000000; 
-    while (FLASH->SR & FLASH_SR_BSY1);
+    while (FLASH->SR & FLASH_SR_BSY1) {
+        // do nothing
+    }
 
     if (FLASH->SR & FLASH_SR_PROGERR) {
         uart_send_str(" [Error: PROGERR] ");
@@ -178,75 +243,37 @@ void flash_program(uint32_t addr, uint32_t data) {
     flash_lock();
 }
 
-// Automated test: Peek -> Check Empty -> Poke -> Verify
-void cmd_flash_test(char *args) {
-    uint32_t addr;
-    
-    if (args[0] == '\0') {
-        // End of 256KB flash (0x08040000) minus 8 bytes
-        addr = 0x0803FFF8; 
-        uart_send_str("Using default addr: ");
-    } else {
-        addr = parse_hex_str(args);
-        uart_send_str("Target addr: ");
-    }
-    
-    // Force 8-byte alignment (required for double-word programming)
-    addr &= ~0x7; 
-    
-    uart_print_hex(addr);
-    uart_send_str("\r\n");
+void flash_erase_page(uint32_t page_num) {
+    while (FLASH->SR & FLASH_SR_BSY1);
+    flash_unlock();
+    FLASH->CR |= FLASH_CR_PER;
+    FLASH->CR &= ~FLASH_CR_PNB_Msk; 
+    FLASH->CR |= (page_num << FLASH_CR_PNB_Pos);
+    FLASH->CR |= FLASH_CR_STRT; // Start Erase (STRT)
+    while (FLASH->SR & FLASH_SR_BSY1);
 
-    volatile uint32_t *ptr = (volatile uint32_t*)addr;
-
-    // Peek (Pre-check)
-    uart_send_str("1. Peek (Pre):  ");
-    uint32_t val_low = ptr[0];
-    uint32_t val_high = ptr[1];
-    
-    uart_print_hex(val_low);
-    uart_send_str(" ");
-    uart_print_hex(val_high);
-
-    if (val_low != 0xFFFFFFFF || val_high != 0xFFFFFFFF) {
-        uart_send_str("\r\n   [WARN] Target not empty (FFFFFFFF). Write might fail or mix bits.\r\n");
-    } else {
-        uart_send_str(" (Empty/OK)\r\n");
+    if (FLASH->SR & (FLASH_SR_PROGERR | FLASH_SR_WRPERR | FLASH_SR_PGAERR)) {
+        uart_send_str(" [Error: Erase Failed] ");
+        FLASH->SR |= (FLASH_SR_PROGERR | FLASH_SR_WRPERR | FLASH_SR_PGAERR);
     }
 
-    // Poke
-    uint32_t pattern = 0xCAFEBABE;
-    uart_send_str("2. Poking:      ");
-    uart_print_hex(pattern);
-    uart_send_str(" ... ");
-    
-    // This writes 'pattern' to addr, and 0x00000000 to addr+4
-    flash_program(addr, pattern); 
-    uart_send_str("Done.\r\n");
-
-    // Peek (Verify)
-    uart_send_str("3. Peek (Post): ");
-    val_low = ptr[0];
-    val_high = ptr[1];
-
-    uart_print_hex(val_low);
-    uart_send_str(" ");
-    uart_print_hex(val_high);
-
-    if (val_low == pattern && val_high == 0x00000000) {
-        uart_send_str(" -> [PASS]\r\n");
-    } else {
-        uart_send_str(" -> [FAIL]\r\n");
-    }
+    FLASH->CR &= ~FLASH_CR_PER;
+    flash_lock();
 }
 
-#define CMD_BUFFER_SIZE 64
+void flash_erase_page_address(uint32_t address) {
+    uint32_t page_num = (address - FLASH_BASE) / PAGE_SIZE;
+    flash_erase_page(page_num);
+}
 
 void print_help() {
     uart_send_str("Available Commands:\r\n");
     uart_send_str("  help           - Show this list\r\n");
     uart_send_str("  map            - Show memory map\r\n");
-    uart_send_str("  peek <addr>    - Read memory (hex addr)\r\n");
+    uart_send_str("  peek <addr>    - Read memory (hex address)\r\n");
+    uart_send_str("  peek_page <page_num> - Reads memory at the start and end of a page\r\n");
+    uart_send_str("  poke <addr> <val> - Read memory (hex address)\r\n");
+    uart_send_str("  erase <page_num> - Erases a page (0 - 127)\r\n");
 }
 
 void print_memory_map() {
@@ -256,7 +283,7 @@ void print_memory_map() {
     uart_send_str("0x1FFF 6C00 - 0x1FFF 6FFF (1 Kbyte): Engineering bytes\r\n");
     uart_send_str("0x1FFF 6800 - 0x1FFF 6BFF (1 Kbyte): OTP\r\n");
     uart_send_str("0x1FFF 0000 - 0x1FFF 67FF (26 Kbytes): System Memory\r\n");
-    uart_send_str("0x0800 0000 - 0x0803 FFFF (256 Kbytes): Main flash\r\n");
+    uart_send_str("0x0800 0000 - 0x0803 FFFF (256 Kbytes): Main flash (2Kb pages)\r\n");
     uart_send_str("0x0000 0000 - 0x0003 FFFF (256 Kbytes): Aliased boot memory\r\n");
 }
 
@@ -275,58 +302,129 @@ void print_peripheral_memory_map() {
 
 char *str_find_char(char *str, char c) {
     while (*str) {
-        if (*str == c) return str;
-        str++;
+        if (*str == c) {
+            return str;
+        }
+        str += 1;
     }
     return 0; // NULL
 }
 
-void process_command(char *cmd) {
-    uart_send_str("process_command: ");
-    uart_send_str(cmd);
-    uart_send_str("\n");
-    if (str_starts_with(cmd, "help")) {
+void peek_command(char* command) {
+    char *arg = command + 5; // Skip "peek "
+    uint32_t address = parse_hex_str(arg);
+    uint32_t value = *(volatile uint32_t*)address;
+    uart_send_str("peek [");
+    uart_send_hex32(address);
+    uart_send_str("] = ");
+    uart_send_hex32(value);
+    uart_send_str("\r\n");
+}
+
+void peek_page_command(char* command) {
+    char *arg = command + 10; // Skip "peek_page "
+    uint32_t page_num = parse_dec_str(arg);
+    if (page_num > 127) {
+        uart_send_str("error: page_num must be 0 - 127\r\n");
+        return;
+    }
+    uint32_t start_address = 0x08000000 + (page_num * 2048);
+    uint32_t end_address = start_address + 2048 - 16;
+    uart_send_str("peek_page: ");
+    uart_send_uint32(page_num);
+    uart_send_str(" (address: ");
+    uart_send_hex32(start_address);
+    uart_send_str(")\r\n");
+    
+    volatile uint8_t *ptr = (volatile uint8_t*)start_address;
+    for(int i=0; i < 16; i++) {
+        uart_send_hex8(ptr[i]);
+        uart_send_char(' ');
+    }
+    uart_send_str("\r\n(...)\r\n");
+    ptr = (volatile uint8_t*)end_address;
+    for(int i=0; i < 16; i++) {
+        uart_send_hex8(ptr[i]);
+        uart_send_char(' ');
+    }
+    uart_send_str("\r\n");
+}
+
+void poke_command(char* command) {
+    char *addr_str = command + 5;  // Skip "poke "
+    char *space_ptr = str_find_char(addr_str, ' ');
+    if (space_ptr) {
+        uint32_t address = parse_hex_str(addr_str);
+        uint32_t value  = parse_hex_str(space_ptr + 1); // Value starts 1 char after the space
+        uart_send_str("poke: ");
+        uart_send_hex32(address);
+        uart_send_str(", ");
+        uart_send_hex32(value);
+        uart_send_str("...");
+        flash_program(address, value);
+        uart_send_str("Done.\r\n");
+    } else {
+        uart_send_str("Error: Format is 'poke <addr> <val>'\r\n");
+    }
+}
+
+void erase_command(char* command) {
+    char *arg = command + 6; // Skip "erase "
+    uint32_t page_num = parse_dec_str(arg);
+    if (page_num > 127) {
+        uart_send_str("error: page_num must be 0 - 127\r\n");
+        return;
+    }
+    uint32_t address = FLASH_BASE + (page_num * 2048);
+    uart_send_str("erase: ");
+    uart_send_uint32(page_num);
+    uart_send_str(" (address: ");
+    uart_send_hex32(address);
+    uart_send_str(")\r\n");
+    flash_erase_page(page_num);
+    uart_send_str("Done.\r\n");
+}
+
+void process_command(char *command) {
+    if (str_starts_with(command, "help")) {
         print_help();
-    } if (str_starts_with(cmd, "map")) {
+    } else if (str_starts_with(command, "map")) {
         print_memory_map();
         print_peripheral_memory_map();
-    } else if (str_starts_with(cmd, "peek ")) {
-        char *addr_str = cmd + 5; // Skip "peek "
-        uint32_t addr = parse_hex_str(addr_str);
-        // TODO: address sanity checks
-        // WARNING: Reading invalid memory will cause a HardFault!
-        uint32_t value = *(volatile uint32_t*)addr;
-        uart_send_str("Read [");
-        uart_print_hex(addr);
-        uart_send_str("] = ");
-        uart_print_hex(value);
-        uart_send_str("\r\n");
-    } else if (str_starts_with(cmd, "poke ")) {
-        char *addr_str = cmd + 5;  // Skip "poke "
-        char *space_ptr = str_find_char(addr_str, ' ');
-        if (space_ptr) {
-            uint32_t addr = parse_hex_str(addr_str);
-            // Value starts 1 char after the space
-            uint32_t val  = parse_hex_str(space_ptr + 1);
-
-            uart_send_str("Writing [");
-            uart_print_hex(addr);
-            uart_send_str("] <= ");
-            uart_print_hex(val);
-            uart_send_str("... ");
-            
-            flash_program(addr, val);
-            
-            uart_send_str("Done.\r\n");
-        } else {
-            uart_send_str("Error: Format is 'poke <addr> <val>'\r\n");
-        }
-    } else if (str_starts_with(cmd, "flash_test")) {
-        char *arg = cmd + 10;
-        while(*arg == ' ') arg++;
-        cmd_flash_test(arg);
-    } else if (cmd[0] != 0) {
+    } else if (str_starts_with(command, "peek ")) {
+        peek_command(command);
+    } else if (str_starts_with(command, "peek_page ")) {
+        peek_page_command(command);
+    } else if (str_starts_with(command, "poke ")) {
+        poke_command(command);
+    } else if (str_starts_with(command, "erase ")) {
+        erase_command(command);
+    } else {
         uart_send_str("Unknown command.\r\n");
+    }
+}
+
+void process_uart_byte(
+    char rx_byte, 
+    char* cmd_buffer, 
+    int cmd_buffer_size, 
+    int* cmd_index
+) {
+    if (rx_byte == '\r') { // newline
+        uart_send_str("\r\n");
+        cmd_buffer[*cmd_index] = 0;
+        process_command(cmd_buffer);
+        *cmd_index = 0;
+    } else if (rx_byte == 0x08 || rx_byte == 0x7F) { // backspace
+        if (*cmd_index > 0) {
+            *cmd_index -= 1;
+            uart_send_str("\b \b");
+        }
+    } else {
+        if (*cmd_index < CMD_BUFFER_SIZE - 1) { // normal characters
+            cmd_buffer[(*cmd_index)++] = rx_byte;
+            uart_send_char(rx_byte);
+        }
     }
 }
 
@@ -348,30 +446,13 @@ int main(void) {
     uint32_t frame_tick = 0;
     uint32_t led_blink_tick = 0;
     while (1) {
-        // Blink the LED every 1 second.
         if (led_blink_tick >= 1000) {
             led4_toggle();
             led_blink_tick = 0;
         }
 
-        // Check for uart data every 1ms
         if (uart_read_char_nonblocking(&rx_byte)) {
-            if (rx_byte == '\r') {
-                uart_send_str("\r\n");
-                cmd_buffer[cmd_index] = 0;
-                process_command(cmd_buffer);
-                cmd_index = 0;
-            } else if (rx_byte == 0x08 || rx_byte == 0x7F) { // backspace
-                if (cmd_index > 0) {
-                    cmd_index--;
-                    uart_send_str("\b \b");
-                }
-            } else {
-                if (cmd_index < CMD_BUFFER_SIZE - 1) {
-                    cmd_buffer[cmd_index++] = rx_byte;
-                    uart_send_char(rx_byte);
-                }
-            }
+            process_uart_byte(rx_byte, cmd_buffer, sizeof(cmd_buffer), &cmd_index);
         }
 
         systick_delay_ms(1);

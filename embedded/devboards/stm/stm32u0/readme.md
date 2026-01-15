@@ -4,8 +4,13 @@ Chip: STM32U083RC (T6)
 Vendor Firmeware Package: https://github.com/STMicroelectronics/STM32CubeU0
 Specification:
 Datasheet: https://www.st.com/resource/en/datasheet/stm32u083rc.pdf
-Reference Manual: https://www.st.com/resource/en/reference_manual/rm0503-stm32u0-series-advanced-armbased-32bit-mcus-stmicroelectronics.pdf
+Reference Manual: https://www.st.com/en/microcontrollers-microprocessors/stm32u0-series/documentation.html
 CMSIS files: https://github.com/STMicroelectronics/STM32Cube_MCU_Overall_Offer
+
+## NUCLEO-U083RC
+Reference Manual: https://www.st.com/resource/en/reference_manual/rm0503-stm32u0-series-advanced-armbased-32bit-mcus-stmicroelectronics.pdf
+
+
 
 ## Lectures
 * Digikey getting started: https://www.youtube.com/watch?v=hyZS2p1tW-g

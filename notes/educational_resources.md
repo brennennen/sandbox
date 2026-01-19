@@ -14,6 +14,8 @@
   * https://www.youtube.com/@Gdconf/videos
 * Bjarne Stroustrup's website - Great insight into how the original creator of C++ opinions on various topics. The FAQ section is particularly interesting.
   * https://www.stroustrup.com/bs_faq2.html
+* Casey Muratori's Computer, Enhance! - Low level system's design.
+  * https://www.computerenhance.com
 
 ## Other Resources
 * Grug no like complexity
@@ -44,7 +46,5 @@
   * https://github.com/ThusSpokeNomad/GameNetworkingResources
 * LiveOverflow's HexTree.io - Security.
   * https://www.hextree.io/
-* Casey Muratori's Computer, Enhance! - Low level system's design.
-  * https://www.computerenhance.com
 * Game Math
   * https://gamemath.com/book/intro.html

@@ -6,6 +6,9 @@
  */
 #include <stdint.h>
 
+#ifndef STM32U083xx_H
+#define STM32U083xx_H
+
 #define     __O     volatile             /*!< Defines 'write only' permissions */
 #define     __IO    volatile             /*!< Defines 'read / write' permissions */
 
@@ -199,3 +202,5 @@ typedef struct
 // USART Status Bits (ISR)
 #define USART_ISR_RXNE_RXFNE    (1UL << 5)  // Read data register not empty
 #define USART_ISR_TXE_TXFNF     (1UL << 7)  // Transmit data register empty
+
+#endif // STM32U083xx_H

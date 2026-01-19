@@ -1,6 +1,9 @@
 /**
  * @file main.c
- * @brief Simple STM32U0 UART Polling test.
+ * @brief Simple STM32U0 UART Polling Test
+ * Runs off the HSI (High Speed Internal) at 16MHz. Executes directly out of 
+ * flash (.data and .bss are copied to RAM, but .text is not). Other demos 
+ * will include a faster clock and executing out of RAM.
  *
  * This program configures the system clock to 16MHz and initializes USART2
  * in a simple polling mode (no interrupts, no DMA).
@@ -107,9 +110,11 @@ void usart2_init() {
     RCC->APBENR1 |= RCC_APBENR1_USART2EN; // Enable USART2 (bus APB1)
     RCC->IOPENR |= RCC_IOPENR_GPIOAEN; // Enable GPIO Port A
 
-    // Configure GPIO (PA2 and PA3) Peripheral
-    GPIOA->MODER &= ~(GPIO_MODER_MODE2 | GPIO_MODER_MODE3);
-    GPIOA->MODER |= (GPIO_MODER_MODE2_1 | GPIO_MODER_MODE3_1);
+    // Configure GPIO Ports/Pins (PA2 and PA3)
+    GPIOA->MODER &= ~GPIO_MODER_MODE2; // Clear pin PA2 mode
+    GPIOA->MODER &= ~GPIO_MODER_MODE3; // Clear pin PA3 mode
+    GPIOA->MODER |= GPIO_MODER_MODE2_1; // Set pin PA2 to Alternate Function mode
+    GPIOA->MODER |= GPIO_MODER_MODE3_1; // Set pin PA3 to Alternate Function mode
     GPIOA->AFR[0] &= ~GPIO_AFRL_AFSEL2; // Clear PA2 Alternate Function settings
     GPIOA->AFR[0] &= ~GPIO_AFRL_AFSEL3; // Clear PA3 Alternate Functon settings
     GPIOA->AFR[0] |= (7UL << GPIO_AFRL_AFSEL2_Pos); // Configure PA2 to AF7 (Alternate Function 7, maps to USART_TX)
@@ -117,9 +122,9 @@ void usart2_init() {
 
     // Configure USART2 Peripheral
     USART2->BRR = 139; // Clock = 16MHz, Baud = 115200, BRR = 16,000,000 / 115,200 = 138.88 -> 139
-    USART2->CR1 = (USART_CR1_RE); // Receiver Enable
-    USART2->CR1 |= (USART_CR1_TE); // Transmitter Enable
-    USART2->CR1 |= (USART_CR1_UE); // USART Enable
+    USART2->CR1 = USART_CR1_RE; // Receiver Enable
+    USART2->CR1 |= USART_CR1_TE; // Transmitter Enable
+    USART2->CR1 |= USART_CR1_UE; // USART Enable
 }
 
 /**
@@ -131,7 +136,7 @@ void usart2_transmit_char(char c) {
     while (!(USART2->ISR & USART_ISR_TXE_TXFNF)) { // TXE = Transmission data register is Empty
         // do nothing
     }
-    USART2->TDR = c;
+    USART2->TDR = c; // USART Transmit Data register
 }
 
 /**
@@ -153,7 +158,7 @@ void usart2_transmit_str(const char* str) {
  */
 int usart2_receive_char(char *c) {
     if (USART2->ISR & USART_ISR_RXNE_RXFNE) { // Check Read Data Register Not Empty (RXNE)
-        *c = (char)(USART2->RDR);
+        *c = (char)(USART2->RDR); // USART Receive Data register
         return 1;
     }
     return 0;

@@ -1,5 +1,26 @@
 /**
- * The structs/defines follow ARM CMSIS.
+ * @file main.c
+ * @brief Simple Blinky LED Test
+ * Blinks an LED at a ~1Hz interval. Runs off the default MSIS (Multi-Speed
+ * Internal Oscillator) at 4MHz. Executes directly out of flash (.data and
+ * .bss are copied to RAM, but .text is not). Other demos will include a faster 
+ * clock and executing out of RAM.
+ * 
+ * The structs/defines are extracted from vendor provided ARM CMSIS file (apache
+ * v2.0 license).
+ *
+ * Hardware Setup:
+ * - MCU: STM32U083
+ * - Board: Nucleo-U083RC
+ * - Peripherals: 
+ *   - LED4 (PA5)
+ *
+ * Build:
+ * arm-none-eabi-gcc -mcpu=cortex-m0plus -mthumb -g -O0 -T linker_script.ld -nostdlib -o blink.elf ./source/main.c ./source/startup.s
+ * 
+ * Flash:
+ * pyocd flash --pack ./../.temp/Keil.STM32U0xx_DFP.2.1.0.pack -t stm32u083rctx ./blink.elf
+ *
  */
 #include <stdint.h>
 
@@ -99,19 +120,19 @@ void delay(volatile uint32_t count) {
 }
 
 int main(void) {
-    // Initialize the GPIO A controller
-    RCC->IOPENR |= RCC_IOPENR_GPIOAEN;
+    // Configure RCC (Reset and Clock Controller)
+    RCC->IOPENR |= RCC_IOPENR_GPIOAEN; // Enable GPIO Port A
 
-    // Initialize the LED (GPIO A - pin 5)
-    GPIOA->MODER &= ~GPIO_MODER_MODE5;
-    GPIOA->MODER |= GPIO_MODER_MODE5_0;
+    // Configure GPIO Port A
+    GPIOA->MODER &= ~GPIO_MODER_MODE5; // Clear out pin 5 configurations
+    GPIOA->MODER |= GPIO_MODER_MODE5_0; // Set pin 5 to output
 
     // Turn on the LED
-    GPIOA->ODR |= GPIO_ODR_OD5;
+    GPIOA->ODR |= GPIO_ODR_OD5; // Set pin 5 to high
 
     // Toggle the LED every ~1(ish) seconds
     while (1) {
-        GPIOA->ODR ^= GPIO_ODR_OD5;
+        GPIOA->ODR ^= GPIO_ODR_OD5; // Toggle pin 5
         delay(500000);
     }
 }

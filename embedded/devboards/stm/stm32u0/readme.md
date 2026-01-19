@@ -10,10 +10,18 @@ CMSIS files: https://github.com/STMicroelectronics/STM32Cube_MCU_Overall_Offer
 ## NUCLEO-U083RC
 Reference Manual: https://www.st.com/resource/en/reference_manual/rm0503-stm32u0-series-advanced-armbased-32bit-mcus-stmicroelectronics.pdf
 
-
-
 ## Lectures
 * Digikey getting started: https://www.youtube.com/watch?v=hyZS2p1tW-g
+
+## Projects
+I'm using this STM32U0 with the NUCLEO-U083RC as a microcontroller refresher and to familiarize myself with ARM M0+, ST chips and ARM CMSIS.
+* u0_blinky: Blink an LED at ~1Hz (4MHz clock).
+* u0_flash: Command REPL uart interface to peek/poke/erase flash (16MHz clock).
+* u0_uart_poll: Simple character by character uart tty echo (16MHz clock).
+* u0_uart_it: Multi-byte message based uart data communication using interrupts (56 MHz clock).
+* todo:
+  * u0_uart_dma: Multi-byte message based uart data communication using dma (and interrupts of course) (56 MHz clock).
+  * i2c? spi? lcd?
 
 ## Specs
 * Arm Cortex M0
@@ -38,7 +46,7 @@ Reference Manual: https://www.st.com/resource/en/reference_manual/rm0503-stm32u0
 * 4 I2C interfaces
 * 3 SPI interfaces
 * 4 USART interfaces
-* 3 low-poer uart interfaces
+* 3 low-power uart interfaces
 * crystal-less usb full speed device
 * aes hardware accelerator
 

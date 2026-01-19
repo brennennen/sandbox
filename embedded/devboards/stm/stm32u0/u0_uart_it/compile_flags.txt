@@ -1,0 +1,5 @@
+-mcpu=cortex-m0plus
+-DSTM32U083xx
+-DDEBUG
+-I./../.build/STM32CubeU0/Drivers/CMSIS/Device/ST/STM32U0xx/Include 
+-I./../.build/STM32CubeU0/Drivers/CMSIS/Core/Include 

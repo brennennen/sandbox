@@ -9,9 +9,10 @@ def install_stm32_cube_u0_firmware_package():
     subprocess.run("git clone --depth 1 --recursive https://github.com/STMicroelectronics/STM32CubeU0.git ./.build/STM32CubeU0".split(), check=True)
 
 def install_keil_stm32u0_debug_pack():
-    # 
+    #
     # TODO: download https://github.com/Open-CMSIS-Pack/STM32U0xx_DFP/releases/download/v2.1.0/Keil.STM32U0xx_DFP.2.1.0.pack
     # mkdir ./../.temp && wget -P ./../.temp/ https://github.com/Open-CMSIS-Pack/STM32U0xx_DFP/releases/download/v2.1.0/Keil.STM32U0xx_DFP.2.1.0.pack
+    # TODO: also unzip it so we can access the svd file ("${workspaceFolder}/embedded/devboards/stm/stm32u0/.temp/Keil.STM32U0xx_DFP.2.1.0/CMSIS/SVD/STM32U083.svd")
     pass
 
 def main():

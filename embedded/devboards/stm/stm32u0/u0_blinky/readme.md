@@ -27,7 +27,7 @@ or with slower freq:
 `pyocd gdbserver --pack ../.temp/Keil.STM32U0xx_DFP.2.1.0.pack -t stm32u083rctx --frequency 500000`
 `pyocd gdbserver --pack ../.temp/Keil.STM32U0xx_DFP.2.1.0.pack -t stm32u083rctx --frequency 100000 --connect under-reset`
 terminal 2:
-`arm-none-eabi-gdb.exe ./blink.elf`
+`arm-none-eabi-gdb.exe -x stm32u0_init.gdb ./blink.elf`
 `target remote localhost:3333`
 
 ```sh
@@ -37,6 +37,28 @@ target remote localhost:3333
 # info registers pc
 # si
 # ...
+```
+* Visual debugger (vscode)
+  * Install plugin: "Cortex-Debug"
+  * Start gdb server: `pyocd gdbserver --pack ../.temp/Keil.STM32U0xx_DFP.2.1.0.pack -t stm32u083rctx`
+```json
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Attach to Local PyOCD",
+            "cwd": "${workspaceFolder}",
+            "executable": "./u0_uart_dma.elf",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "external",
+            "gdbTarget": "localhost:3333",
+            "runToEntryPoint": "main",
+            "showDevDebugOutput": "raw",
+            "svdFile": "${workspaceFolder}/embedded/devboards/stm/stm32u0/.temp/Keil.STM32U0xx_DFP.2.1.0/CMSIS/SVD/STM32U083.svd"
+        }
+    ]
+}
 ```
 
 ## Misc Diagnostics/Tools
@@ -61,7 +83,7 @@ target remote localhost:3333
     * `STM32_Programmer_CLI.exe -c port=swd -w32 <address> <value>`
     * ex: turn on the LED when it's off:
       * `STM32_Programmer_CLI.exe -c port=swd -w32 0x50000014 0x00000020`
-  * Option Bytes Dump 
+  * Option Bytes Dump
     * `STM32_Programmer_CLI.exe -c port=swd mode=UR -ob displ`
   * Option Bytes Write
     * `STM32_Programmer_CLI.exe -c port=swd -ob RDP=0xAA`

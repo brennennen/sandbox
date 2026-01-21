@@ -4,11 +4,61 @@ Chip: STM32U083RC (T6)
 Vendor Firmeware Package: https://github.com/STMicroelectronics/STM32CubeU0
 Specification:
 Datasheet: https://www.st.com/resource/en/datasheet/stm32u083rc.pdf
-Reference Manual: https://www.st.com/en/microcontrollers-microprocessors/stm32u0-series/documentation.html
+Reference Manual: https://www.st.com/resource/en/reference_manual/rm0503-stm32u0-series-advanced-armbased-32bit-mcus-stmicroelectronics.pdf
 CMSIS files: https://github.com/STMicroelectronics/STM32Cube_MCU_Overall_Offer
 
 ## NUCLEO-U083RC
 Reference Manual: https://www.st.com/resource/en/reference_manual/rm0503-stm32u0-series-advanced-armbased-32bit-mcus-stmicroelectronics.pdf
+
+# Tools
+## Vendor Tools
+* gdb server:
+  * STM32CubeCLT - https://www.st.com/en/development-tools/stm32cubeclt.html#get-software
+  * add "C:\ST\STM32CubeCLT_{VERSION}\STLink-gdb-server\bin" to your path (note: {VERSION})
+  * `ST-LINK_gdbserver -p 61234 -cp C:\ST\STM32CubeCLT_1.20.0\STM32CubeProgrammer\bin -d -t -v -m 1`
+* cli programmer:
+  * flash chip:
+    * asd
+  * dump config registers:
+    * `STM32_Programmer_CLI -c port=SWD -ob displ`
+
+
+## OSS Tools
+
+### Debugger
+* Start gdbserver
+  * `pyocd gdbserver --pack ./../.temp/Keil.STM32U0xx_DFP.2.1.0.pack -t stm32u083rctx --connect=under-reset`
+* Connect to gdbserver (CLI)
+  * `arm-none-eabi-gdb.exe -x stm32u0_init.gdb .\u0_uart_dma.elf`
+  * `target remote localhost:3333`
+  * example gdb commands:
+    * `monitor reset halt`
+    * `info registers pc`
+    * `si`
+    * `x/4xw 0x08000000`
+# ...
+* Connect to gdbserver (GUI)
+```json
+{
+    "name": "STM32U0 Debug",
+    "type": "cortex-debug",
+    "request": "launch",
+    "servertype": "external",
+    "gdbTarget": "localhost:3333",
+    "runToEntryPoint": "main",
+    "cwd": "${workspaceFolder}/embedded/devboards/stm/stm32u0/u0_uart_dma",
+    "executable": "./u0_uart_dma.elf",
+    "showDevDebugOutput": "raw",
+    "svdFile": "${workspaceFolder}/embedded/devboards/stm/stm32u0/.temp/Keil.STM32U0xx_DFP.2.1.0/CMSIS/SVD/STM32U083.svd",
+    "postLaunchCommands": [
+        "set mem inaccessible-by-default off", // Required for reading flash
+        "monitor reset halt",
+        // from stm32cube debug server launch logs
+        "set *(int *)0xE000EDFC = *(int *)0xE000EDFC | 0x400", // Enable Vector Catch
+        "set *(unsigned int *)0x40015804 |= 0x6", // Enable DBGMCU Clocks (Stop/Standby)
+    ]
+},
+```
 
 ## Lectures
 * Digikey getting started: https://www.youtube.com/watch?v=hyZS2p1tW-g

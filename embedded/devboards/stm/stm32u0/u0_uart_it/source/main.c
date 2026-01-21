@@ -35,7 +35,7 @@
  * pyocd flash --pack ./../.temp/Keil.STM32U0xx_DFP.2.1.0.pack -t stm32u083rctx ./u0_uart_it.elf
  *
  * Test:
- * * Connect to USART2 (Virtual COMM or PA2 and PA3 if sodler bridge removed) with a standard tty.
+ * * Connect to USART2 (Virtual COMM or PA2 and PA3 if sodler bridge removed).
  * * Connect to USART3 (PB8, PB9).
  * * Run "test.py" to send messages over either comm port (ex: test.py "the quick brown fox jumped over the lazy dog")
  */
@@ -94,7 +94,6 @@ result_t ring_buffer_get(ring_buffer_t *buffer, uint8_t *data) {
     buffer->tail = (buffer->tail + 1) % UART_BUFFER_SIZE;
     return SUCCESS;
 }
-
 
 /**
  * Signals an unrecoverable software fault.

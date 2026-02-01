@@ -58,4 +58,4 @@ emu_result_t decode_not(
 );
 emu_result_t emu_not(emulator_8086_t* emulator, uint8_t byte1);
 
-#endif // EMU_8086_NOT_H
+#endif  // EMU_8086_NOT_H

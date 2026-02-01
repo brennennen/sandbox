@@ -8,10 +8,10 @@
  *
  */
 typedef enum {
-    RV64I_MEMORY_WIDTH_16 = 1, // half
-    RV64I_MEMORY_WIDTH_32 = 2, // word
-    RV64I_MEMORY_WIDTH_64 = 3, // double
-    RV64I_MEMORY_WIDTH_128 = 4 // quad
+    RV64I_MEMORY_WIDTH_16 = 1,  // half
+    RV64I_MEMORY_WIDTH_32 = 2,  // word
+    RV64I_MEMORY_WIDTH_64 = 3,  // double
+    RV64I_MEMORY_WIDTH_128 = 4  // quad
 } rv64i_memory_width_t;
 
 /**
@@ -22,10 +22,10 @@ typedef enum {
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#single-float-compute
  */
 typedef enum {
-    RV64F_PRECISION_WIDTH_32 = 0, // single
-    RV64F_PRECISION_WIDTH_64 = 1, // word
-    RV64F_PRECISION_WIDTH_16 = 3, // double
-    RV64F_PRECISION_WIDTH_128 = 4 // quad
+    RV64F_PRECISION_WIDTH_32 = 0,  // single
+    RV64F_PRECISION_WIDTH_64 = 1,  // word
+    RV64F_PRECISION_WIDTH_16 = 3,  // double
+    RV64F_PRECISION_WIDTH_128 = 4  // quad
 } rv64f_precision_width_t;
 
 /**
@@ -43,14 +43,15 @@ typedef enum {
 
 /**
  * `fcsr` bit flags.
- * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_floating_point_control_and_status_register
+ * @see
+ * https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_floating_point_control_and_status_register
  */
 typedef enum {
-    RV64F_FCSR_INEXACT = 0, // NX
-    RV64F_FCSR_UNDERFLOW = 1, // UF
-    RV64F_FCSR_OVERFLOW = 2, // OF
-    RV64F_FCSR_DIVIDE_BY_ZERO = 3, // DZ
-    RV64F_FCSR_INVALID_OPERATION = 4 // NV
+    RV64F_FCSR_INEXACT = 0,           // NX
+    RV64F_FCSR_UNDERFLOW = 1,         // UF
+    RV64F_FCSR_OVERFLOW = 2,          // OF
+    RV64F_FCSR_DIVIDE_BY_ZERO = 3,    // DZ
+    RV64F_FCSR_INVALID_OPERATION = 4  // NV
 } rv64f_fcsr_flags_t;
 
-#endif // RV64_COMMON_H
+#endif  // RV64_COMMON_H

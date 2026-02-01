@@ -45,7 +45,8 @@ emu_result_t decode_exchange(
     uint8_t byte1,
     char* out_buffer,
     int* index,
-    size_t out_buffer_size);
+    size_t out_buffer_size
+);
 emu_result_t emu_exchange(emulator_8086_t* emulator, uint8_t byte1);
 
 // MARK: 2. I_EXCHANGE_AX
@@ -54,7 +55,8 @@ emu_result_t decode_exchange_ax(
     uint8_t byte1,
     char* out_buffer,
     int* index,
-    size_t out_buffer_size);
+    size_t out_buffer_size
+);
 emu_result_t emu_exchange_ax(emulator_8086_t* emulator, uint8_t byte1);
 
 #endif  // EMU_XCHG_H

@@ -25,4 +25,4 @@ emu_result_t decode_cmc(
 );
 emu_result_t emu_cmc(emulator_8086_t* emulator, uint8_t byte1);
 
-#endif // EMU_8086_CMC_H
+#endif  // EMU_8086_CMC_H

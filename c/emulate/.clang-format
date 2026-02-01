@@ -1,0 +1,76 @@
+---
+Language: C
+BasedOnStyle: Google
+
+IndentWidth: 4
+ColumnLimit: 100
+PenaltyBreakAssignment: 100
+AllowShortFunctionsOnASingleLine: None
+BreakBeforeBinaryOperators: NonAssignment
+AlignConsecutiveMacros: true
+IncludeBlocks: Preserve
+BinPackParameters: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AlignAfterOpenBracket: BlockIndent
+PenaltyReturnTypeOnItsOwnLine: 1000
+
+
+
+# ---
+# Language: C
+# Standard: Auto
+# BasedOnStyle: Google
+
+# # includes
+# SortIncludes: true
+# IncludeBlocks: Preserve
+
+# # macros
+# IndentPPDirectives: BeforeHash
+
+# # alignment/whitespace
+# IndentWidth: 4
+# TabWidth: 4
+# UseTab: Never
+# ContinuationIndentWidth: 4
+# ColumnLimit: 120
+# AlignOperands: Align
+# AlignTrailingComments: true
+# SpaceBeforeParens: ControlStatements
+# SpaceInEmptyParentheses: false
+# SpacesInCStyleCastParentheses: false
+# InsertNewlineAtEOF: true
+# SeparateDefinitionBlocks: Always
+# AlignConsecutiveMacros: true
+# BitFieldColonSpacing: Both
+# BreakBeforeBinaryOperators: NonAssignment
+# PenaltyBreakAssignment: 100
+
+# # braces
+# BreakBeforeBraces: Attach
+# AllowShortBlocksOnASingleLine: Never
+# AllowShortFunctionsOnASingleLine: None
+# AllowShortIfStatementsOnASingleLine: Never
+# AllowShortLoopsOnASingleLine: false
+
+# # pointers
+# PointerAlignment: Left
+
+# # functions
+# AlignAfterOpenBracket: BlockIndent
+# BinPackParameters: false
+# BinPackArguments: false
+# AllowAllParametersOfDeclarationOnNextLine: false
+# AlwaysBreakAfterReturnType: None
+# PenaltyReturnTypeOnItsOwnLine: 1000
+
+# # enum
+# AllowShortEnumsOnASingleLine: false
+
+# # switch case
+# IndentCaseLabels: true
+# IndentCaseBlocks: false
+# AllowShortCaseLabelsOnASingleLine: true
+
+# # foreach macros (if added)
+# # ForEachMacros: ['LIST_FOREACH', 'TAILQ_FOREACH', 'vec_foreach']

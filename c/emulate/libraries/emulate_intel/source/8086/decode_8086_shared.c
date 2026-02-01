@@ -4,8 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "shared/include/result.h"
 #include "emulate.h"
+#include "shared/include/result.h"
 
 #include "8086/decode_8086_shared.h"
 
@@ -13,8 +13,10 @@
  *
  */
 emu_result_t read_displacement(
-    emulator_8086_t* emulator, mod_t mod,
-    uint8_t rm, uint16_t* displacement,
+    emulator_8086_t* emulator,
+    mod_t mod,
+    uint8_t rm,
+    uint16_t* displacement,
     uint8_t* displacement_byte_size
 ) {
     if (mod == MOD_MEMORY) {
@@ -26,7 +28,7 @@ emu_result_t read_displacement(
             }
         }
     } else if (mod == MOD_MEMORY_8BIT_DISPLACEMENT) {
-        emu_result_t read_displace_result = dcd_read_byte(emulator, (uint8_t*) displacement);
+        emu_result_t read_displace_result = dcd_read_byte(emulator, (uint8_t*)displacement);
         *displacement_byte_size = 1;
         if (read_displace_result != ER_SUCCESS) {
             return read_displace_result;
@@ -76,8 +78,9 @@ emu_result_t emu_decode_common_standard_format(
     *reg = (byte2 & 0b00111000) >> 3;
     *rm = byte2 & 0b00000111;
     uint8_t displacement_byte_size = 0;
-    emu_result_t read_displacement_result = read_displacement(emulator, *mod,
-        *rm, displacement, &displacement_byte_size);
+    emu_result_t read_displacement_result = read_displacement(
+        emulator, *mod, *rm, displacement, &displacement_byte_size
+    );
     *instruction_size += displacement_byte_size;
     if (read_displacement_result != ER_SUCCESS) {
         return read_displacement_result;
@@ -100,7 +103,7 @@ emu_result_t emu_decode_common_immediate_format(
     *instruction_size = 1;
     *wide = byte1 & 0b00000001;
     uint8_t byte2 = 0;
-    emu_result_t read_byte2_result = dcd_read_byte(emulator, (uint8_t*) &byte2);
+    emu_result_t read_byte2_result = dcd_read_byte(emulator, (uint8_t*)&byte2);
     if (read_byte2_result != ER_SUCCESS) {
         return read_byte2_result;
     }
@@ -117,7 +120,7 @@ emu_result_t emu_decode_common_immediate_format(
             *instruction_size += 2;
         }
     } else if (*mod == MOD_MEMORY_8BIT_DISPLACEMENT) {
-        emu_result_t read_displace_result = dcd_read_byte(emulator, (uint8_t*) displacement);
+        emu_result_t read_displace_result = dcd_read_byte(emulator, (uint8_t*)displacement);
         if (read_displace_result != ER_SUCCESS) {
             return read_displace_result;
         }
@@ -128,12 +131,12 @@ emu_result_t emu_decode_common_immediate_format(
             return read_displace_result;
         }
         *instruction_size += 2;
-    } else { // MOD_REGISTER
+    } else {  // MOD_REGISTER
         // Don't have extra bytes for register to register movs. Nothing to do.
     }
 
     if (*wide == WIDE_BYTE) {
-        emu_result_t read_data_result = dcd_read_byte(emulator, (uint8_t*) data);
+        emu_result_t read_data_result = dcd_read_byte(emulator, (uint8_t*)data);
         if (read_data_result != ER_SUCCESS) {
             return read_data_result;
         }
@@ -166,9 +169,9 @@ emu_result_t emu_decode_common_signed_immediate_format(
     *sign = (byte1 & 0b00000010) >> 1;
     *wide = byte1 & 0b00000001;
     uint8_t byte2 = 0;
-    emu_result_t read_byte2_result = dcd_read_byte(emulator, (uint8_t*) &byte2);
+    emu_result_t read_byte2_result = dcd_read_byte(emulator, (uint8_t*)&byte2);
     if (read_byte2_result != ER_SUCCESS) {
-        return(read_byte2_result);
+        return (read_byte2_result);
     }
     *instruction_size += 1;
 
@@ -178,12 +181,12 @@ emu_result_t emu_decode_common_signed_immediate_format(
         if (*rm == 0b00000110) {
             emu_result_t read_displace_result = dcd_read_word(emulator, displacement);
             if (read_displace_result != ER_SUCCESS) {
-                return(read_displace_result);
+                return (read_displace_result);
             }
             *instruction_size += 2;
         }
     } else if (*mod == MOD_MEMORY_8BIT_DISPLACEMENT) {
-        emu_result_t read_displace_result = dcd_read_byte(emulator, (uint8_t*) displacement);
+        emu_result_t read_displace_result = dcd_read_byte(emulator, (uint8_t*)displacement);
         if (read_displace_result != ER_SUCCESS) {
             return read_displace_result;
         }
@@ -191,30 +194,30 @@ emu_result_t emu_decode_common_signed_immediate_format(
     } else if (*mod == MOD_MEMORY_16BIT_DISPLACEMENT) {
         emu_result_t read_displace_result = dcd_read_word(emulator, displacement);
         if (read_displace_result != ER_SUCCESS) {
-            return(read_displace_result);
+            return (read_displace_result);
         }
         *instruction_size += 2;
-    } else { // MOD_REGISTER
+    } else {  // MOD_REGISTER
         // Don't have extra bytes for register to register movs. Nothing to do.
     }
 
     if (*wide == WIDE_BYTE) {
-        emu_result_t read_immediate_result = dcd_read_byte(emulator, (uint8_t*) immediate);
+        emu_result_t read_immediate_result = dcd_read_byte(emulator, (uint8_t*)immediate);
         if (read_immediate_result != ER_SUCCESS) {
-            return(read_immediate_result);
+            return (read_immediate_result);
         }
         *instruction_size += 1;
     } else {
         if (*sign == 0) {
             emu_result_t read_immediate_result = dcd_read_word(emulator, immediate);
             if (read_immediate_result != ER_SUCCESS) {
-                return(read_immediate_result);
+                return (read_immediate_result);
             }
             *instruction_size += 2;
         } else {
-            emu_result_t read_immediate_result = dcd_read_byte(emulator, (uint8_t*) immediate);
+            emu_result_t read_immediate_result = dcd_read_byte(emulator, (uint8_t*)immediate);
             if (read_immediate_result != ER_SUCCESS) {
-                return(read_immediate_result);
+                return (read_immediate_result);
             }
             *instruction_size += 1;
         }
@@ -224,7 +227,7 @@ emu_result_t emu_decode_common_signed_immediate_format(
         *immediate = emu_sign_extend_m8_to_m16(*immediate);
     }
 
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 void write_uint8(char* buffer, int* index, size_t buffer_size, uint8_t num) {
@@ -240,16 +243,16 @@ void write_uint16(char* buffer, int* index, size_t buffer_size, uint16_t num) {
 char* get_wide_string(wide_t wide) {
     if (wide == WIDE_BYTE) {
         return "byte";
-    } else { // WIDE_WORD
+    } else {  // WIDE_WORD
         return "word";
     }
 }
 
 char* mod_memory_effective_address_lookup(uint8_t rm) {
-    switch(rm) {
-        case RM_BX_SI: // 0
+    switch (rm) {
+        case RM_BX_SI:  // 0
             return "[bp + si]";
-        case RM_BX_DI: // 1
+        case RM_BX_DI:  // 1
             return "[bx + di]";
         case RM_BP_SI:
             return "[bp + si]";
@@ -269,7 +272,7 @@ char* mod_memory_effective_address_lookup(uint8_t rm) {
 }
 
 char* map_register_field_encoding(reg_wide_t reg) {
-    switch(reg) {
+    switch (reg) {
         case REGW_AX:
             return "ax";
         case REGW_CX:
@@ -305,12 +308,17 @@ char* map_register_field_encoding(reg_wide_t reg) {
  * @param rm Register/Memory field encoding being processed. See table 4-10.
  * @param displacement Offset to add to the address when mod is 0b01 or 0b10.
  */
-void build_effective_address(char* buffer, size_t buffer_size,
-                             wide_t wide, mod_t mod, uint8_t rm,
-                             uint16_t displacement) {
-    switch(mod) {
+void build_effective_address(
+    char* buffer,
+    size_t buffer_size,
+    wide_t wide,
+    mod_t mod,
+    uint8_t rm,
+    uint16_t displacement
+) {
+    switch (mod) {
         case MOD_MEMORY:
-            switch(rm) {
+            switch (rm) {
                 case RM_BX_SI:
                     memcpy(buffer, "[bx + si]", sizeof("[bx + si]"));
                     break;
@@ -345,7 +353,7 @@ void build_effective_address(char* buffer, size_t buffer_size,
         // with a "int to string" function tuned for each 8 bits and a different one tuned and
         // called for 16 bits and build up the string instead of using sprintf.
         case MOD_MEMORY_16BIT_DISPLACEMENT:
-            switch(rm) {
+            switch (rm) {
                 case RM_BX_SI:
                     snprintf(buffer, buffer_size, "[bx + si + %d]", displacement);
                     break;
@@ -383,13 +391,13 @@ void build_effective_address(char* buffer, size_t buffer_size,
             }
             break;
         case MOD_REGISTER:
-            switch(wide) {
+            switch (wide) {
                 case WIDE_BYTE:
-                    switch(rm) {
-                        case RM_BX_SI: // 0
+                    switch (rm) {
+                        case RM_BX_SI:  // 0
                             snprintf(buffer, buffer_size, "al");
                             break;
-                        case RM_BX_DI: // 1
+                        case RM_BX_DI:  // 1
                             snprintf(buffer, buffer_size, "cl");
                             break;
                         case RM_BP_SI:
@@ -416,11 +424,11 @@ void build_effective_address(char* buffer, size_t buffer_size,
                     }
                     break;
                 case WIDE_WORD:
-                    switch(rm) {
-                        case RM_BX_SI: // 0
+                    switch (rm) {
+                        case RM_BX_SI:  // 0
                             memcpy(buffer, "ax", sizeof("ax"));
                             break;
-                        case RM_BX_DI: // 1
+                        case RM_BX_DI:  // 1
                             memcpy(buffer, "cx", sizeof("cx"));
                             break;
                         case RM_BP_SI:
@@ -458,118 +466,123 @@ void build_effective_address(char* buffer, size_t buffer_size,
 }
 
 uint8_t* emu_get_byte_register(registers_8086_t* registers, reg_t reg) {
-    switch(reg) {
-        case(REG_AL_AX): {
-            return (uint8_t*) &registers->ax;
+    switch (reg) {
+        case (REG_AL_AX): {
+            return (uint8_t*)&registers->ax;
         }
-        case(REG_CL_CX): {
-            return (uint8_t*) &registers->cx;
+        case (REG_CL_CX): {
+            return (uint8_t*)&registers->cx;
         }
-        case(REG_DL_DX): {
-            return (uint8_t*) &registers->dx;
+        case (REG_DL_DX): {
+            return (uint8_t*)&registers->dx;
         }
-        case(REG_BL_BX): {
-            return (uint8_t*) &registers->bx;
+        case (REG_BL_BX): {
+            return (uint8_t*)&registers->bx;
         }
-        case(REG_AH_SP): {
-            return (uint8_t*) &registers->ax + 1;
+        case (REG_AH_SP): {
+            return (uint8_t*)&registers->ax + 1;
         }
-        case(REG_CH_BP): {
-            return (uint8_t*) &registers->cx + 1;
+        case (REG_CH_BP): {
+            return (uint8_t*)&registers->cx + 1;
         }
-        case(REG_DH_SI): {
-            return (uint8_t*) &registers->di + 1;
+        case (REG_DH_SI): {
+            return (uint8_t*)&registers->di + 1;
         }
-        case(REG_BH_DI): {
-            return (uint8_t*) &registers->bx + 1;
+        case (REG_BH_DI): {
+            return (uint8_t*)&registers->bx + 1;
         }
     }
 }
 
 uint16_t* emu_get_word_register(registers_8086_t* registers, reg_t reg) {
-    switch(reg) {
-        case(REG_AL_AX): {
+    switch (reg) {
+        case (REG_AL_AX): {
             return &registers->ax;
         }
-        case(REG_CL_CX): {
+        case (REG_CL_CX): {
             return &registers->cx;
         }
-        case(REG_DL_DX): {
+        case (REG_DL_DX): {
             return &registers->dx;
         }
-        case(REG_BL_BX): {
+        case (REG_BL_BX): {
             return &registers->bx;
         }
-        case(REG_AH_SP): {
+        case (REG_AH_SP): {
             return &registers->sp;
         }
-        case(REG_CH_BP): {
+        case (REG_CH_BP): {
             return &registers->bp;
         }
-        case(REG_DH_SI): {
+        case (REG_DH_SI): {
             return &registers->si;
         }
-        case(REG_BH_DI): {
+        case (REG_BH_DI): {
             return &registers->di;
         }
     }
 }
 
-uint32_t emu_get_effective_address(registers_8086_t* registers, reg_t reg, mod_t mod, uint16_t displacement) {
-    switch(mod) {
+uint32_t emu_get_effective_address(
+    registers_8086_t* registers,
+    reg_t reg,
+    mod_t mod,
+    uint16_t displacement
+) {
+    switch (mod) {
         case MOD_MEMORY: {
-            switch(reg) {
-                case(REG_AL_AX): {
+            switch (reg) {
+                case (REG_AL_AX): {
                     return registers->bx + registers->si;
                 }
-                case(REG_CL_CX): {
+                case (REG_CL_CX): {
                     return registers->bx + registers->di;
                 }
-                case(REG_DL_DX): {
+                case (REG_DL_DX): {
                     return registers->bp + registers->si;
                 }
-                case(REG_BL_BX): {
+                case (REG_BL_BX): {
                     return registers->bp + registers->di;
                 }
-                case(REG_AH_SP): {
+                case (REG_AH_SP): {
                     return registers->si;
                 }
-                case(REG_CH_BP): {
+                case (REG_CH_BP): {
                     return registers->di;
                 }
-                case(REG_DH_SI): {
+                case (REG_DH_SI): {
                     // DIRECT ACCESS - this shouldn't be reachable i believe.
                 }
-                case(REG_BH_DI): {
+                case (REG_BH_DI): {
                     return registers->bx;
                 }
             }
         }
         case MOD_MEMORY_8BIT_DISPLACEMENT:
         case MOD_MEMORY_16BIT_DISPLACEMENT: {
-            switch(reg) {
-                case(REG_AL_AX): {
+            switch (reg) {
+                case (REG_AL_AX): {
                     return registers->bx + registers->si + displacement;
                 }
-                case(REG_CL_CX): {
+                case (REG_CL_CX): {
                     return registers->bx + registers->di + displacement;
                 }
-                case(REG_DL_DX): {
+                case (REG_DL_DX): {
                     return registers->bp + registers->si + displacement;
                 }
-                case(REG_BL_BX): {
+                case (REG_BL_BX): {
                     return registers->bp + registers->di + displacement;
                 }
-                case(REG_AH_SP): {
+                case (REG_AH_SP): {
                     return registers->si + displacement;
                 }
-                case(REG_CH_BP): {
+                case (REG_CH_BP): {
                     return registers->di + displacement;
                 }
-                case(REG_DH_SI): {
+                case (REG_DH_SI): {
                     return registers->bp + displacement;
                 }
-                case(REG_BH_DI): {
+                case (REG_BH_DI): {
                     return registers->bx + displacement;
                 }
             }
@@ -578,33 +591,33 @@ uint32_t emu_get_effective_address(registers_8086_t* registers, reg_t reg, mod_t
 }
 
 uint32_t emu_get_effective_address_mode_memory(registers_8086_t* registers, reg_t reg) {
-    switch(reg) {
-        case(REG_AL_AX): {
+    switch (reg) {
+        case (REG_AL_AX): {
             return registers->bx + registers->si;
         }
-        case(REG_CL_CX): {
+        case (REG_CL_CX): {
             return registers->bx + registers->di;
         }
-        case(REG_DL_DX): {
+        case (REG_DL_DX): {
             return registers->bp + registers->si;
         }
-        case(REG_BL_BX): {
+        case (REG_BL_BX): {
             return registers->bp + registers->di;
         }
-        case(REG_AH_SP): {
+        case (REG_AH_SP): {
             return registers->si;
         }
-        case(REG_CH_BP): {
+        case (REG_CH_BP): {
             return registers->di;
         }
-        case(REG_DH_SI): {
+        case (REG_DH_SI): {
             // DIRECT ACCESS - this shouldn't be reachable i believe.
         }
-        case(REG_BH_DI): {
+        case (REG_BH_DI): {
             return registers->bx;
         }
     }
-    return 0; // TODO: known bad value?
+    return 0;  // TODO: known bad value?
 }
 
 emu_result_t write__common_register_or_memory_with_register_or_memory__direct_access(
@@ -625,12 +638,11 @@ emu_result_t write__common_register_or_memory_with_register_or_memory__direct_ac
         if (wide == WIDE_WORD) {
             reg_string = regw_strings[reg];
         }
-        int written = snprintf(buffer + *index,  buffer_size - *index, "%s [%d], %s",
-                                    mnemonic,
-                                    displacement,
-                                    reg_string);
+        int written = snprintf(
+            buffer + *index, buffer_size - *index, "%s [%d], %s", mnemonic, displacement, reg_string
+        );
         if (written < 0) {
-            return(ER_FAILURE);
+            return (ER_FAILURE);
         }
         *index += written;
     } else {
@@ -638,16 +650,15 @@ emu_result_t write__common_register_or_memory_with_register_or_memory__direct_ac
         if (wide == WIDE_WORD) {
             reg_string = regw_strings[reg];
         }
-        int written = snprintf(buffer + *index, buffer_size - *index, "%s %s, [%d]",
-                                mnemonic,
-                                reg_string,
-                                displacement);
+        int written = snprintf(
+            buffer + *index, buffer_size - *index, "%s %s, [%d]", mnemonic, reg_string, displacement
+        );
         if (written < 0) {
-            return(ER_FAILURE);
+            return (ER_FAILURE);
         }
         *index += written;
     }
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 emu_result_t write__common_register_or_memory_with_register_or_memory__effective_address(
@@ -668,16 +679,17 @@ emu_result_t write__common_register_or_memory_with_register_or_memory__effective
         if (wide == WIDE_WORD) {
             reg_string = regw_strings[reg];
         }
-        char effective_address_string[32] = { 0 };
-        build_effective_address(effective_address_string, sizeof(effective_address_string),
-                                wide, mod, rm, displacement);
-        int written = snprintf(buffer + *index,  buffer_size - *index, "%s %s, %s",
-                                mnemonic,
-                                effective_address_string,
-                                reg_string);
+        char effective_address_string[32] = {0};
+        build_effective_address(
+            effective_address_string, sizeof(effective_address_string), wide, mod, rm, displacement
+        );
+        int written = snprintf(
+            buffer + *index, buffer_size - *index, "%s %s, %s", mnemonic, effective_address_string,
+            reg_string
+        );
         if (written < 0) {
             // TODO: propogate error
-            return(ER_FAILURE);
+            return (ER_FAILURE);
         }
         *index += written;
     } else {
@@ -685,19 +697,20 @@ emu_result_t write__common_register_or_memory_with_register_or_memory__effective
         if (wide == WIDE_WORD) {
             reg_string = regw_strings[reg];
         }
-        char effective_address_string[32] = { 0 };
-        build_effective_address(effective_address_string, sizeof(effective_address_string),
-                                wide, mod, rm, displacement);
-        int written = snprintf(buffer + *index, buffer_size - *index, "%s %s, %s",
-                                mnemonic,
-                                reg_string,
-                                effective_address_string);
+        char effective_address_string[32] = {0};
+        build_effective_address(
+            effective_address_string, sizeof(effective_address_string), wide, mod, rm, displacement
+        );
+        int written = snprintf(
+            buffer + *index, buffer_size - *index, "%s %s, %s", mnemonic, reg_string,
+            effective_address_string
+        );
         if (written < 0) {
-            return(ER_FAILURE);
+            return (ER_FAILURE);
         }
         *index += written;
     }
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 emu_result_t write__common_register_or_memory_with_register_or_memory__register(
@@ -729,15 +742,14 @@ emu_result_t write__common_register_or_memory_with_register_or_memory__register(
         right_string = regw_strings[*right];
     }
 
-    int written = snprintf(buffer + *index, buffer_size - *index, "%s %s, %s",
-                            mnemonic,
-                            left_string,
-                            right_string);
+    int written = snprintf(
+        buffer + *index, buffer_size - *index, "%s %s, %s", mnemonic, left_string, right_string
+    );
     if (written < 0) {
-        return(ER_FAILURE);
+        return (ER_FAILURE);
     }
     *index += written;
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 void write__common_register_or_memory_with_register_or_memory(
@@ -754,19 +766,28 @@ void write__common_register_or_memory_with_register_or_memory(
     int buffer_size
 ) {
     if (mod == MOD_MEMORY && rm == REG_DIRECT_ACCESS) {
-        write__common_register_or_memory_with_register_or_memory__direct_access(direction, wide, mod, reg, rm, displacement, mnemonic, mnemonic_size, buffer, index, buffer_size);
+        write__common_register_or_memory_with_register_or_memory__direct_access(
+            direction, wide, mod, reg, rm, displacement, mnemonic, mnemonic_size, buffer, index,
+            buffer_size
+        );
         return;
     }
 
-    switch(mod) {
+    switch (mod) {
         case MOD_MEMORY:
         case MOD_MEMORY_8BIT_DISPLACEMENT:
         case MOD_MEMORY_16BIT_DISPLACEMENT: {
-            write__common_register_or_memory_with_register_or_memory__effective_address(direction, wide, mod, reg, rm, displacement, mnemonic, mnemonic_size, buffer, index, buffer_size);
+            write__common_register_or_memory_with_register_or_memory__effective_address(
+                direction, wide, mod, reg, rm, displacement, mnemonic, mnemonic_size, buffer, index,
+                buffer_size
+            );
             break;
         }
         case MOD_REGISTER: {
-            write__common_register_or_memory_with_register_or_memory__register(direction, wide, mod, reg, rm, displacement, mnemonic, mnemonic_size, buffer, index, buffer_size);
+            write__common_register_or_memory_with_register_or_memory__register(
+                direction, wide, mod, reg, rm, displacement, mnemonic, mnemonic_size, buffer, index,
+                buffer_size
+            );
             break;
         }
     }
@@ -783,15 +804,14 @@ void write__common_immediate_to_register_or_memory(
     uint8_t mnemonic_size,
     char* buffer,
     int* index,
-    int buffer_size)
-{
+    int buffer_size
+) {
     if (mod == MOD_MEMORY && rm == REG_DIRECT_ACCESS) {
         char* wide_string = get_wide_string(wide);
-        int written = snprintf(buffer + *index,  buffer_size - *index, "%s %s [%d], %d",
-                                mnemonic,
-                                wide_string,
-                                displacement,
-                                immediate);
+        int written = snprintf(
+            buffer + *index, buffer_size - *index, "%s %s [%d], %d", mnemonic, wide_string,
+            displacement, immediate
+        );
         if (written < 0) {
             // TODO: propogate error
         }
@@ -799,19 +819,20 @@ void write__common_immediate_to_register_or_memory(
         return;
     }
 
-    switch(mod) {
+    switch (mod) {
         case MOD_MEMORY:
         case MOD_MEMORY_8BIT_DISPLACEMENT:
         case MOD_MEMORY_16BIT_DISPLACEMENT: {
             char* wide_string = get_wide_string(wide);
-            char effective_address_string[32] = { 0 };
-            build_effective_address(effective_address_string, sizeof(effective_address_string),
-                                    wide, mod, rm, displacement);
-            int written = snprintf(buffer + *index,  buffer_size - *index, "%s %s %s, %d",
-                                    mnemonic,
-                                    wide_string,
-                                    effective_address_string,
-                                    immediate);
+            char effective_address_string[32] = {0};
+            build_effective_address(
+                effective_address_string, sizeof(effective_address_string), wide, mod, rm,
+                displacement
+            );
+            int written = snprintf(
+                buffer + *index, buffer_size - *index, "%s %s %s, %d", mnemonic, wide_string,
+                effective_address_string, immediate
+            );
             if (written < 0) {
                 // TODO: propogate error
             }
@@ -819,13 +840,15 @@ void write__common_immediate_to_register_or_memory(
             break;
         }
         case MOD_REGISTER: {
-            char effective_address_string[32] = { 0 };
-            build_effective_address(effective_address_string, sizeof(effective_address_string),
-                                    wide, mod, rm, displacement);
-            int written = snprintf(buffer + *index,  buffer_size - *index, "%s %s, %d",
-                                    mnemonic,
-                                    effective_address_string,
-                                    immediate);
+            char effective_address_string[32] = {0};
+            build_effective_address(
+                effective_address_string, sizeof(effective_address_string), wide, mod, rm,
+                displacement
+            );
+            int written = snprintf(
+                buffer + *index, buffer_size - *index, "%s %s, %d", mnemonic,
+                effective_address_string, immediate
+            );
             if (written < 0) {
                 // TODO: propogate error
             }

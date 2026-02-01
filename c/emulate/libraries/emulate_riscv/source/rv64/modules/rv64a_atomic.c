@@ -3,15 +3,9 @@
 
 #include "shared/include/result.h"
 
-#include "logger.h"
-
-#include "rv64/rv64_instructions.h"
-#include "rv64/rv64_emulate.h"
 #include "rv64/rv64_decode.h"
-#include "rv64/rv64_decode_instruction.h"
-
-#include "rv64/modules/rv64i_base_integer.h"
-#include "rv64/modules/rv64m_multiplication.h"
+#include "rv64/rv64_hart.h"
+#include "rv64/rv64_instructions.h"
 
 /*
  * MARK: alrsc
@@ -20,7 +14,6 @@
 /*
  * MARK: aamo
  */
-
 
 /**
  * amoswap.w - Atomic Memory Operation SWAP (Word)
@@ -53,7 +46,7 @@ static inline void rv64a_amoswap_w(
     }
 
     if (rd != 0) {
-        hart->registers[rd] = (int64_t)memory_value; // sign extend via cast
+        hart->registers[rd] = (int64_t)memory_value;  // sign extend via cast
     }
 }
 
@@ -65,12 +58,8 @@ static inline void rv64_amoadd_w(
     uint8_t rs1,
     uint8_t rd
 ) {
-
     // todo
 }
-
-
-
 
 /*
  * MARK: awrs
@@ -99,7 +88,7 @@ static inline void rv64a_amocas_w(
     }
 
     uint64_t address = hart->registers[rs1];
-    int32_t expected = (int32_t) hart->registers[rd];
+    int32_t expected = (int32_t)hart->registers[rd];
     int32_t original_memory_value = 0;
     memcpy(&original_memory_value, &hart->shared_system->memory[address], 4);
     if (original_memory_value == expected) {
@@ -111,14 +100,13 @@ static inline void rv64a_amocas_w(
     }
 
     if (rd != 0) {
-        hart->registers[rd] = (int64_t)original_memory_value; // sign extend via cast
+        hart->registers[rd] = (int64_t)original_memory_value;  // sign extend via cast
     }
 }
 
 /*
  * MARK: abha
  */
-
 
 /*
  * MARK: RV64A Main
@@ -138,10 +126,12 @@ emu_result_t rv64a_atomic_emulate(
     uint8_t rd = 0;
     rv64a_decode_atomic(raw_instruction, &aquire, &release, &rs2, &rs1, &rd);
 
-    printf("rv64a_atomic_emulate: aquire: %d, release: %d, rs2: %d, rs1: %d, rd: %d\n",
-        aquire, release, rs2, rs1, rd);
+    printf(
+        "rv64a_atomic_emulate: aquire: %d, release: %d, rs2: %d, rs1: %d, rd: %d\n", aquire,
+        release, rs2, rs1, rd
+    );
 
-    switch(tag) {
+    switch (tag) {
         // alrsc
         case I_RV64ZALRSC_LR_W:
         case I_RV64ZALRSC_SC_W:
@@ -223,7 +213,7 @@ emu_result_t rv64a_atomic_emulate(
             result = ER_FAILURE;
             break;
         }
-        // ...
+            // ...
 
         default: {
             printf("%s: todo default\n", __func__);
@@ -231,5 +221,5 @@ emu_result_t rv64a_atomic_emulate(
             break;
         }
     }
-    return(result);
+    return (result);
 }

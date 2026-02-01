@@ -1,25 +1,24 @@
 
 
-
-
-
 #include <string.h>
 
-#include "shared/include/binary_utilities.h"
 #include "8086/instruction_tags_8086.h"
+#include "shared/include/binary_utilities.h"
 #include "shared/include/result.h"
 
-#include "8086/emulate_8086.h"
-#include "8086/emu_8086_registers.h"
-#include "8086/decode_8086_utils.h"
 #include "8086/decode_8086_shared.h"
+#include "8086/decode_8086_utils.h"
+#include "8086/emu_8086_registers.h"
+#include "8086/emulate_8086.h"
 
 #include "8086/instructions/arithmetic/cmp.h"
 
 void emu_internal_cmp_8bit(emulator_8086_t* emulator, uint8_t destination, uint8_t source) {
     uint8_t left = destination;
-    uint16_t uint16_result = (uint16_t)destination - (uint16_t)source; // store the result in a larger result type to detect overflows.
-    uint8_t result_8bit = (uint8_t) uint16_result;
+    uint16_t uint16_result =
+        (uint16_t)destination
+        - (uint16_t)source;  // store the result in a larger result type to detect overflows.
+    uint8_t result_8bit = (uint8_t)uint16_result;
     emu_reg_update_auxiliary_carry_flag(&emulator->registers.flags, left, source, result_8bit);
     emu_reg_update_carry_flag_8bit(&emulator->registers.flags, uint16_result);
     emu_reg_update_overflow_flag_8bit(&emulator->registers.flags, left, source, result_8bit);
@@ -31,7 +30,7 @@ void emu_internal_cmp_8bit(emulator_8086_t* emulator, uint8_t destination, uint8
 void emu_internal_cmp_16bit(emulator_8086_t* emulator, uint16_t destination, uint16_t source) {
     uint16_t left = destination;
     uint32_t uint32_result = (uint32_t)destination - (uint32_t)source;
-    uint16_t result_16bit = (uint16_t) uint32_result;
+    uint16_t result_16bit = (uint16_t)uint32_result;
     emu_reg_update_auxiliary_carry_flag(&emulator->registers.flags, left, source, result_16bit);
     emu_reg_update_carry_flag_16bit(&emulator->registers.flags, uint32_result);
     emu_reg_update_overflow_flag_16bit(&emulator->registers.flags, left, source, result_16bit);
@@ -62,8 +61,7 @@ emu_result_t decode_compare(
     );
 
     write__common_register_or_memory_with_register_or_memory(
-        direction, wide, mod, reg, rm, displacement,
-        "cmp", 3, out_buffer, index, out_buffer_size
+        direction, wide, mod, reg, rm, displacement, "cmp", 3, out_buffer, index, out_buffer_size
     );
     return result;
 }
@@ -81,7 +79,7 @@ emu_result_t emu_compare(emulator_8086_t* emulator, uint8_t byte1) {
         emulator, byte1, &direction, &wide, &mode, &reg, &rm, &displacement, &instruction_size
     );
 
-    switch(mode) {
+    switch (mode) {
         case MOD_REGISTER: {
             if (wide == WIDE_BYTE) {
                 uint8_t* destination = emu_get_byte_register(&emulator->registers, rm);
@@ -127,8 +125,7 @@ emu_result_t decode_cmp_immediate(
     );
 
     write__common_immediate_to_register_or_memory(
-        sign, wide, mod, rm, displacement, data,
-        "sub", 3, out_buffer, index, out_buffer_size
+        sign, wide, mod, rm, displacement, data, "sub", 3, out_buffer, index, out_buffer_size
     );
 
     return result;
@@ -145,14 +142,15 @@ emu_result_t emu_cmp_immediate(emulator_8086_t* emulator, uint8_t byte1) {
     uint8_t instruction_size = 0;
 
     emu_result_t result = emu_decode_common_signed_immediate_format(
-        emulator, byte1, &sign, &wide, &mod, &subcode, &rm, &displacement, &immediate, &instruction_size
+        emulator, byte1, &sign, &wide, &mod, &subcode, &rm, &displacement, &immediate,
+        &instruction_size
     );
 
-    switch(mod) {
+    switch (mod) {
         case MOD_REGISTER: {
             if (wide == WIDE_BYTE) {
                 uint8_t* destination = emu_get_byte_register(&emulator->registers, rm);
-                emu_internal_cmp_8bit(emulator, *destination, (uint8_t) immediate);
+                emu_internal_cmp_8bit(emulator, *destination, (uint8_t)immediate);
             } else {
                 uint16_t* destination = emu_get_word_register(&emulator->registers, rm);
                 emu_internal_cmp_16bit(emulator, *destination, immediate);

@@ -14,13 +14,12 @@
 #include "shared/include/binary_utilities.h"
 #include "shared/include/result.h"
 
-#include "8086/emulate_8086.h"
-#include "8086/emu_8086_registers.h"
-#include "8086/decode_8086_utils.h"
 #include "8086/decode_8086_shared.h"
+#include "8086/decode_8086_utils.h"
+#include "8086/emu_8086_registers.h"
+#include "8086/emulate_8086.h"
 
 #include "8086/instructions/processor_control/clc.h"
-
 
 // MARK: CLC
 emu_result_t decode_clc(
@@ -28,8 +27,8 @@ emu_result_t decode_clc(
     uint8_t byte1,
     char* out_buffer,
     int* index,
-    size_t out_buffer_size)
-{
+    size_t out_buffer_size
+) {
     if (*index + 4 <= out_buffer_size) {
         out_buffer[*index] = 'c';
         out_buffer[*index + 1] = 'l';

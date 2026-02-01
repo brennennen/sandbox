@@ -49,5 +49,4 @@ emu_result_t emu_cmp_immediate(emulator_8086_t* emulator, uint8_t byte1);
 
 // MARK: CMP 3 - I_COMPARE_IMMEDIATE_TO_AX
 
-
-#endif // DECODE_CMP_H
+#endif  // DECODE_CMP_H

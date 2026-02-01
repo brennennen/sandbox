@@ -1,6 +1,5 @@
 
 
-
 #include "i386/instructions/logic/and.h"
 
 #include "i386/decode_i386_common.h"
@@ -14,6 +13,7 @@ emu_result_t emu_i386_decode_and(
     int* index,
     size_t out_buffer_size
 ) {
-    return(emu_i386_decode_and_write_common_standard_format(emulator, byte1,
-        "and", 3, out_buffer, index, out_buffer_size));
+    return (emu_i386_decode_and_write_common_standard_format(
+        emulator, byte1, "and", 3, out_buffer, index, out_buffer_size
+    ));
 }

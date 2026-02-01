@@ -2,8 +2,8 @@
 #ifndef INSTRUCTION_TAGS_8086_H
 #define INSTRUCTION_TAGS_8086_H
 
-#include <stdint.h>
 #include <inttypes.h>
+#include <stdint.h>
 
 #include "shared/include/binary_utilities.h"
 
@@ -279,117 +279,22 @@ static char instruction_tag_mnemonic[][8] = {
     "xlat",     // I_TRANSLATE_BYTE_TO_AL
     "lea",      // I_LOAD_EA_TO_REGISTER
     "lds",      // I_LOAD_POINTER_TO_DS
-    "les",
-    "lahf",
-    "sahf",
-    "pushf",
-    "popf",
-    "add",      // I_ADD
-    "add",      // I_ADD_IMMEDIATE
-    "add",      // I_ADD_IMMEDIATE_TO_AX
-    "adc",
-    "adc",
-    "adc",
-    "inc",
-    "inc",
-    "aaa",
-    "daa",
-    "sub",      // I_SUB
-    "sub",
-    "sub",
-    "sbb",
-    "sbb",
-    "sbb",
-    "dec",
-    "dec",
-    "neg",
-    "cmp",      // I_COMPARE
-    "cmp",
-    "cmp",
-    "aas",
-    "das",
-    "mul",
-    "imul",
-    "aam",
-    "div",
-    "idiv",
-    "add",
-    "cbw",
-    "cwd",
-    "not",
-    "shl",
-    "shr",
-    "sar",
-    "rol",
-    "ror",
-    "rcl",
-    "rcr",
-    "and",
-    "and",
-    "and",
-    "test",
-    "test",
-    "test",
-    "or",
-    "or",
-    "or",
-    "xor",
-    "xor",
-    "xor",
-    "rep",
-    "movs",
-    "cmps",
-    "scas",
-    "lods",
-    "stds",
-    "call",
-    "call",
-    "call",
-    "call",
-    "jmp",
-    "jmp",
-    "jmp",
-    "jmp",
-    "jmp",
-    "ret",
-    "ret",
-    "ret",
-    "ret",
-    "je",
-    "jl",
-    "jle",
-    "jb",
-    "jbe",
-    "jp",
-    "jo",
-    "js",
-    "jne",
-    "jnl",
-    "jnle",
-    "jnb",
-    "jnbe",
-    "jnp",
-    "jno",
-    "jns",
-    "loop",
-    "loopz",
-    "loopnz",
-    "jcxz",
-    "int",
-    "into",
-    "iret",
-    "clc",
-    "cmc",
-    "stc",
-    "cld",
-    "std",
-    "cli",
-    "sti",
-    "hlt",
-    "wait",
-    "esc",
-    "lock",
-    "segment",
+    "les",     "lahf", "sahf",  "pushf",  "popf",
+    "add",  // I_ADD
+    "add",  // I_ADD_IMMEDIATE
+    "add",  // I_ADD_IMMEDIATE_TO_AX
+    "adc",     "adc",  "adc",   "inc",    "inc",  "aaa",  "daa",
+    "sub",  // I_SUB
+    "sub",     "sub",  "sbb",   "sbb",    "sbb",  "dec",  "dec",  "neg",
+    "cmp",  // I_COMPARE
+    "cmp",     "cmp",  "aas",   "das",    "mul",  "imul", "aam",  "div",  "idiv",    "add", "cbw",
+    "cwd",     "not",  "shl",   "shr",    "sar",  "rol",  "ror",  "rcl",  "rcr",     "and", "and",
+    "and",     "test", "test",  "test",   "or",   "or",   "or",   "xor",  "xor",     "xor", "rep",
+    "movs",    "cmps", "scas",  "lods",   "stds", "call", "call", "call", "call",    "jmp", "jmp",
+    "jmp",     "jmp",  "jmp",   "ret",    "ret",  "ret",  "ret",  "je",   "jl",      "jle", "jb",
+    "jbe",     "jp",   "jo",    "js",     "jne",  "jnl",  "jnle", "jnb",  "jnbe",    "jnp", "jno",
+    "jns",     "loop", "loopz", "loopnz", "jcxz", "int",  "into", "iret", "clc",     "cmc", "stc",
+    "cld",     "std",  "cli",   "sti",    "hlt",  "wait", "esc",  "lock", "segment",
 };
 
 /**
@@ -405,8 +310,8 @@ typedef enum {
  * 8086: Table 4.7. Single Bit Field Encoding (page 160)
  */
 typedef enum {
-    WIDE_BYTE = 0, // Instruction operates on byte data (8 bit)
-    WIDE_WORD = 1, // Instruction operates on word data (16 bit)
+    WIDE_BYTE = 0,  // Instruction operates on byte data (8 bit)
+    WIDE_WORD = 1,  // Instruction operates on word data (16 bit)
     // May expand the scope of this to i386 or x64
     // WIDE_DWORD = 2, // Instruction operates on double word data (32 bit)
     // WIDE_QWORD = 3, // Instruction operates on quad word data (64 bit)
@@ -430,7 +335,8 @@ static char mod_strings[][64] = {
     "Register Mode (no displacement)",
 };
 
-#define REG_DIRECT_ACCESS (0b110) // 6
+#define REG_DIRECT_ACCESS (0b110)  // 6
+
 typedef enum {
     REG_AL_AX = 0,
     REG_CL_CX = 1,
@@ -454,14 +360,7 @@ typedef enum {
 } reg_byte_t;
 
 static char regb_strings[][3] = {
-    "al",
-    "cl",
-    "dl",
-    "bl",
-    "ah",
-    "ch",
-    "dh",
-    "bh",
+    "al", "cl", "dl", "bl", "ah", "ch", "dh", "bh",
 };
 
 typedef enum {
@@ -476,14 +375,7 @@ typedef enum {
 } reg_wide_t;
 
 static char regw_strings[][3] = {
-    "ax",
-    "cx",
-    "dx",
-    "bx",
-    "sp",
-    "bp",
-    "si",
-    "di",
+    "ax", "cx", "dx", "bx", "sp", "bp", "si", "di",
 };
 
 typedef enum {
@@ -497,4 +389,4 @@ typedef enum {
     RM_BX,
 } rm_effective_address_calc_t;
 
-#endif // INSTRUCTION_TAGS_8086_H
+#endif  // INSTRUCTION_TAGS_8086_H

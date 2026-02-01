@@ -26,4 +26,4 @@ emu_result_t decode_clc(
 );
 emu_result_t emu_clc(emulator_8086_t* emulator, uint8_t byte1);
 
-#endif // EMU_8086_CLC_H
+#endif  // EMU_8086_CLC_H

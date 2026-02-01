@@ -48,7 +48,8 @@ emu_result_t decode_push_register(
     uint8_t byte1,
     char* out_buffer,
     int* index,
-    size_t out_buffer_size);
+    size_t out_buffer_size
+);
 
 /**
  * Emulates the second x86 push machine code instruction described as "Register",
@@ -62,5 +63,4 @@ emu_result_t emu_push_register(emulator_8086_t* emulator, uint8_t byte1);
 
 // MARK: 3. I_PUSH_SEGMENT_REGISTER
 
-
-#endif // EMU_PUSH_H
+#endif  // EMU_PUSH_H

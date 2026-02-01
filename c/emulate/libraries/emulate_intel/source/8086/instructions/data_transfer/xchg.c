@@ -15,14 +15,14 @@
 
 #include <string.h>
 
-#include "shared/include/binary_utilities.h"
 #include "8086/instruction_tags_8086.h"
+#include "shared/include/binary_utilities.h"
 #include "shared/include/result.h"
 
-#include "8086/emulate_8086.h"
-#include "8086/emu_8086_registers.h"
-#include "8086/decode_8086_utils.h"
 #include "8086/decode_8086_shared.h"
+#include "8086/decode_8086_utils.h"
+#include "8086/emu_8086_registers.h"
+#include "8086/emulate_8086.h"
 
 #include "8086/instructions/data_transfer/xchg.h"
 
@@ -40,7 +40,7 @@ emu_result_t read_exchange(
     *instruction_size = 2;
     *wide = byte1 & 0b00000001;
     uint8_t byte2 = 0;
-    if (dcd_read_byte(emulator, (uint8_t*) &byte2) == RI_FAILURE) {
+    if (dcd_read_byte(emulator, (uint8_t*)&byte2) == RI_FAILURE) {
         return ER_UNKNOWN_OPCODE;
     }
 
@@ -72,7 +72,7 @@ emu_result_t decode_exchange(
     int* index,
     size_t out_buffer_size
 ) {
-    direction_t direction = 0; // not used
+    direction_t direction = 0;  // not used
     wide_t wide = 0;
     mod_t mod = 0;
     uint8_t reg = 0;
@@ -81,11 +81,11 @@ emu_result_t decode_exchange(
     uint8_t instruction_size = 0;
 
     emu_result_t result = read_exchange(
-        emulator, byte1, &wide, &mod, &reg, &rm, &displacement, &instruction_size);
+        emulator, byte1, &wide, &mod, &reg, &rm, &displacement, &instruction_size
+    );
 
     write__common_register_or_memory_with_register_or_memory(
-        direction, wide, mod, reg, rm, displacement,
-        "xchg", 4, out_buffer, index, out_buffer_size
+        direction, wide, mod, reg, rm, displacement, "xchg", 4, out_buffer, index, out_buffer_size
     );
     return result;
 }
@@ -99,9 +99,10 @@ emu_result_t emu_exchange(emulator_8086_t* emulator, uint8_t byte1) {
     uint8_t instruction_size = 0;
 
     emu_result_t result = read_exchange(
-        emulator, byte1, &wide, &mod, &reg, &rm, &displacement, &instruction_size);
+        emulator, byte1, &wide, &mod, &reg, &rm, &displacement, &instruction_size
+    );
 
-    //emulator->registers.ip += instruction_size;
+    // emulator->registers.ip += instruction_size;
 
     uint16_t* reg_p = emu_get_word_register(&emulator->registers, reg);
     uint16_t* rm_p = emu_get_word_register(&emulator->registers, rm);
@@ -111,7 +112,6 @@ emu_result_t emu_exchange(emulator_8086_t* emulator, uint8_t byte1) {
 
     return ER_SUCCESS;
 }
-
 
 // MARK: 2. I_EXCHANGE_AX
 emu_result_t decode_exchange_ax(
@@ -123,7 +123,9 @@ emu_result_t decode_exchange_ax(
 ) {
     uint8_t reg = byte1 & 0b00000111;
     char* reg_string = map_register_field_encoding(reg);
-    int written = snprintf(out_buffer + *index,  out_buffer_size - *index, "xchg %s, ax", reg_string);
+    int written = snprintf(
+        out_buffer + *index, out_buffer_size - *index, "xchg %s, ax", reg_string
+    );
     if (written < 0) {
         return ER_FAILURE;
     }
@@ -142,4 +144,3 @@ emu_result_t emu_exchange_ax(emulator_8086_t* emulator, uint8_t byte1) {
 }
 
 // MARK: 3. I_PUSH_SEGMENT_REGISTER
-

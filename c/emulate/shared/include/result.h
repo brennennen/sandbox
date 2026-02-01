@@ -1,3 +1,4 @@
+
 #ifndef RESULT_H
 #define RESULT_H
 
@@ -10,8 +11,8 @@
  * also update this array too!
  */
 typedef enum result_s {
-    SUCCESS = 0,            /** We've finished all work successfully */
-    FAILURE,                /** An error occurred and needs to be handled.  */
+    SUCCESS = 0, /** We've finished all work successfully */
+    FAILURE,     /** An error occurred and needs to be handled.  */
 } result_t;
 
 /**
@@ -34,9 +35,9 @@ static char result_strings[][16] = {
  * also update this array too!
  */
 typedef enum result_iter_s {
-    RI_CONTINUE = 0,        /** Continue processing. */
-    RI_FAILURE,             /** An error occurred and needs to be handled.  */
-    RI_DONE,                /** We've finished processing all work. */
+    RI_CONTINUE = 0, /** Continue processing. */
+    RI_FAILURE,      /** An error occurred and needs to be handled.  */
+    RI_DONE,         /** We've finished processing all work. */
 } result_iter_t;
 
 /**
@@ -60,13 +61,7 @@ typedef enum {
  * NOTE: Parallel static array with "emu_result_t"!
  */
 static char emulate_result_strings[][32] = {
-    "Success",
-    "Failure",
-    "Out-Of-Bounds",
-    "Unknown Opcode",
-    "Unimplemented Instruction",
+    "Success", "Failure", "Out-Of-Bounds", "Unknown Opcode", "Unimplemented Instruction",
 };
 
-
-
-#endif // RESULT_H
+#endif  // RESULT_H

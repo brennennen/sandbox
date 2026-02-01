@@ -14,7 +14,6 @@
  * 7 different moves are labeled as "MOV 1", "MOV 2", etc.
  */
 
-
 #include <stdint.h>
 
 #include "8086/instruction_tags_8086.h"
@@ -26,11 +25,12 @@
  * 2 bytes of an instruction.
  *
  * @param byte1 First byte in the instruction, usually where to read the opcode from.
- * @param byte2 Second byte in the instruction, usually where to read the sub-opcode from if present.
+ * @param byte2 Second byte in the instruction, usually where to read the sub-opcode from if
+ * present.
  * @return Instruction tag associated with the opcode/sub-opcode or I_INVALID if no matches.
  */
 instruction_tag_8086_t emu_8086_decode_tag(uint8_t byte1, uint8_t byte2) {
-    switch(byte1) {
+    switch (byte1) {
         // MARK: MOV
         // MOV 1 - 0b100010xx
         case 0b10001000:
@@ -78,7 +78,7 @@ instruction_tag_8086_t emu_8086_decode_tag(uint8_t byte1, uint8_t byte2) {
         // MARK: COMMON 0b11111111
         case 0b11111111: {
             uint8_t sub_opcode = byte2 & 0b00111000;
-            switch(sub_opcode) {
+            switch (sub_opcode) {
                 // PUSH 1
                 case 0b00110000:
                     return I_PUSH;
@@ -113,7 +113,7 @@ instruction_tag_8086_t emu_8086_decode_tag(uint8_t byte1, uint8_t byte2) {
         // MARK: COMMON 0b11111110
         case 0b11111110: {
             uint8_t sub_opcode = byte2 & 0b00111000;
-            switch(sub_opcode) {
+            switch (sub_opcode) {
                 // INC 1
                 case 0b00000000:
                     return I_INC;
@@ -131,7 +131,7 @@ instruction_tag_8086_t emu_8086_decode_tag(uint8_t byte1, uint8_t byte2) {
         // MARK: COMMON 0b10001111
         case 0b10001111: {
             uint8_t sub_opcode = byte2 & 0b00111000;
-            switch(sub_opcode) {
+            switch (sub_opcode) {
                 case 0b00000000:
                     return I_POP;
                 default:
@@ -152,16 +152,10 @@ instruction_tag_8086_t emu_8086_decode_tag(uint8_t byte1, uint8_t byte2) {
         case 0b01010110:
         case 0b01010111:
             return I_PUSH_REGISTER;
-        // TODO: look into segment registers. some of the reg range overlaps. guessing there is something reducing segment register reg values
-        // PUSH 3 - 0b000xxx110
-        // case 0b00000110:
-        // case 0b00001110:
-        // case 0b00010110:
-        // case 0b00011110:
-        // case 0b00100110:
-        // case 0b00101110:
-        // case 0b00110110:
-        // case 0b00111110:
+        // TODO: look into segment registers. some of the reg range overlaps. guessing there is
+        // something reducing segment register reg values PUSH 3 - 0b000xxx110 case 0b00000110: case
+        // 0b00001110: case 0b00010110: case 0b00011110: case 0b00100110: case 0b00101110: case
+        // 0b00110110: case 0b00111110:
         //     return I_PUSH_SEGMENT_REGISTER;
 
         // MARK: POP
@@ -262,7 +256,7 @@ instruction_tag_8086_t emu_8086_decode_tag(uint8_t byte1, uint8_t byte2) {
         case 0b10000010:
         case 0b10000011: {
             uint8_t sub_opcode = byte2 & 0b00111000;
-            switch(sub_opcode) {
+            switch (sub_opcode) {
                 // ADD 2
                 case 0b00000000:
                     return I_ADD_IMMEDIATE;
@@ -297,7 +291,7 @@ instruction_tag_8086_t emu_8086_decode_tag(uint8_t byte1, uint8_t byte2) {
         case 0b11110110:
         case 0b11110111: {
             uint8_t sub_opcode = byte2 & 0b00111000;
-            switch(sub_opcode) {
+            switch (sub_opcode) {
                 // NEG
                 case 0b00011000:
                     return I_NEGATE_CHANGE_SIGN;
@@ -464,9 +458,9 @@ instruction_tag_8086_t emu_8086_decode_tag(uint8_t byte1, uint8_t byte2) {
         case 0b11010000:
         case 0b11010001:
         case 0b11010010:
-        case 0b11010011:{
+        case 0b11010011: {
             uint8_t sub_opcode = byte2 & 0b00111000;
-            switch(sub_opcode) {
+            switch (sub_opcode) {
                 // SHL
                 case 0b00100000:
                     return I_SHIFT_LOGICAL_LEFT;

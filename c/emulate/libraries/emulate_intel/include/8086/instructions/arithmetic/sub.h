@@ -31,5 +31,4 @@ emu_result_t emu_sub_immediate(emulator_8086_t* emulator, uint8_t byte1);
 
 // MARK: SUB 3 - I_SUB_IMMEDIATE_TO_AX
 
-
-#endif // DECODE_SUB_H
+#endif  // DECODE_SUB_H

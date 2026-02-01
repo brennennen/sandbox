@@ -2,8 +2,8 @@
 #ifndef INSTRUCTIONS_A64_H
 #define INSTRUCTIONS_A64_H
 
-#include <stdint.h>
 #include <inttypes.h>
+#include <stdint.h>
 
 #include "shared/include/binary_utilities.h"
 
@@ -61,4 +61,4 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     // ...
 } instruction_tag_a64_t;
 
-#endif // INSTRUCTIONS_A64_H
+#endif  // INSTRUCTIONS_A64_H

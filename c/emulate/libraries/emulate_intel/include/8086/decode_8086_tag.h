@@ -7,5 +7,4 @@
 
 instruction_tag_8086_t emu_8086_decode_tag(uint8_t byte1, uint8_t byte2);
 
-#endif // DECODE_8086_TAG_H
-
+#endif  // DECODE_8086_TAG_H

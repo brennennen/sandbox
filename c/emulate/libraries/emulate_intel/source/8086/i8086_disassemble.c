@@ -1,6 +1,6 @@
 
-#include <stdlib.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "shared/include/binary_utilities.h"
@@ -9,22 +9,22 @@
 #include "emulate.h"
 #include "logger.h"
 
-#include "8086/emu_8086_registers.h"
-#include "8086/decode_8086_utils.h"
 #include "8086/decode_8086_tag.h"
+#include "8086/decode_8086_utils.h"
+#include "8086/emu_8086_registers.h"
 
 #include "8086/instructions/data_transfer/mov.h"
-#include "8086/instructions/data_transfer/push.h"
 #include "8086/instructions/data_transfer/pop.h"
+#include "8086/instructions/data_transfer/push.h"
 #include "8086/instructions/data_transfer/xchg.h"
 
 #include "8086/instructions/arithmetic/add.h"
+#include "8086/instructions/arithmetic/cmp.h"
 #include "8086/instructions/arithmetic/inc.h"
 #include "8086/instructions/arithmetic/sub.h"
-#include "8086/instructions/arithmetic/cmp.h"
 
-#include "8086/instructions/logic/not.h"
 #include "8086/instructions/logic/and.h"
+#include "8086/instructions/logic/not.h"
 
 #include "8086/instructions/conditional_jumps.h"
 
@@ -32,8 +32,12 @@
 #include "8086/instructions/processor_control/cmc.h"
 #include "8086/instructions/processor_control/stc.h"
 
-
-static result_iter_t emu_8086_disassemble_next(emulator_8086_t* decoder, char* out_buffer, int* index, size_t out_buffer_size) {
+static result_iter_t emu_8086_disassemble_next(
+    emulator_8086_t* decoder,
+    char* out_buffer,
+    int* index,
+    size_t out_buffer_size
+) {
     uint8_t byte1 = decoder->memory[decoder->registers.ip];
     decoder->registers.ip += 1;
     LOGD("ip: %d, byte1: %x", decoder->registers.ip, byte1);
@@ -52,7 +56,7 @@ static result_iter_t emu_8086_disassemble_next(emulator_8086_t* decoder, char* o
     decoder->instructions_count += 1;
 
     emu_result_t result = RI_FAILURE;
-    switch(instruction_tag) {
+    switch (instruction_tag) {
         // MARK: MOV
         case I_MOVE:
             result = decode_move(decoder, byte1, out_buffer, index, out_buffer_size);
@@ -61,7 +65,9 @@ static result_iter_t emu_8086_disassemble_next(emulator_8086_t* decoder, char* o
             result = decode_move_immediate(decoder, byte1, out_buffer, index, out_buffer_size);
             break;
         case I_MOVE_IMMEDIATE_TO_REGISTER:
-            result = decode_move_immediate_to_register(decoder, byte1, out_buffer, index, out_buffer_size);
+            result = decode_move_immediate_to_register(
+                decoder, byte1, out_buffer, index, out_buffer_size
+            );
             break;
         case I_MOVE_TO_AX:
             result = decode_move_to_ax(decoder, byte1, out_buffer, index, out_buffer_size);
@@ -166,7 +172,9 @@ static result_iter_t emu_8086_disassemble_next(emulator_8086_t* decoder, char* o
         case I_LOOP_WHILE_EQUAL:
         case I_LOOP_WHILE_NOT_EQUAL:
         case I_JUMP_ON_CX_ZERO:
-            result = decode_conditional_jump(decoder, instruction_tag, byte1, out_buffer, index, out_buffer_size);
+            result = decode_conditional_jump(
+                decoder, instruction_tag, byte1, out_buffer, index, out_buffer_size
+            );
             break;
         case I_INTERRUPT_TYPE_SPECIFIED:
         case I_INTERRUPT_TYPE_3:
@@ -190,8 +198,8 @@ static result_iter_t emu_8086_disassemble_next(emulator_8086_t* decoder, char* o
         case I_SET_INTERRUPT:
         case I_HALT:
         case I_WAIT:
-            //instruction->data.byte.byte = byte1;
-            // TODO: "decode_command"
+            // instruction->data.byte.byte = byte1;
+            //  TODO: "decode_command"
             printf("Not implemented! %d\n", instruction_tag);
             result = ER_UNIMPLEMENTED_INSTRUCTION;
             break;
@@ -211,10 +219,12 @@ static result_iter_t emu_8086_disassemble_next(emulator_8086_t* decoder, char* o
             printf("Not implemented! %d\n", instruction_tag);
             result = ER_UNIMPLEMENTED_INSTRUCTION;
             break;
-
     }
     if (result != ER_SUCCESS) {
-        fprintf(stderr, "Failed to parse instruction! result = %s (%d)\n", emulate_result_strings[result], result);
+        fprintf(
+            stderr, "Failed to parse instruction! result = %s (%d)\n",
+            emulate_result_strings[result], result
+        );
         return RI_FAILURE;
     }
 
@@ -228,8 +238,8 @@ result_t emu_8086_disassemble_file(
     emulator_8086_t* emulator,
     char* input_path,
     char* out_buffer,
-    size_t out_buffer_size)
-{
+    size_t out_buffer_size
+) {
     LOG(LOG_INFO, "Starting disassemble file: '%s'", input_path);
     FILE* file = fopen(input_path, "r");
     if (file == NULL) {
@@ -255,8 +265,8 @@ result_t emu_8086_disassemble_chunk(
     char* in_buffer,
     size_t in_buffer_size,
     char* out_buffer,
-    size_t out_buffer_size)
-{
+    size_t out_buffer_size
+) {
     memcpy(emulator->memory + PROGRAM_START, in_buffer, in_buffer_size);
     emulator->registers.ip = PROGRAM_START;
     return emu_8086_disassemble(emulator, out_buffer, out_buffer_size);
@@ -271,8 +281,8 @@ result_t emu_8086_disassemble(emulator_8086_t* emulator, char* out_buffer, size_
     } while (result == RI_CONTINUE);
 
     if (result == RI_DONE) {
-        return(SUCCESS);
+        return (SUCCESS);
     } else {
-        return(FAILURE);
+        return (FAILURE);
     }
 }

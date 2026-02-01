@@ -19,10 +19,12 @@ void rv64_emu_fence_default_setup(void) {
     rv64_emulator_init(&g_emulator);
 }
 
-Test(emu_rv64_emulate__fence__tests, fence_1, .init = rv64_emu_fence_default_setup)
-{
+Test(emu_rv64_emulate__fence__tests, fence_1, .init = rv64_emu_fence_default_setup) {
     uint8_t input[] = {
-        0x0f, 0x00, 0xf0, 0x0f, // fence
+        0x0f,
+        0x00,
+        0xf0,
+        0x0f,  // fence
     };
     cr_assert(SUCCESS == rv64_emulate_chunk_single_core(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.harts[0].instructions_count);

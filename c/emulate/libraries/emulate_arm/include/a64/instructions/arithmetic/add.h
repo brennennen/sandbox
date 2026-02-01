@@ -5,8 +5,8 @@
 #ifndef EMU_A64_ADD_H
 #define EMU_A64_ADD_H
 
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #include "a64/emulate_a64.h"
 
@@ -18,6 +18,4 @@ emu_result_t emu_a64_decode_add_immediate(
     size_t buffer_size
 );
 
-
-#endif // EMU_A64_ADD_H
-
+#endif  // EMU_A64_ADD_H

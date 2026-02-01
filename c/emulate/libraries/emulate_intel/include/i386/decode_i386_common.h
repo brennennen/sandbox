@@ -6,12 +6,11 @@
 
 #include <stdio.h>
 
-#include "shared/include/result.h"
-#include "i386/instruction_tags_i386.h"
 #include "i386/emulate_i386.h"
+#include "i386/instruction_tags_i386.h"
+#include "shared/include/result.h"
 
 #include "8086/instruction_tags_8086.h"
-
 
 #include "emulate.h"
 
@@ -59,4 +58,4 @@ emu_result_t emu_i386_decode_and_write_common_standard_format(
     int buffer_size
 );
 
-#endif // DECODE_i386_COMMON_H
+#endif  // DECODE_i386_COMMON_H

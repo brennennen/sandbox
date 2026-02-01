@@ -1,99 +1,163 @@
 
 #include <string.h>
 
-#include "shared/include/result.h"
 #include "logger.h"
+#include "shared/include/result.h"
 
 #include "rv64/rv64_common.h"
 #include "rv64/rv64_hart.h"
-#include "rv64/rv64_shared_system.h"
 #include "rv64/rv64_instructions.h"
+#include "rv64/rv64_shared_system.h"
 
 #include "rv64/rv64_decode_instruction.h"
 
+#include "rv64/modules/rv64a_atomic.h"
+#include "rv64/modules/rv64c_compressed.h"
+#include "rv64/modules/rv64f_float.h"
 #include "rv64/modules/rv64i_base_integer.h"
 #include "rv64/modules/rv64m_multiplication.h"
-#include "rv64/modules/rv64a_atomic.h"
-#include "rv64/modules/rv64f_float.h"
 #include "rv64/modules/rv64v_vector.h"
-#include "rv64/modules/rv64c_compressed.h"
-
-
 
 char* rv64_map_register_name(uint8_t reg_id) {
     // matching objdump -d decode names to make testing easier.
-    switch(reg_id) {
-        case(0): return("zero"); // always zero
-        case(1): return("ra"); // return address
-        case(2): return("sp"); // stack pointer
-        case(3): return("gp"); // global pointer
-        case(4): return("tp"); // thread pointer
-        case(5): return("t0"); // temp 0
-        case(6): return("t1"); // temp 1
-        case(7): return("t2"); // temp 2
-        case(8): return("fp"); // TODO: verify this
-        case(9): return("s1"); // saved register
-        case(10): return("a0"); // argument/return value registers
-        case(11): return("a1");
-        case(12): return("a2");
-        case(13): return("a3");
-        case(14): return("a4");
-        case(15): return("a5");
-        case(16): return("a6");
-        case(17): return("a7");
-        case(18): return("s2"); // saved registers
-        case(19): return("s3");
-        case(20): return("s4");
-        case(21): return("s5");
-        case(22): return("s6");
-        case(23): return("s7");
-        case(24): return("s8");
-        case(25): return("s9");
-        case(26): return("s10");
-        case(27): return("s11");
-        case(28): return("t3"); // temp registers
-        case(29): return("t4");
-        case(30): return("t5");
-        case(31): return("t6");
-        default: return("r??");
+    switch (reg_id) {
+        case (0):
+            return "zero";  // always zero
+        case (1):
+            return "ra";  // return address
+        case (2):
+            return "sp";  // stack pointer
+        case (3):
+            return "gp";  // global pointer
+        case (4):
+            return "tp";  // thread pointer
+        case (5):
+            return "t0";  // temp 0
+        case (6):
+            return "t1";  // temp 1
+        case (7):
+            return "t2";  // temp 2
+        case (8):
+            return "fp";  // TODO: verify this
+        case (9):
+            return "s1";  // saved register
+        case (10):
+            return "a0";  // argument/return value registers
+        case (11):
+            return "a1";
+        case (12):
+            return "a2";
+        case (13):
+            return "a3";
+        case (14):
+            return "a4";
+        case (15):
+            return "a5";
+        case (16):
+            return "a6";
+        case (17):
+            return "a7";
+        case (18):
+            return "s2";  // saved registers
+        case (19):
+            return "s3";
+        case (20):
+            return "s4";
+        case (21):
+            return "s5";
+        case (22):
+            return "s6";
+        case (23):
+            return "s7";
+        case (24):
+            return "s8";
+        case (25):
+            return "s9";
+        case (26):
+            return "s10";
+        case (27):
+            return "s11";
+        case (28):
+            return "t3";  // temp registers
+        case (29):
+            return "t4";
+        case (30):
+            return "t5";
+        case (31):
+            return "t6";
+        default:
+            return "r??";
     }
 }
 
 char* rv64_map_vector_register_name(uint8_t vector_reg_id) {
-    switch(vector_reg_id) {
-        case(0): return("v0");
-        case(1): return("v1");
-        case(2): return("v2");
-        case(3): return("v3");
-        case(4): return("v4");
-        case(5): return("v5");
-        case(6): return("v6");
-        case(7): return("v7");
-        case(8): return("v8");
-        case(9): return("v9");
-        case(10): return("v10");
-        case(11): return("v11");
-        case(12): return("v12");
-        case(13): return("v13");
-        case(14): return("v14");
-        case(15): return("v15");
-        case(16): return("v16");
-        case(17): return("v17");
-        case(18): return("v18");
-        case(19): return("v19");
-        case(20): return("v20");
-        case(21): return("v21");
-        case(22): return("v22");
-        case(23): return("v23");
-        case(24): return("v24");
-        case(25): return("v25");
-        case(26): return("v26");
-        case(27): return("v27");
-        case(28): return("v28");
-        case(29): return("v29");
-        case(30): return("v30");
-        case(31): return("v31");
-        default: return("v??");
+    switch (vector_reg_id) {
+        case (0):
+            return "v0";
+        case (1):
+            return "v1";
+        case (2):
+            return "v2";
+        case (3):
+            return "v3";
+        case (4):
+            return "v4";
+        case (5):
+            return "v5";
+        case (6):
+            return "v6";
+        case (7):
+            return "v7";
+        case (8):
+            return "v8";
+        case (9):
+            return "v9";
+        case (10):
+            return "v10";
+        case (11):
+            return "v11";
+        case (12):
+            return "v12";
+        case (13):
+            return "v13";
+        case (14):
+            return "v14";
+        case (15):
+            return "v15";
+        case (16):
+            return "v16";
+        case (17):
+            return "v17";
+        case (18):
+            return "v18";
+        case (19):
+            return "v19";
+        case (20):
+            return "v20";
+        case (21):
+            return "v21";
+        case (22):
+            return "v22";
+        case (23):
+            return "v23";
+        case (24):
+            return "v24";
+        case (25):
+            return "v25";
+        case (26):
+            return "v26";
+        case (27):
+            return "v27";
+        case (28):
+            return "v28";
+        case (29):
+            return "v29";
+        case (30):
+            return "v30";
+        case (31):
+            return "v31";
+        default:
+            return "v??";
     }
 }
 
@@ -111,11 +175,15 @@ void rv64_hart_set_default_machine_csrs(rv64_hart_t* hart, uint8_t hart_index) {
     uint32_t extensions = 0;
     extensions |= RV_EXTENSION_M;
     // Machine Information Registers
-    rv64_csr_set_initial_mvendorid(&hart->csrs, 0); // 0 = non-commercial implementation
-    rv64_csr_set_initial_marchid(&hart->csrs, 0); // 0 = not implemented (seems to be the best option for an emulator?)
-    rv64_csr_set_initial_mimpid(&hart->csrs, 0); // 0 = not implemented
-    rv64_csr_set_initial_mhartid(&hart->csrs, hart_index); // 0 = main core (only core)
-    rv64_csr_set_initial_mconfigptr(&hart->csrs, 0); // 0 = not implemented (format and schema not standardized yet, so not implementing)
+    rv64_csr_set_initial_mvendorid(&hart->csrs, 0);  // 0 = non-commercial implementation
+    rv64_csr_set_initial_marchid(
+        &hart->csrs, 0
+    );  // 0 = not implemented (seems to be the best option for an emulator?)
+    rv64_csr_set_initial_mimpid(&hart->csrs, 0);            // 0 = not implemented
+    rv64_csr_set_initial_mhartid(&hart->csrs, hart_index);  // 0 = main core (only core)
+    rv64_csr_set_initial_mconfigptr(
+        &hart->csrs, 0
+    );  // 0 = not implemented (format and schema not standardized yet, so not implementing)
     // Machine Trap Setup
     rv64_csr_set_initial_misa(&hart->csrs, RV_MXL_64, extensions);
     // ...
@@ -129,8 +197,8 @@ void rv64_hart_set_default_machine_csrs(rv64_hart_t* hart, uint8_t hart_index) {
  */
 emu_result_t emu_rv64_peek_quadrant(rv64_hart_t* hart, uint8_t* out_data) {
     if (hart->pc >= hart->shared_system->memory_size) {
-        LOG(LOG_ERROR, "%s: ER_OUT_OF_BOUNDS. pc: %d >= memory size: %d\n",
-            __func__, hart->pc, hart->shared_system->memory_size);
+        LOG(LOG_ERROR, "%s: ER_OUT_OF_BOUNDS. pc: %d >= memory size: %d\n", __func__, hart->pc,
+            hart->shared_system->memory_size);
         return ER_OUT_OF_BOUNDS;
     }
 
@@ -149,15 +217,16 @@ emu_result_t emu_rv64_read_m16(rv64_hart_t* hart, uint16_t* out_data) {
     if (hart->pc + 1 >= hart->shared_system->memory_size) {
         LOG(LOG_ERROR, "%s: ER_OUT_OF_BOUNDS. ip (+ read size): (%d + 4) >= memory size: %d\n",
             __func__, hart->pc, hart->shared_system->memory_size);
-        return(ER_OUT_OF_BOUNDS);
+        return ER_OUT_OF_BOUNDS;
     }
     // TODO: mutex/lock?
     *out_data = (hart->shared_system->memory[hart->pc + 1] << 8)
-        | (hart->shared_system->memory[hart->pc]);
-    if (*out_data != 0) { // if we reached an empty instruction (end of program), don't increment pc.
+                | (hart->shared_system->memory[hart->pc]);
+    if (*out_data
+        != 0) {  // if we reached an empty instruction (end of program), don't increment pc.
         hart->pc += 2;
     }
-    return(ER_SUCCESS);
+    return ER_SUCCESS;
 }
 
 /**
@@ -167,65 +236,67 @@ emu_result_t emu_rv64_read_m32(rv64_hart_t* hart, uint32_t* out_data) {
     if (hart->pc + 3 >= hart->shared_system->memory_size) {
         LOG(LOG_ERROR, "%s: ER_OUT_OF_BOUNDS. ip (+ read size): (%d + 3) >= memory size: %d\n",
             __func__, hart->pc, hart->shared_system->memory_size);
-        return(ER_OUT_OF_BOUNDS);
+        return ER_OUT_OF_BOUNDS;
     }
     // TODO: mutex/lock?
     *out_data = (hart->shared_system->memory[hart->pc + 3] << 24)
-        | (hart->shared_system->memory[hart->pc + 2] << 16)
-        | (hart->shared_system->memory[hart->pc + 1] << 8)
-        | (hart->shared_system->memory[hart->pc]);
-    if (*out_data != 0) { // if we reached an empty instruction (end of program), don't increment pc.
+                | (hart->shared_system->memory[hart->pc + 2] << 16)
+                | (hart->shared_system->memory[hart->pc + 1] << 8)
+                | (hart->shared_system->memory[hart->pc]);
+    if (*out_data
+        != 0) {  // if we reached an empty instruction (end of program), don't increment pc.
         hart->pc += 4;
     }
-    return(ER_SUCCESS);
+    return ER_SUCCESS;
 }
 
 emu_result_t rv64_hart_init(rv64_hart_t* hart, rv64_shared_system_t* shared_system) {
     hart->shared_system = shared_system;
     // ???
-    return(ER_SUCCESS);
+    return ER_SUCCESS;
 }
 
 void debug_print_registers(rv64_hart_t* hart) {
     printf("Registers:\n");
     for (int i = 0; i < 32; i++) {
         if (hart->registers[i] != 0) {
-            printf("%s (%d): %lu\n", rv64_map_register_name(i), i, hart->registers[i]);
+            printf("%s (%d): %llu\n", rv64_map_register_name(i), i, hart->registers[i]);
         }
     }
-    printf("PC: %ld\n", hart->pc);
+    printf("PC: %lld\n", hart->pc);
 }
 
 #define RV64C_COMPRESSED_ENABLED 1
 
 static emu_result_t rv64_hart_get_next_instruction(rv64_hart_t* hart, uint32_t* instruction) {
     if (hart->rv64c_enabled) {
-        uint8_t quadrant = 0; 
+        uint8_t quadrant = 0;
         if (emu_rv64_peek_quadrant(hart, &quadrant) != ER_SUCCESS) {
-            return(ER_FAILURE);
+            return ER_FAILURE;
         }
-        if ((quadrant & 0b11) == 0b11) { // standard 32 bit instruction.
+        if ((quadrant & 0b11) == 0b11) {  // standard 32 bit instruction.
             if (emu_rv64_read_m32(hart, instruction) != ER_SUCCESS) {
-                return(ER_FAILURE);
+                return ER_FAILURE;
             }
-        } else { // compressed 16 bit instruction.
+        } else {  // compressed 16 bit instruction.
             uint16_t compressed_instruction = 0;
-            if(emu_rv64_read_m16(hart, &compressed_instruction) != ER_SUCCESS) {
-                return(ER_FAILURE);
+            if (emu_rv64_read_m16(hart, &compressed_instruction) != ER_SUCCESS) {
+                return ER_FAILURE;
             }
             *instruction = rv64c_expand(compressed_instruction);
-            return(ER_SUCCESS);
+            return ER_SUCCESS;
         }
     } else {
-        return(emu_rv64_read_m32(hart, instruction));
+        return emu_rv64_read_m32(hart, instruction);
     }
+    return ER_FAILURE;
 }
 
 static result_iter_t rv64_hart_emulate_next(rv64_hart_t* hart) {
     uint32_t raw_instruction = 0;
 #ifdef RV64C_COMPRESSED_ENABLED
-// TODO: if compressed, don't read 4 bytes, just read 2 bytes?
-    uint8_t quadrant = 0; 
+    // TODO: if compressed, don't read 4 bytes, just read 2 bytes?
+    uint8_t quadrant = 0;
     emu_result_t read_result = emu_rv64_peek_quadrant(hart, &quadrant);
     // TODO: check read result
     if ((quadrant & 0b11) == 0b11) {
@@ -245,13 +316,15 @@ static result_iter_t rv64_hart_emulate_next(rv64_hart_t* hart) {
 #endif
     LOGD("%s: ip: %d, raw_instruction: 0x%08x", __func__, hart->pc - 4, raw_instruction);
     if (hart->instructions_count >= 128) {
-        printf("%s: sentinel infinite loop detected, exiting (%d)\n",
-            __func__, hart->instructions_count);
-        return(RI_DONE);
+        printf(
+            "%s: sentinel infinite loop detected, exiting (%d)\n", __func__,
+            hart->instructions_count
+        );
+        return RI_DONE;
     }
     // If we reach an empty byte, assume we've hit the end of the program.
     if (raw_instruction == 0x00) {
-        return(RI_DONE);
+        return RI_DONE;
     }
 
     instruction_tag_rv64_t instruction_tag = I_RV64_INVALID;
@@ -260,7 +333,7 @@ static result_iter_t rv64_hart_emulate_next(rv64_hart_t* hart) {
     hart->instructions_count += 1;
 
     emu_result_t result = ER_FAILURE;
-    switch(instruction_tag) {
+    switch (instruction_tag) {
         // RV64I
         case I_RV64I_LUI:
         case I_RV64I_AUIPC:
@@ -404,16 +477,16 @@ static result_iter_t rv64_hart_emulate_next(rv64_hart_t* hart) {
         // RV64F
         case I_RV64F_FLW:
         case I_RV64F_FSW:
-        case I_RV64F_FMADD_S: 
-        case I_RV64F_FMSUB_S: 
-        case I_RV64F_FNMADD_S: 
-        case I_RV64F_FNMSUB_S: 
+        case I_RV64F_FMADD_S:
+        case I_RV64F_FMSUB_S:
+        case I_RV64F_FNMADD_S:
+        case I_RV64F_FNMSUB_S:
         case I_RV64F_FADD_S:
         case I_RV64F_FSUB_S:
         case I_RV64F_FMUL_S:
         case I_RV64F_FDIV_S:
         case I_RV64F_FSQRT_S:
-        case I_RV64F_FSGNJ_S: 
+        case I_RV64F_FSGNJ_S:
         case I_RV64F_FSGNJN_S:
         case I_RV64F_FSGNJX_S:
         case I_RV64F_FMIN_S:
@@ -444,10 +517,13 @@ static result_iter_t rv64_hart_emulate_next(rv64_hart_t* hart) {
         }
     }
     if (result != ER_SUCCESS) {
-        fprintf(stderr, "Failed to parse instruction! decode_result = %s (%d)\n", emulate_result_strings[result], result);
-        return(RI_FAILURE);
+        fprintf(
+            stderr, "Failed to parse instruction! decode_result = %s (%d)\n",
+            emulate_result_strings[result], result
+        );
+        return RI_FAILURE;
     }
-    return(RI_CONTINUE);
+    return RI_CONTINUE;
 }
 
 result_t run_hart(void* args) {
@@ -459,23 +535,19 @@ result_t run_hart(void* args) {
 
     do {
         result = rv64_hart_emulate_next(hart);
-    } while(result == RI_CONTINUE);
+    } while (result == RI_CONTINUE);
 
     if (result == RI_DONE) {
-        return(SUCCESS);
+        return SUCCESS;
     } else {
-        return(FAILURE);
+        return FAILURE;
     }
 }
 
 /**
  * Copies a a program from a file into memory and executes it.
  */
-result_t rv64_hart_emulate_file(
-    rv64_hart_t* hart,
-    uint64_t memory_address,
-    char* input_path
-) {
+result_t rv64_hart_emulate_file(rv64_hart_t* hart, uint64_t memory_address, char* input_path) {
     LOG(LOG_INFO, "Starting emulate file: '%s'", input_path);
     FILE* file = fopen(input_path, "r");
     if (file == NULL) {
@@ -515,8 +587,8 @@ result_t rv64_hart_emulate_chunk(
     hart->shared_system->memory[hart->pc + in_buffer_size] = 0x00;
     hart->shared_system->memory[hart->pc + in_buffer_size + 1] = 0x00;
     // todo: memcpy atleast 4 null bytes (1 full instruction)
-    //memcpy()
-    return(rv64_hart_emulate(hart));
+    // memcpy()
+    return rv64_hart_emulate(hart);
 }
 
 result_t rv64_hart_emulate(rv64_hart_t* hart) {
@@ -525,12 +597,12 @@ result_t rv64_hart_emulate(rv64_hart_t* hart) {
 
     do {
         result = rv64_hart_emulate_next(hart);
-    } while(result == RI_CONTINUE);
+    } while (result == RI_CONTINUE);
 
     if (result == RI_DONE) {
-        return(SUCCESS);
+        return SUCCESS;
     } else {
-        return(FAILURE);
+        return FAILURE;
     }
 }
 
@@ -538,17 +610,17 @@ void rv64_print_registers(rv64_hart_t* hart) {
     printf("Registers:\n");
     for (int i = 0; i < 32; i++) {
         if (hart->registers[i] != 0) {
-            printf("%s (%d): %lu\n", rv64_map_register_name(i), i, hart->registers[i]);
+            printf("%s (%d): %llu\n", rv64_map_register_name(i), i, hart->registers[i]);
         }
     }
-    printf("PC: %ld\n", hart->pc);
+    printf("PC: %lld\n", hart->pc);
 }
 
 void rv64_print_registers_condensed(rv64_hart_t* hart) {
-    printf("registers: [pc: %ld] ", hart->pc);
+    printf("registers: [pc: %lld] ", hart->pc);
     for (int i = 0; i < 32; i++) {
         if (hart->registers[i] != 0) {
-            printf("%s: %lu, ", rv64_map_register_name(i), hart->registers[i]);
+            printf("%s: %llu, ", rv64_map_register_name(i), hart->registers[i]);
         }
     }
     printf("\n");

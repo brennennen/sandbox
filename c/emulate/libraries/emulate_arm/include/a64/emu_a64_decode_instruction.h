@@ -11,7 +11,6 @@
  */
 instruction_group_a64_t emu_a64_decode_instruction_group(uint32_t instruction);
 
-
 instruction_tag_a64_t emu_a64_decode_instruction_tag(uint32_t instruction);
 
-#endif // EMU_A64_DECODE_INSTRUCTION
+#endif  // EMU_A64_DECODE_INSTRUCTION

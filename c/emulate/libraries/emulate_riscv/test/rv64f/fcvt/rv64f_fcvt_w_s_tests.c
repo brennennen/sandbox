@@ -4,8 +4,8 @@
 
 #include <criterion/criterion.h>
 
-#include "shared/include/binary_utilities.h"
 #include "rv64/rv64_emulate.h"
+#include "shared/include/binary_utilities.h"
 
 static rv64_emulator_t g_emulator;
 
@@ -15,52 +15,72 @@ void rv64_emu_fcvt_w_s_default_setup(void) {
 }
 
 // MARK: round nearest ties even
-Test(emu_rv64_emulate__fcvt_w_s__tests, fcvt_w_s_positive_rne, .init = rv64_emu_fcvt_w_s_default_setup)
-{
+Test(
+    emu_rv64_emulate__fcvt_w_s__tests,
+    fcvt_w_s_positive_rne,
+    .init = rv64_emu_fcvt_w_s_default_setup
+) {
     // arrange
     g_emulator.harts[0].float32_registers[0] = 123.5;
-    uint8_t input[] = { 0x53, 0x05, 0x00, 0xc0 }; // fcvt.w.s a0, f0, rne
+    uint8_t input[] = {0x53, 0x05, 0x00, 0xc0};  // fcvt.w.s a0, f0, rne
     // act
-    result_t result = rv64_hart_emulate_chunk(&g_emulator.harts[0], PROGRAM_START, input, sizeof(input));
+    result_t result = rv64_hart_emulate_chunk(
+        &g_emulator.harts[0], PROGRAM_START, input, sizeof(input)
+    );
     // assert
     cr_assert(SUCCESS == result);
     cr_assert(1 == g_emulator.harts[0].instructions_count);
     cr_assert(124 == g_emulator.harts[0].registers[RV64_REG_A0]);
 }
 
-Test(emu_rv64_emulate__fcvt_w_s__tests, fcvt_w_s_positive_rne_2, .init = rv64_emu_fcvt_w_s_default_setup)
-{
+Test(
+    emu_rv64_emulate__fcvt_w_s__tests,
+    fcvt_w_s_positive_rne_2,
+    .init = rv64_emu_fcvt_w_s_default_setup
+) {
     // arrange
     g_emulator.harts[0].float32_registers[0] = 124.5;
-    uint8_t input[] = { 0x53, 0x05, 0x00, 0xc0 }; // fcvt.w.s a0, f0, rne
+    uint8_t input[] = {0x53, 0x05, 0x00, 0xc0};  // fcvt.w.s a0, f0, rne
     // act
-    result_t result = rv64_hart_emulate_chunk(&g_emulator.harts[0], PROGRAM_START, input, sizeof(input));
+    result_t result = rv64_hart_emulate_chunk(
+        &g_emulator.harts[0], PROGRAM_START, input, sizeof(input)
+    );
     // assert
     cr_assert(SUCCESS == result);
     cr_assert(1 == g_emulator.harts[0].instructions_count);
     cr_assert(124 == g_emulator.harts[0].registers[RV64_REG_A0]);
 }
 
-Test(emu_rv64_emulate__fcvt_w_s__tests, fcvt_w_negative_rne, .init = rv64_emu_fcvt_w_s_default_setup)
-{
+Test(
+    emu_rv64_emulate__fcvt_w_s__tests,
+    fcvt_w_negative_rne,
+    .init = rv64_emu_fcvt_w_s_default_setup
+) {
     // arrange
     g_emulator.harts[0].float32_registers[0] = -123.5;
-    uint8_t input[] = { 0x53, 0x05, 0x00, 0xc0 }; // fcvt.w.s a0, f0, rne
+    uint8_t input[] = {0x53, 0x05, 0x00, 0xc0};  // fcvt.w.s a0, f0, rne
     // act
-    result_t result = rv64_hart_emulate_chunk(&g_emulator.harts[0], PROGRAM_START, input, sizeof(input));
+    result_t result = rv64_hart_emulate_chunk(
+        &g_emulator.harts[0], PROGRAM_START, input, sizeof(input)
+    );
     // assert
     cr_assert(SUCCESS == result);
     cr_assert(1 == g_emulator.harts[0].instructions_count);
     cr_assert(-124 == g_emulator.harts[0].registers[RV64_REG_A0]);
 }
 
-Test(emu_rv64_emulate__fcvt_w_s__tests, fcvt_w_negative_rne_2, .init = rv64_emu_fcvt_w_s_default_setup)
-{
+Test(
+    emu_rv64_emulate__fcvt_w_s__tests,
+    fcvt_w_negative_rne_2,
+    .init = rv64_emu_fcvt_w_s_default_setup
+) {
     // arrange
     g_emulator.harts[0].float32_registers[0] = -124.5;
-    uint8_t input[] = { 0x53, 0x05, 0x00, 0xc0 }; // fcvt.w.s a0, f0, rne
+    uint8_t input[] = {0x53, 0x05, 0x00, 0xc0};  // fcvt.w.s a0, f0, rne
     // act
-    result_t result = rv64_hart_emulate_chunk(&g_emulator.harts[0], PROGRAM_START, input, sizeof(input));
+    result_t result = rv64_hart_emulate_chunk(
+        &g_emulator.harts[0], PROGRAM_START, input, sizeof(input)
+    );
     // assert
     cr_assert(SUCCESS == result);
     cr_assert(1 == g_emulator.harts[0].instructions_count);
@@ -68,26 +88,36 @@ Test(emu_rv64_emulate__fcvt_w_s__tests, fcvt_w_negative_rne_2, .init = rv64_emu_
 }
 
 // MARK: round toward zero
-Test(emu_rv64_emulate__fcvt_w_s__tests, fcvt_w_s_positive_rtz, .init = rv64_emu_fcvt_w_s_default_setup)
-{
+Test(
+    emu_rv64_emulate__fcvt_w_s__tests,
+    fcvt_w_s_positive_rtz,
+    .init = rv64_emu_fcvt_w_s_default_setup
+) {
     // arrange
     g_emulator.harts[0].float32_registers[0] = 123.45;
-    uint8_t input[] = { 0x53, 0x15, 0x00, 0xc0 }; // fcvt.w.s a0, f0, rtz
+    uint8_t input[] = {0x53, 0x15, 0x00, 0xc0};  // fcvt.w.s a0, f0, rtz
     // act
-    result_t result = rv64_hart_emulate_chunk(&g_emulator.harts[0], PROGRAM_START, input, sizeof(input));
+    result_t result = rv64_hart_emulate_chunk(
+        &g_emulator.harts[0], PROGRAM_START, input, sizeof(input)
+    );
     // assert
     cr_assert(SUCCESS == result);
     cr_assert(1 == g_emulator.harts[0].instructions_count);
     cr_assert(123 == g_emulator.harts[0].registers[RV64_REG_A0]);
 }
 
-Test(emu_rv64_emulate__fcvt_w_s__tests, fcvt_w_negative_rtz, .init = rv64_emu_fcvt_w_s_default_setup)
-{
+Test(
+    emu_rv64_emulate__fcvt_w_s__tests,
+    fcvt_w_negative_rtz,
+    .init = rv64_emu_fcvt_w_s_default_setup
+) {
     // arrange
     g_emulator.harts[0].float32_registers[0] = -123.45;
-    uint8_t input[] = { 0x53, 0x15, 0x00, 0xc0 }; // fcvt.w.s a0, f0, rtz
+    uint8_t input[] = {0x53, 0x15, 0x00, 0xc0};  // fcvt.w.s a0, f0, rtz
     // act
-    result_t result = rv64_hart_emulate_chunk(&g_emulator.harts[0], PROGRAM_START, input, sizeof(input));
+    result_t result = rv64_hart_emulate_chunk(
+        &g_emulator.harts[0], PROGRAM_START, input, sizeof(input)
+    );
     // assert
     cr_assert(SUCCESS == result);
     cr_assert(1 == g_emulator.harts[0].instructions_count);
@@ -95,26 +125,36 @@ Test(emu_rv64_emulate__fcvt_w_s__tests, fcvt_w_negative_rtz, .init = rv64_emu_fc
 }
 
 // MARK: round down
-Test(emu_rv64_emulate__fcvt_w_s__tests, fcvt_w_s_positive_rdn, .init = rv64_emu_fcvt_w_s_default_setup)
-{
+Test(
+    emu_rv64_emulate__fcvt_w_s__tests,
+    fcvt_w_s_positive_rdn,
+    .init = rv64_emu_fcvt_w_s_default_setup
+) {
     // arrange
     g_emulator.harts[0].float32_registers[0] = 123.45;
-    uint8_t input[] = { 0x53, 0x25, 0x00, 0xc0 }; // fcvt.w.s a0, f0, rdn
+    uint8_t input[] = {0x53, 0x25, 0x00, 0xc0};  // fcvt.w.s a0, f0, rdn
     // act
-    result_t result = rv64_hart_emulate_chunk(&g_emulator.harts[0], PROGRAM_START, input, sizeof(input));
+    result_t result = rv64_hart_emulate_chunk(
+        &g_emulator.harts[0], PROGRAM_START, input, sizeof(input)
+    );
     // assert
     cr_assert(SUCCESS == result);
     cr_assert(1 == g_emulator.harts[0].instructions_count);
     cr_assert(123 == g_emulator.harts[0].registers[RV64_REG_A0]);
 }
 
-Test(emu_rv64_emulate__fcvt_w_s__tests, fcvt_w_negative_rdn, .init = rv64_emu_fcvt_w_s_default_setup)
-{
+Test(
+    emu_rv64_emulate__fcvt_w_s__tests,
+    fcvt_w_negative_rdn,
+    .init = rv64_emu_fcvt_w_s_default_setup
+) {
     // arrange
     g_emulator.harts[0].float32_registers[0] = -123.45;
-    uint8_t input[] = { 0x53, 0x25, 0x00, 0xc0 }; // fcvt.w.s a0, f0, rdn
+    uint8_t input[] = {0x53, 0x25, 0x00, 0xc0};  // fcvt.w.s a0, f0, rdn
     // act
-    result_t result = rv64_hart_emulate_chunk(&g_emulator.harts[0], PROGRAM_START, input, sizeof(input));
+    result_t result = rv64_hart_emulate_chunk(
+        &g_emulator.harts[0], PROGRAM_START, input, sizeof(input)
+    );
     // assert
     cr_assert(SUCCESS == result);
     cr_assert(1 == g_emulator.harts[0].instructions_count);
@@ -122,26 +162,36 @@ Test(emu_rv64_emulate__fcvt_w_s__tests, fcvt_w_negative_rdn, .init = rv64_emu_fc
 }
 
 // MARK: round up
-Test(emu_rv64_emulate__fcvt_w_s__tests, fcvt_w_s_positive_rup, .init = rv64_emu_fcvt_w_s_default_setup)
-{
+Test(
+    emu_rv64_emulate__fcvt_w_s__tests,
+    fcvt_w_s_positive_rup,
+    .init = rv64_emu_fcvt_w_s_default_setup
+) {
     // arrange
     g_emulator.harts[0].float32_registers[0] = 123.45;
-    uint8_t input[] = { 0x53, 0x35, 0x00, 0xc0 }; // fcvt.w.s a0, f0, rup
+    uint8_t input[] = {0x53, 0x35, 0x00, 0xc0};  // fcvt.w.s a0, f0, rup
     // act
-    result_t result = rv64_hart_emulate_chunk(&g_emulator.harts[0], PROGRAM_START, input, sizeof(input));
+    result_t result = rv64_hart_emulate_chunk(
+        &g_emulator.harts[0], PROGRAM_START, input, sizeof(input)
+    );
     // assert
     cr_assert(SUCCESS == result);
     cr_assert(1 == g_emulator.harts[0].instructions_count);
     cr_assert(124 == g_emulator.harts[0].registers[RV64_REG_A0]);
 }
 
-Test(emu_rv64_emulate__fcvt_w_s__tests, fcvt_w_negative_rup, .init = rv64_emu_fcvt_w_s_default_setup)
-{
+Test(
+    emu_rv64_emulate__fcvt_w_s__tests,
+    fcvt_w_negative_rup,
+    .init = rv64_emu_fcvt_w_s_default_setup
+) {
     // arrange
     g_emulator.harts[0].float32_registers[0] = -123.45;
-    uint8_t input[] = { 0x53, 0x35, 0x00, 0xc0 }; // fcvt.w.s a0, f0, rup
+    uint8_t input[] = {0x53, 0x35, 0x00, 0xc0};  // fcvt.w.s a0, f0, rup
     // act
-    result_t result = rv64_hart_emulate_chunk(&g_emulator.harts[0], PROGRAM_START, input, sizeof(input));
+    result_t result = rv64_hart_emulate_chunk(
+        &g_emulator.harts[0], PROGRAM_START, input, sizeof(input)
+    );
     // assert
     cr_assert(SUCCESS == result);
     cr_assert(1 == g_emulator.harts[0].instructions_count);
@@ -149,52 +199,72 @@ Test(emu_rv64_emulate__fcvt_w_s__tests, fcvt_w_negative_rup, .init = rv64_emu_fc
 }
 
 // MARK: round nearest ties max magnitude
-Test(emu_rv64_emulate__fcvt_w_s__tests, fcvt_w_s_positive_rmm, .init = rv64_emu_fcvt_w_s_default_setup)
-{
+Test(
+    emu_rv64_emulate__fcvt_w_s__tests,
+    fcvt_w_s_positive_rmm,
+    .init = rv64_emu_fcvt_w_s_default_setup
+) {
     // arrange
     g_emulator.harts[0].float32_registers[0] = 123.5;
-    uint8_t input[] = { 0x53, 0x45, 0x00, 0xc0 }; // fcvt.w.s a0, f0, rmm
+    uint8_t input[] = {0x53, 0x45, 0x00, 0xc0};  // fcvt.w.s a0, f0, rmm
     // act
-    result_t result = rv64_hart_emulate_chunk(&g_emulator.harts[0], PROGRAM_START, input, sizeof(input));
+    result_t result = rv64_hart_emulate_chunk(
+        &g_emulator.harts[0], PROGRAM_START, input, sizeof(input)
+    );
     // assert
     cr_assert(SUCCESS == result);
     cr_assert(1 == g_emulator.harts[0].instructions_count);
     cr_assert(124 == g_emulator.harts[0].registers[RV64_REG_A0]);
 }
 
-Test(emu_rv64_emulate__fcvt_w_s__tests, fcvt_w_s_positive_rmm_2, .init = rv64_emu_fcvt_w_s_default_setup)
-{
+Test(
+    emu_rv64_emulate__fcvt_w_s__tests,
+    fcvt_w_s_positive_rmm_2,
+    .init = rv64_emu_fcvt_w_s_default_setup
+) {
     // arrange
     g_emulator.harts[0].float32_registers[0] = 124.5;
-    uint8_t input[] = { 0x53, 0x45, 0x00, 0xc0 }; // fcvt.w.s a0, f0, rmm
+    uint8_t input[] = {0x53, 0x45, 0x00, 0xc0};  // fcvt.w.s a0, f0, rmm
     // act
-    result_t result = rv64_hart_emulate_chunk(&g_emulator.harts[0], PROGRAM_START, input, sizeof(input));
+    result_t result = rv64_hart_emulate_chunk(
+        &g_emulator.harts[0], PROGRAM_START, input, sizeof(input)
+    );
     // assert
     cr_assert(SUCCESS == result);
     cr_assert(1 == g_emulator.harts[0].instructions_count);
     cr_assert(125 == g_emulator.harts[0].registers[RV64_REG_A0]);
 }
 
-Test(emu_rv64_emulate__fcvt_w_s__tests, fcvt_w_negative_rmm, .init = rv64_emu_fcvt_w_s_default_setup)
-{
+Test(
+    emu_rv64_emulate__fcvt_w_s__tests,
+    fcvt_w_negative_rmm,
+    .init = rv64_emu_fcvt_w_s_default_setup
+) {
     // arrange
     g_emulator.harts[0].float32_registers[0] = -123.5;
-    uint8_t input[] = { 0x53, 0x45, 0x00, 0xc0 }; // fcvt.w.s a0, f0, rmm
+    uint8_t input[] = {0x53, 0x45, 0x00, 0xc0};  // fcvt.w.s a0, f0, rmm
     // act
-    result_t result = rv64_hart_emulate_chunk(&g_emulator.harts[0], PROGRAM_START, input, sizeof(input));
+    result_t result = rv64_hart_emulate_chunk(
+        &g_emulator.harts[0], PROGRAM_START, input, sizeof(input)
+    );
     // assert
     cr_assert(SUCCESS == result);
     cr_assert(1 == g_emulator.harts[0].instructions_count);
     cr_assert(-124 == g_emulator.harts[0].registers[RV64_REG_A0]);
 }
 
-Test(emu_rv64_emulate__fcvt_w_s__tests, fcvt_w_negative_rmm_2, .init = rv64_emu_fcvt_w_s_default_setup)
-{
+Test(
+    emu_rv64_emulate__fcvt_w_s__tests,
+    fcvt_w_negative_rmm_2,
+    .init = rv64_emu_fcvt_w_s_default_setup
+) {
     // arrange
     g_emulator.harts[0].float32_registers[0] = -124.5;
-    uint8_t input[] = { 0x53, 0x45, 0x00, 0xc0 }; // fcvt.w.s a0, f0, rmm
+    uint8_t input[] = {0x53, 0x45, 0x00, 0xc0};  // fcvt.w.s a0, f0, rmm
     // act
-    result_t result = rv64_hart_emulate_chunk(&g_emulator.harts[0], PROGRAM_START, input, sizeof(input));
+    result_t result = rv64_hart_emulate_chunk(
+        &g_emulator.harts[0], PROGRAM_START, input, sizeof(input)
+    );
     // assert
     cr_assert(SUCCESS == result);
     cr_assert(1 == g_emulator.harts[0].instructions_count);
@@ -202,14 +272,15 @@ Test(emu_rv64_emulate__fcvt_w_s__tests, fcvt_w_negative_rmm_2, .init = rv64_emu_
 }
 
 // MARK: dynamic
-Test(emu_rv64_emulate__fcvt_w_s__tests, fcvt_w_s_dynamic, .init = rv64_emu_fcvt_w_s_default_setup)
-{
+Test(emu_rv64_emulate__fcvt_w_s__tests, fcvt_w_s_dynamic, .init = rv64_emu_fcvt_w_s_default_setup) {
     // arrange
     g_emulator.harts[0].float32_registers[0] = 123.5;
-    uint8_t input[] = { 0x53, 0x75, 0x00, 0xc0 }; // fcvt.w.s a0, f0
+    uint8_t input[] = {0x53, 0x75, 0x00, 0xc0};  // fcvt.w.s a0, f0
     // dynamic defaults to using csr "frm", which defaults to "RNE" (nearest tiest to even).
     // act
-    result_t result = rv64_hart_emulate_chunk(&g_emulator.harts[0], PROGRAM_START, input, sizeof(input));
+    result_t result = rv64_hart_emulate_chunk(
+        &g_emulator.harts[0], PROGRAM_START, input, sizeof(input)
+    );
     // assert
     cr_assert(RV64F_ROUND_TO_NEAREST_TIES_EVEN == g_emulator.harts[0].csrs.frm);
     cr_assert(SUCCESS == result);
@@ -217,14 +288,19 @@ Test(emu_rv64_emulate__fcvt_w_s__tests, fcvt_w_s_dynamic, .init = rv64_emu_fcvt_
     cr_assert(124 == g_emulator.harts[0].registers[RV64_REG_A0]);
 }
 
-Test(emu_rv64_emulate__fcvt_w_s__tests, fcvt_w_s_dynamic2, .init = rv64_emu_fcvt_w_s_default_setup)
-{
+Test(
+    emu_rv64_emulate__fcvt_w_s__tests,
+    fcvt_w_s_dynamic2,
+    .init = rv64_emu_fcvt_w_s_default_setup
+) {
     // arrange
     g_emulator.harts[0].float32_registers[0] = 124.5;
-    uint8_t input[] = { 0x53, 0x75, 0x00, 0xc0 }; // fcvt.w.s a0, f0
+    uint8_t input[] = {0x53, 0x75, 0x00, 0xc0};  // fcvt.w.s a0, f0
     // dynamic defaults to using csr "frm", which defaults to "RNE" (nearest tiest to even).
     // act
-    result_t result = rv64_hart_emulate_chunk(&g_emulator.harts[0], PROGRAM_START, input, sizeof(input));
+    result_t result = rv64_hart_emulate_chunk(
+        &g_emulator.harts[0], PROGRAM_START, input, sizeof(input)
+    );
     // assert
     cr_assert(RV64F_ROUND_TO_NEAREST_TIES_EVEN == g_emulator.harts[0].csrs.frm);
     cr_assert(SUCCESS == result);

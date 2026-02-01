@@ -45,5 +45,4 @@ emu_result_t emu_add_immediate(emulator_8086_t* emulator, uint8_t byte1);
 
 // MARK: ADD 3 - I_ADD_IMMEDIATE_TO_AX
 
-
 #endif

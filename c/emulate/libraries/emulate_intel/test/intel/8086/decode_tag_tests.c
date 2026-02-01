@@ -3,9 +3,8 @@
 
 #include <criterion/criterion.h>
 
-#include "8086/instruction_tags_8086.h"
 #include "8086/decode_8086_tag.h"
-
+#include "8086/instruction_tags_8086.h"
 
 // MARK: MOV
 Test(emu_8086_decode_tag_tests, MOVE) {
@@ -22,14 +21,14 @@ Test(emu_8086_decode_tag_tests, MOVE) {
 Test(emu_8086_decode_tag_tests, PUSH) {
     cr_assert(I_PUSH == emu_8086_decode_tag(0b11111111, 0b00110000));
     cr_assert(I_PUSH_REGISTER == emu_8086_decode_tag(0b01010001, 0));
-    //cr_assert(I_PUSH_SEGMENT_REGISTER == emu_8086_decode_tag(0b00000110, 0));
+    // cr_assert(I_PUSH_SEGMENT_REGISTER == emu_8086_decode_tag(0b00000110, 0));
 }
 
 // MARK: POP
 Test(emu_8086_decode_tag_tests, POP) {
     cr_assert(I_POP == emu_8086_decode_tag(0b10001111, 0b00000000));
     cr_assert(I_POP_REGISTER == emu_8086_decode_tag(0b01011001, 0));
-    //cr_assert(I_POP_SEGMENT_REGISTER == emu_8086_decode_tag(0b00000111, 0));
+    // cr_assert(I_POP_SEGMENT_REGISTER == emu_8086_decode_tag(0b00000111, 0));
 }
 
 // MARK: XCHG
@@ -165,7 +164,7 @@ Test(emu_8086_decode_tag_tests, AND) {
 // MARK: TEST
 Test(emu_8086_decode_tag_tests, TEST) {
     // TODO: TEST datasheet opcodes overlap with ADC opcodes, probably a typo.
-    //cr_assert(I_TEST == emu_8086_decode_tag(0b00100000, 0));
+    // cr_assert(I_TEST == emu_8086_decode_tag(0b00100000, 0));
     cr_assert(I_TEST_IMMEDIATE == emu_8086_decode_tag(0b11110110, 0b00000000));
     cr_assert(I_TEST_IMMEDIATE_TO_AX == emu_8086_decode_tag(0b10101000, 0));
 }

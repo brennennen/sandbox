@@ -18,24 +18,22 @@ void rv64_emu_slti_default_setup(void) {
     rv64_emulator_init(&g_emulator);
 }
 
-Test(emu_rv64_emulate__slti__tests, slti_1, .init = rv64_emu_slti_default_setup)
-{
-    g_emulator.harts[0].registers[RV64_REG_T0] = 1; // rd
-    g_emulator.harts[0].registers[RV64_REG_T1] = 10; // rs1
-    uint8_t input[] = { 0x93, 0x22, 0x03, 0x00 }; // slti t0, t1, 0
+Test(emu_rv64_emulate__slti__tests, slti_1, .init = rv64_emu_slti_default_setup) {
+    g_emulator.harts[0].registers[RV64_REG_T0] = 1;   // rd
+    g_emulator.harts[0].registers[RV64_REG_T1] = 10;  // rs1
+    uint8_t input[] = {0x93, 0x22, 0x03, 0x00};       // slti t0, t1, 0
     cr_assert(SUCCESS == rv64_emulate_chunk_single_core(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.harts[0].instructions_count);
-    cr_assert(0 == g_emulator.harts[0].registers[RV64_REG_T0]); // 10 is not less than 0
+    cr_assert(0 == g_emulator.harts[0].registers[RV64_REG_T0]);  // 10 is not less than 0
 }
 
-Test(emu_rv64_emulate__slti__tests, slti_2, .init = rv64_emu_slti_default_setup)
-{
-    g_emulator.harts[0].registers[RV64_REG_T0] = 0; // rd
-    g_emulator.harts[0].registers[RV64_REG_T1] = -10; // rs1
-    uint8_t input[] = { 0x93, 0x22, 0x03, 0x00 }; // slti t0, t1, 0
+Test(emu_rv64_emulate__slti__tests, slti_2, .init = rv64_emu_slti_default_setup) {
+    g_emulator.harts[0].registers[RV64_REG_T0] = 0;    // rd
+    g_emulator.harts[0].registers[RV64_REG_T1] = -10;  // rs1
+    uint8_t input[] = {0x93, 0x22, 0x03, 0x00};        // slti t0, t1, 0
     cr_assert(SUCCESS == rv64_emulate_chunk_single_core(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.harts[0].instructions_count);
-    cr_assert(1 == g_emulator.harts[0].registers[RV64_REG_T0]); // -10 is less than 0
+    cr_assert(1 == g_emulator.harts[0].registers[RV64_REG_T0]);  // -10 is less than 0
 }
 
 // TODO: test with different sized ints, exercise parsing the upper byte of the

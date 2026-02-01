@@ -4,9 +4,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "8086/instruction_tags_8086.h"
 #include "8086/decode_8086_utils.h"
-
+#include "8086/instruction_tags_8086.h"
 
 static inline uint16_t emu_sign_extend_m8_to_m16(int8_t data) {
     // Performs a "signed extension" by taking advantage of c's 2 complement
@@ -27,9 +26,12 @@ static inline uint16_t emu_sign_extend_m8_to_m16(int8_t data) {
 }
 
 emu_result_t read_displacement(
-    emulator_8086_t* emulator, mod_t mod,
-    uint8_t rm, uint16_t* displacement,
-    uint8_t* displacement_byte_size);
+    emulator_8086_t* emulator,
+    mod_t mod,
+    uint8_t rm,
+    uint16_t* displacement,
+    uint8_t* displacement_byte_size
+);
 
 emu_result_t emu_decode_common_standard_format(
     emulator_8086_t* emulator,
@@ -108,10 +110,8 @@ emu_result_t emu_decode_common_signed_immediate_format(
     uint8_t* instruction_size
 );
 
-
 void write_uint8(char* buffer, int* index, size_t buffer_size, uint8_t num);
 void write_uint16(char* buffer, int* index, size_t buffer_size, uint16_t num);
-
 
 char* map_register_field_encoding(reg_wide_t reg);
 
@@ -129,13 +129,23 @@ char* map_register_field_encoding(reg_wide_t reg);
  * @param rm Register/Memory field encoding being processed. See table 4-10.
  * @param displacement Offset to add to the address when mod is 0b01 or 0b10.
  */
-void build_effective_address(char* buffer, size_t buffer_size,
-                             wide_t wide, mod_t mod, uint8_t rm,
-                             uint16_t displacement);
+void build_effective_address(
+    char* buffer,
+    size_t buffer_size,
+    wide_t wide,
+    mod_t mod,
+    uint8_t rm,
+    uint16_t displacement
+);
 
 uint8_t* emu_get_byte_register(registers_8086_t* registers, reg_t reg);
 uint16_t* emu_get_word_register(registers_8086_t* registers, reg_t reg);
-uint32_t emu_get_effective_address(registers_8086_t* registers, reg_t reg, mod_t mod, uint16_t displacement);
+uint32_t emu_get_effective_address(
+    registers_8086_t* registers,
+    reg_t reg,
+    mod_t mod,
+    uint16_t displacement
+);
 uint32_t emu_get_effective_address_mode_memory(registers_8086_t* registers, reg_t reg);
 
 void write__common_register_or_memory_with_register_or_memory(
@@ -149,7 +159,8 @@ void write__common_register_or_memory_with_register_or_memory(
     uint8_t mnemonic_size,
     char* buffer,
     int* index,
-    int buffer_size);
+    int buffer_size
+);
 
 void write__common_immediate_to_register_or_memory(
     uint8_t sign,
@@ -162,8 +173,7 @@ void write__common_immediate_to_register_or_memory(
     uint8_t mnemonic_size,
     char* buffer,
     int* index,
-    int buffer_size);
+    int buffer_size
+);
 
-
-
-#endif // DECODE_8086_SHARED_H
+#endif  // DECODE_8086_SHARED_H

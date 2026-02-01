@@ -5,11 +5,8 @@
 
 #include "shared/include/math_utilities.h"
 
-
-#include "logger.h"
-
 #include "rv64/rv64_decode.h"
-#include "rv64/rv64_emulate.h"
+#include "rv64/rv64_hart.h"
 #include "rv64/rv64_instructions.h"
 
 #include "rv64/modules/rv64v_vector.h"
@@ -19,11 +16,15 @@
  */
 
 static uint8_t rv64v_selected_element_width(rv64v_selected_element_width_t sew) {
-    switch(sew) {
-        case RV64_SEW_8: return 8;
-        case RV64_SEW_16: return 16;
-        case RV64_SEW_32: return 32;
-        case RV64_SEW_64: return 64;
+    switch (sew) {
+        case RV64_SEW_8:
+            return 8;
+        case RV64_SEW_16:
+            return 16;
+        case RV64_SEW_32:
+            return 32;
+        case RV64_SEW_64:
+            return 64;
         default: {
             printf("%s: invalid sew enum: %d. defaulting to 8.\n", __func__, sew);
             return 8;
@@ -48,7 +49,7 @@ static uint64_t rv64v_calculate_vlmax(rv64v_vtype_t* vtype) {
     uint8_t sew = rv64v_selected_element_width(vtype->selected_element_width);
     uint64_t base_vlmax = (uint64_t)(VLEN / (uint64_t)sew);
     uint64_t vlmax = 0;
-    switch(vtype->vlmul) {
+    switch (vtype->vlmul) {
         case RV64_VLMUL_1: {
             vlmax = base_vlmax;
             break;
@@ -84,12 +85,9 @@ static uint64_t rv64v_calculate_vlmax(rv64v_vtype_t* vtype) {
     // return 0;
 }
 
-static bool rv64v_is_register_group_aligned(
-    uint8_t vector_register,
-    rv64v_vlmul_t vlmul
-) {
+static bool rv64v_is_register_group_aligned(uint8_t vector_register, rv64v_vlmul_t vlmul) {
     bool is_aligned = true;
-    switch(vlmul) {
+    switch (vlmul) {
         case RV64_VLMUL_2: {
             if (vector_register % 2 != 0) {
                 is_aligned = false;
@@ -125,7 +123,8 @@ static bool rv64v_is_register_group_aligned(
 /**
  * Configures vector csrs (vl and vtype) for any upcoming vector instruction operations.
  *
- * @see 30.6 Configuration-Setting Instructions (vsetvli/vsetivli/vsetvl) (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#sec-vector-config)
+ * @see 30.6 Configuration-Setting Instructions (vsetvli/vsetivli/vsetvl)
+ * (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#sec-vector-config)
  *
  * `vsetvli rd, rs1, vtypei` # rd = new vl, rs1 = AVL, vtypei = new vtype setting
  * The `vtypei` is broken down into it's 4 fields
@@ -133,11 +132,7 @@ static bool rv64v_is_register_group_aligned(
  * ex:
  * `vsetvli rd, rs1, e8, m8, ta, ma`
  */
-static void rv64v_vsetvli(
-    rv64_hart_t* hart,
-    uint32_t raw_instruction,
-    instruction_tag_rv64_t tag
-) {
+static void rv64v_vsetvli(rv64_hart_t* hart, uint32_t raw_instruction, instruction_tag_rv64_t tag) {
     uint8_t rs1 = 0;
     uint8_t rd = 0;
     uint16_t vtypei = 0;
@@ -145,7 +140,8 @@ static void rv64v_vsetvli(
 
     // Set Vector Type
     // todo: detect illegal vtype
-    // todo: going from vtypei (10 bits) to vtype (64 bits) do we need to do something while widening?
+    // todo: going from vtypei (10 bits) to vtype (64 bits) do we need to do something while
+    // widening?
     hart->csrs.vtype = vtypei;
 
     // Set "Vector Length"
@@ -185,20 +181,13 @@ static void rv64v_vle8_v_simple_no_grouping_no_masking(
 }
 */
 
-
-
-
 /**
  * `vle8.v` - Vector Load Element (8 bits each)
  * `vle8.v vs1, (rs2)`
  * Loads 8 bit elements from memory into vector registers with "unit striding"
  * (no gaps/offsets between elements).
  */
-static void rv64v_vle8_v(
-    rv64_hart_t* hart,
-    uint32_t raw_instruction,
-    instruction_tag_rv64_t tag
-) {
+static void rv64v_vle8_v(rv64_hart_t* hart, uint32_t raw_instruction, instruction_tag_rv64_t tag) {
     uint8_t nf = 0;
     uint8_t mew = 0;
     uint8_t mop = 0;
@@ -222,18 +211,19 @@ static void rv64v_vle8_v(
         printf("%s: vegister group not aligned: %d, vlmul: %d\n", __func__, vd, vtype.vlmul);
     }
 
-    uint8_t vlen_bytes = 16; // vlen = 128 bits
+    uint8_t vlen_bytes = 16;  // vlen = 128 bits
     for (uint64_t i = 0; i < hart->csrs.vl; i++) {
         bool mask_elem_active = true;
         if (vm == 0) {
             // todo: set mask_elem_active accordingly
         } else {
-            mask_elem_active = true; // masking disabled, so always load everything
+            mask_elem_active = true;  // masking disabled, so always load everything
         }
         if (mask_elem_active) {
             uint64_t physical_vd = vd + (i / vlen_bytes);
             uint64_t byte_offset = i % vlen_bytes;
-            hart->vector_registers[physical_vd].bytes[byte_offset] = hart->shared_system->memory[base_addr + i];
+            hart->vector_registers[physical_vd].bytes[byte_offset] =
+                hart->shared_system->memory[base_addr + i];
         }
     }
 }
@@ -244,11 +234,7 @@ static void rv64v_vle8_v(
  * Loads 16 bit elements from memory into vector registers with "unit striding"
  * (no gaps/offsets between elements).
  */
-static void rv64v_vle16_v(
-    rv64_hart_t* hart,
-    uint32_t raw_instruction,
-    instruction_tag_rv64_t tag
-) {
+static void rv64v_vle16_v(rv64_hart_t* hart, uint32_t raw_instruction, instruction_tag_rv64_t tag) {
     uint8_t nf = 0;
     uint8_t mew = 0;
     uint8_t mop = 0;
@@ -272,22 +258,24 @@ static void rv64v_vle16_v(
         printf("%s: vegister group not aligned: %d, vlmul: %d\n", __func__, vd, vtype.vlmul);
     }
 
-    uint8_t elements_per_vector = VLEN / 16; // assuming vlen=128: 128 / 16 = 8 elems per vector register
+    uint8_t elements_per_vector =
+        VLEN / 16;  // assuming vlen=128: 128 / 16 = 8 elems per vector register
     for (int i = 0; i < hart->csrs.vl; i++) {
         bool mask_elem_active = true;
         if (vm == 0) {
             // todo: set mask_elem_active accordingly
         } else {
-            mask_elem_active = true; // masking disabled, so always load everything
+            mask_elem_active = true;  // masking disabled, so always load everything
         }
         if (mask_elem_active) {
             uint8_t physical_vd = vd + (i / elements_per_vector);
             uint16_t elem_offset = i % elements_per_vector;
             uint64_t elem_address = base_addr + (uint64_t)(i * 2);
-            memcpy(&hart->vector_registers[physical_vd].elements_16[elem_offset],
-                &hart->shared_system->memory[elem_address], 2);
+            memcpy(
+                &hart->vector_registers[physical_vd].elements_16[elem_offset],
+                &hart->shared_system->memory[elem_address], 2
+            );
         }
-
     }
 }
 
@@ -297,11 +285,7 @@ static void rv64v_vle16_v(
  * Loads 32 bit elements from memory into vector registers with "unit striding"
  * (no gaps/offsets between elements).
  */
-static void rv64v_vle32_v(
-    rv64_hart_t* hart,
-    uint32_t raw_instruction,
-    instruction_tag_rv64_t tag
-) {
+static void rv64v_vle32_v(rv64_hart_t* hart, uint32_t raw_instruction, instruction_tag_rv64_t tag) {
     uint8_t nf = 0;
     uint8_t mew = 0;
     uint8_t mop = 0;
@@ -325,38 +309,34 @@ static void rv64v_vle32_v(
         printf("%s: vegister group not aligned: %d, vlmul: %d\n", __func__, vd, vtype.vlmul);
     }
 
-    uint8_t elements_per_vector = VLEN / 32; // assuming vlen=128: 128 / 32 = 4 elems per vector register
+    uint8_t elements_per_vector =
+        VLEN / 32;  // assuming vlen=128: 128 / 32 = 4 elems per vector register
     for (int i = 0; i < hart->csrs.vl; i++) {
         bool mask_elem_active = true;
         if (vm == 0) {
             // todo: set mask_elem_active accordingly
         } else {
-            mask_elem_active = true; // masking disabled, so always load everything
+            mask_elem_active = true;  // masking disabled, so always load everything
         }
         if (mask_elem_active) {
             uint8_t physical_vd = vd + (i / elements_per_vector);
             uint16_t elem_offset = i % elements_per_vector;
             uint64_t elem_address = base_addr + (uint64_t)(i * 4);
-            memcpy(&hart->vector_registers[physical_vd].elements_32[elem_offset],
-                &hart->shared_system->memory[elem_address], 4);
+            memcpy(
+                &hart->vector_registers[physical_vd].elements_32[elem_offset],
+                &hart->shared_system->memory[elem_address], 4
+            );
         }
     }
 }
 
-
 // rv64v_vlse8_V
-
-
 
 /*
  * MARK: Stores
  */
 
-static void rv64v_vse8_v(
-    rv64_hart_t* hart,
-    uint32_t raw_instruction,
-    instruction_tag_rv64_t tag
-) {
+static void rv64v_vse8_v(rv64_hart_t* hart, uint32_t raw_instruction, instruction_tag_rv64_t tag) {
     uint8_t nf = 0;
     uint8_t mew = 0;
     uint8_t mop = 0;
@@ -386,11 +366,12 @@ static void rv64v_vse8_v(
     }
 
     // TODO: masking
-    uint8_t vlen_bytes = 16; // vlen = 128 bits
+    uint8_t vlen_bytes = 16;  // vlen = 128 bits
     for (uint64_t i = 0; i < hart->csrs.vl; i++) {
         uint64_t physical_vd = vd + (i / vlen_bytes);
         uint64_t byte_offset = i % vlen_bytes;
-        hart->shared_system->memory[base_addr + i] = hart->vector_registers[physical_vd].bytes[byte_offset];
+        hart->shared_system->memory[base_addr + i] =
+            hart->vector_registers[physical_vd].bytes[byte_offset];
     }
 }
 
@@ -401,13 +382,10 @@ static void rv64v_vse8_v(
 /**
  * Vector-vector addition
  * 30.11.1. Vector Single-Width Integer Add and Subtract
- * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_single_width_integer_add_and_subtract
+ * @see
+ * https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_single_width_integer_add_and_subtract
  */
-static void rv64v_vadd_vv(
-    rv64_hart_t* hart,
-    uint32_t raw_instruction,
-    instruction_tag_rv64_t tag
-) {
+static void rv64v_vadd_vv(rv64_hart_t* hart, uint32_t raw_instruction, instruction_tag_rv64_t tag) {
     uint8_t vm = 0;
     uint8_t vs2_idx = 0;
     uint8_t vs1_idx = 0;
@@ -432,10 +410,10 @@ static void rv64v_vadd_vv(
         if (vm == 0) {
             // todo: set mask_elem_active accordingly
         } else {
-            mask_elem_active = true; // masking disabled, so always load everything
+            mask_elem_active = true;  // masking disabled, so always load everything
         }
         if (mask_elem_active) {
-            switch(vtype.selected_element_width) {
+            switch (vtype.selected_element_width) {
                 case RV64_SEW_8: {
                     vd->elements_8[i] = vs2->elements_8[i] + vs1->elements_8[i];
                     break;
@@ -460,13 +438,10 @@ static void rv64v_vadd_vv(
 /**
  * Vector-scalar addition
  * 30.11.1. Vector Single-Width Integer Add and Subtract
- * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_single_width_integer_add_and_subtract
+ * @see
+ * https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_single_width_integer_add_and_subtract
  */
-static void rv64v_vadd_vx(
-    rv64_hart_t* hart,
-    uint32_t raw_instruction,
-    instruction_tag_rv64_t tag
-) {
+static void rv64v_vadd_vx(rv64_hart_t* hart, uint32_t raw_instruction, instruction_tag_rv64_t tag) {
     uint8_t vm = 0;
     uint8_t vs2_idx = 0;
     uint8_t rs1_idx = 0;
@@ -491,10 +466,10 @@ static void rv64v_vadd_vx(
         if (vm == 0) {
             // todo: set mask_elem_active accordingly
         } else {
-            mask_elem_active = true; // masking disabled, so always load everything
+            mask_elem_active = true;  // masking disabled, so always load everything
         }
         if (mask_elem_active) {
-            switch(vtype.selected_element_width) {
+            switch (vtype.selected_element_width) {
                 case RV64_SEW_8: {
                     vd->elements_8[i] = vs2->elements_8[i] + rs1;
                     break;
@@ -519,13 +494,10 @@ static void rv64v_vadd_vx(
 /**
  * Vector immediate addition
  * 30.11.1. Vector Single-Width Integer Add and Subtract
- * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_single_width_integer_add_and_subtract
+ * @see
+ * https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_single_width_integer_add_and_subtract
  */
-static void rv64v_vadd_vi(
-    rv64_hart_t* hart,
-    uint32_t raw_instruction,
-    instruction_tag_rv64_t tag
-) {
+static void rv64v_vadd_vi(rv64_hart_t* hart, uint32_t raw_instruction, instruction_tag_rv64_t tag) {
     uint8_t vm = 0;
     uint8_t vs2_idx = 0;
     uint8_t imm = 0;
@@ -538,8 +510,8 @@ static void rv64v_vadd_vi(
         return;
     }
 
-    //int64_t imm_se = (imm << (64 - 5)) >> (64 - 5); // sign extension
-    int64_t imm_se = imm; // skip sign extension for now
+    // int64_t imm_se = (imm << (64 - 5)) >> (64 - 5); // sign extension
+    int64_t imm_se = imm;  // skip sign extension for now
 
     rv64v_vtype_t vtype;
     rv64_csr_decode_vtype(hart->csrs.vtype, &vtype);
@@ -552,10 +524,10 @@ static void rv64v_vadd_vi(
         if (vm == 0) {
             // todo: set mask_elem_active accordingly
         } else {
-            mask_elem_active = true; // masking disabled, so always load everything
+            mask_elem_active = true;  // masking disabled, so always load everything
         }
         if (mask_elem_active) {
-            switch(vtype.selected_element_width) {
+            switch (vtype.selected_element_width) {
                 case RV64_SEW_8: {
                     vd->elements_8[i] = vs2->elements_8[i] + imm_se;
                     break;
@@ -580,13 +552,10 @@ static void rv64v_vadd_vi(
 /**
  * Vector-vector subtraction
  * 30.11.1. Vector Single-Width Integer Add and Subtract
- * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_single_width_integer_add_and_subtract
+ * @see
+ * https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_single_width_integer_add_and_subtract
  */
-static void rv64v_vsub_vv(
-    rv64_hart_t* hart,
-    uint32_t raw_instruction,
-    instruction_tag_rv64_t tag
-) {
+static void rv64v_vsub_vv(rv64_hart_t* hart, uint32_t raw_instruction, instruction_tag_rv64_t tag) {
     uint8_t vm = 0;
     uint8_t vs2_idx = 0;
     uint8_t vs1_idx = 0;
@@ -611,10 +580,10 @@ static void rv64v_vsub_vv(
         if (vm == 0) {
             // todo: set mask_elem_active accordingly
         } else {
-            mask_elem_active = true; // masking disabled, so always load everything
+            mask_elem_active = true;  // masking disabled, so always load everything
         }
         if (mask_elem_active) {
-            switch(vtype.selected_element_width) {
+            switch (vtype.selected_element_width) {
                 case RV64_SEW_8: {
                     vd->elements_8[i] = vs2->elements_8[i] - vs1->elements_8[i];
                     break;
@@ -639,13 +608,10 @@ static void rv64v_vsub_vv(
 /**
  * Vector-scalar subtraction
  * 30.11.1. Vector Single-Width Integer Add and Subtract
- * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_single_width_integer_add_and_subtract
+ * @see
+ * https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_single_width_integer_add_and_subtract
  */
-static void rv64v_vsub_vx(
-    rv64_hart_t* hart,
-    uint32_t raw_instruction,
-    instruction_tag_rv64_t tag
-) {
+static void rv64v_vsub_vx(rv64_hart_t* hart, uint32_t raw_instruction, instruction_tag_rv64_t tag) {
     uint8_t vm = 0;
     uint8_t vs2_idx = 0;
     uint8_t rs1_idx = 0;
@@ -670,10 +636,10 @@ static void rv64v_vsub_vx(
         if (vm == 0) {
             // todo: set mask_elem_active accordingly
         } else {
-            mask_elem_active = true; // masking disabled, so always load everything
+            mask_elem_active = true;  // masking disabled, so always load everything
         }
         if (mask_elem_active) {
-            switch(vtype.selected_element_width) {
+            switch (vtype.selected_element_width) {
                 case RV64_SEW_8: {
                     vd->elements_8[i] = vs2->elements_8[i] - rs1;
                     break;
@@ -714,9 +680,9 @@ emu_result_t rv64v_vector_emulate(
     // todo: clean this up, maybe make a cached helper csr with mstatus already decoded
     uint64_t mstatus_raw = rv64_get_csr_value(&hart->csrs, RV64_CSR_MSTATUS);
     uint8_t vs = (mstatus_raw >> 9) & 0b11;
-    if (vs != 0) { // 0 = off, 1 = initial, 2, = clean, 3 = dirty
+    if (vs != 0) {  // 0 = off, 1 = initial, 2, = clean, 3 = dirty
         // TODO: illegal instruction!
-    } // todo: change to/from initial/clean/dirty. mstatus.sd is also modified. see: 30.3.2
+    }  // todo: change to/from initial/clean/dirty. mstatus.sd is also modified. see: 30.3.2
 
     // RV64V
     switch (tag) {
@@ -782,8 +748,8 @@ emu_result_t rv64v_vector_emulate(
 
         // todo: the rest of the owl
         default: {
-            return(ER_FAILURE);
+            return (ER_FAILURE);
         }
     }
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }

@@ -1,14 +1,13 @@
 
 
-
 #ifndef EMU_RV64A_ATOMIC_DISASSEMBLE_H
 #define EMU_RV64A_ATOMIC_DISASSEMBLE_H
 
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 
-#include "rv64/rv64_emulate.h"
 #include "rv64/rv64_disassemble.h"
+#include "rv64/rv64_emulate.h"
 #include "rv64/rv64_instructions.h"
 
 emu_result_t rv64a_atomic_disassemble(
@@ -20,4 +19,4 @@ emu_result_t rv64a_atomic_disassemble(
     size_t buffer_size
 );
 
-#endif // EMU_RV64A_ATOMIC_DISASSEMBLE_H
+#endif  // EMU_RV64A_ATOMIC_DISASSEMBLE_H

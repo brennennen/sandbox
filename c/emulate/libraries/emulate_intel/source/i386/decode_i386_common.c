@@ -1,17 +1,16 @@
 
-#include <stdlib.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "logger.h"
 #include "shared/include/binary_utilities.h"
 #include "shared/include/result.h"
 
-#include "i386/emulate_i386.h"
-#include "i386/instruction_tags_i386.h"
 #include "i386/decode_i386_common.h"
 #include "i386/emu_i386_utils.h"
-
+#include "i386/emulate_i386.h"
+#include "i386/instruction_tags_i386.h"
 
 /**
  *
@@ -32,7 +31,7 @@ emu_result_t emu_i386_read_displacement(
             }
         }
     } else if (mod == MOD_MEMORY_8BIT_DISPLACEMENT) {
-        emu_result_t read_displace_result = emu_i386_read_m8(emulator, (uint8_t*) displacement);
+        emu_result_t read_displace_result = emu_i386_read_m8(emulator, (uint8_t*)displacement);
         *displacement_byte_size = 1;
         if (read_displace_result != ER_SUCCESS) {
             return read_displace_result;
@@ -90,42 +89,21 @@ emu_result_t emu_i386_decode_common_standard_format(
  * (Intel 80386 Programmer's Reference Manual, 17.2.2.1, 246)
  */
 static char i386_reg_m8_strings[][4] = {
-    "al",
-    "cl",
-    "dl",
-    "bl",
-    "ah",
-    "ch",
-    "dh",
-    "bh",
+    "al", "cl", "dl", "bl", "ah", "ch", "dh", "bh",
 };
 
 /**
  * (Intel 80386 Programmer's Reference Manual, 17.2.2.1, 246)
  */
 static char i386_reg_m16_strings[][4] = {
-    "ax",
-    "cx",
-    "dx",
-    "bx",
-    "sp",
-    "bp",
-    "si",
-    "di",
+    "ax", "cx", "dx", "bx", "sp", "bp", "si", "di",
 };
 
 /**
  * (Intel 80386 Programmer's Reference Manual, 17.2.2.1, 246)
  */
 static char i386_reg_m32_strings[][4] = {
-    "eax",
-    "ecx",
-    "edx",
-    "ebx",
-    "esp",
-    "ebp",
-    "esi",
-    "edi",
+    "eax", "ecx", "edx", "ebx", "esp", "ebp", "esi", "edi",
 };
 
 static emu_result_t emu_i386_write_common_standard_format_register(
@@ -157,15 +135,14 @@ static emu_result_t emu_i386_write_common_standard_format_register(
         right_string = i386_reg_m32_strings[*right];
     }
 
-    int written = snprintf(buffer + *index, buffer_size - *index, "%s %s, %s",
-                            mnemonic,
-                            left_string,
-                            right_string);
+    int written = snprintf(
+        buffer + *index, buffer_size - *index, "%s %s, %s", mnemonic, left_string, right_string
+    );
     if (written < 0) {
-        return(ER_FAILURE);
+        return (ER_FAILURE);
     }
     *index += written;
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 emu_result_t emu_i386_write_common_standard_format(
@@ -182,24 +159,28 @@ emu_result_t emu_i386_write_common_standard_format(
     int buffer_size
 ) {
     if (mod == MOD_MEMORY && rm_id == REG_DIRECT_ACCESS) {
-        //write__common_register_or_memory_with_register_or_memory__direct_access(direction, wide, mod, reg, rm, displacement, mnemonic, mnemonic_size, buffer, index, buffer_size);
-        return(ER_FAILURE);
+        // write__common_register_or_memory_with_register_or_memory__direct_access(direction, wide,
+        // mod, reg, rm, displacement, mnemonic, mnemonic_size, buffer, index, buffer_size);
+        return (ER_FAILURE);
     }
 
-    switch(mod) {
+    switch (mod) {
         case MOD_MEMORY:
         case MOD_MEMORY_8BIT_DISPLACEMENT:
         case MOD_MEMORY_16BIT_DISPLACEMENT: {
-            //write__common_register_or_memory_with_register_or_memory__effective_address(direction, wide, mod, reg, rm, displacement, mnemonic, mnemonic_size, buffer, index, buffer_size);
-            return(ER_FAILURE);
+            // write__common_register_or_memory_with_register_or_memory__effective_address(direction,
+            // wide, mod, reg, rm, displacement, mnemonic, mnemonic_size, buffer, index,
+            // buffer_size);
+            return (ER_FAILURE);
         }
         case MOD_REGISTER: {
-            return(emu_i386_write_common_standard_format_register(direction, wide,
-                mod, reg_id, rm_id, displacement, mnemonic, mnemonic_size, buffer,
-                index, buffer_size));
+            return (emu_i386_write_common_standard_format_register(
+                direction, wide, mod, reg_id, rm_id, displacement, mnemonic, mnemonic_size, buffer,
+                index, buffer_size
+            ));
         }
     }
-    return(ER_FAILURE);
+    return (ER_FAILURE);
 }
 
 emu_result_t emu_i386_decode_and_write_common_standard_format(
@@ -223,16 +204,16 @@ emu_result_t emu_i386_decode_and_write_common_standard_format(
         emulator, byte1, &direction, &wide, &mod, &reg, &rm, &displacement, &instruction_size
     );
     if (result != ER_SUCCESS) {
-        return(result);
+        return (result);
     }
 
     result = emu_i386_write_common_standard_format(
-        direction, wide, mod, reg, rm, displacement,
-        mnemonic, mnemonic_size, buffer, index, buffer_size
+        direction, wide, mod, reg, rm, displacement, mnemonic, mnemonic_size, buffer, index,
+        buffer_size
     );
     if (result != ER_SUCCESS) {
-        return(result);
+        return (result);
     }
 
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }

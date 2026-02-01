@@ -7,4 +7,4 @@
 
 instruction_tag_rv64_t rv64_decode_instruction_tag(uint32_t instruction);
 
-#endif // RV64_DECODE_INSTRUCTION
+#endif  // RV64_DECODE_INSTRUCTION

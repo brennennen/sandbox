@@ -25,4 +25,4 @@ emu_result_t decode_stc(
 );
 emu_result_t emu_stc(emulator_8086_t* emulator, uint8_t byte1);
 
-#endif // EMU_8086_STC_H
+#endif  // EMU_8086_STC_H

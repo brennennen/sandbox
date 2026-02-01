@@ -17,14 +17,14 @@
 
 #include <string.h>
 
-#include "shared/include/binary_utilities.h"
 #include "8086/instruction_tags_8086.h"
+#include "shared/include/binary_utilities.h"
 #include "shared/include/result.h"
 
-#include "8086/emulate_8086.h"
-#include "8086/emu_8086_registers.h"
-#include "8086/decode_8086_utils.h"
 #include "8086/decode_8086_shared.h"
+#include "8086/decode_8086_utils.h"
+#include "8086/emu_8086_registers.h"
+#include "8086/emulate_8086.h"
 
 #include "8086/instructions/data_transfer/push.h"
 
@@ -40,7 +40,7 @@ emu_result_t decode_push_register(
 ) {
     uint8_t reg = byte1 & 0b00000111;
     char* reg_string = map_register_field_encoding(reg);
-    int written = snprintf(out_buffer + *index,  out_buffer_size - *index, "push %s", reg_string);
+    int written = snprintf(out_buffer + *index, out_buffer_size - *index, "push %s", reg_string);
     if (written < 0) {
         return ER_FAILURE;
     }
@@ -57,4 +57,3 @@ emu_result_t emu_push_register(emulator_8086_t* emulator, uint8_t byte1) {
 }
 
 // MARK: 3. I_PUSH_SEGMENT_REGISTER
-

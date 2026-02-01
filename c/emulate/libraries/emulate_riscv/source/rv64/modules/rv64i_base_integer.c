@@ -4,9 +4,7 @@
 #include "logger.h"
 
 #include "rv64/rv64_decode.h"
-#include "rv64/rv64_emulate.h"
 #include "rv64/rv64_instructions.h"
-#include "rv64/rv64_decode.h"
 
 #include "rv64/modules/rv64i_base_integer.h"
 
@@ -19,7 +17,8 @@
  * `lui rd, imm`
  * Places the 32-bit U-immediate into register rd, filling the lowest 12 bits
  * with zeros. The 32-bit result is sign-extended to 64 bits.
- * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions_2
+ * @see
+ * https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions_2
  */
 static inline void rv64i_lui(rv64_hart_t* hart, int32_t imm20, uint8_t rd) {
     // sign-extension for imm20 done in decode
@@ -33,7 +32,8 @@ static inline void rv64i_lui(rv64_hart_t* hart, int32_t imm20, uint8_t rd) {
  * a 32 bit offset from the U-immediate, filling in the lowest 12 bits with zeros,
  * adds this offset to the address of the AUIPC instruction, then places the result
  * in register rd.
- * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions_2
+ * @see
+ * https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions_2
  */
 static inline void rv64i_auipc(rv64_hart_t* hart, int32_t imm20, uint8_t rd) {
     // pc is incremented when the instruction is originally read, so need to decrement here.
@@ -51,7 +51,7 @@ static emu_result_t rv64i_emulate_upper_immediate(
 
     rv64_decode_upper_immediate(raw_instruction, &imm20, &rd);
 
-    switch(tag) {
+    switch (tag) {
         case I_RV64I_LUI: {
             rv64i_lui(hart, imm20, rd);
             break;
@@ -62,10 +62,10 @@ static emu_result_t rv64i_emulate_upper_immediate(
         }
         default: {
             LOG(LOG_ERROR, "rv64i_emulate_upper_immediate: instruction not implemented");
-            return(ER_FAILURE);
+            return (ER_FAILURE);
         }
     }
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 /*
@@ -83,7 +83,7 @@ static emu_result_t rv64i_emulate_upper_immediate(
  */
 static inline void rv64i_jal(rv64_hart_t* hart, int32_t offset, uint8_t rd) {
     if (rd != 0) {
-        hart->registers[rd] = hart->pc; // point rd to the next instruction
+        hart->registers[rd] = hart->pc;  // point rd to the next instruction
     }
     hart->pc = hart->pc + offset - 4;
     LOGD("%s: offset: %d (pc: %ld), rd: %d", __func__, offset, hart->pc, rd);
@@ -99,17 +99,17 @@ static emu_result_t rv64i_emulate_j_type(
 
     rv64_decode_j_type(raw_instruction, &offset, &rd);
 
-    switch(tag) {
+    switch (tag) {
         case I_RV64I_JAL: {
             rv64i_jal(hart, offset, rd);
             break;
         }
         default: {
             LOG(LOG_ERROR, "rv64i_emulate_j_type: instruction not implemented");
-            return(ER_FAILURE);
+            return (ER_FAILURE);
         }
     }
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 /**
@@ -122,10 +122,9 @@ static emu_result_t rv64i_emulate_j_type(
  */
 static inline void rv64i_jalr(rv64_hart_t* hart, int32_t imm12, uint8_t rs1, uint8_t rd) {
     if (rd != 0) {
-        hart->registers[rd] = hart->pc; // point rd to the next instruction
+        hart->registers[rd] = hart->pc;  // point rd to the next instruction
     }
-    LOGD("%s: imm12: %d, rs1: %ld (%d), rd: %d", __func__,
-        imm12, hart->registers[rs1], rs1, rd);
+    LOGD("%s: imm12: %d, rs1: %ld (%d), rd: %d", __func__, imm12, hart->registers[rs1], rs1, rd);
     // TODO: does imm12 need to be left shifted 1 bit?
     hart->pc = hart->registers[rs1] + imm12;
 }
@@ -144,8 +143,10 @@ static inline void rv64i_jalr(rv64_hart_t* hart, int32_t imm12, uint8_t rs1, uin
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_conditional_branches
  */
 static inline void rv64i_beq(rv64_hart_t* hart, int32_t offset, uint8_t rs1, uint8_t rs2) {
-    LOGD("%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset,
-        hart->registers[rs1], hart->registers[rs2]);
+    LOGD(
+        "%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset, hart->registers[rs1],
+        hart->registers[rs2]
+    );
     if (hart->registers[rs1] == hart->registers[rs2]) {
         hart->pc = hart->pc + offset - 4;
     }
@@ -161,40 +162,50 @@ static inline void rv64i_beq(rv64_hart_t* hart, int32_t offset, uint8_t rs1, uin
  * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_conditional_branches
  */
 static inline void rv64i_bne(rv64_hart_t* hart, int32_t offset, uint8_t rs1, uint8_t rs2) {
-    LOGD("%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset,
-        hart->registers[rs1], hart->registers[rs2]);
+    LOGD(
+        "%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset, hart->registers[rs1],
+        hart->registers[rs2]
+    );
     if (hart->registers[rs1] != hart->registers[rs2]) {
         hart->pc = hart->pc + offset - 4;
     }
 }
 
 static inline void rv64i_blt(rv64_hart_t* hart, int32_t offset, uint8_t rs1, uint8_t rs2) {
-    LOGD("%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset,
-        hart->registers[rs1], hart->registers[rs2]);
+    LOGD(
+        "%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset, hart->registers[rs1],
+        hart->registers[rs2]
+    );
     if ((int64_t)hart->registers[rs1] < (int64_t)hart->registers[rs2]) {
         hart->pc = hart->pc + offset - 4;
     }
 }
 
 static inline void rv64i_bge(rv64_hart_t* hart, int32_t offset, uint8_t rs1, uint8_t rs2) {
-    LOGD("%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset,
-        hart->registers[rs1], hart->registers[rs2]);
+    LOGD(
+        "%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset, hart->registers[rs1],
+        hart->registers[rs2]
+    );
     if ((int64_t)hart->registers[rs1] >= (int64_t)hart->registers[rs2]) {
         hart->pc = hart->pc + offset - 4;
     }
 }
 
 static inline void rv64i_bltu(rv64_hart_t* hart, int32_t offset, uint8_t rs1, uint8_t rs2) {
-    LOGD("%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset,
-        hart->registers[rs1], hart->registers[rs2]);
+    LOGD(
+        "%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset, hart->registers[rs1],
+        hart->registers[rs2]
+    );
     if (hart->registers[rs1] < hart->registers[rs2]) {
         hart->pc = hart->pc + offset - 4;
     }
 }
 
 static inline void rv64i_bgeu(rv64_hart_t* hart, int32_t offset, uint8_t rs1, uint8_t rs2) {
-    LOGD("%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset,
-        hart->registers[rs1], hart->registers[rs2]);
+    LOGD(
+        "%s: offset: %d, rs1: %ld, rs2: %ld", __func__, offset, hart->registers[rs1],
+        hart->registers[rs2]
+    );
     if (hart->registers[rs1] >= hart->registers[rs2]) {
         hart->pc = hart->pc + offset - 4;
     }
@@ -211,7 +222,7 @@ static emu_result_t rv64i_emulate_b_type(
 
     rv64_decode_branch(raw_instruction, &offset, &rs1, &rs2);
 
-    switch(tag) {
+    switch (tag) {
         case I_RV64I_BEQ: {
             rv64i_beq(hart, offset, rs1, rs2);
             break;
@@ -238,10 +249,10 @@ static emu_result_t rv64i_emulate_b_type(
         }
         default: {
             LOG(LOG_ERROR, "rv64i_emulate_b_type: instruction not implemented");
-            return(ER_FAILURE);
+            return (ER_FAILURE);
         }
     }
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 /*
@@ -256,16 +267,16 @@ static inline void rv64i_sb(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8
 static inline void rv64i_sh(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rs2) {
     uint64_t address = hart->registers[rs1] + imm12;
     // todo: just use memcpy? uses host machine endieness?
-    hart->shared_system->memory[address] = (uint8_t) (hart->registers[rs2] & 0xFF);
-    hart->shared_system->memory[address + 1] = (uint8_t) ((hart->registers[rs2] >> 8) & 0xFF);
+    hart->shared_system->memory[address] = (uint8_t)(hart->registers[rs2] & 0xFF);
+    hart->shared_system->memory[address + 1] = (uint8_t)((hart->registers[rs2] >> 8) & 0xFF);
 }
 
 static inline void rv64i_sw(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rs2) {
     uint64_t address = hart->registers[rs1] + imm12;
-    hart->shared_system->memory[address] = (uint8_t) (hart->registers[rs2] & 0xFF);
-    hart->shared_system->memory[address + 1] = (uint8_t) ((hart->registers[rs2] >> 8) & 0xFF);
-    hart->shared_system->memory[address + 2] = (uint8_t) ((hart->registers[rs2] >> 16) & 0xFF);
-    hart->shared_system->memory[address + 3] = (uint8_t) ((hart->registers[rs2] >> 24) & 0xFF);
+    hart->shared_system->memory[address] = (uint8_t)(hart->registers[rs2] & 0xFF);
+    hart->shared_system->memory[address + 1] = (uint8_t)((hart->registers[rs2] >> 8) & 0xFF);
+    hart->shared_system->memory[address + 2] = (uint8_t)((hart->registers[rs2] >> 16) & 0xFF);
+    hart->shared_system->memory[address + 3] = (uint8_t)((hart->registers[rs2] >> 24) & 0xFF);
 }
 
 /**
@@ -277,14 +288,14 @@ static inline void rv64i_sw(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8
  */
 static inline void rv64i_sd(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rs2) {
     uint64_t address = hart->registers[rs1] + imm12;
-    hart->shared_system->memory[address] = (uint8_t) (hart->registers[rs2] & 0xFF);
-    hart->shared_system->memory[address + 1] = (uint8_t) ((hart->registers[rs2] >> 8) & 0xFF);
-    hart->shared_system->memory[address + 2] = (uint8_t) ((hart->registers[rs2] >> 16) & 0xFF);
-    hart->shared_system->memory[address + 3] = (uint8_t) ((hart->registers[rs2] >> 24) & 0xFF);
-    hart->shared_system->memory[address + 4] = (uint8_t) ((hart->registers[rs2] >> 32) & 0xFF);
-    hart->shared_system->memory[address + 5] = (uint8_t) ((hart->registers[rs2] >> 40) & 0xFF);
-    hart->shared_system->memory[address + 6] = (uint8_t) ((hart->registers[rs2] >> 48) & 0xFF);
-    hart->shared_system->memory[address + 7] = (uint8_t) ((hart->registers[rs2] >> 56) & 0xFF);
+    hart->shared_system->memory[address] = (uint8_t)(hart->registers[rs2] & 0xFF);
+    hart->shared_system->memory[address + 1] = (uint8_t)((hart->registers[rs2] >> 8) & 0xFF);
+    hart->shared_system->memory[address + 2] = (uint8_t)((hart->registers[rs2] >> 16) & 0xFF);
+    hart->shared_system->memory[address + 3] = (uint8_t)((hart->registers[rs2] >> 24) & 0xFF);
+    hart->shared_system->memory[address + 4] = (uint8_t)((hart->registers[rs2] >> 32) & 0xFF);
+    hart->shared_system->memory[address + 5] = (uint8_t)((hart->registers[rs2] >> 40) & 0xFF);
+    hart->shared_system->memory[address + 6] = (uint8_t)((hart->registers[rs2] >> 48) & 0xFF);
+    hart->shared_system->memory[address + 7] = (uint8_t)((hart->registers[rs2] >> 56) & 0xFF);
 }
 
 static emu_result_t rv64i_emulate_s_type(
@@ -298,7 +309,7 @@ static emu_result_t rv64i_emulate_s_type(
 
     rv64_decode_store(raw_instruction, &offset, &rs1, &rs2);
 
-    switch(tag) {
+    switch (tag) {
         case I_RV64I_SB: {
             rv64i_sb(hart, offset, rs1, rs2);
             break;
@@ -317,10 +328,10 @@ static emu_result_t rv64i_emulate_s_type(
         }
         default: {
             LOG(LOG_ERROR, "%s: instruction not implemented", __func__);
-            return(ER_FAILURE);
+            return (ER_FAILURE);
         }
     }
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 /*
@@ -337,7 +348,7 @@ static emu_result_t rv64i_emulate_s_type(
 static inline void rv64i_lb(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rd) {
     uint64_t address = hart->registers[rs1] + imm12;
     // cast provides sign extension
-    hart->registers[rd] = (int8_t) hart->shared_system->memory[address];
+    hart->registers[rd] = (int8_t)hart->shared_system->memory[address];
 }
 
 /**
@@ -349,10 +360,10 @@ static inline void rv64i_lb(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8
  */
 static inline void rv64i_lh(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rd) {
     uint64_t address = hart->registers[rs1] + imm12;
-    uint16_t halfword = (uint16_t)hart->shared_system->memory[address] |
-        ((uint16_t) hart->shared_system->memory[address + 1] << 8);
+    uint16_t halfword = (uint16_t)hart->shared_system->memory[address]
+                        | ((uint16_t)hart->shared_system->memory[address + 1] << 8);
     // cast provides sign extension
-    hart->registers[rd] = (int16_t) halfword;
+    hart->registers[rd] = (int16_t)halfword;
 }
 
 /**
@@ -365,12 +376,12 @@ static inline void rv64i_lh(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8
 static inline void rv64i_lw(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rd) {
     // TODO: sign extend
     uint64_t address = hart->registers[rs1] + imm12;
-    uint32_t word = (uint32_t)hart->shared_system->memory[address] |
-        ((uint32_t) hart->shared_system->memory[address + 1] << 24) |
-        ((uint32_t) hart->shared_system->memory[address + 2] << 16) |
-        ((uint32_t) hart->shared_system->memory[address + 3] << 8);
+    uint32_t word = (uint32_t)hart->shared_system->memory[address]
+                    | ((uint32_t)hart->shared_system->memory[address + 1] << 24)
+                    | ((uint32_t)hart->shared_system->memory[address + 2] << 16)
+                    | ((uint32_t)hart->shared_system->memory[address + 3] << 8);
     // cast provides sign extension
-    hart->registers[rd] = (int32_t) word;
+    hart->registers[rd] = (int32_t)word;
 }
 
 /**
@@ -394,8 +405,8 @@ static inline void rv64i_lbu(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint
  */
 static inline void rv64i_lhu(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rd) {
     uint64_t address = hart->registers[rs1] + imm12;
-    hart->registers[rd] = (uint16_t)hart->shared_system->memory[address] |
-        ((uint16_t) hart->shared_system->memory[address + 1] << 8);
+    hart->registers[rd] = (uint16_t)hart->shared_system->memory[address]
+                          | ((uint16_t)hart->shared_system->memory[address + 1] << 8);
 }
 
 /**
@@ -408,10 +419,10 @@ static inline void rv64i_lhu(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint
  */
 static inline void rv64i_lwu(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rd) {
     uint64_t address = hart->registers[rs1] + imm12;
-    uint32_t word = (uint32_t)hart->shared_system->memory[address] |
-        ((uint32_t) hart->shared_system->memory[address + 1] << 24) |
-        ((uint32_t) hart->shared_system->memory[address + 2] << 16) |
-        ((uint32_t) hart->shared_system->memory[address + 3] << 8);
+    uint32_t word = (uint32_t)hart->shared_system->memory[address]
+                    | ((uint32_t)hart->shared_system->memory[address + 1] << 24)
+                    | ((uint32_t)hart->shared_system->memory[address + 2] << 16)
+                    | ((uint32_t)hart->shared_system->memory[address + 3] << 8);
     hart->registers[rd] = word;
 }
 
@@ -425,21 +436,22 @@ static inline void rv64i_lwu(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint
 static inline void rv64i_ld(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rd) {
     uint64_t address = hart->registers[rs1] + imm12;
     // todo: why not just memcpy?
-    uint64_t double_word = (uint64_t)hart->shared_system->memory[address] |
-        ((uint64_t) hart->shared_system->memory[address + 1] << 56) |
-        ((uint64_t) hart->shared_system->memory[address + 3] << 48) |
-        ((uint64_t) hart->shared_system->memory[address + 4] << 40) |
-        ((uint64_t) hart->shared_system->memory[address + 5] << 32) |
-        ((uint64_t) hart->shared_system->memory[address + 6] << 24) |
-        ((uint64_t) hart->shared_system->memory[address + 7] << 16) |
-        ((uint64_t) hart->shared_system->memory[address + 8] << 8);
+    uint64_t double_word = (uint64_t)hart->shared_system->memory[address]
+                           | ((uint64_t)hart->shared_system->memory[address + 1] << 56)
+                           | ((uint64_t)hart->shared_system->memory[address + 3] << 48)
+                           | ((uint64_t)hart->shared_system->memory[address + 4] << 40)
+                           | ((uint64_t)hart->shared_system->memory[address + 5] << 32)
+                           | ((uint64_t)hart->shared_system->memory[address + 6] << 24)
+                           | ((uint64_t)hart->shared_system->memory[address + 7] << 16)
+                           | ((uint64_t)hart->shared_system->memory[address + 8] << 8);
     hart->registers[rd] = double_word;
 }
 
 /**
  * Adds sign extended 12-bit immediate to register rs1 and sign extends as a 32 bit result.
  * RV64I Additional Instruction (Not in RV32I)
- * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions_2
+ * @see
+ * https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions_2
  */
 static inline void rv64i_addiw(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rd) {
     hart->registers[rd] = (int32_t)(hart->registers[rs1] + imm12);
@@ -462,8 +474,9 @@ static inline void rv64_slti(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint
     } else {
         hart->registers[rd] = 0;
     }
-    LOGD("%s: rs1: %d, imm: %d, rd: %d", __func__, hart->registers[rs1],
-         imm12, hart->registers[rd]);
+    LOGD(
+        "%s: rs1: %d, imm: %d, rd: %d", __func__, hart->registers[rs1], imm12, hart->registers[rd]
+    );
 }
 
 /**
@@ -471,13 +484,14 @@ static inline void rv64_slti(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint
  * both numbers are treated as unsigned.
  */
 static inline void rv64_sltiu(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rd) {
-    if ((uint64_t)hart->registers[rs1] < (uint16_t) imm12) {
+    if ((uint64_t)hart->registers[rs1] < (uint16_t)imm12) {
         hart->registers[rd] = 1;
     } else {
         hart->registers[rd] = 0;
     }
-    LOGD("%s: rs1: %d, imm: %d, rd: %d", __func__, hart->registers[rs1],
-         imm12, hart->registers[rd]);
+    LOGD(
+        "%s: rs1: %d, imm: %d, rd: %d", __func__, hart->registers[rs1], imm12, hart->registers[rd]
+    );
 }
 
 static inline void rv64_xori(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint8_t rd) {
@@ -509,7 +523,7 @@ static emu_result_t rv64_emulate_register_immediate(
 
     rv64_decode_register_immediate(raw_instruction, &imm12, &rs1, &rd);
 
-    switch(tag) {
+    switch (tag) {
         case I_RV64I_JALR: {
             rv64i_jalr(hart, imm12, rs1, rd);
             break;
@@ -568,13 +582,14 @@ static emu_result_t rv64_emulate_register_immediate(
         }
         case I_RV64I_ADDIW: {
             rv64i_addiw(hart, imm12, rs1, rd);
+            break;
         }
         default: {
             LOG(LOG_ERROR, "rv64i_emulate_register_immediate: instruction not implemented");
-            return(ER_FAILURE);
+            return (ER_FAILURE);
         }
     }
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 /**
@@ -608,7 +623,8 @@ static inline void rv64_srai(rv64_hart_t* hart, int16_t imm12, uint8_t rs1, uint
  * slli - Shift Logical Left with Immediate.
  * `slli rd, rs1, imm5`
  * Zeros are shifted into the lower bits.
- * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions
+ * @see
+ * https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions
  */
 static inline void rv64i_slli(rv64_hart_t* hart, uint8_t imm5, uint8_t rs1, uint8_t rd) {
     hart->registers[rd] = hart->registers[rs1] << imm5;
@@ -618,7 +634,8 @@ static inline void rv64i_slli(rv64_hart_t* hart, uint8_t imm5, uint8_t rs1, uint
  * srli - Shift Logical Right with Immediate.
  * `srli rd, rs1, imm5`
  * Zeros are shifted into the lower bits.
- * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions
+ * @see
+ * https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions
  */
 static inline void rv64i_srli(rv64_hart_t* hart, uint8_t imm5, uint8_t rs1, uint8_t rd) {
     hart->registers[rd] = hart->registers[rs1] >> ((uint8_t)imm5);
@@ -628,7 +645,8 @@ static inline void rv64i_srli(rv64_hart_t* hart, uint8_t imm5, uint8_t rs1, uint
  * srai - Shift Right Arithmetic with Immediate.
  * `srai rd, rs1, imm5`
  * The original sign bit is copied into the vacated upper bits (sign extension).
- * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions
+ * @see
+ * https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_integer_register_immediate_instructions
  */
 static inline void rv64i_srai(rv64_hart_t* hart, uint8_t imm5, uint8_t rs1, uint8_t rd) {
     hart->registers[rd] = ((int64_t)hart->registers[rs1]) >> imm5;
@@ -645,7 +663,7 @@ static emu_result_t rv64i_emulate_shift_immediate(
 
     rv64_decode_shift_immediate(raw_instruction, &imm5, &rs1, &rd);
 
-    switch(tag) {
+    switch (tag) {
         case I_RV64I_SLLI: {
             rv64i_slli(hart, imm5, rs1, rd);
             break;
@@ -660,10 +678,10 @@ static emu_result_t rv64i_emulate_shift_immediate(
         }
         default: {
             LOG(LOG_ERROR, "%s: instruction not implemented", __func__);
-            return(ER_FAILURE);
+            return (ER_FAILURE);
         }
     }
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 /*
@@ -716,8 +734,7 @@ static inline void rv64i_srl(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_
 }
 
 static inline void rv64i_sra(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    hart->registers[rd] = ((int64_t)hart->registers[rs1]) >>
-        ((int64_t)hart->registers[rs2]);
+    hart->registers[rd] = ((int64_t)hart->registers[rs1]) >> ((int64_t)hart->registers[rs2]);
 }
 
 static inline void rv64i_or(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
@@ -762,7 +779,7 @@ static emu_result_t rv64_emulate_register_register(
 
     rv64_decode_register_register(raw_instruction, &rs2, &rs1, &rd);
 
-    switch(tag) {
+    switch (tag) {
         case I_RV64I_ADD: {
             rv64i_add(hart, rs1, rs2, rd);
             break;
@@ -825,10 +842,10 @@ static emu_result_t rv64_emulate_register_register(
         }
         default: {
             LOG(LOG_ERROR, "rv64i_emulate_register_register: instruction not implemented");
-            return(ER_FAILURE);
+            return (ER_FAILURE);
         }
     }
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 /*
@@ -842,7 +859,7 @@ static emu_result_t rv64i_fence(
 ) {
     printf("%s:\n", __func__);
     // TODO: call registered callbacks? setup some defaults like prints?
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 static emu_result_t rv64i_fence_tso(
@@ -852,7 +869,7 @@ static emu_result_t rv64i_fence_tso(
 ) {
     printf("%s:\n", __func__);
     // TODO: call registered callbacks? setup some defaults like prints?
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 static emu_result_t rv64i_pause(
@@ -862,7 +879,7 @@ static emu_result_t rv64i_pause(
 ) {
     printf("%s:\n", __func__);
     // TODO: call registered callbacks? setup some defaults like prints?
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 static emu_result_t rv64i_ecall(
@@ -872,7 +889,7 @@ static emu_result_t rv64i_ecall(
 ) {
     printf("%s:\n", __func__);
     // TODO: call registered callbacks? setup some defaults like prints?
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 static emu_result_t rv64i_ebreak(
@@ -882,7 +899,7 @@ static emu_result_t rv64i_ebreak(
 ) {
     printf("%s:\n", __func__);
     // TODO: call registered callbacks? setup some defaults like prints?
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 /*
@@ -895,7 +912,7 @@ emu_result_t rv64i_base_integer_emulate(
     instruction_tag_rv64_t tag
 ) {
     emu_result_t result = ER_FAILURE;
-    switch(tag) {
+    switch (tag) {
         // Core Format "U" - "upper-immediate"
         case I_RV64I_LUI:
         case I_RV64I_AUIPC: {
@@ -945,7 +962,7 @@ emu_result_t rv64i_base_integer_emulate(
         case I_RV64I_ORI:
         case I_RV64I_ANDI:
         case I_RV64I_LWU:
-        case I_RV64I_LD: 
+        case I_RV64I_LD:
         case I_RV64I_ADDIW: {
             result = rv64_emulate_register_immediate(hart, raw_instruction, tag);
             break;
@@ -967,8 +984,8 @@ emu_result_t rv64i_base_integer_emulate(
         case I_RV64I_SRL:
         case I_RV64I_SRA:
         case I_RV64I_OR:
-        case I_RV64I_AND: 
-        case I_RV64I_ADDW: 
+        case I_RV64I_AND:
+        case I_RV64I_ADDW:
         case I_RV64I_SUBW:
         case I_RV64I_SLLW:
         case I_RV64I_SRLW:
@@ -999,10 +1016,10 @@ emu_result_t rv64i_base_integer_emulate(
         }
         default: {
             LOG(LOG_ERROR, "rv64i_base_integer_emulate: instruction not implemented");
-            return(ER_FAILURE);
+            return (ER_FAILURE);
         }
     }
-    return(result);
+    return (result);
 }
 
 /*
@@ -1010,7 +1027,8 @@ emu_result_t rv64i_base_integer_emulate(
  */
 
 static inline void rv64i_csrrw(rv64_hart_t* hart, uint8_t csr, uint8_t rs1, uint8_t rd) {
-    uint64_t rs1_temp = hart->registers[rs1]; // need to use a local here incase rs1 and rd are the same register.
+    uint64_t rs1_temp =
+        hart->registers[rs1];  // need to use a local here incase rs1 and rd are the same register.
     if (rd != 0) {
         hart->registers[rd] = rv64_get_csr_value(&hart->csrs, csr);
     }
@@ -1018,25 +1036,27 @@ static inline void rv64i_csrrw(rv64_hart_t* hart, uint8_t csr, uint8_t rs1, uint
 }
 
 static inline void rv64i_csrrs(rv64_hart_t* hart, uint8_t csr, uint8_t rs1, uint8_t rd) {
-    uint64_t rs1_mask = hart->registers[rs1]; // need to use a local here incase rs1 and rd are the same register.
+    uint64_t rs1_mask =
+        hart->registers[rs1];  // need to use a local here incase rs1 and rd are the same register.
     uint64_t result = rv64_get_csr_value(&hart->csrs, csr);
     if (rd != 0) {
         hart->registers[rd] = result;
     }
     if (rs1 != 0) {
-        result = result ^ rs1_mask; // rs1 mask contains bits to clear
+        result = result ^ rs1_mask;  // rs1 mask contains bits to clear
         rv64_set_csr_value(&hart->csrs, csr, result);
     }
 }
 
 static inline void rv64i_csrrc(rv64_hart_t* hart, uint8_t csr, uint8_t rs1, uint8_t rd) {
-    uint64_t rs1_mask = hart->registers[rs1]; // need to use a local here incase rs1 and rd are the same register.
+    uint64_t rs1_mask =
+        hart->registers[rs1];  // need to use a local here incase rs1 and rd are the same register.
     uint64_t result = rv64_get_csr_value(&hart->csrs, csr);
     if (rd != 0) {
         hart->registers[rd] = result;
     }
     if (rs1 != 0) {
-        result = result & (~rs1_mask); // rs1 mask contains bits to clear
+        result = result & (~rs1_mask);  // rs1 mask contains bits to clear
         rv64_set_csr_value(&hart->csrs, csr, result);
     }
 }
@@ -1054,7 +1074,7 @@ static emu_result_t rv64i_csr_register(
 
     rv64_decode_csr_register(raw_instruction, &csr, &rs1, &rd);
 
-    switch(tag) {
+    switch (tag) {
         case I_RV64ZICSR_CSRRW: {
             rv64i_csrrw(hart, csr, rs1, rd);
             break;
@@ -1069,10 +1089,10 @@ static emu_result_t rv64i_csr_register(
         }
         default: {
             LOG(LOG_ERROR, "%s: instruction not implemented", __func__);
-            return(ER_FAILURE);
+            return (ER_FAILURE);
         }
     }
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 static inline void rv64i_csrrwi(rv64_hart_t* hart, uint8_t csr, uint8_t uimm, uint8_t rd) {
@@ -1099,7 +1119,7 @@ static inline void rv64i_csrrci(rv64_hart_t* hart, uint8_t csr, uint8_t uimm, ui
         hart->registers[rd] = result;
     }
     if (uimm != 0) {
-        result = result & (~uimm); // uimm mask contains bits to clear
+        result = result & (~uimm);  // uimm mask contains bits to clear
         rv64_set_csr_value(&hart->csrs, csr, result);
     }
 }
@@ -1118,7 +1138,7 @@ static emu_result_t rv64i_csr_immediate(
 
     rv64_decode_csr_immediate(raw_instruction, &csr, &uimm, &rd);
 
-    switch(tag) {
+    switch (tag) {
         case I_RV64ZICSR_CSRRWI: {
             rv64i_csrrwi(hart, csr, uimm, rd);
             break;
@@ -1133,10 +1153,10 @@ static emu_result_t rv64i_csr_immediate(
         }
         default: {
             LOG(LOG_ERROR, "%s: instruction not implemented", __func__);
-            return(ER_FAILURE);
+            return (ER_FAILURE);
         }
     }
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 emu_result_t rv64i_zicsr_emulate(
@@ -1145,7 +1165,7 @@ emu_result_t rv64i_zicsr_emulate(
     instruction_tag_rv64_t tag
 ) {
     emu_result_t result = ER_FAILURE;
-    switch(tag) {
+    switch (tag) {
         case I_RV64ZICSR_CSRRW:
         case I_RV64ZICSR_CSRRS:
         case I_RV64ZICSR_CSRRC: {
@@ -1160,7 +1180,7 @@ emu_result_t rv64i_zicsr_emulate(
         }
         default: {
             LOG(LOG_ERROR, "%s: instruction not implemented", __func__);
-            return(ER_FAILURE);
+            return (ER_FAILURE);
         }
     }
     return result;

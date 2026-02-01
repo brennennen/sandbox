@@ -42,7 +42,8 @@ emu_result_t decode_pop_register(
     uint8_t byte1,
     char* out_buffer,
     int* index,
-    size_t out_buffer_size);
+    size_t out_buffer_size
+);
 
 /**
  * Emulates the second x86 pop machine code instruction described as "Register",
@@ -56,5 +57,4 @@ emu_result_t emu_pop_register(emulator_8086_t* emulator, uint8_t byte1);
 
 // MARK: 3. I_POP_SEGMENT_REGISTER
 
-
-#endif // EMU_POP_H
+#endif  // EMU_POP_H

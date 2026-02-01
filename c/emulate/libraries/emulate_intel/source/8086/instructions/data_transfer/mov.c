@@ -19,18 +19,17 @@
 
 #include <string.h>
 
+#include "logger.h"
 #include "shared/include/binary_utilities.h"
 #include "shared/include/result.h"
-#include "logger.h"
 
-#include "8086/instruction_tags_8086.h"
-#include "8086/emulate_8086.h"
-#include "8086/emu_8086_registers.h"
-#include "8086/decode_8086_utils.h"
 #include "8086/decode_8086_shared.h"
+#include "8086/decode_8086_utils.h"
+#include "8086/emu_8086_registers.h"
+#include "8086/emulate_8086.h"
+#include "8086/instruction_tags_8086.h"
 
 #include "8086/instructions/data_transfer/mov.h"
-
 
 // MARK: 1. I_MOVE
 
@@ -54,8 +53,7 @@ emu_result_t decode_move(
     );
 
     write__common_register_or_memory_with_register_or_memory(
-        direction, wide, mod, reg, rm, displacement,
-        "mov", 3, out_buffer, index, out_buffer_size
+        direction, wide, mod, reg, rm, displacement, "mov", 3, out_buffer, index, out_buffer_size
     );
     return decode_result;
 }
@@ -66,7 +64,12 @@ emu_result_t decode_move(
  * `mov [1000], bx`
  * `mov cx, [128]`
  */
-static emu_result_t emu_move__direct_access(emulator_8086_t* emulator, wide_t wide, uint8_t reg, uint16_t displacement) {
+static emu_result_t emu_move__direct_access(
+    emulator_8086_t* emulator,
+    wide_t wide,
+    uint8_t reg,
+    uint16_t displacement
+) {
     // TODO: mov to memory, direction reg is source and mem is dest
     if (wide == WIDE_BYTE) {
         uint8_t source_data = 0;
@@ -74,7 +77,7 @@ static emu_result_t emu_move__direct_access(emulator_8086_t* emulator, wide_t wi
         uint8_t* dest = emu_get_byte_register(&emulator->registers, reg);
         *dest = source_data;
         return res;
-    } else { // WIDE_WORD
+    } else {  // WIDE_WORD
         uint16_t source_data = 0;
         int res = emu_memory_get_uint16(emulator, displacement, &source_data);
         uint16_t* dest = emu_get_word_register(&emulator->registers, reg);
@@ -89,28 +92,44 @@ static emu_result_t emu_move__direct_access(emulator_8086_t* emulator, wide_t wi
  * `mov [cx], bx`
  * `mov bx, [bx + si + 16]`
  */
-static emu_result_t emu_move__memory(emulator_8086_t* emulator, direction_t direction, wide_t wide, mod_t mode, uint8_t reg, uint8_t rm, uint16_t displacement) {
+static emu_result_t emu_move__memory(
+    emulator_8086_t* emulator,
+    direction_t direction,
+    wide_t wide,
+    mod_t mode,
+    uint8_t reg,
+    uint8_t rm,
+    uint16_t displacement
+) {
     uint32_t address = emu_get_effective_address(&emulator->registers, rm, mode, displacement);
     if (wide == WIDE_BYTE) {
         if (direction == DIR_REG_SOURCE) {
             uint8_t* source = emu_get_byte_register(&emulator->registers, reg);
-            uint32_t dest_address = emu_get_effective_address(&emulator->registers, rm, mode, displacement);
+            uint32_t dest_address = emu_get_effective_address(
+                &emulator->registers, rm, mode, displacement
+            );
             return emu_memory_set_byte(emulator, dest_address, *source);
-        } else { // DIR_REG_DEST
-            uint32_t source_address = emu_get_effective_address(&emulator->registers, rm, mode, displacement);
+        } else {  // DIR_REG_DEST
+            uint32_t source_address = emu_get_effective_address(
+                &emulator->registers, rm, mode, displacement
+            );
             uint8_t source = 0;
             result_t res = emu_memory_get_byte(emulator, source_address, &source);
             uint8_t* dest = emu_get_byte_register(&emulator->registers, reg);
             *dest = source;
             return res;
         }
-    } else { // WIDE_WORD
+    } else {  // WIDE_WORD
         if (direction == DIR_REG_SOURCE) {
             uint16_t* source = emu_get_word_register(&emulator->registers, reg);
-            uint32_t dest_address = emu_get_effective_address(&emulator->registers, rm, mode, displacement);
+            uint32_t dest_address = emu_get_effective_address(
+                &emulator->registers, rm, mode, displacement
+            );
             return emu_memory_set_uint16(emulator, dest_address, *source);
-        } else { // DIR_REG_DEST
-            uint32_t source_address = emu_get_effective_address(&emulator->registers, rm, mode, displacement);
+        } else {  // DIR_REG_DEST
+            uint32_t source_address = emu_get_effective_address(
+                &emulator->registers, rm, mode, displacement
+            );
             uint16_t source = 0;
             result_t res = emu_memory_get_uint16(emulator, source_address, &source);
             uint16_t* dest = emu_get_word_register(&emulator->registers, reg);
@@ -126,7 +145,12 @@ static emu_result_t emu_move__memory(emulator_8086_t* emulator, direction_t dire
  * `mov bx, cx`
  * `mov cx, dx`
  */
-static emu_result_t emu_move__register(emulator_8086_t* emulator, wide_t wide, uint8_t reg, uint8_t rm) {
+static emu_result_t emu_move__register(
+    emulator_8086_t* emulator,
+    wide_t wide,
+    uint8_t reg,
+    uint8_t rm
+) {
     // TODO: include direction
     if (wide == WIDE_BYTE) {
         uint8_t* left = emu_get_byte_register(&emulator->registers, rm);
@@ -158,13 +182,16 @@ emu_result_t emu_move(emulator_8086_t* emulator, uint8_t byte1) {
         emulator, byte1, &direction, &wide, &mode, &reg, &rm, &displacement, &instruction_size
     );
 
-    LOGDIW(write__common_register_or_memory_with_register_or_memory, direction, wide, mode, reg, rm, displacement, "mov", 3);
+    LOGDIW(
+        write__common_register_or_memory_with_register_or_memory, direction, wide, mode, reg, rm,
+        displacement, "mov", 3
+    );
 
     if (mode == MOD_MEMORY && rm == REG_DIRECT_ACCESS) {
         return emu_move__direct_access(emulator, wide, reg, displacement);
     }
 
-    switch(mode) {
+    switch (mode) {
         case MOD_MEMORY:
         case MOD_MEMORY_8BIT_DISPLACEMENT:
         case MOD_MEMORY_16BIT_DISPLACEMENT: {
@@ -190,7 +217,7 @@ emu_result_t read_move_immediate(
 ) {
     *wide = byte1 & 0b00000001;
     uint8_t byte2 = 0;
-    if (dcd_read_byte(emulator, (uint8_t*) &byte2) == RI_FAILURE) {
+    if (dcd_read_byte(emulator, (uint8_t*)&byte2) == RI_FAILURE) {
         return ER_UNKNOWN_OPCODE;
     }
     *mod = (byte2 & 0b11000000) >> 6;
@@ -204,7 +231,7 @@ emu_result_t read_move_immediate(
             }
         }
     } else if (*mod == MOD_MEMORY_8BIT_DISPLACEMENT) {
-        emu_result_t read_displace_result = dcd_read_byte(emulator, (uint8_t*) displacement);
+        emu_result_t read_displace_result = dcd_read_byte(emulator, (uint8_t*)displacement);
         if (read_displace_result != ER_SUCCESS) {
             return read_displace_result;
         }
@@ -213,12 +240,12 @@ emu_result_t read_move_immediate(
         if (read_displace_result != ER_SUCCESS) {
             return read_displace_result;
         }
-    } else { // MOD_REGISTER
+    } else {  // MOD_REGISTER
         // Don't have extra bytes for register to register movs. Nothing to do.
     }
 
     if (*wide == WIDE_BYTE) {
-        emu_result_t read_data_result = dcd_read_byte(emulator, (uint8_t*) data);
+        emu_result_t read_data_result = dcd_read_byte(emulator, (uint8_t*)data);
     } else {
         emu_result_t read_data_result = dcd_read_word(emulator, data);
     }
@@ -231,8 +258,8 @@ emu_result_t decode_move_immediate(
     uint8_t byte1,
     char* out_buffer,
     int* index,
-    size_t out_buffer_size)
-{
+    size_t out_buffer_size
+) {
     uint8_t sign = 0;
     wide_t wide = 0;
     mod_t mod = 0;
@@ -246,8 +273,7 @@ emu_result_t decode_move_immediate(
     );
 
     write__common_immediate_to_register_or_memory(
-        sign, wide, mod, rm, displacement, data,
-        "mov", 3, out_buffer, index, out_buffer_size
+        sign, wide, mod, rm, displacement, data, "mov", 3, out_buffer, index, out_buffer_size
     );
 
     return result;
@@ -258,12 +284,15 @@ emu_result_t decode_move_immediate(
  * Examples:
  * `mov byte [1000], 42`
  */
-emu_result_t emu_move_immediate__direct_access(emulator_8086_t* emulator, wide_t wide,
-    uint16_t displacement, uint16_t data)
-{
+emu_result_t emu_move_immediate__direct_access(
+    emulator_8086_t* emulator,
+    wide_t wide,
+    uint16_t displacement,
+    uint16_t data
+) {
     if (wide == WIDE_BYTE) {
         return emu_memory_set_byte(emulator, displacement, data);
-    } else { // WIDE_WORD
+    } else {  // WIDE_WORD
         return emu_memory_set_uint16(emulator, displacement, data);
     }
 }
@@ -290,20 +319,21 @@ emu_result_t emu_move_immediate(emulator_8086_t* emulator, uint8_t byte1) {
         return emu_move_immediate__direct_access(emulator, wide, displacement, data);
     }
 
-    switch(mode) {
+    switch (mode) {
         case MOD_MEMORY: {
             if (wide == WIDE_BYTE) {
                 return emu_memory_set_byte(emulator, displacement, data);
-            } else { // WIDE_WORD
+            } else {  // WIDE_WORD
                 return emu_memory_set_uint16(emulator, displacement, data);
             }
         }
         case MOD_MEMORY_8BIT_DISPLACEMENT: {
-            uint32_t effective_address = emu_get_effective_address(&emulator->registers,
-                rm, mode, displacement);
+            uint32_t effective_address = emu_get_effective_address(
+                &emulator->registers, rm, mode, displacement
+            );
             if (wide == WIDE_BYTE) {
                 return emu_memory_set_byte(emulator, effective_address, data);
-            } else { // WIDE_WORD
+            } else {  // WIDE_WORD
                 return emu_memory_set_uint16(emulator, effective_address, data);
             }
         }
@@ -338,7 +368,7 @@ emu_result_t read_move_immediate_to_register(
         if (read_data_result != ER_SUCCESS) {
             return FAILURE;
         }
-    } else { // WIDE_WORD
+    } else {  // WIDE_WORD
         emu_result_t read_data_result = dcd_read_word(emulator, immediate);
         *instruction_size += 2;
         if (read_data_result != ER_SUCCESS) {
@@ -354,16 +384,16 @@ static void write_move_immediate_to_register(
     uint16_t immediate,
     char* buffer,
     int* index,
-    int buffer_size)
-{
+    int buffer_size
+) {
     char* reg_string = regb_strings[reg];
     if (wide == WIDE_WORD) {
         reg_string = regw_strings[reg];
     }
 
-    int written = snprintf(buffer + *index, buffer_size - *index, "mov %s, %d",
-                            reg_string,
-                            immediate);
+    int written = snprintf(
+        buffer + *index, buffer_size - *index, "mov %s, %d", reg_string, immediate
+    );
     if (written < 0) {
         // TODO: propogate error
     }
@@ -375,15 +405,16 @@ emu_result_t decode_move_immediate_to_register(
     uint8_t byte1,
     char* out_buffer,
     int* index,
-    size_t out_buffer_size)
-{
+    size_t out_buffer_size
+) {
     wide_t wide = 0;
     uint8_t reg = 0;
     uint16_t immediate = 0;
     uint8_t instruction_size = 0;
 
     emu_result_t result = read_move_immediate_to_register(
-        emulator, byte1, &wide, &reg, &immediate, &instruction_size);
+        emulator, byte1, &wide, &reg, &immediate, &instruction_size
+    );
 
     write_move_immediate_to_register(wide, reg, immediate, out_buffer, index, out_buffer_size);
     return result;
@@ -399,7 +430,8 @@ emu_result_t emu_move_immediate_to_register(emulator_8086_t* emulator, uint8_t b
     uint8_t instruction_size = 0;
 
     emu_result_t result = read_move_immediate_to_register(
-        emulator, byte1, &wide, &reg, &immediate, &instruction_size);
+        emulator, byte1, &wide, &reg, &immediate, &instruction_size
+    );
     if (wide == WIDE_BYTE) {
         uint8_t* left = emu_get_byte_register(&emulator->registers, reg);
         *left = immediate;
@@ -410,7 +442,7 @@ emu_result_t emu_move_immediate_to_register(emulator_8086_t* emulator, uint8_t b
 
     LOGDIW(write_move_immediate_to_register, wide, reg, immediate);
 
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 // MARK: 4. I_MOVE_TO_AX
@@ -420,7 +452,7 @@ emu_result_t read_move_to_ax(
     wide_t* wide,
     uint16_t* address
 ) {
-   *wide = byte1 & 0b00000001;
+    *wide = byte1 & 0b00000001;
     emu_result_t read_data_result = dcd_read_word(emulator, address);
     printf("address: %d\n", *address);
     if (read_data_result != ER_SUCCESS) {
@@ -441,9 +473,9 @@ static void write_move_to_ax(
         reg_string = "ax";
     }
 
-    int written = snprintf(buffer + *index, buffer_size - *index, "mov %s, [%d]",
-                            reg_string,
-                            address);
+    int written = snprintf(
+        buffer + *index, buffer_size - *index, "mov %s, [%d]", reg_string, address
+    );
     if (written < 0) {
         // TODO: propogate error
     }
@@ -474,7 +506,7 @@ emu_result_t emu_move_to_ax(emulator_8086_t* emulator, uint8_t byte1) {
 
     LOGDIW(write_move_to_ax, wide, address);
 
-    return(ER_FAILURE);
+    return (ER_FAILURE);
 }
 
 // MARK: 5. I_MOVE_AX
@@ -505,9 +537,9 @@ static void write_move_ax(
         reg_string = "ax";
     }
 
-    int written = snprintf(buffer + *index, buffer_size - *index, "mov [%d], %s",
-                            address,
-                            reg_string);
+    int written = snprintf(
+        buffer + *index, buffer_size - *index, "mov [%d], %s", address, reg_string
+    );
     if (written < 0) {
         // TODO: propogate error
     }

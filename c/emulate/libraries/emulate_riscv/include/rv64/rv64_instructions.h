@@ -1,8 +1,8 @@
 #ifndef INSTRUCTIONS_RV64_H
 #define INSTRUCTIONS_RV64_H
 
-#include <stdint.h>
 #include <inttypes.h>
+#include <stdint.h>
 
 #include "shared/include/binary_utilities.h"
 
@@ -19,28 +19,34 @@ typedef enum ENUM_PACK_ATTRIBUTE {
      * MARK: RV64I - Integer
      * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#rv64
      */
-    I_RV64I_LUI, /** lui - Load Upper Immediate - loads an unsigned 20 bit number into the upper 20 bits of a 32 bit int, lower bits being all 0. Then sign extends to 64 bits. */
+    I_RV64I_LUI, /** lui - Load Upper Immediate - loads an unsigned 20 bit number into the upper 20
+                    bits of a 32 bit int, lower bits being all 0. Then sign extends to 64 bits. */
     I_RV64I_AUIPC, /** auipc - Add Upper Immediate to pc */
-    I_RV64I_JAL, /** jal - Jump and Link - Unconditionally jump to symbol and stores the next instruction (after the jal) into a register (usually `ra` abi return address).*/
-    I_RV64I_JALR, /** jalr - Jump and Link and Return - Unconditionally jump ... */
-    I_RV64I_BEQ, /** beq - Branch/Conditional Jump - Take branch if equal. */
+    I_RV64I_JAL,   /** jal - Jump and Link - Unconditionally jump to symbol and stores the next
+                      instruction (after the jal) into a register (usually `ra` abi return address).*/
+    I_RV64I_JALR,  /** jalr - Jump and Link and Return - Unconditionally jump ... */
+    I_RV64I_BEQ,   /** beq - Branch/Conditional Jump - Take branch if equal. */
     I_RV64I_BNE,
     I_RV64I_BLT,
     I_RV64I_BGE,
     I_RV64I_BLTU,
     I_RV64I_BGEU,
-    I_RV64I_LB, /** Load Byte - Loads 8 bit value, then sign-extends to 32-bits before storing in rd.*/
-    I_RV64I_LH, /** Load Half Word - Loads 16 bit value, then sign-extends to 32-bits before storing in rd. */
+    I_RV64I_LB, /** Load Byte - Loads 8 bit value, then sign-extends to 32-bits before storing in
+                   rd.*/
+    I_RV64I_LH, /** Load Half Word - Loads 16 bit value, then sign-extends to 32-bits before storing
+                   in rd. */
     I_RV64I_LW, /** Load Word - Loads a 32-bit value from memory into rd. */
-    I_RV64I_LBU, /** Load Byte Unsigned - Loads 8 bit value, then 0 extends to 32-bits before storing in rd.*/
-    I_RV64I_LHU, /** Load Half Word Unsigned - Loads 16 bit value, then 0 extends to 32-bits before storing in rd. */
-    I_RV64I_SB, /** Store Byte */
-    I_RV64I_SH, /** Store Half Word*/
-    I_RV64I_SW, /** Store Word */
+    I_RV64I_LBU,  /** Load Byte Unsigned - Loads 8 bit value, then 0 extends to 32-bits before
+                     storing in rd.*/
+    I_RV64I_LHU,  /** Load Half Word Unsigned - Loads 16 bit value, then 0 extends to 32-bits before
+                     storing in rd. */
+    I_RV64I_SB,   /** Store Byte */
+    I_RV64I_SH,   /** Store Half Word*/
+    I_RV64I_SW,   /** Store Word */
     I_RV64I_ADDI, /** Add Immediate */
     I_RV64I_SLTI, /** Set Less Than Immediate */
     I_RV64I_SLTIU, /** Set Less Than Immediate Unsigned */
-    I_RV64I_XORI, /** XOR Immediate */
+    I_RV64I_XORI,  /** XOR Immediate */
     I_RV64I_ORI,
     I_RV64I_ANDI,
     I_RV64I_SLLI,
@@ -89,12 +95,12 @@ typedef enum ENUM_PACK_ATTRIBUTE {
      * MARK: RV64Zicsr
      * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#csrinsts
      */
-    I_RV64ZICSR_CSRRW, // Control Status Registers atomic Read Write
-    I_RV64ZICSR_CSRRS, // atomic Read and Set bits
-    I_RV64ZICSR_CSRRC, // atomic Read and Clear bits
-    I_RV64ZICSR_CSRRWI, // atomic Read Write Immediate
-    I_RV64ZICSR_CSRRSI, // atomic Read and Set bits from Immediate
-    I_RV64ZICSR_CSRRCI, // atomic Read and Clear bits from Immediate
+    I_RV64ZICSR_CSRRW,   // Control Status Registers atomic Read Write
+    I_RV64ZICSR_CSRRS,   // atomic Read and Set bits
+    I_RV64ZICSR_CSRRC,   // atomic Read and Clear bits
+    I_RV64ZICSR_CSRRWI,  // atomic Read Write Immediate
+    I_RV64ZICSR_CSRRSI,  // atomic Read and Set bits from Immediate
+    I_RV64ZICSR_CSRRCI,  // atomic Read and Clear bits from Immediate
 
     /*
      * MARK: RV64Zicntr
@@ -140,7 +146,8 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     /*
      * MARK: RV64Zcmop (depends on "Zcmop")
      * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zimop
-     * * Eight 16-bit C.MOP.n instructions (n = odds between 1 and 15, ex: c.mop.1, c.mop.3, ..., c.mop.15)
+     * * Eight 16-bit C.MOP.n instructions (n = odds between 1 and 15, ex: c.mop.1, c.mop.3, ...,
+     * c.mop.15)
      */
     I_RV64ZCMOP_C_MOP_1,
     I_RV64ZCMOP_C_MOP_3,
@@ -158,10 +165,13 @@ typedef enum ENUM_PACK_ATTRIBUTE {
      * MARK: RV64M - Multiplication
      * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#mstandard
      */
-    I_RV64M_MUL, /** Multiply - Multiply 2 64-bit values together. */
-    I_RV64M_MULH, /** Multiply High - Multiply 2 64-bit signed values together, interprets the result as 128 bits and returns the upper/high 64 bits. */
-    I_RV64M_MULHSU, /** Multiply High Signed by Unsigned - Multiply a 64-bit signed value with a 64-bit unsigned value, interprets the result as 128 bits and returns the upper/high 64 bits. */
-    I_RV64M_MULHU, /** Multiply High Unsigned - Multiply 2 64-bit unsigned values together, */
+    I_RV64M_MUL,    /** Multiply - Multiply 2 64-bit values together. */
+    I_RV64M_MULH,   /** Multiply High - Multiply 2 64-bit signed values together, interprets the
+                       result as 128 bits and returns the upper/high 64 bits. */
+    I_RV64M_MULHSU, /** Multiply High Signed by Unsigned - Multiply a 64-bit signed value with a
+                       64-bit unsigned value, interprets the result as 128 bits and returns the
+                       upper/high 64 bits. */
+    I_RV64M_MULHU,  /** Multiply High Unsigned - Multiply 2 64-bit unsigned values together, */
     I_RV64M_DIV,
     I_RV64M_DIVU,
     I_RV64M_REM,
@@ -174,9 +184,10 @@ typedef enum ENUM_PACK_ATTRIBUTE {
 
     /*
      * MARK: Zmmul
-     * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_zmmul_extension_version_1_0
-     * Allows for only implementing the multiply and not division/remainder functions for low power embedded devices.
-     * No specific instructions added if RV64M is implemented.
+     * @see
+     * https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_zmmul_extension_version_1_0
+     * Allows for only implementing the multiply and not division/remainder functions for low power
+     * embedded devices. No specific instructions added if RV64M is implemented.
      */
 
     /*
@@ -218,14 +229,17 @@ typedef enum ENUM_PACK_ATTRIBUTE {
 
     /*
      * MARK: Zawrs
-     * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_zawrs_extension_for_wait_on_reservation_set_instructions_version_1_01
+     * @see
+     * https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_zawrs_extension_for_wait_on_reservation_set_instructions_version_1_01
      */
     I_RV64ZAWRS_WRS_NTO, /** Stall execution to save power, resume when memory address changes. */
-    I_RV64ZAWRS_WRS_STO,/** Stall execution with short upper bound, resume when memory address changes. */
+    I_RV64ZAWRS_WRS_STO, /** Stall execution with short upper bound, resume when memory address
+                            changes. */
 
     /*
      * MARK: Zacas
-     * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_zacas_extension_for_atomic_compare_and_swap_cas_instructions_version_1_0_0
+     * @see
+     * https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_zacas_extension_for_atomic_compare_and_swap_cas_instructions_version_1_0_0
      */
     I_RV64ZACAS_AMOCAS_W,
     I_RV64ZACAS_AMOCAS_D,
@@ -233,7 +247,8 @@ typedef enum ENUM_PACK_ATTRIBUTE {
 
     /*
      * MARK: Zabha
-     * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_zabha_extension_for_byte_and_halfword_atomic_memory_operations_version_1_0
+     * @see
+     * https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_zabha_extension_for_byte_and_halfword_atomic_memory_operations_version_1_0
      */
     I_RV64ZABHA_AMOSWAP_B,
     I_RV64ZABHA_AMOADD_B,
@@ -263,35 +278,39 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     // TODO
 
     // MARK: RV64F - Floating Point Arithmetic (single word, 32 bit)
-    I_RV64F_FLW, /** Float Load Word */
-    I_RV64F_FSW, /** Float Store Word */
-    I_RV64F_FMADD_S, /** Float Fused Multiply Add Single-Precision */
-    I_RV64F_FMSUB_S, /** Float Fused Multiply Subtract Single-Precision */
-    I_RV64F_FNMSUB_S, /** Float Fused Negative Multiply Subtract Single-Precision - Multiplies two numbers, subtracts a third, then negates the final result. */
+    I_RV64F_FLW,      /** Float Load Word */
+    I_RV64F_FSW,      /** Float Store Word */
+    I_RV64F_FMADD_S,  /** Float Fused Multiply Add Single-Precision */
+    I_RV64F_FMSUB_S,  /** Float Fused Multiply Subtract Single-Precision */
+    I_RV64F_FNMSUB_S, /** Float Fused Negative Multiply Subtract Single-Precision - Multiplies two
+                         numbers, subtracts a third, then negates the final result. */
     I_RV64F_FNMADD_S,
-    I_RV64F_FADD_S, /** Float Add Single-Precision */
-    I_RV64F_FSUB_S, /** Float Subtract Single-Precision */
-    I_RV64F_FMUL_S, /** Float Multiply Single-Precision */
-    I_RV64F_FDIV_S, /** Float Divide Single-Precision */
-    I_RV64F_FSQRT_S, /** Float Square Root Single-Precision */
-    I_RV64F_FSGNJ_S, /** Float SiGN inJect Single-Precision - Copies sign of one float to another float (cstd: copysignf).*/
+    I_RV64F_FADD_S,   /** Float Add Single-Precision */
+    I_RV64F_FSUB_S,   /** Float Subtract Single-Precision */
+    I_RV64F_FMUL_S,   /** Float Multiply Single-Precision */
+    I_RV64F_FDIV_S,   /** Float Divide Single-Precision */
+    I_RV64F_FSQRT_S,  /** Float Square Root Single-Precision */
+    I_RV64F_FSGNJ_S,  /** Float SiGN inJect Single-Precision - Copies sign of one float to another
+                         float (cstd: copysignf).*/
     I_RV64F_FSGNJN_S, /** Float SiGN inJect Negated Single-Precision */
     I_RV64F_FSGNJX_S, /** Float SiGN inJect Xor Single-Precision */
     I_RV64F_FMIN_S,
     I_RV64F_FMAX_S,
-    I_RV64F_FCVT_W_S, /** Float ConVerT Word Single-Precision - Converts a float to a 32-bit signed int. */
-    I_RV64F_FCVT_WU_S, /** Float ConVerT Word Single-Precision - Converts a float to a 32-bit unsigned int. */
-    I_RV64F_FMV_X_W, /** Float Move Word to "X" Single-Precision */
-    I_RV64F_FEQ_S, /** Float EQuals Single-Precision - Checks if two floats are equal or not. */
-    I_RV64F_FLT_S, /** Float Less Than Single-Precision */
-    I_RV64F_FLE_S, /** Float Less Than or Equal To Single-Precision */
-    I_RV64F_FCLASS_S, /** Float CLASSify Single-Precision */
-    I_RV64F_FCVT_S_W, /** Float ConVerT Single-Precision to Word */
+    I_RV64F_FCVT_W_S,  /** Float ConVerT Word Single-Precision - Converts a float to a 32-bit signed
+                          int. */
+    I_RV64F_FCVT_WU_S, /** Float ConVerT Word Single-Precision - Converts a float to a 32-bit
+                          unsigned int. */
+    I_RV64F_FMV_X_W,   /** Float Move Word to "X" Single-Precision */
+    I_RV64F_FEQ_S,     /** Float EQuals Single-Precision - Checks if two floats are equal or not. */
+    I_RV64F_FLT_S,     /** Float Less Than Single-Precision */
+    I_RV64F_FLE_S,     /** Float Less Than or Equal To Single-Precision */
+    I_RV64F_FCLASS_S,  /** Float CLASSify Single-Precision */
+    I_RV64F_FCVT_S_W,  /** Float ConVerT Single-Precision to Word */
     I_RV64F_FCVT_S_WU, /** Float ConVerT Single-Precision to Word Unsigned */
-    I_RV64F_FMV_W_X, /** Float Move "X" Single-Precision to Word */
-    I_RV64F_FCVT_L_S, /** Float ConVerT Long to Single-Precision */
+    I_RV64F_FMV_W_X,   /** Float Move "X" Single-Precision to Word */
+    I_RV64F_FCVT_L_S,  /** Float ConVerT Long to Single-Precision */
     I_RV64F_FCVT_LU_S, /** Float ConVerT Long Unsigned to Single-Precision */
-    I_RV64F_FCVT_S_L, /** Float ConVerT Single-Precision to Long */
+    I_RV64F_FCVT_S_L,  /** Float ConVerT Single-Precision to Long */
     I_RV64F_FCVT_S_LU, /** Float ConVerT Single-Precision to Long Unsigned */
 
     // MARK: RV64D - Double-Word (64 bit)
@@ -453,32 +472,44 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     // I_RV64C_C_SUBW,
     // I_RV64C_C_NOP,
     // I_RV64C_C_EBREAK,
-    // TODO: chapter 28. "Zc*", @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#Zc
+    // TODO: chapter 28. "Zc*", @see
+    // https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#Zc
 
     /*
      * MARK: RV64B - Bit Manipulation
      * Comprised of Zba, Zbb, and Zbs.
      * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#bits
      */
-    // Zba - Address generation - @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zba
-    // Zbb - Basic bit-manipulation - @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zbb
-    // Zbc - Carry-less multiplication - @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zbc
-    // Zbs - Single-bit instructions - @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zbs
-    // Zbkb - Bit-manipulation for Cryptography - @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zbkb
-    // Zbkc - Carry-less multiplication for Cryptography - @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zbkc
-    // Zbkx - Crossbar permutations - @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zbkx
-    // TODO: 29.6 cool optimization guide code snippets related to RV64B that would make for good goalpost tests for this emulator - @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_software_optimization_guide
+    // Zba - Address generation - @see
+    // https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zba Zbb - Basic
+    // bit-manipulation - @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zbb
+    // Zbc - Carry-less multiplication - @see
+    // https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zbc Zbs - Single-bit
+    // instructions - @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zbs Zbkb
+    // - Bit-manipulation for Cryptography - @see
+    // https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zbkb Zbkc - Carry-less
+    // multiplication for Cryptography - @see
+    // https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zbkc Zbkx - Crossbar
+    // permutations - @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#zbkx
+    // TODO: 29.6 cool optimization guide code snippets related to RV64B that would make for good
+    // goalpost tests for this emulator - @see
+    // https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_software_optimization_guide
 
     /*
      * MARK: RV64V - Vector Operations
      * @see https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#vector
      */
     // TODO: vector load, vector store, vector arithmetic
-    // @see 30.6. Configuration-Setting Instructions (vsetvli/vsetivli/vsetvl) (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#sec-vector-config)
-    I_RV64V_VSETVLI, /** Set Vector Length and Type Immediate. Sets the csr registers "vtype" and "vl". rs1 is written to vl, and vtype is parsed from the immediate. */
-    I_RV64V_VSETIVLI, /** Set Immediate Vector Length and Type Immediate. Sets the csr registers "vtype" and "vl", both from immediate values. */
-    I_RV64V_VSETVL, /** Set Vector Length. Sets the csr registers "vtype" and "vl" from register values. vl from rs1 and vtype from rs2. */
-    // @see 30.7.4 Vector Unit-Stride Instructions (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_unit_stride_instructions)
+    // @see 30.6. Configuration-Setting Instructions (vsetvli/vsetivli/vsetvl)
+    // (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#sec-vector-config)
+    I_RV64V_VSETVLI,  /** Set Vector Length and Type Immediate. Sets the csr registers "vtype" and
+                         "vl". rs1 is written to vl, and vtype is parsed from the immediate. */
+    I_RV64V_VSETIVLI, /** Set Immediate Vector Length and Type Immediate. Sets the csr registers
+                         "vtype" and "vl", both from immediate values. */
+    I_RV64V_VSETVL,   /** Set Vector Length. Sets the csr registers "vtype" and "vl" from register
+                         values. vl from rs1 and vtype from rs2. */
+    // @see 30.7.4 Vector Unit-Stride Instructions
+    // (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_unit_stride_instructions)
     I_RV64V_VLE8_V,
     I_RV64V_VLE16_V,
     I_RV64V_VLE32_V,
@@ -489,7 +520,8 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_RV64V_VSE64_V,
     I_RV64V_VLM_V,
     I_RV64V_VSM_V,
-    // @see 30.7.5 Vector Constant-Stride Instructions (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_constant_stride_instructions)
+    // @see 30.7.5 Vector Constant-Stride Instructions
+    // (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_constant_stride_instructions)
     I_RV64V_VLSE8_V,
     I_RV64V_VLSE16_V,
     I_RV64V_VLSE32_V,
@@ -498,7 +530,8 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_RV64V_VSSE16_V,
     I_RV64V_VSSE32_V,
     I_RV64V_VSSE64_V,
-    // @see 30.7.6 Vector Indexed Instructions (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_indexed_instructions)
+    // @see 30.7.6 Vector Indexed Instructions
+    // (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_indexed_instructions)
     I_RV64V_VLUXEI8_V, /** Vector index-unordered load instruction */
     I_RV64V_VLUXEI16_V,
     I_RV64V_VLUXEI32_V,
@@ -515,7 +548,8 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_RV64V_VSOXEI16_V,
     I_RV64V_VSOXEI32_V,
     I_RV64V_VSOXEI64_V,
-    // @see 30.7.7 Unit-stride Fault-Only-First Loads (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_unit_stride_fault_only_first_loads)
+    // @see 30.7.7 Unit-stride Fault-Only-First Loads
+    // (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_unit_stride_fault_only_first_loads)
     I_RV64V_VLE8FF_V, /** Vector unit-stride fault-only-first loads */
     I_RV64V_VLE16FF_V,
     I_RV64V_VLE32FF_V,
@@ -526,9 +560,11 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     // TODO: vlsseg<nf>e<eew>.v, vssseg<nf>e<eew>.v
     // @see 30.7.8.3 Vector Indexed Segment Loads and Stores
     // TODO: vluxseg<nf>ei<eew>.v, vloxseg<nf>ei<eew>.v, vsuxseg<nf>ei<eew>.v, vsoxseg<nf>ei<eew>.v
-    // @see 30.7.9 Vector Load/Store Whole Register Instructions (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_loadstore_whole_register_instructions)
+    // @see 30.7.9 Vector Load/Store Whole Register Instructions
+    // (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_loadstore_whole_register_instructions)
     // TODO: VL*R*, VS*R*
-    // @see 30.11.1 Vector Single-Width Integer Add and Subtract (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_single_width_integer_add_and_subtract)
+    // @see 30.11.1 Vector Single-Width Integer Add and Subtract
+    // (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_single_width_integer_add_and_subtract)
     I_RV64V_VADD_IVV,
     I_RV64V_VADD_IVX,
     I_RV64V_VADD_IVI,
@@ -538,20 +574,23 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     I_RV64V_VRSUB_IVI,
     // 30.11.2 Vector Widening Integer Add/Subtract
     // todo - next
-    // @see 30.11.9 Vector Integer Min/Max Instructions (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_integer_minmax_instructions)
-    //I_RV64_VMINU_VV,
-    //I_RV64_VMIN_VX,
+    // @see 30.11.9 Vector Integer Min/Max Instructions
+    // (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_integer_minmax_instructions)
+    // I_RV64_VMINU_VV,
+    // I_RV64_VMIN_VX,
     // ...
     // 30.11.10
     // ...
 
-    I_RV64V_VOPVV, /** Assembly syntax pattern for vector binary arithmetic instructions, integer vector-vector */
-    I_RV64V_VOPVX, /** integer vector-scalar */
-    I_RV64V_VOPVI, /** integer vector-immediate */
-    I_RV64V_VFOP_VV, /** float vector-vector */
-    I_RV64V_VFOP_VF, /** float vector-scalar */
+    I_RV64V_VOPVV,    /** Assembly syntax pattern for vector binary arithmetic instructions, integer
+                         vector-vector */
+    I_RV64V_VOPVX,    /** integer vector-scalar */
+    I_RV64V_VOPVI,    /** integer vector-immediate */
+    I_RV64V_VFOP_VV,  /** float vector-vector */
+    I_RV64V_VFOP_VF,  /** float vector-scalar */
     I_RV64V_VADC_VMM, /** vector addition with carry */
-    // @see 30.10.2 Widening Vector Arithmetic Instructions (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#sec-widening)
+    // @see 30.10.2 Widening Vector Arithmetic Instructions
+    // (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#sec-widening)
     I_RV64V_VWOP_VV, /** in */
 
 } instruction_tag_rv64_t;
@@ -892,7 +931,8 @@ static char rv64_instruction_tag_mnemonic[][16] = {
     "vle16ff.v",
     "vle32ff.v",
     "vle64ff.v",
-    // @see 30.11.1 Vector Single-Width Integer Add and Subtract (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_single_width_integer_add_and_subtract)
+    // @see 30.11.1 Vector Single-Width Integer Add and Subtract
+    // (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vector_single_width_integer_add_and_subtract)
     "vadd.vv",
     "vadd.vx",
     "vadd.vi",
@@ -907,15 +947,11 @@ static char rv64_instruction_tag_mnemonic[][16] = {
     "vop.vi",
     "vfop.vv",
     "vfop.vf",
-    // I_RV64V_VOPVV, /** Assembly syntax pattern for vector binary arithmetic instructions, integer vector-vector */
-    // I_RV64V_VOPVX, /** integer vector-scalar */
-    // I_RV64V_VOPVI, /** integer vector-immediate */
-    // I_RV64V_VFOP_VV, /** float vector-vector */
-    // I_RV64V_VFOP_VF, /** float vector-scalar */
-    // I_RV64V_VADC_VMM, /** vector addition with carry */
+    // I_RV64V_VOPVV, /** Assembly syntax pattern for vector binary arithmetic instructions, integer
+    // vector-vector */ I_RV64V_VOPVX, /** integer vector-scalar */ I_RV64V_VOPVI, /** integer
+    // vector-immediate */ I_RV64V_VFOP_VV, /** float vector-vector */ I_RV64V_VFOP_VF, /** float
+    // vector-scalar */ I_RV64V_VADC_VMM, /** vector addition with carry */
 };
-
-
 
 /**
  * 30.10.v Vector Arithmetic Instruction Encoding
@@ -931,6 +967,4 @@ typedef enum ENUM_PACK_ATTRIBUTE {
     C_RV64_OPCFG
 } vector_category_rv64_t;
 
-
-
-#endif // INSTRUCTIONS_RV64I_H
+#endif  // INSTRUCTIONS_RV64I_H

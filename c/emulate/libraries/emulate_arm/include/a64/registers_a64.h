@@ -30,7 +30,7 @@ typedef struct {
     reg_a64_t r12;
     reg_a64_t r13;
     reg_a64_t r14;
-    reg_a64_t r15; // PC - Program Counter
+    reg_a64_t r15;  // PC - Program Counter
     reg_a64_t r16;
     reg_a64_t r17;
     reg_a64_t r18;
@@ -54,6 +54,4 @@ typedef struct {
 // there are going to be a set of names for cpu control like pc and another set
 // for os specific abi stuff (r0 is function return result, etc.)
 
-
-
-#endif // REGISTERS_A64_H
+#endif  // REGISTERS_A64_H

@@ -5,24 +5,24 @@
 
 #include "logger.h"
 
-#include "rv64/rv64_instructions.h"
-#include "rv64/rv64_emulate.h"
-#include "rv64/rv64_decode_instruction.h"
 #include "rv64/rv64_decode.h"
+#include "rv64/rv64_decode_instruction.h"
 #include "rv64/rv64_disassemble.h"
+#include "rv64/rv64_emulate.h"
+#include "rv64/rv64_instructions.h"
 
 #include "rv64/modules/rv64c_compressed.h"
 
 #include "rv64/disassemble/rv64a_atomic_disassemble.h"
 #include "rv64/disassemble/rv64v_vector_disassemble.h"
 
-emu_result_t rv64_disassemble_init(rv64_disassembler_t *disassembler) {
+emu_result_t rv64_disassemble_init(rv64_disassembler_t* disassembler) {
     disassembler->memory_size = MEMORY_SIZE;
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 emu_result_t rv64_disassemble_upper_immediate(
-    rv64_disassembler_t *disassembler,
+    rv64_disassembler_t* disassembler,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag,
     char* buffer,
@@ -37,22 +37,24 @@ emu_result_t rv64_disassemble_upper_immediate(
     char* rd_name = rv64_map_register_name(rd);
     char* tag_name = rv64_instruction_tag_mnemonic[tag];
 
-    int written = snprintf(buffer + *index, buffer_size - *index,
-        "%s %s, %d", tag_name, rd_name, imm20);
+    int written = snprintf(
+        buffer + *index, buffer_size - *index, "%s %s, %d", tag_name, rd_name, imm20
+    );
     if (written < 0) {
-        return(ER_FAILURE);
+        return (ER_FAILURE);
     }
     *index += written;
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 /**
  * Disassemble "J-Type" instruction format (I think jal is the only one?).
  * Uses the gnu relative address notation (. + <offset>).
- * @see 2.5.1 Unconditional Jumps (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_unconditional_jumps)
+ * @see 2.5.1 Unconditional Jumps
+ * (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_unconditional_jumps)
  */
 emu_result_t rv64_disassemble_jal(
-    rv64_disassembler_t *disassembler,
+    rv64_disassembler_t* disassembler,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag,
     char* buffer,
@@ -68,17 +70,18 @@ emu_result_t rv64_disassemble_jal(
     char* rd_name = rv64_map_register_name(rd);
     char* tag_name = rv64_instruction_tag_mnemonic[tag];
 
-    int written = snprintf(buffer + *index, buffer_size - *index,
-        "%s %s, . + %d", tag_name, rd_name, offset);
+    int written = snprintf(
+        buffer + *index, buffer_size - *index, "%s %s, . + %d", tag_name, rd_name, offset
+    );
     if (written < 0) {
-        return(ER_FAILURE);
+        return (ER_FAILURE);
     }
     *index += written;
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 emu_result_t rv64_disassemble_branch(
-    rv64_disassembler_t *disassembler,
+    rv64_disassembler_t* disassembler,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag,
     char* buffer,
@@ -95,17 +98,19 @@ emu_result_t rv64_disassemble_branch(
     char* rs2_name = rv64_map_register_name(rs2);
     char* tag_name = rv64_instruction_tag_mnemonic[tag];
 
-    int written = snprintf(buffer + *index, buffer_size - *index,
-        "%s %s, %s, . + %d", tag_name, rs1_name, rs2_name, offset);
+    int written = snprintf(
+        buffer + *index, buffer_size - *index, "%s %s, %s, . + %d", tag_name, rs1_name, rs2_name,
+        offset
+    );
     if (written < 0) {
-        return(ER_FAILURE);
+        return (ER_FAILURE);
     }
     *index += written;
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 emu_result_t rv64_disassemble_load(
-    rv64_disassembler_t *disassembler,
+    rv64_disassembler_t* disassembler,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag,
     char* buffer,
@@ -122,17 +127,18 @@ emu_result_t rv64_disassemble_load(
     char* rd_name = rv64_map_register_name(rd);
     char* tag_name = rv64_instruction_tag_mnemonic[tag];
 
-    int written = snprintf(buffer + *index, buffer_size - *index,
-        "%s %s, %d(%s)", tag_name, rd_name, imm12, rs1_name);
+    int written = snprintf(
+        buffer + *index, buffer_size - *index, "%s %s, %d(%s)", tag_name, rd_name, imm12, rs1_name
+    );
     if (written < 0) {
-        return(ER_FAILURE);
+        return (ER_FAILURE);
     }
     *index += written;
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 emu_result_t rv64_disassemble_store(
-    rv64_disassembler_t *disassembler,
+    rv64_disassembler_t* disassembler,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag,
     char* buffer,
@@ -149,17 +155,18 @@ emu_result_t rv64_disassemble_store(
     char* rs2_name = rv64_map_register_name(rs2);
     char* tag_name = rv64_instruction_tag_mnemonic[tag];
 
-    int written = snprintf(buffer + *index, buffer_size - *index,
-        "%s %s, %d(%s)", tag_name, rs2_name, offset, rs1_name);
+    int written = snprintf(
+        buffer + *index, buffer_size - *index, "%s %s, %d(%s)", tag_name, rs2_name, offset, rs1_name
+    );
     if (written < 0) {
-        return(ER_FAILURE);
+        return (ER_FAILURE);
     }
     *index += written;
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 emu_result_t rv64_disassemble_register_immediate(
-    rv64_disassembler_t *disassembler,
+    rv64_disassembler_t* disassembler,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag,
     char* buffer,
@@ -176,17 +183,18 @@ emu_result_t rv64_disassemble_register_immediate(
     char* rd_name = rv64_map_register_name(rd);
     char* tag_name = rv64_instruction_tag_mnemonic[tag];
 
-    int written = snprintf(buffer + *index, buffer_size - *index,
-        "%s %s, %s, %d", tag_name, rd_name, rs1_name, imm12);
+    int written = snprintf(
+        buffer + *index, buffer_size - *index, "%s %s, %s, %d", tag_name, rd_name, rs1_name, imm12
+    );
     if (written < 0) {
-        return(ER_FAILURE);
+        return (ER_FAILURE);
     }
     *index += written;
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 emu_result_t rv64_disassemble_shift_immediate(
-    rv64_disassembler_t *disassembler,
+    rv64_disassembler_t* disassembler,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag,
     char* buffer,
@@ -203,17 +211,18 @@ emu_result_t rv64_disassemble_shift_immediate(
     char* rd_name = rv64_map_register_name(rd);
     char* tag_name = rv64_instruction_tag_mnemonic[tag];
 
-    int written = snprintf(buffer + *index, buffer_size - *index,
-        "%s %s, %s, %d", tag_name, rd_name, rs1_name, imm5);
+    int written = snprintf(
+        buffer + *index, buffer_size - *index, "%s %s, %s, %d", tag_name, rd_name, rs1_name, imm5
+    );
     if (written < 0) {
-        return(ER_FAILURE);
+        return (ER_FAILURE);
     }
     *index += written;
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 emu_result_t rv64_disassemble_register_register(
-    rv64_disassembler_t *disassembler,
+    rv64_disassembler_t* disassembler,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag,
     char* buffer,
@@ -231,18 +240,20 @@ emu_result_t rv64_disassemble_register_register(
     char* rd_name = rv64_map_register_name(rd);
     char* tag_name = rv64_instruction_tag_mnemonic[tag];
 
-    int written = snprintf(buffer + *index, buffer_size - *index,
-        "%s %s, %s, %s", tag_name, rd_name, rs1_name, rs2_name);
+    int written = snprintf(
+        buffer + *index, buffer_size - *index, "%s %s, %s, %s", tag_name, rd_name, rs1_name,
+        rs2_name
+    );
 
     if (written < 0) {
-        return(ER_FAILURE);
+        return (ER_FAILURE);
     }
     *index += written;
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 emu_result_t rv64_disassemble_no_args(
-    rv64_disassembler_t *disassembler,
+    rv64_disassembler_t* disassembler,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag,
     char* buffer,
@@ -250,18 +261,17 @@ emu_result_t rv64_disassemble_no_args(
     size_t buffer_size
 ) {
     char* tag_name = rv64_instruction_tag_mnemonic[tag];
-    int written = snprintf(buffer + *index, buffer_size - *index,
-        "%s", tag_name);
+    int written = snprintf(buffer + *index, buffer_size - *index, "%s", tag_name);
 
     if (written < 0) {
-        return(ER_FAILURE);
+        return (ER_FAILURE);
     }
     *index += written;
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 emu_result_t rv64_disassemble_csr_register(
-    rv64_disassembler_t *disassembler,
+    rv64_disassembler_t* disassembler,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag,
     char* buffer,
@@ -279,18 +289,20 @@ emu_result_t rv64_disassemble_csr_register(
     char* rd_name = rv64_map_register_name(rd);
     char* tag_name = rv64_instruction_tag_mnemonic[tag];
 
-    int written = snprintf(buffer + *index, buffer_size - *index,
-        "%s %s, %s, %s", tag_name, rd_name, csr_name, rs1_name);
+    int written = snprintf(
+        buffer + *index, buffer_size - *index, "%s %s, %s, %s", tag_name, rd_name, csr_name,
+        rs1_name
+    );
 
     if (written < 0) {
-        return(ER_FAILURE);
+        return (ER_FAILURE);
     }
     *index += written;
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 emu_result_t rv64_disassemble_csr_immediate(
-    rv64_disassembler_t *disassembler,
+    rv64_disassembler_t* disassembler,
     uint32_t raw_instruction,
     instruction_tag_rv64_t tag,
     char* buffer,
@@ -307,26 +319,26 @@ emu_result_t rv64_disassemble_csr_immediate(
     char* rd_name = rv64_map_register_name(rd);
     char* tag_name = rv64_instruction_tag_mnemonic[tag];
 
-    int written = snprintf(buffer + *index, buffer_size - *index,
-        "%s %s, %s, %d", tag_name, rd_name, csr_name, uimm);
+    int written = snprintf(
+        buffer + *index, buffer_size - *index, "%s %s, %s, %d", tag_name, rd_name, csr_name, uimm
+    );
 
     if (written < 0) {
-        return(ER_FAILURE);
+        return (ER_FAILURE);
     }
     *index += written;
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
-
 
 /**
  * MARK: MAIN
  */
 
 // TODO: move to shared func
-emu_result_t rv64_disassemble_peek_quadrant(rv64_disassembler_t *disassembler, uint8_t* out_data) {
+emu_result_t rv64_disassemble_peek_quadrant(rv64_disassembler_t* disassembler, uint8_t* out_data) {
     if (disassembler->pc >= disassembler->memory_size) {
-        LOG(LOG_ERROR, "%s: ER_OUT_OF_BOUNDS. pc: %d >= memory size: %d\n",
-            __func__, disassembler->pc, disassembler->memory_size);
+        LOG(LOG_ERROR, "%s: ER_OUT_OF_BOUNDS. pc: %d >= memory size: %d\n", __func__,
+            disassembler->pc, disassembler->memory_size);
         return ER_OUT_OF_BOUNDS;
     }
 
@@ -338,50 +350,53 @@ emu_result_t rv64_disassemble_peek_quadrant(rv64_disassembler_t *disassembler, u
 }
 
 // TODO: move to shared func
-emu_result_t rv64_disassemble_read_m16(rv64_disassembler_t *disassembler, uint16_t* out_data) {
+emu_result_t rv64_disassemble_read_m16(rv64_disassembler_t* disassembler, uint16_t* out_data) {
     if (disassembler->pc + 1 >= disassembler->memory_size) {
         LOG(LOG_ERROR, "%s: ER_OUT_OF_BOUNDS. ip (+ read size): (%d + 4) >= memory size: %d\n",
             __func__, disassembler->pc, disassembler->memory_size);
-        return(ER_OUT_OF_BOUNDS);
+        return (ER_OUT_OF_BOUNDS);
     }
     // TODO: mutex/lock?
     *out_data = (disassembler->memory[disassembler->pc + 1] << 8)
-        | (disassembler->memory[disassembler->pc]);
-    if (*out_data != 0) { // if we reached an empty instruction (end of program), don't increment pc.
+                | (disassembler->memory[disassembler->pc]);
+    if (*out_data
+        != 0) {  // if we reached an empty instruction (end of program), don't increment pc.
         disassembler->pc += 2;
     }
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 // TODO: move to shared func
-emu_result_t rv64_disassemble_read_m32(rv64_disassembler_t *disassembler, uint32_t* out_data) {
+emu_result_t rv64_disassemble_read_m32(rv64_disassembler_t* disassembler, uint32_t* out_data) {
     if (disassembler->pc + 1 >= disassembler->memory_size) {
-        LOG(LOG_ERROR, "read m32: ER_OUT_OF_BOUNDS. ip (+ read size): (%d + 4) >= memory size: %d\n",
+        LOG(LOG_ERROR,
+            "read m32: ER_OUT_OF_BOUNDS. ip (+ read size): (%d + 4) >= memory size: %d\n",
             disassembler->pc, disassembler->memory_size);
-        return(ER_OUT_OF_BOUNDS);
+        return (ER_OUT_OF_BOUNDS);
     }
     *out_data = (disassembler->memory[disassembler->pc + 3] << 24)
-        | (disassembler->memory[disassembler->pc + 2] << 16)
-        | (disassembler->memory[disassembler->pc + 1] << 8)
-        | (disassembler->memory[disassembler->pc]);
-    if (*out_data != 0) { // if we reached an empty instruction (end of program), don't increment pc.
+                | (disassembler->memory[disassembler->pc + 2] << 16)
+                | (disassembler->memory[disassembler->pc + 1] << 8)
+                | (disassembler->memory[disassembler->pc]);
+    if (*out_data
+        != 0) {  // if we reached an empty instruction (end of program), don't increment pc.
         disassembler->pc += 4;
     }
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 #define RV64C_COMPRESSED_ENABLED 1
 
 static result_iter_t rv64_disassemble_next(
-    rv64_disassembler_t *disassembler,
+    rv64_disassembler_t* disassembler,
     char* out_buffer,
     int* index,
     size_t out_buffer_size
 ) {
-        uint32_t raw_instruction = 0;
+    uint32_t raw_instruction = 0;
 #ifdef RV64C_COMPRESSED_ENABLED
-// TODO: if compressed, don't read 4 bytes, just read 2 bytes?
-    uint8_t quadrant = 0; 
+    // TODO: if compressed, don't read 4 bytes, just read 2 bytes?
+    uint8_t quadrant = 0;
     emu_result_t read_result = rv64_disassemble_peek_quadrant(disassembler, &quadrant);
     // TODO: check read result
     if ((quadrant & 0b11) == 0b11) {
@@ -400,7 +415,7 @@ static result_iter_t rv64_disassemble_next(
     emu_result_t read_result = rv64_disassemble_read_m32(disassembler, &raw_instruction);
 #endif
     // TODO: rv64c 2 byte instructions
-    //LOGD("ip: %d, raw_instruction: %x", disassembler->pc - 4, raw_instruction);
+    // LOGD("ip: %d, raw_instruction: %x", disassembler->pc - 4, raw_instruction);
 
     // If we reach an empty byte, assume we've hit the end of the program.
     if (raw_instruction == 0x00) {
@@ -412,22 +427,28 @@ static result_iter_t rv64_disassemble_next(
     disassembler->instructions_count += 1;
 
     emu_result_t result = RI_FAILURE;
-    switch(instruction_tag) {
+    switch (instruction_tag) {
         // RV64I
         // Core Format "U" - Upper Immediate
         case I_RV64I_LUI:
         case I_RV64I_AUIPC: {
-            result = rv64_disassemble_upper_immediate(disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
+            result = rv64_disassemble_upper_immediate(
+                disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size
+            );
             break;
         }
         // Core Format "J" - Jump?
         case I_RV64I_JAL: {
-            result = rv64_disassemble_jal(disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
+            result = rv64_disassemble_jal(
+                disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size
+            );
             break;
         }
         // "I" format
         case I_RV64I_JALR: {
-            result = rv64_disassemble_register_immediate(disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
+            result = rv64_disassemble_register_immediate(
+                disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size
+            );
             break;
         }
 
@@ -438,7 +459,9 @@ static result_iter_t rv64_disassemble_next(
         case I_RV64I_BGE:
         case I_RV64I_BLTU:
         case I_RV64I_BGEU: {
-            result = rv64_disassemble_branch(disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
+            result = rv64_disassemble_branch(
+                disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size
+            );
             break;
         }
 
@@ -450,7 +473,9 @@ static result_iter_t rv64_disassemble_next(
         case I_RV64I_LHU:
         case I_RV64I_LWU:
         case I_RV64I_LD: {
-            result = rv64_disassemble_load(disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
+            result = rv64_disassemble_load(
+                disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size
+            );
             break;
         }
 
@@ -459,7 +484,9 @@ static result_iter_t rv64_disassemble_next(
         case I_RV64I_SH:
         case I_RV64I_SW:
         case I_RV64I_SD: {
-            result = rv64_disassemble_store(disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
+            result = rv64_disassemble_store(
+                disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size
+            );
             break;
         }
 
@@ -471,7 +498,9 @@ static result_iter_t rv64_disassemble_next(
         case I_RV64I_ORI:
         case I_RV64I_ANDI:
         case I_RV64I_ADDIW: {
-            result = rv64_disassemble_register_immediate(disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
+            result = rv64_disassemble_register_immediate(
+                disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size
+            );
             break;
         }
         // Special format "shift-immediate"
@@ -481,7 +510,9 @@ static result_iter_t rv64_disassemble_next(
         case I_RV64I_SLLIW:
         case I_RV64I_SRLIW:
         case I_RV64I_SRAIW: {
-            result = rv64_disassemble_shift_immediate(disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
+            result = rv64_disassemble_shift_immediate(
+                disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size
+            );
             break;
         }
 
@@ -501,7 +532,9 @@ static result_iter_t rv64_disassemble_next(
         case I_RV64I_SLLW:
         case I_RV64I_SRLW:
         case I_RV64I_SRAW: {
-            result = rv64_disassemble_register_register(disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
+            result = rv64_disassemble_register_register(
+                disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size
+            );
             break;
         }
 
@@ -511,26 +544,34 @@ static result_iter_t rv64_disassemble_next(
         case I_RV64I_PAUSE:
         case I_RV64I_ECALL:
         case I_RV64I_EBREAK: {
-            result = rv64_disassemble_no_args(disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
+            result = rv64_disassemble_no_args(
+                disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size
+            );
             break;
         }
 
         // RV64Zifenceei
         case I_RV64ZIFENCEI_FENCE_I: {
-            result = rv64_disassemble_no_args(disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
+            result = rv64_disassemble_no_args(
+                disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size
+            );
             break;
         }
         // RV64Zicsr
         case I_RV64ZICSR_CSRRW:
         case I_RV64ZICSR_CSRRS:
         case I_RV64ZICSR_CSRRC: {
-            result = rv64_disassemble_csr_register(disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
+            result = rv64_disassemble_csr_register(
+                disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size
+            );
             break;
         }
         case I_RV64ZICSR_CSRRWI:
         case I_RV64ZICSR_CSRRSI:
         case I_RV64ZICSR_CSRRCI: {
-            result = rv64_disassemble_csr_immediate(disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
+            result = rv64_disassemble_csr_immediate(
+                disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size
+            );
             break;
         }
         // RV64M
@@ -547,7 +588,9 @@ static result_iter_t rv64_disassemble_next(
         case I_RV64M_DIVUW:
         case I_RV64M_REMW:
         case I_RV64M_REMUW: {
-            result = rv64_disassemble_register_register(disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
+            result = rv64_disassemble_register_register(
+                disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size
+            );
             break;
         }
         // RV64A
@@ -601,7 +644,9 @@ static result_iter_t rv64_disassemble_next(
         case I_RV64ZABHA_AMOMIN_H:
         case I_RV64ZABHA_AMOMINU_H:
         case I_RV64ZABHA_AMOCAS_H: {
-            result = rv64a_atomic_disassemble(disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
+            result = rv64a_atomic_disassemble(
+                disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size
+            );
             break;
         }
 
@@ -635,7 +680,9 @@ static result_iter_t rv64_disassemble_next(
         case I_RV64V_VSUB_IVX:
         case I_RV64V_VRSUB_IVX:
         case I_RV64V_VRSUB_IVI: {
-            result = rv64v_vector_disassemble(disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size);
+            result = rv64v_vector_disassemble(
+                disassembler, raw_instruction, instruction_tag, out_buffer, index, out_buffer_size
+            );
             break;
         }
         default: {
@@ -645,18 +692,21 @@ static result_iter_t rv64_disassemble_next(
         }
     }
     if (result != ER_SUCCESS) {
-        fprintf(stderr, "Failed to parse instruction! decode_result = %s (%d)\n", emulate_result_strings[result], result);
-        return(RI_FAILURE);
+        fprintf(
+            stderr, "Failed to parse instruction! decode_result = %s (%d)\n",
+            emulate_result_strings[result], result
+        );
+        return (RI_FAILURE);
     }
 
     snprintf(out_buffer + *index, out_buffer_size - *index, "\n");
     *index += 1;
 
-    return(RI_CONTINUE);
+    return (RI_CONTINUE);
 }
 
 result_t rv64_disassemble_file(
-    rv64_disassembler_t *disassembler,
+    rv64_disassembler_t* disassembler,
     char* input_path,
     char* out_buffer,
     size_t out_buffer_size
@@ -682,17 +732,19 @@ result_t rv64_disassemble_file(
 }
 
 result_t rv64_disassemble_chunk(
-    rv64_disassembler_t *disassembler,
-    char* in_buffer, size_t in_buffer_size,
-    char* out_buffer, size_t out_buffer_size
+    rv64_disassembler_t* disassembler,
+    char* in_buffer,
+    size_t in_buffer_size,
+    char* out_buffer,
+    size_t out_buffer_size
 ) {
     memcpy(disassembler->memory + PROGRAM_START, in_buffer, in_buffer_size);
     disassembler->pc = PROGRAM_START;
-    return(rv64_disassemble(disassembler, out_buffer, out_buffer_size));
+    return (rv64_disassemble(disassembler, out_buffer, out_buffer_size));
 }
 
 result_t rv64_disassemble(
-    rv64_disassembler_t *disassembler,
+    rv64_disassembler_t* disassembler,
     char* out_buffer,
     size_t out_buffer_size
 ) {
@@ -701,11 +753,11 @@ result_t rv64_disassemble(
 
     do {
         result = rv64_disassemble_next(disassembler, out_buffer, &index, out_buffer_size);
-    } while(result == RI_CONTINUE);
+    } while (result == RI_CONTINUE);
 
     if (result == RI_DONE) {
-        return(SUCCESS);
+        return (SUCCESS);
     } else {
-        return(FAILURE);
+        return (FAILURE);
     }
 }

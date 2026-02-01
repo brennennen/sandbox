@@ -1,12 +1,10 @@
 
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #include "a64/emulate_a64.h"
 
 #include "a64/instructions/arithmetic/add.h"
-
-
 
 static emu_result_t read_add_immediate(
     uint32_t raw_instruction,
@@ -42,10 +40,12 @@ emu_result_t emu_a64_decode_add_immediate(
     uint8_t rn = 0;
     uint8_t rd = 0;
     emu_result_t res = read_add_immediate(raw_instruction, &sf, &op, &s, &sh, &imm12, &rn, &rd);
-    int written = snprintf(buffer + *index,  buffer_size - *index, "add x%d, x%d, #%d", rd, rn, imm12);
+    int written = snprintf(
+        buffer + *index, buffer_size - *index, "add x%d, x%d, #%d", rd, rn, imm12
+    );
     if (written < 0) {
-        return(ER_FAILURE);
+        return (ER_FAILURE);
     }
     *index += written;
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }

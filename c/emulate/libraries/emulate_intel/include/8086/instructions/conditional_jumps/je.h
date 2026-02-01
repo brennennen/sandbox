@@ -21,4 +21,4 @@
 //     int buffer_size
 // );
 
-#endif // I_JE_H
+#endif  // I_JE_H

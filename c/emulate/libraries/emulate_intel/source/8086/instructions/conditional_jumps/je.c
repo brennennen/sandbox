@@ -1,11 +1,6 @@
 
 #include "8086/instructions/conditional_jumps/je.h"
 
-
-
-
-
-
 // emu_result_t decode_jump_on_equal(
 //     emulator_8086_t* emulator,
 //     uint8_t byte1,

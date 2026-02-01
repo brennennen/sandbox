@@ -18,8 +18,9 @@ jne my_label
  * Running this decode program takes this bytecode as input and outputs back assembly.
  * Don't always expect a 1 to 1 mapping, JNE and JNZ are the exact same opcode for example, so
 the disassembler needs to just pick 1. You may pass a "JNE" instruction to NASM and get a "JNE" back
-from an opcode disassembler for example. Also label names get lost when creating opcodes, rather than
-inputting made up label names, I chose to just use the relative offset syntax for decode output.
+from an opcode disassembler for example. Also label names get lost when creating opcodes, rather
+than inputting made up label names, I chose to just use the relative offset syntax for decode
+output.
  * Example output:
 ```
 mov cx, 5
@@ -34,21 +35,20 @@ jne $-6
  * * riscv64-unknown-elf-as -o ./slti.o ./slti.asm
  * Extract just the text section:
  * * riscv64-unknown-elf-objcopy -O binary --only-section=.text slti.o slti.text
- * TODO: endianess is backwards from representation in objdump, figure out what spec says and flip this or flip processing.
- * (flip: riscv64-unknown-elf-objcopy -I binary -O binary --reverse-bytes=4 slti.text slti_reverse.text)
+ * TODO: endianess is backwards from representation in objdump, figure out what spec says and flip
+this or flip processing.
+ * (flip: riscv64-unknown-elf-objcopy -I binary -O binary --reverse-bytes=4 slti.text
+slti_reverse.text)
  *
  * Use this tool: `disassemble rv64i ./slti.text` to convert the machine code back into assembly.
  */
-#include <stdio.h>
 #include <stdint.h>
-#include <stdlib.h>
+#include <stdio.h>
 
-#include "shared/include/binary_utilities.h"
-#include "shared/include/result.h"
 #include "shared/include/arch.h"
+#include "shared/include/result.h"
 
 #include "libraries/emulate_intel/include/8086/emulate_8086.h"
-#include "libraries/emulate_riscv/include/rv64/rv64_emulate.h"
 #include "libraries/emulate_riscv/include/rv64/rv64_disassemble.h"
 
 void print_help() {
@@ -75,24 +75,33 @@ int main(int argc, char* argv[]) {
     char* arch_name = argv[1];
     arch_t arch = arch_get_by_name(arch_name);
     char* input_path = argv[2];
-    printf("Starting disassemble on arch: '%s' (%d), input:'%s'\n",
-        arch_name, arch, input_path);
+    printf("Starting disassemble on arch: '%s' (%d), input:'%s'\n", arch_name, arch, input_path);
 
     // TODO: use a stream instead of static buffer
-    char out_buffer[4096] = { 0x00 };
-    switch(arch) {
+    char out_buffer[4096] = {0x00};
+    switch (arch) {
         case ARCH_I8086: {
             emulator_8086_t emulator_8086;
             emu_8086_init(&emulator_8086);
-            result_t result = emu_8086_disassemble_file(&emulator_8086, input_path, out_buffer, sizeof(out_buffer));
-            printf("Disassemble result: %s, instructions: %d\n", result_strings[result], emulator_8086.instructions_count);
+            result_t result = emu_8086_disassemble_file(
+                &emulator_8086, input_path, out_buffer, sizeof(out_buffer)
+            );
+            printf(
+                "Disassemble result: %s, instructions: %d\n", result_strings[result],
+                emulator_8086.instructions_count
+            );
             break;
         }
         case ARCH_RV64: {
             rv64_disassembler_t rv64_disassembler;
             rv64_disassemble_init(&rv64_disassembler);
-            result_t result = rv64_disassemble_file(&rv64_disassembler, input_path, out_buffer, sizeof(out_buffer));
-            printf("Disassemble result: %s, instructions: %d\n", result_strings[result], rv64_disassembler.instructions_count);
+            result_t result = rv64_disassemble_file(
+                &rv64_disassembler, input_path, out_buffer, sizeof(out_buffer)
+            );
+            printf(
+                "Disassemble result: %s, instructions: %d\n", result_strings[result],
+                rv64_disassembler.instructions_count
+            );
             break;
         }
         default: {

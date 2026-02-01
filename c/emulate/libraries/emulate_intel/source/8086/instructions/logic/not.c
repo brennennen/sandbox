@@ -43,15 +43,15 @@
 
 #include <string.h>
 
+#include "logger.h"
 #include "shared/include/binary_utilities.h"
 #include "shared/include/result.h"
-#include "logger.h"
 
-#include "8086/instruction_tags_8086.h"
-#include "8086/emulate_8086.h"
-#include "8086/emu_8086_registers.h"
-#include "8086/decode_8086_utils.h"
 #include "8086/decode_8086_shared.h"
+#include "8086/decode_8086_utils.h"
+#include "8086/emu_8086_registers.h"
+#include "8086/emulate_8086.h"
+#include "8086/instruction_tags_8086.h"
 
 #include "8086/instructions/logic/not.h"
 
@@ -65,11 +65,16 @@
  * `not byte [1000]`
  * `not word [1000]`
  */
-static emu_result_t write_not__direct_access(char* out_buffer, int* index, wide_t wide, uint16_t displacement) {
+static emu_result_t write_not__direct_access(
+    char* out_buffer,
+    int* index,
+    wide_t wide,
+    uint16_t displacement
+) {
     char* width_string = "";
     if (wide == WIDE_BYTE) {
         width_string = "byte";
-    } else { // WIDE_WORD
+    } else {  // WIDE_WORD
         width_string = "word";
     }
     int written = sprintf(out_buffer + *index, "not %s [%u]", width_string, displacement);
@@ -89,7 +94,7 @@ static emu_result_t write_not__register(char* out_buffer, int* index, wide_t wid
     char* register_string = "";
     if (wide == WIDE_BYTE) {
         register_string = regb_strings[rm];
-    } else { // WIDE_WORD
+    } else {  // WIDE_WORD
         register_string = regw_strings[rm];
     }
     memcpy(out_buffer + *index, "not ", 4);
@@ -130,7 +135,6 @@ static emu_result_t write_not(
     return ER_FAILURE;
 }
 
-
 /**
  * Decodes the 8086 `not` encoded byte code instruction.
  */
@@ -153,7 +157,9 @@ emu_result_t decode_not(
         emulator, byte1, &direction, &wide, &mod, &reg, &rm, &displacement, &instruction_size
     );
 
-    return write_not(direction, wide, mod, reg, rm, displacement, out_buffer, index, out_buffer_size);
+    return write_not(
+        direction, wide, mod, reg, rm, displacement, out_buffer, index, out_buffer_size
+    );
 }
 
 // MARK: EMULATE
@@ -164,7 +170,11 @@ emu_result_t decode_not(
  * `not byte [1000]`
  * `not word [1000]`
  */
-static emu_result_t emu_not__direct_access(emulator_8086_t* emulator, wide_t wide, uint16_t displacement) {
+static emu_result_t emu_not__direct_access(
+    emulator_8086_t* emulator,
+    wide_t wide,
+    uint16_t displacement
+) {
     if (wide == WIDE_BYTE) {
         uint8_t source_data = 0;
         int res = emu_memory_get_byte(emulator, displacement, &source_data);
@@ -172,7 +182,7 @@ static emu_result_t emu_not__direct_access(emulator_8086_t* emulator, wide_t wid
             return res;
         }
         return emu_memory_set_byte(emulator, displacement, ~source_data);
-    } else { // WIDE_WORD
+    } else {  // WIDE_WORD
         uint16_t source_data = 0;
         int res = emu_memory_get_uint16(emulator, displacement, &source_data);
         if (res != ER_SUCCESS) {
@@ -188,7 +198,13 @@ static emu_result_t emu_not__direct_access(emulator_8086_t* emulator, wide_t wid
  * `not byte [bx]`
  * `not word [bx]`
  */
-static emu_result_t emu_not__memory(emulator_8086_t* emulator, wide_t wide, uint8_t rm, mod_t mod, uint16_t displacement) {
+static emu_result_t emu_not__memory(
+    emulator_8086_t* emulator,
+    wide_t wide,
+    uint8_t rm,
+    mod_t mod,
+    uint16_t displacement
+) {
     uint32_t address = emu_get_effective_address(&emulator->registers, rm, mod, displacement);
     if (wide == WIDE_BYTE) {
         uint8_t source_data = 0;
@@ -198,7 +214,7 @@ static emu_result_t emu_not__memory(emulator_8086_t* emulator, wide_t wide, uint
         }
         LOGD("~%d = %d", source_data, ~source_data);
         return emu_memory_set_byte(emulator, address, ~source_data);
-    } else { // WIDE_WORD
+    } else {  // WIDE_WORD
         uint16_t source_data = 0;
         int res = emu_memory_get_uint16(emulator, address, &source_data);
         if (res != ER_SUCCESS) {
@@ -219,7 +235,7 @@ static emu_result_t emu_not__register(emulator_8086_t* emulator, wide_t wide, ui
         uint8_t* dest = emu_get_byte_register(&emulator->registers, rm);
         *dest = ~*dest;
         return ER_SUCCESS;
-    } else { // WIDE_WORD
+    } else {  // WIDE_WORD
         uint16_t* dest = emu_get_word_register(&emulator->registers, rm);
         *dest = ~*dest;
         return ER_SUCCESS;
@@ -243,24 +259,24 @@ emu_result_t emu_not(emulator_8086_t* emulator, uint8_t byte1) {
         emulator, byte1, &direction, &wide, &mod, &reg, &rm, &displacement, &instruction_size
     );
     if (result != ER_SUCCESS) {
-        return(result);
+        return (result);
     }
 
     LOGDIW(write_not, direction, wide, mod, reg, rm, displacement);
 
     if (mod == MOD_MEMORY && rm == REG_DIRECT_ACCESS) {
-        return(emu_not__direct_access(emulator, wide, displacement));
+        return (emu_not__direct_access(emulator, wide, displacement));
     }
 
     switch (mod) {
         case MOD_MEMORY:
         case MOD_MEMORY_8BIT_DISPLACEMENT:
         case MOD_MEMORY_16BIT_DISPLACEMENT: {
-            return(emu_not__memory(emulator, wide, rm, mod, displacement));
+            return (emu_not__memory(emulator, wide, rm, mod, displacement));
         }
         case MOD_REGISTER: {
-            return(emu_not__register(emulator, wide, rm));
+            return (emu_not__register(emulator, wide, rm));
         }
     }
-    return(ER_FAILURE);
+    return (ER_FAILURE);
 }

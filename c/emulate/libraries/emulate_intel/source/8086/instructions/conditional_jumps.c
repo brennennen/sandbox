@@ -1,17 +1,16 @@
 
 #include <string.h>
 
+#include "logger.h"
 #include "shared/include/binary_utilities.h"
 #include "shared/include/result.h"
-#include "logger.h"
 
-#include "8086/emulate_8086.h"
-#include "8086/emu_8086_registers.h"
-#include "8086/decode_8086_utils.h"
 #include "8086/decode_8086_shared.h"
+#include "8086/decode_8086_utils.h"
+#include "8086/emu_8086_registers.h"
+#include "8086/emulate_8086.h"
 
 #include "8086/instructions/conditional_jumps.h"
-
 
 emu_result_t decode_conditional_jump(
     emulator_8086_t* emulator,
@@ -22,26 +21,30 @@ emu_result_t decode_conditional_jump(
     size_t out_buffer_size
 ) {
     int8_t jump_offset = 0;
-    emu_result_t result = dcd_read_byte(emulator, (uint8_t*) &jump_offset);
+    emu_result_t result = dcd_read_byte(emulator, (uint8_t*)&jump_offset);
     write_conditional_jump(tag, jump_offset, out_buffer, index, out_buffer_size);
     return result;
 }
 
-emu_result_t emu_conditional_jump(emulator_8086_t* emulator, instruction_tag_8086_t tag,  uint8_t byte1) {
+emu_result_t emu_conditional_jump(
+    emulator_8086_t* emulator,
+    instruction_tag_8086_t tag,
+    uint8_t byte1
+) {
     int8_t jump_offset = 0;
-    emu_result_t result = dcd_read_byte(emulator, (uint8_t*) &jump_offset);
+    emu_result_t result = dcd_read_byte(emulator, (uint8_t*)&jump_offset);
 
     return ER_FAILURE;
 }
 
 emu_result_t emu_jne(emulator_8086_t* emulator, uint8_t byte1) {
     int8_t jump_offset = 0;
-    emu_result_t result = dcd_read_byte(emulator, (uint8_t*) &jump_offset);
+    emu_result_t result = dcd_read_byte(emulator, (uint8_t*)&jump_offset);
     if ((emulator->registers.flags & FLAG_ZF_MASK) == 0) {
         // TODO: create safe function for moving index. don't want to jump out of bounds.
         emulator->registers.ip += jump_offset;
     } else {
-        //emulator->registers.ip += 2;
+        // emulator->registers.ip += 2;
     }
 #ifdef DEBUG
     int index = 0;
@@ -59,8 +62,7 @@ void write_conditional_jump(
     int* index,
     int buffer_size
 ) {
-
-    //char* mnemonic = "je";
+    // char* mnemonic = "je";
     char* mnemonic = instruction_tag_mnemonic[tag];
     // offset is measured in number of bytes from next address. so for:
     // label:
@@ -72,13 +74,13 @@ void write_conditional_jump(
     int offset = jump_offset + 2;
     int written = 0;
     if (offset >= 0) {
-        written = snprintf(buffer + *index, buffer_size - *index, "%s $+%d",
-                           mnemonic,
-                           jump_offset + 2);
+        written = snprintf(
+            buffer + *index, buffer_size - *index, "%s $+%d", mnemonic, jump_offset + 2
+        );
     } else {
-        written = snprintf(buffer + *index, buffer_size - *index, "%s $%d",
-                           mnemonic,
-                           jump_offset + 2);
+        written = snprintf(
+            buffer + *index, buffer_size - *index, "%s $%d", mnemonic, jump_offset + 2
+        );
     }
     if (written < 0) {
         // TODO: propogate error

@@ -50,7 +50,7 @@ premake5 --os=windows gmake
 make -C ./.build/
 python ./build.py
 ./bin/Debug/test_emulate_riscv -j1 # run tests sequentially instead of in parallel
-# linux uses process forking, windows uses threads, threads share stdout which 
+# linux uses process forking, windows uses threads, threads share stdout which
 # turns to garbage when running multiple tests without `-j1`.
 ```
 
@@ -63,6 +63,9 @@ python ./build.py
   * premake-ecc - Generates "compile_commands.json" for clangd support.
     * navigate to premake5 bin and add a lua folder, then clone the following (or install this wherever premake5 looks, it states where it looks in the error log).
     * `git clone https://github.com/MattBystrin/premake-ecc ecc`
+  * clang-format
+    * Linux: `sudo pacman -S clang`
+    * Windows: `python -m pip install clang-format`
 * Dependencies:
   * criterion - Unit testing library
     * https://github.com/Snaipe/Criterion

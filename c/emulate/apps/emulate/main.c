@@ -2,18 +2,15 @@
  * 8086 instruction stream decoder. Reads in a set of machine instructions, executes them,
  * and then prints the emulated register and flag values.
  */
-#include <stdio.h>
 #include <stdint.h>
-#include <stdlib.h>
+#include <stdio.h>
 
-#include "shared/include/binary_utilities.h"
-#include "shared/include/result.h"
 #include "shared/include/arch.h"
+#include "shared/include/result.h"
 
 #include "libraries/emulate_intel/include/8086/emulate_8086.h"
 #include "libraries/emulate_riscv/include/rv64/rv64_emulate.h"
 
-#include "emulate.h"
 #include "8086/emu_8086_registers.h"
 
 void print_help() {
@@ -27,11 +24,11 @@ void print_help() {
 }
 
 int main(int argc, char* argv[]) {
-    #ifdef __STDC_VERSION__
-        printf("__STDC_VERSION__ = %ld\n", __STDC_VERSION__);
-    #else
-        printf("__STDC_VERSION__ is not defined\n");
-    #endif
+#ifdef __STDC_VERSION__
+    printf("__STDC_VERSION__ = %ld\n", __STDC_VERSION__);
+#else
+    printf("__STDC_VERSION__ is not defined\n");
+#endif
 
     if (argc < 3) {
         printf("Missing arguments!\n");
@@ -46,11 +43,10 @@ int main(int argc, char* argv[]) {
     char* arch_name = argv[1];
     arch_t arch = arch_get_by_name(arch_name);
     char* input_path = argv[2];
-    printf("Starting emulation on arch: '%s' (%d), input:'%s'\n",
-        arch_name, arch, input_path);
+    printf("Starting emulation on arch: '%s' (%d), input:'%s'\n", arch_name, arch, input_path);
 
     result_t result = FAILURE;
-    switch(arch) {
+    switch (arch) {
         case ARCH_I8086: {
             emulator_8086_t emulator_8086;
             emu_8086_init(&emulator_8086);

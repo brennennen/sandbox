@@ -61,7 +61,8 @@ emu_result_t decode_move(
     uint8_t byte1,
     char* out_buffer,
     int* index,
-    size_t out_buffer_size);
+    size_t out_buffer_size
+);
 
 /**
  * Emulates the first x86 mov machine code instruction described as "Register/memory
@@ -80,7 +81,8 @@ emu_result_t decode_move_immediate(
     uint8_t byte1,
     char* out_buffer,
     int* index,
-    size_t out_buffer_size);
+    size_t out_buffer_size
+);
 emu_result_t emu_move_immediate(emulator_8086_t* emulator, uint8_t byte1);
 
 // MARK: 3. I_MOVE_IMMEDIATE_TO_REGISTER
@@ -90,7 +92,8 @@ emu_result_t decode_move_immediate_to_register(
     uint8_t byte1,
     char* out_buffer,
     int* index,
-    size_t out_buffer_size);
+    size_t out_buffer_size
+);
 emu_result_t emu_move_immediate_to_register(emulator_8086_t* emulator, uint8_t byte1);
 
 // MARK: 4. I_MOVE_TO_AX
@@ -99,7 +102,8 @@ emu_result_t decode_move_to_ax(
     uint8_t byte1,
     char* out_buffer,
     int* index,
-    size_t out_buffer_size);
+    size_t out_buffer_size
+);
 emu_result_t emu_move_to_ax(emulator_8086_t* emulator, uint8_t byte1);
 
 // MARK: 5. I_MOVE_AX
@@ -108,7 +112,8 @@ emu_result_t decode_move_ax(
     uint8_t byte1,
     char* out_buffer,
     int* index,
-    size_t out_buffer_size);
+    size_t out_buffer_size
+);
 emu_result_t emu_move_ax(emulator_8086_t* emulator, uint8_t byte1);
 
-#endif // EMU_MOV_H
+#endif  // EMU_MOV_H

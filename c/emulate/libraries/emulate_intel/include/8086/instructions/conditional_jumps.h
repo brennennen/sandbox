@@ -5,8 +5,8 @@
 
 #include <stdint.h>
 
-#include "8086/instruction_tags_8086.h"
 #include "8086/emulate_8086.h"
+#include "8086/instruction_tags_8086.h"
 
 // MARK: JE
 emu_result_t decode_conditional_jump(
@@ -18,7 +18,11 @@ emu_result_t decode_conditional_jump(
     size_t out_buffer_size
 );
 
-emu_result_t emu_conditional_jump(emulator_8086_t* emulator, instruction_tag_8086_t tag, uint8_t byte1);
+emu_result_t emu_conditional_jump(
+    emulator_8086_t* emulator,
+    instruction_tag_8086_t tag,
+    uint8_t byte1
+);
 
 emu_result_t emu_jne(emulator_8086_t* emulator, uint8_t byte1);
 
@@ -30,4 +34,4 @@ void write_conditional_jump(
     int buffer_size
 );
 
-#endif // EMU_8086_CONDITIONAL_JUMPS_H
+#endif  // EMU_8086_CONDITIONAL_JUMPS_H

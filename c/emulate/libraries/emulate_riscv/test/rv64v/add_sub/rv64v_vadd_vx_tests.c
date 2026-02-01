@@ -17,21 +17,29 @@ void rv64_emu_vadd_vx_default_setup(void) {
  * MARK: 8 bit SEW
  */
 // add a scalar to 16 "8 bit elements" across 1 vector register
-Test(emu_rv64_emulate__vadd_vx__tests, vadd_vx_sew8_vlmul1, .init = rv64_emu_vadd_vx_default_setup)
-{
+Test(
+    emu_rv64_emulate__vadd_vx__tests,
+    vadd_vx_sew8_vlmul1,
+    .init = rv64_emu_vadd_vx_default_setup
+) {
     // arrange
     g_emulator.harts[0].registers[RV64_REG_A1] = 12;
-    rv64v_vtype_t vtype = { // mock: vsetvli t0, a2, e8, m1, ta, ma
-        .vma = 0, .vta = 0, .selected_element_width = RV64_SEW_8, .vlmul = RV64_VLMUL_1
+    rv64v_vtype_t vtype = {
+        // mock: vsetvli t0, a2, e8, m1, ta, ma
+        .vma = 0,
+        .vta = 0,
+        .selected_element_width = RV64_SEW_8,
+        .vlmul = RV64_VLMUL_1
     };
     g_emulator.harts[0].csrs.vtype = rv64_csr_encode_vtype(&vtype);
-    uint16_t elements_count = VLEN / 8; // 16 elements (assuming 128 bit vlen)
+    uint16_t elements_count = VLEN / 8;  // 16 elements (assuming 128 bit vlen)
     g_emulator.harts[0].csrs.vl = elements_count;
-    for (int i = 0; i < elements_count; i++) { // pre-populate registers with an incrementing value 1, 2, 3, ...
+    for (int i = 0; i < elements_count;
+         i++) {  // pre-populate registers with an incrementing value 1, 2, 3, ...
         g_emulator.harts[0].vector_registers[0].elements_8[i] = i;
     }
     g_emulator.harts[0].registers[RV64_REG_A0] = 0x2000;
-    uint8_t input[] = { 0x57, 0xc4, 0x05, 0x02 }; // vadd.vx v8, v0, a1
+    uint8_t input[] = {0x57, 0xc4, 0x05, 0x02};  // vadd.vx v8, v0, a1
     // act
     result_t result = rv64_emulate_chunk_single_core(&g_emulator, input, sizeof(input));
     // assert

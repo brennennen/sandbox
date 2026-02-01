@@ -5,8 +5,8 @@
 
 #include <criterion/criterion.h>
 
-#include "shared/include/binary_utilities.h"
 #include "rv64/rv64_emulate.h"
+#include "shared/include/binary_utilities.h"
 
 static rv64_emulator_t g_emulator;
 
@@ -15,14 +15,15 @@ void rv64_emu_fmax_default_setup(void) {
     rv64_emulator_init(&g_emulator);
 }
 
-Test(emu_rv64_emulate__fmax__tests, fmax_1, .init = rv64_emu_fmax_default_setup)
-{
+Test(emu_rv64_emulate__fmax__tests, fmax_1, .init = rv64_emu_fmax_default_setup) {
     // arrange
     g_emulator.harts[0].float32_registers[1] = 5.0f;
     g_emulator.harts[0].float32_registers[2] = 2.0f;
-    uint8_t input[] = { 0x53, 0x90, 0x20, 0x28 }; // fmax.s f0, f1, f2
+    uint8_t input[] = {0x53, 0x90, 0x20, 0x28};  // fmax.s f0, f1, f2
     // act
-    result_t result = rv64_hart_emulate_chunk(&g_emulator.harts[0], PROGRAM_START, input, sizeof(input));
+    result_t result = rv64_hart_emulate_chunk(
+        &g_emulator.harts[0], PROGRAM_START, input, sizeof(input)
+    );
     // assert
     cr_assert(SUCCESS == result);
     cr_assert(1 == g_emulator.harts[0].instructions_count);

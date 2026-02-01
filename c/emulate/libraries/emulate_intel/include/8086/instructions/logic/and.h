@@ -56,4 +56,4 @@ emu_result_t decode_and_immediate_to_ax(
 );
 emu_result_t emu_and_immediate_to_ax(emulator_8086_t* emulator, uint8_t byte1);
 
-#endif // EMU_8086_AND_H
+#endif  // EMU_8086_AND_H

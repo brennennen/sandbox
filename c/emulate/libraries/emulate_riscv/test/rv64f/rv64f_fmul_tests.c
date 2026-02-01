@@ -5,8 +5,8 @@
 
 #include <criterion/criterion.h>
 
-#include "shared/include/binary_utilities.h"
 #include "rv64/rv64_emulate.h"
+#include "shared/include/binary_utilities.h"
 
 static rv64_emulator_t g_emulator;
 
@@ -15,16 +15,17 @@ void rv64_emu_fmul_default_setup(void) {
     rv64_emulator_init(&g_emulator);
 }
 
-Test(emu_rv64_emulate__fmul__tests, fmul_1, .init = rv64_emu_fmul_default_setup)
-{
+Test(emu_rv64_emulate__fmul__tests, fmul_1, .init = rv64_emu_fmul_default_setup) {
     // arrange
     g_emulator.harts[0].float32_registers[1] = 5.0f;
     g_emulator.harts[0].float32_registers[2] = 2.0f;
-    uint8_t input[] = { 0x53, 0xf0, 0x20, 0x10 }; // fmul.s f0, f1, f2  # f0 = f1 * f2
+    uint8_t input[] = {0x53, 0xf0, 0x20, 0x10};  // fmul.s f0, f1, f2  # f0 = f1 * f2
     // act
-    result_t result = rv64_hart_emulate_chunk(&g_emulator.harts[0], PROGRAM_START, input, sizeof(input));
+    result_t result = rv64_hart_emulate_chunk(
+        &g_emulator.harts[0], PROGRAM_START, input, sizeof(input)
+    );
     // assert
     cr_assert(SUCCESS == result);
     cr_assert(1 == g_emulator.harts[0].instructions_count);
-    cr_assert_float_eq(10.0f, g_emulator.harts[0].float32_registers[0], 1e-6); // 5 * 2
+    cr_assert_float_eq(10.0f, g_emulator.harts[0].float32_registers[0], 1e-6);  // 5 * 2
 }

@@ -18,14 +18,15 @@ void rv64_emu_xori_default_setup(void) {
     rv64_emulator_init(&g_emulator);
 }
 
-Test(emu_rv64_emulate__xori__tests, xori_1, .init = rv64_emu_xori_default_setup)
-{
-    g_emulator.harts[0].registers[RV64_REG_T0] = 1; // rd
-    g_emulator.harts[0].registers[RV64_REG_T1] = 17; // 17 = 0b0001 0001
-    uint8_t input[] = { 0x93, 0x42, 0x03, 0x01 }; // `xori t0, t1, 16` (16 = 0b0001 0000)
+Test(emu_rv64_emulate__xori__tests, xori_1, .init = rv64_emu_xori_default_setup) {
+    g_emulator.harts[0].registers[RV64_REG_T0] = 1;   // rd
+    g_emulator.harts[0].registers[RV64_REG_T1] = 17;  // 17 = 0b0001 0001
+    uint8_t input[] = {0x93, 0x42, 0x03, 0x01};       // `xori t0, t1, 16` (16 = 0b0001 0000)
     cr_assert(SUCCESS == rv64_emulate_chunk_single_core(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.harts[0].instructions_count);
-    cr_assert(1 == g_emulator.harts[0].registers[RV64_REG_T0]); // 16 ^ 17 = 1 (0b0001 0000 ^ 0b0001 0001 = 0b0000 0001)
+    cr_assert(
+        1 == g_emulator.harts[0].registers[RV64_REG_T0]
+    );  // 16 ^ 17 = 1 (0b0001 0000 ^ 0b0001 0001 = 0b0000 0001)
 }
 
 // TODO: test with different sized ints, exercise parsing the upper byte of the

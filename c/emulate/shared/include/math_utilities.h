@@ -4,6 +4,4 @@
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
-
-
-#endif // MATH_UTILS_H
+#endif  // MATH_UTILS_H

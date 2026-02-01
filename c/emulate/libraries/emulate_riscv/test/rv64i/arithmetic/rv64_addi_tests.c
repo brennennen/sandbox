@@ -14,9 +14,8 @@ void rv64_emu_addi_default_setup(void) {
 }
 
 // MARK: I_RV64I_ADDI Tests
-Test(emu_rv64_emulate__I_RV64I_ADDI__tests, addi_1, .init = rv64_emu_addi_default_setup)
-{
-    uint8_t input[] = { 0x93, 0x02, 0x53, 0x00 }; // addi t0, t1, 5
+Test(emu_rv64_emulate__I_RV64I_ADDI__tests, addi_1, .init = rv64_emu_addi_default_setup) {
+    uint8_t input[] = {0x93, 0x02, 0x53, 0x00};  // addi t0, t1, 5
     cr_assert(SUCCESS == rv64_emulate_chunk_single_core(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.harts[0].instructions_count);
     cr_assert(5 == g_emulator.harts[0].registers[5]);

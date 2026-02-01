@@ -41,4 +41,4 @@ emu_result_t decode_inc_register(
 );
 emu_result_t emu_inc_register(emulator_8086_t* emulator, uint8_t byte1);
 
-#endif // EMU_INC_H
+#endif  // EMU_INC_H

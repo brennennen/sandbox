@@ -14,11 +14,12 @@ void rv64_emu_lui_default_setup(void) {
 }
 
 // MARK: lui Tests
-Test(emu_rv64_emulate__lui__tests, lui_1, .init = rv64_emu_lui_default_setup)
-{
-    uint8_t input[] = { 0xb7, 0x52, 0x34, 0x12 }; // lui t0, 0x12345
+Test(emu_rv64_emulate__lui__tests, lui_1, .init = rv64_emu_lui_default_setup) {
+    uint8_t input[] = {0xb7, 0x52, 0x34, 0x12};  // lui t0, 0x12345
     cr_assert(SUCCESS == rv64_emulate_chunk_single_core(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.harts[0].instructions_count);
-    int64_t res = 0x12345 << 12; // 0x12345 is the upper 20 bits, zero out the lower 12, then sign extend to 64 bits
+    int64_t res =
+        0x12345
+        << 12;  // 0x12345 is the upper 20 bits, zero out the lower 12, then sign extend to 64 bits
     cr_assert(res == g_emulator.harts[0].registers[RV64_REG_T0]);
 }

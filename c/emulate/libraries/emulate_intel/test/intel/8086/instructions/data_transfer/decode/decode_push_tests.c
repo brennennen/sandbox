@@ -22,15 +22,20 @@ void decode_push_default_setup(void) {
 }
 
 // MARK: 2. I_PUSH_REGISTER Tests
-Test(decode__I_PUSH_REGISTER__tests, push_register_1, .init = decode_push_default_setup)
-{
+Test(decode__I_PUSH_REGISTER__tests, push_register_1, .init = decode_push_default_setup) {
     char* expected = "push cx\n";
-    uint8_t input[] = { 0x51 }; // 0b01010001
-    char output[32] = { 0x00 };
-    cr_assert(SUCCESS == emu_8086_disassemble_chunk(
-        &g_emulator, input, sizeof(input), output, sizeof(output)));
-    cr_assert(1 == g_emulator.instructions_count,
-        "expected:\n'%d'\n\nactual:\n'%d'\n", 1, g_emulator.instructions_count);
-    cr_assert(strncmp(expected, output, sizeof(output)) == 0,
-        "expected:\n'%s'\n\nactual:\n'%s'\n", expected, output);
+    uint8_t input[] = {0x51};  // 0b01010001
+    char output[32] = {0x00};
+    cr_assert(
+        SUCCESS
+        == emu_8086_disassemble_chunk(&g_emulator, input, sizeof(input), output, sizeof(output))
+    );
+    cr_assert(
+        1 == g_emulator.instructions_count, "expected:\n'%d'\n\nactual:\n'%d'\n", 1,
+        g_emulator.instructions_count
+    );
+    cr_assert(
+        strncmp(expected, output, sizeof(output)) == 0, "expected:\n'%s'\n\nactual:\n'%s'\n",
+        expected, output
+    );
 }

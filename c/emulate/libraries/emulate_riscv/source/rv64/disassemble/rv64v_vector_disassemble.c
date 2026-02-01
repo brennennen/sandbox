@@ -1,49 +1,54 @@
 
 #include <stdint.h>
 
-#include "logger.h"
-
+#include "rv64/disassemble/rv64v_vector_disassemble.h"
 #include "rv64/rv64_decode.h"
 #include "rv64/rv64_emulate.h"
 #include "rv64/rv64_instructions.h"
-#include "rv64/rv64_decode.h"
-
-#include "rv64/modules/rv64i_base_integer.h"
-
-#include "rv64/disassemble/rv64v_vector_disassemble.h"
 
 /**
  * MARK: RV64V
  */
 
 char* rv64v_map_vsew_name(uint8_t vsew) {
-    switch(vsew) {
-        case(0b000): return("e8");
-        case(0b001): return("e16");
-        case(0b010): return("e32");
-        case(0b011): return("e64");
-        default: return("?");
+    switch (vsew) {
+        case (0b000):
+            return ("e8");
+        case (0b001):
+            return ("e16");
+        case (0b010):
+            return ("e32");
+        case (0b011):
+            return ("e64");
+        default:
+            return ("?");
     }
 }
 
 char* rv64v_map_vlmul_name(uint8_t vlmul) {
-    switch(vlmul) {
-        case(0b000): return("m1");
-        case(0b001): return("m2");
-        case(0b010): return("m4");
-        case(0b011): return("m8");
-        case(0b100): return("?");
-        case(0b101): return("?");
-        case(0b110): return("?");
-        default: return("?");
+    switch (vlmul) {
+        case (0b000):
+            return ("m1");
+        case (0b001):
+            return ("m2");
+        case (0b010):
+            return ("m4");
+        case (0b011):
+            return ("m8");
+        case (0b100):
+            return ("?");
+        case (0b101):
+            return ("?");
+        case (0b110):
+            return ("?");
+        default:
+            return ("?");
     }
 }
 
-
-
-
 /**
- * @see 30.6.1 vtype encoding (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vtype_encoding)
+ * @see 30.6.1 vtype encoding
+ * (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#_vtype_encoding)
  */
 emu_result_t rv64v_disassemble_vsetvli_vtypei(
     rv64_disassembler_t* disassembler,
@@ -70,13 +75,15 @@ emu_result_t rv64v_disassemble_vsetvli_vtypei(
         vta_name = "tu";
     }
 
-    int written = snprintf(buffer + *index, buffer_size - *index,
-        "%s, %s, %s, %s", vsew_name, vlmul_name, vta_name, vma_name);
+    int written = snprintf(
+        buffer + *index, buffer_size - *index, "%s, %s, %s, %s", vsew_name, vlmul_name, vta_name,
+        vma_name
+    );
     if (written < 0) {
-        return(ER_FAILURE);
+        return (ER_FAILURE);
     }
     *index += written;
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 emu_result_t rv64v_disassemble_vsetvli(
@@ -96,13 +103,14 @@ emu_result_t rv64v_disassemble_vsetvli(
     char* rd_name = rv64_map_register_name(rd);
     char* tag_name = rv64_instruction_tag_mnemonic[tag];
 
-    int written = snprintf(buffer + *index, buffer_size - *index,
-        "%s %s, %s, ", tag_name, rd_name, rs1_name);
+    int written = snprintf(
+        buffer + *index, buffer_size - *index, "%s %s, %s, ", tag_name, rd_name, rs1_name
+    );
     if (written < 0) {
-        return(ER_FAILURE);
+        return (ER_FAILURE);
     }
     *index += written;
-    return(rv64v_disassemble_vsetvli_vtypei(disassembler, vtypei, buffer, index, buffer_size));
+    return (rv64v_disassemble_vsetvli_vtypei(disassembler, vtypei, buffer, index, buffer_size));
 }
 
 emu_result_t rv64v_disassemble_vsetivli(
@@ -114,7 +122,7 @@ emu_result_t rv64v_disassemble_vsetivli(
     size_t buffer_size
 ) {
     // TODO
-    return(ER_FAILURE);
+    return (ER_FAILURE);
 }
 
 emu_result_t rv64v_disassemble_vsetvl(
@@ -126,7 +134,7 @@ emu_result_t rv64v_disassemble_vsetvl(
     size_t buffer_size
 ) {
     // TODO
-    return(ER_FAILURE);
+    return (ER_FAILURE);
 }
 
 emu_result_t rv64v_disassemble_opivv(
@@ -173,13 +181,14 @@ emu_result_t rv64v_disassemble_load_unit_stride(
     char* vd_name = rv64_map_vector_register_name(vd);
     char* rs1_name = rv64_map_register_name(rs1);
 
-    int written = snprintf(buffer + *index, buffer_size - *index,
-        "%s %s, (%s)", tag_name, vd_name, rs1_name);
+    int written = snprintf(
+        buffer + *index, buffer_size - *index, "%s %s, (%s)", tag_name, vd_name, rs1_name
+    );
     if (written < 0) {
-        return(ER_FAILURE);
+        return (ER_FAILURE);
     }
     *index += written;
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 /**
@@ -203,19 +212,22 @@ emu_result_t rv64v_disassemble_store_unit_stride(
     uint8_t width = 0;
     uint8_t vs3 = 0;
 
-    rv64v_decode_load_unit_stride(raw_instruction, &nf, &mew, &mop, &vm, &sumop, &rs1, &width, &vs3);
+    rv64v_decode_load_unit_stride(
+        raw_instruction, &nf, &mew, &mop, &vm, &sumop, &rs1, &width, &vs3
+    );
 
     char* tag_name = rv64_instruction_tag_mnemonic[tag];
     char* vs3_name = rv64_map_vector_register_name(vs3);
     char* rs1_name = rv64_map_register_name(rs1);
 
-    int written = snprintf(buffer + *index, buffer_size - *index,
-        "%s %s, (%s)", tag_name, vs3_name, rs1_name);
+    int written = snprintf(
+        buffer + *index, buffer_size - *index, "%s %s, (%s)", tag_name, vs3_name, rs1_name
+    );
     if (written < 0) {
-        return(ER_FAILURE);
+        return (ER_FAILURE);
     }
     *index += written;
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 emu_result_t rv64v_integer_vector_vector_disassemble(
@@ -237,13 +249,15 @@ emu_result_t rv64v_integer_vector_vector_disassemble(
     char* vs1_name = rv64_map_vector_register_name(vs1);
     char* vd_name = rv64_map_vector_register_name(vd);
 
-    int written = snprintf(buffer + *index, buffer_size - *index,
-        "%s %s, %s, %s", tag_name, vd_name, vs2_name, vs1_name);
+    int written = snprintf(
+        buffer + *index, buffer_size - *index, "%s %s, %s, %s", tag_name, vd_name, vs2_name,
+        vs1_name
+    );
     if (written < 0) {
-        return(ER_FAILURE);
+        return (ER_FAILURE);
     }
     *index += written;
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 emu_result_t rv64v_integer_vector_scalar_disassemble(
@@ -265,13 +279,15 @@ emu_result_t rv64v_integer_vector_scalar_disassemble(
     char* rs1_name = rv64_map_register_name(rs1);
     char* vd_name = rv64_map_vector_register_name(vd);
 
-    int written = snprintf(buffer + *index, buffer_size - *index,
-        "%s %s, %s, %s", tag_name, vd_name, vs2_name, rs1_name);
+    int written = snprintf(
+        buffer + *index, buffer_size - *index, "%s %s, %s, %s", tag_name, vd_name, vs2_name,
+        rs1_name
+    );
     if (written < 0) {
-        return(ER_FAILURE);
+        return (ER_FAILURE);
     }
     *index += written;
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 emu_result_t rv64v_integer_vector_immediate_disassemble(
@@ -292,13 +308,14 @@ emu_result_t rv64v_integer_vector_immediate_disassemble(
     char* vs2_name = rv64_map_vector_register_name(vs2);
     char* vd_name = rv64_map_vector_register_name(vd);
 
-    int written = snprintf(buffer + *index, buffer_size - *index,
-        "%s %s, %s, %d", tag_name, vd_name, vs2_name, imm);
+    int written = snprintf(
+        buffer + *index, buffer_size - *index, "%s %s, %s, %d", tag_name, vd_name, vs2_name, imm
+    );
     if (written < 0) {
-        return(ER_FAILURE);
+        return (ER_FAILURE);
     }
     *index += written;
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }
 
 /*
@@ -317,15 +334,21 @@ emu_result_t rv64v_vector_disassemble(
     switch (tag) {
         // todo: vector admin/setup
         case I_RV64V_VSETVLI: {
-            result = rv64v_disassemble_vsetvli(disassembler, raw_instruction, tag, buffer, index, buffer_size);
+            result = rv64v_disassemble_vsetvli(
+                disassembler, raw_instruction, tag, buffer, index, buffer_size
+            );
             break;
         }
         case I_RV64V_VSETIVLI: {
-            result = rv64v_disassemble_vsetivli(disassembler, raw_instruction, tag, buffer, index, buffer_size);
+            result = rv64v_disassemble_vsetivli(
+                disassembler, raw_instruction, tag, buffer, index, buffer_size
+            );
             break;
         }
         case I_RV64V_VSETVL: {
-            result = rv64v_disassemble_vsetvl(disassembler, raw_instruction, tag, buffer, index, buffer_size);
+            result = rv64v_disassemble_vsetvl(
+                disassembler, raw_instruction, tag, buffer, index, buffer_size
+            );
             break;
         }
         // load
@@ -333,7 +356,9 @@ emu_result_t rv64v_vector_disassemble(
         case I_RV64V_VLE16_V:
         case I_RV64V_VLE32_V:
         case I_RV64V_VLE64_V: {
-            result = rv64v_disassemble_load_unit_stride(disassembler, raw_instruction, tag, buffer, index, buffer_size);
+            result = rv64v_disassemble_load_unit_stride(
+                disassembler, raw_instruction, tag, buffer, index, buffer_size
+            );
             break;
         }
         // store
@@ -341,34 +366,41 @@ emu_result_t rv64v_vector_disassemble(
         case I_RV64V_VSE16_V:
         case I_RV64V_VSE32_V:
         case I_RV64V_VSE64_V: {
-            result = rv64v_disassemble_store_unit_stride(disassembler, raw_instruction, tag, buffer, index, buffer_size);
+            result = rv64v_disassemble_store_unit_stride(
+                disassembler, raw_instruction, tag, buffer, index, buffer_size
+            );
             break;
         }
         // opivv - integer vector-vector
         case I_RV64V_VADD_IVV:
         case I_RV64V_VSUB_IVV: {
-            result = rv64v_integer_vector_vector_disassemble(disassembler, raw_instruction, tag, buffer, index, buffer_size);
+            result = rv64v_integer_vector_vector_disassemble(
+                disassembler, raw_instruction, tag, buffer, index, buffer_size
+            );
             break;
         }
         // opivx - integer vector-scalar
         case I_RV64V_VADD_IVX:
         case I_RV64V_VSUB_IVX:
         case I_RV64V_VRSUB_IVX: {
-            result = rv64v_integer_vector_scalar_disassemble(disassembler, raw_instruction, tag, buffer, index, buffer_size);
+            result = rv64v_integer_vector_scalar_disassemble(
+                disassembler, raw_instruction, tag, buffer, index, buffer_size
+            );
             break;
         }
         // opivi - integer vector-immediate
         case I_RV64V_VADD_IVI:
         case I_RV64V_VRSUB_IVI: {
-            result = rv64v_integer_vector_immediate_disassemble(disassembler, raw_instruction, tag, buffer, index, buffer_size);
+            result = rv64v_integer_vector_immediate_disassemble(
+                disassembler, raw_instruction, tag, buffer, index, buffer_size
+            );
             break;
         }
-
 
         // ...
         default: {
             printf("rv64v_vector_disassemble: not implemented\n");
-            return(ER_FAILURE);
+            return (ER_FAILURE);
         }
     }
 
@@ -394,5 +426,5 @@ emu_result_t rv64v_vector_disassemble(
     //     return(ER_FAILURE);
     // }
     // *index += written;
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }

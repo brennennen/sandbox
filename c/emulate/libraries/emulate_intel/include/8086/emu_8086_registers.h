@@ -53,7 +53,12 @@ static inline uint16_t emu_reg_get_flag(uint16_t flags, uint16_t mask) {
 void emu_reg_update_carry_flag_8bit(uint16_t* flags, uint16_t result_16bit);
 void emu_reg_update_carry_flag_16bit(uint16_t* flags, uint16_t result_32bit);
 
-void emu_reg_update_auxiliary_carry_flag(uint16_t* flags, uint16_t left, uint16_t right, uint16_t result);
+void emu_reg_update_auxiliary_carry_flag(
+    uint16_t* flags,
+    uint16_t left,
+    uint16_t right,
+    uint16_t result
+);
 
 /**
  * Updates the sign flag in the flags register.
@@ -110,7 +115,17 @@ void emu_reg_update_parity_flag(uint16_t* flags, uint16_t arithmetic_result);
  * @param arithmetic_result Result of the operation performed,
  *
  */
-void emu_reg_update_overflow_flag_8bit(uint16_t* flags, uint8_t left, uint8_t right, uint8_t arithmetic_result);
-void emu_reg_update_overflow_flag_16bit(uint16_t* flags, uint16_t left, uint16_t right, uint16_t arithmetic_result);
+void emu_reg_update_overflow_flag_8bit(
+    uint16_t* flags,
+    uint8_t left,
+    uint8_t right,
+    uint8_t arithmetic_result
+);
+void emu_reg_update_overflow_flag_16bit(
+    uint16_t* flags,
+    uint16_t left,
+    uint16_t right,
+    uint16_t arithmetic_result
+);
 
-#endif // EMU_8086_REGISTERS
+#endif  // EMU_8086_REGISTERS

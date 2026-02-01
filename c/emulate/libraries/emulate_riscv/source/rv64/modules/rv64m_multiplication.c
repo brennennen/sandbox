@@ -1,11 +1,10 @@
 
-#include <stdint.h>
 #include <assert.h>
+#include <stdint.h>
 
 #include "logger.h"
 
 #include "rv64/rv64_decode.h"
-#include "rv64/rv64_emulate.h"
 #include "rv64/rv64_instructions.h"
 
 #include "rv64/modules/rv64m_multiplication.h"
@@ -45,7 +44,8 @@ static inline void rv64m_mulh(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8
 static inline void rv64m_mulhsu(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
 #if defined(__GNUC__) || defined(__clang)
     // need casting for sign extension
-    __int128_t product = (__int128_t)((int64_t)hart->registers[rs1] * (__uint128_t)hart->registers[rs2]);
+    __int128_t product = (__int128_t)((int64_t)hart->registers[rs1]
+                                      * (__uint128_t)hart->registers[rs2]);
     hart->registers[rd] = (int64_t)(product >> 64);
 #else
     // TODO: fallback
@@ -87,9 +87,7 @@ static inline void rv64m_div(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_
         hart->registers[rd] = -1;
     }
     // signed integer overflow
-    else if ( hart->registers[rs1] == 0x8000000000000000 && \
-                (int64_t)(hart->registers[rs2]) == -1)
-    {
+    else if (hart->registers[rs1] == 0x8000000000000000 && (int64_t)(hart->registers[rs2]) == -1) {
         hart->registers[rd] = 0x8000000000000000;
     }
     // common case
@@ -110,7 +108,7 @@ static inline void rv64m_div(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_
 static inline void rv64m_divu(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
     // divide by 0
     if (hart->registers[rs2] == 0) {
-        hart->registers[rd] = 0xFFFFFFFFFFFFFFFF; // 2^64 - 1
+        hart->registers[rd] = 0xFFFFFFFFFFFFFFFF;  // 2^64 - 1
     }
     // common case
     else {
@@ -133,9 +131,7 @@ static inline void rv64m_rem(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_
         hart->registers[rd] = hart->registers[rs1];
     }
     // signed division overflow
-    else if ( hart->registers[rs1] == 0x8000000000000000 && \
-                (int64_t)(hart->registers[rs2]) == -1)
-    {
+    else if (hart->registers[rs1] == 0x8000000000000000 && (int64_t)(hart->registers[rs2]) == -1) {
         hart->registers[rd] = 0;
     }
     // common case
@@ -166,19 +162,19 @@ static inline void rv64m_remu(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8
 static inline void rv64m_mulw(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
     int32_t rs1_value = hart->registers[rs1];
     int32_t rs2_value = hart->registers[rs2];
-    hart->registers[rd] = (int32_t) rs1_value * rs2_value;
+    hart->registers[rd] = (int32_t)rs1_value * rs2_value;
 }
 
 static inline void rv64m_divw(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
     int32_t rs1_value = hart->registers[rs1];
     int32_t rs2_value = hart->registers[rs2];
-    hart->registers[rd] = (int32_t) rs1_value / rs2_value;
+    hart->registers[rd] = (int32_t)rs1_value / rs2_value;
 }
 
 static inline void rv64m_divuw(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
     uint32_t rs1_value = hart->registers[rs1];
     uint32_t rs2_value = hart->registers[rs2];
-    hart->registers[rd] = (uint32_t) rs1_value / rs2_value;
+    hart->registers[rd] = (uint32_t)rs1_value / rs2_value;
 }
 
 // "REMW and REMUW are RV64 instructions that provide the corresponding signed and unsigned
@@ -187,7 +183,7 @@ static inline void rv64m_divuw(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint
 static inline void rv64m_remw(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
     int32_t rs1_value = hart->registers[rs1];
     int32_t rs2_value = hart->registers[rs2];
-    hart->registers[rd] = (int32_t) rs1_value % rs2_value;
+    hart->registers[rd] = (int32_t)rs1_value % rs2_value;
 }
 
 // "REMW and REMUW are RV64 instructions that provide the corresponding signed and unsigned
@@ -196,7 +192,7 @@ static inline void rv64m_remw(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8
 static inline void rv64m_remuw(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
     uint32_t rs1_value = hart->registers[rs1];
     uint32_t rs2_value = hart->registers[rs2];
-    hart->registers[rd] = (uint32_t) rs1_value % rs2_value;
+    hart->registers[rd] = (uint32_t)rs1_value % rs2_value;
 }
 
 emu_result_t rv64_multiplication_emulate(
@@ -210,7 +206,7 @@ emu_result_t rv64_multiplication_emulate(
 
     rv64_decode_register_register(raw_instruction, &rs2, &rs1, &rd);
 
-    switch(tag) {
+    switch (tag) {
         case I_RV64M_MUL: {
             rv64m_mul(hart, rs1, rs2, rd);
             break;
@@ -265,8 +261,8 @@ emu_result_t rv64_multiplication_emulate(
         }
         default: {
             LOG(LOG_ERROR, "%s: instruction not implemented", __func__);
-            return(ER_FAILURE);
+            return (ER_FAILURE);
         }
     }
-    return(ER_SUCCESS);
+    return (ER_SUCCESS);
 }

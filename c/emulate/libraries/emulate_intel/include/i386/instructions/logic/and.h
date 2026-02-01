@@ -61,4 +61,4 @@ emu_result_t emu_i386_decode_and(
     size_t out_buffer_size
 );
 
-#endif // EMU_i386_AND_H
+#endif  // EMU_i386_AND_H

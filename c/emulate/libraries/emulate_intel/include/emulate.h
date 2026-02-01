@@ -7,15 +7,16 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "shared/include/result.h"
 #include "shared/include/arch.h"
+#include "shared/include/result.h"
 
 #include "8086/emulate_8086.h"
 
-#define STACK_SIZE 4096
-#define MEMORY_SIZE 65535 // 64KB (need to add segment register support to address more space)
-#define PROGRAM_START 0x100 // address '0' is usually a forced segfault, write program to some
-                            // offset above and leave bytes around 0 for error detection.
+#define STACK_SIZE  4096
+#define MEMORY_SIZE 65535  // 64KB (need to add segment register support to address more space)
+#define PROGRAM_START \
+    0x100  // address '0' is usually a forced segfault, write program to some
+           // offset above and leave bytes around 0 for error detection.
 
 #define DEBUG 1
 
@@ -26,9 +27,9 @@
 // } emu_arch_t;
 
 typedef enum {
-    BITS_16, // 8086 (partially implemented)
-    BITS_32, // i386, x86 (not implemented)
-    BITS_64, // x64 (not implemented)
+    BITS_16,  // 8086 (partially implemented)
+    BITS_32,  // i386, x86 (not implemented)
+    BITS_64,  // x64 (not implemented)
 } bits_mode_t;
 
 typedef struct {
@@ -37,21 +38,25 @@ typedef struct {
     emulator_8086_t emulator_8086;
 } emulator_t;
 
-
-
-
 void emu_init(emulator_t* emulator, arch_t arch);
 
-
-
-result_t emu_disassemble_file(emulator_t* emulator, char* input_path, char* out_buffer,
-    size_t out_buffer_size);
-result_t emu_disassemble_chunk(emulator_t* emulator, char* in_buffer, size_t in_buffer_size,
-    char* out_buffer, size_t out_buffer_size);
+result_t emu_disassemble_file(
+    emulator_t* emulator,
+    char* input_path,
+    char* out_buffer,
+    size_t out_buffer_size
+);
+result_t emu_disassemble_chunk(
+    emulator_t* emulator,
+    char* in_buffer,
+    size_t in_buffer_size,
+    char* out_buffer,
+    size_t out_buffer_size
+);
 result_t emu_disassemble(emulator_t* emulator, char* out_buffer, size_t out_buffer_size);
 
 result_t emu_emulate_file(emulator_t* emulator, char* input_path);
 result_t emu_emulate_chunk(emulator_t* emulator, char* in_buffer, size_t in_buffer_size);
 result_t emu_emulate(emulator_t* emulator);
 
-#endif // EMULATE_H
+#endif  // EMULATE_H

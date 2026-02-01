@@ -8,23 +8,22 @@
 
 #include "8086/instruction_tags_8086.h"
 
-#include "8086/emulate_8086.h"
 #include "8086/emu_8086_registers.h"
-
+#include "8086/emulate_8086.h"
 
 // Use of this global "g_emulator" is to try and reduce the amount of code per test. It's reset
 // after each test and has a large default instructions buffer.
 static emulator_8086_t g_emulator;
+
 void emu_add_default_setup(void) {
     memset(&g_emulator, 0, sizeof(emulator_8086_t));
     emu_8086_init(&g_emulator);
 }
 
 // MARK: 1. I_ADD
-Test(emu__I_ADD__tests, add1, .init = emu_add_default_setup)
-{
+Test(emu__I_ADD__tests, add1, .init = emu_add_default_setup) {
     // Arrange
-    uint8_t input[] = { 0x01, 0xd9 }; // add cx, bx
+    uint8_t input[] = {0x01, 0xd9};  // add cx, bx
     g_emulator.registers.cx = 3;
     g_emulator.registers.bx = 4;
 
@@ -40,9 +39,8 @@ Test(emu__I_ADD__tests, add1, .init = emu_add_default_setup)
 }
 
 // MARK: 2. I_ADD_IMMEDIATE
-Test(emu__I_ADD_IMMEDIATE__tests, add_immediate_1, .init = emu_add_default_setup)
-{
-    uint8_t input[] = { 0x83, 0xc1, 0x05 }; // add cx, 5
+Test(emu__I_ADD_IMMEDIATE__tests, add_immediate_1, .init = emu_add_default_setup) {
+    uint8_t input[] = {0x83, 0xc1, 0x05};  // add cx, 5
     cr_assert(SUCCESS == emu_8086_emulate_chunk(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.instructions_count);
     cr_assert(PROGRAM_START + 4 == g_emulator.registers.ip);
@@ -51,9 +49,8 @@ Test(emu__I_ADD_IMMEDIATE__tests, add_immediate_1, .init = emu_add_default_setup
     // TODO: check carry, zero, parity, etc. flags?
 }
 
-Test(emu__I_ADD_IMMEDIATE__tests, add_immediate_2, .init = emu_add_default_setup)
-{
-    uint8_t input[] = { 0x83, 0xc1, 0x00 }; // add cx, 0
+Test(emu__I_ADD_IMMEDIATE__tests, add_immediate_2, .init = emu_add_default_setup) {
+    uint8_t input[] = {0x83, 0xc1, 0x00};  // add cx, 0
     cr_assert(SUCCESS == emu_8086_emulate_chunk(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.instructions_count);
     cr_assert(PROGRAM_START + 4 == g_emulator.registers.ip);
@@ -62,9 +59,8 @@ Test(emu__I_ADD_IMMEDIATE__tests, add_immediate_2, .init = emu_add_default_setup
     // TODO: check carry, zero, parity, etc. flags?
 }
 
-Test(emu__I_ADD_IMMEDIATE__tests, add_immediate_3, .init = emu_add_default_setup)
-{
-    uint8_t input[] = { 0x83, 0xc6, 0x02 }; // add si, 2
+Test(emu__I_ADD_IMMEDIATE__tests, add_immediate_3, .init = emu_add_default_setup) {
+    uint8_t input[] = {0x83, 0xc6, 0x02};  // add si, 2
     cr_assert(SUCCESS == emu_8086_emulate_chunk(&g_emulator, input, sizeof(input)));
     cr_assert(1 == g_emulator.instructions_count);
     cr_assert(PROGRAM_START + 4 == g_emulator.registers.ip);

@@ -12,6 +12,9 @@ compile_commands.json
 # C
 *.out
 *.elf
+*.gcno
+*.gcda
+*.gcov
 
 # Scons
 .sconsign.dblite
@@ -30,3 +33,5 @@ zig-out
 
 # Graphics/Shader
 *.spv
+
+

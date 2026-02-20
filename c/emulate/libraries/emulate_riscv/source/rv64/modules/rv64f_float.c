@@ -13,6 +13,11 @@
 
 #include "rv64/modules/rv64f_float.h"
 
+emu_result_t rv64f_float_init(rv64_hart_t* hart) {
+    hart->cached_host_rounding_mode = FE_TONEAREST;
+    fesetround(FE_TONEAREST);
+}
+
 static void rv64f_update_fcsr_flags(rv64_hart_t* hart, int fenv_flags) {
     uint64_t riscv_flags = 0;
 
@@ -139,22 +144,22 @@ static rv64f_rounding_mode_t rv64f_set_fenv_rounding_mode(
     if (target_rounding_mode == RV64F_ROUND_DYNAMIC) {
         target_rounding_mode = (hart->csrs.fcsr >> 5) & 0x7;  // TODO: break csrs out into structs?
     }
-
+    int target_fenv_macro = FE_TONEAREST;
     switch (target_rounding_mode) {
         case RV64F_ROUND_TO_NEAREST_TIES_EVEN: {
-            fesetround(FE_TONEAREST);
+            target_fenv_macro = FE_TONEAREST;
             break;
         }
         case RV64F_ROUND_TOWARDS_ZERO: {
-            fesetround(FE_TOWARDZERO);
+            target_fenv_macro = FE_TOWARDZERO;
             break;
         }
         case RV64F_ROUND_DOWN: {
-            fesetround(FE_DOWNWARD);
+            target_fenv_macro = FE_DOWNWARD;
             break;
         }
         case RV64F_ROUND_UP: {
-            fesetround(FE_UPWARD);
+            target_fenv_macro = FE_UPWARD;
             break;
         }
         case RV64F_ROUND_TO_NEAREST_TIES_MAX_MAGNITUDE: {
@@ -166,11 +171,14 @@ static rv64f_rounding_mode_t rv64f_set_fenv_rounding_mode(
                 "%s: rounding mode not supported! rm: %d (%d)\n", __func__, rounding_mode,
                 target_rounding_mode
             );
-            fesetround(FE_TONEAREST);
             break;
         }
     }
-    return (target_rounding_mode);
+    if (hart->cached_host_rounding_mode != target_fenv_macro) {
+        fesetround(target_fenv_macro);
+        hart->cached_host_rounding_mode = target_fenv_macro;
+    }
+    return target_rounding_mode;
 }
 
 /*
@@ -193,14 +201,12 @@ static void rv64f_fmadd_s(
     uint8_t rs3,
     rv64f_rounding_mode_t rm
 ) {
-    int host_rounding_mode = fegetround();
     (void)rv64f_set_fenv_rounding_mode(hart, rm);
     feclearexcept(FE_ALL_EXCEPT);
     hart->float32_registers[rd] = fmaf(
         hart->float32_registers[rs1], hart->float32_registers[rs2], hart->float32_registers[rs3]
     );
     rv64f_update_fcsr_flags(hart, fetestexcept(FE_ALL_EXCEPT));
-    fesetround(host_rounding_mode);  // reset back to the original host rounding mode.
 }
 
 /**
@@ -219,7 +225,6 @@ static void rv64f_fmsub_s(
     uint8_t rs3,
     uint8_t rm
 ) {
-    int host_rounding_mode = fegetround();
     (void)rv64f_set_fenv_rounding_mode(hart, rm);
     feclearexcept(FE_ALL_EXCEPT);
     hart->float32_registers[rd] = fmaf(
@@ -227,7 +232,6 @@ static void rv64f_fmsub_s(
         (hart->float32_registers[rs3] * -1)
     );
     rv64f_update_fcsr_flags(hart, fetestexcept(FE_ALL_EXCEPT));
-    fesetround(host_rounding_mode);  // reset back to the original host rounding mode.
 }
 
 /**
@@ -247,7 +251,6 @@ static void rv64f_fnmsub_s(
     uint8_t rs3,
     uint8_t rm
 ) {
-    int host_rounding_mode = fegetround();
     (void)rv64f_set_fenv_rounding_mode(hart, rm);
     feclearexcept(FE_ALL_EXCEPT);
     // TODO: currently not following spec order of operations, investigate if this is ok.
@@ -257,7 +260,6 @@ static void rv64f_fnmsub_s(
         hart->float32_registers[rs3]
     );
     rv64f_update_fcsr_flags(hart, fetestexcept(FE_ALL_EXCEPT));
-    fesetround(host_rounding_mode);  // reset back to the original host rounding mode.
 }
 
 /**
@@ -277,7 +279,6 @@ static void rv64f_fnmadd_s(
     uint8_t rs3,
     uint8_t rm
 ) {
-    int host_rounding_mode = fegetround();
     (void)rv64f_set_fenv_rounding_mode(hart, rm);
     feclearexcept(FE_ALL_EXCEPT);
     // TODO: currently not following spec order of operations, investigate if this is ok.
@@ -287,7 +288,6 @@ static void rv64f_fnmadd_s(
         (hart->float32_registers[rs3] * -1)
     );
     rv64f_update_fcsr_flags(hart, fetestexcept(FE_ALL_EXCEPT));
-    fesetround(host_rounding_mode);  // reset back to the original host rounding mode.
 }
 
 emu_result_t rv64_emulate_r4_type(
@@ -342,48 +342,38 @@ emu_result_t rv64_emulate_r4_type(
  * (https://riscv.github.io/riscv-isa-manual/snapshot/unprivileged/#single-float-compute)
  */
 static void rv64f_fadd_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rs2, uint8_t rm) {
-    int host_rounding_mode = fegetround();
     (void)rv64f_set_fenv_rounding_mode(hart, rm);
     feclearexcept(FE_ALL_EXCEPT);
     hart->float32_registers[rd] = hart->float32_registers[rs1] + hart->float32_registers[rs2];
     rv64f_update_fcsr_flags(hart, fetestexcept(FE_ALL_EXCEPT));
-    fesetround(host_rounding_mode);  // reset back to the original host rounding mode.
 }
 
 static void rv64f_fsub_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rs2, uint8_t rm) {
-    int host_rounding_mode = fegetround();
     (void)rv64f_set_fenv_rounding_mode(hart, rm);
     feclearexcept(FE_ALL_EXCEPT);
     hart->float32_registers[rd] = hart->float32_registers[rs1] - hart->float32_registers[rs2];
     rv64f_update_fcsr_flags(hart, fetestexcept(FE_ALL_EXCEPT));
-    fesetround(host_rounding_mode);  // reset back to the original host rounding mode.
 }
 
 static void rv64f_fmul_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rs2, uint8_t rm) {
-    int host_rounding_mode = fegetround();
     (void)rv64f_set_fenv_rounding_mode(hart, rm);
     feclearexcept(FE_ALL_EXCEPT);
     hart->float32_registers[rd] = hart->float32_registers[rs1] * hart->float32_registers[rs2];
     rv64f_update_fcsr_flags(hart, fetestexcept(FE_ALL_EXCEPT));
-    fesetround(host_rounding_mode);  // reset back to the original host rounding mode.
 }
 
 static void rv64f_fdiv_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rs2, uint8_t rm) {
-    int host_rounding_mode = fegetround();
     (void)rv64f_set_fenv_rounding_mode(hart, rm);
     feclearexcept(FE_ALL_EXCEPT);
     hart->float32_registers[rd] = hart->float32_registers[rs1] / hart->float32_registers[rs2];
     rv64f_update_fcsr_flags(hart, fetestexcept(FE_ALL_EXCEPT));
-    fesetround(host_rounding_mode);  // reset back to the original host rounding mode.
 }
 
 static void rv64f_fsqrt_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t rm) {
-    int host_rounding_mode = fegetround();
     (void)rv64f_set_fenv_rounding_mode(hart, rm);
     feclearexcept(FE_ALL_EXCEPT);
     hart->float32_registers[rd] = sqrt(hart->float32_registers[rs1]);
     rv64f_update_fcsr_flags(hart, fetestexcept(FE_ALL_EXCEPT));
-    fesetround(host_rounding_mode);  // reset back to the original host rounding mode.
 }
 
 /**
@@ -473,7 +463,6 @@ static void rv64f_fcvt_w_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t r
         hart->csrs.fcsr |= RV64F_FCSR_INVALID_OPERATION;
         result_int = INT32_MAX;
     } else {
-        int host_rounding_mode = fegetround();
         rv64f_rounding_mode_t target_rm = rv64f_set_fenv_rounding_mode(hart, rm);
         rs1_float_rounded = rv64f_nearbyintf(rs1_float, target_rm);
 
@@ -490,8 +479,6 @@ static void rv64f_fcvt_w_s(rv64_hart_t* hart, uint8_t rd, uint8_t rs1, uint8_t r
         } else {
             result_int = (int32_t)rs1_float_rounded;
         }
-
-        fesetround(host_rounding_mode);  // reset back to the original host rounding mode.
     }
     hart->registers[rd] = (uint64_t)(int64_t)result_int;  // double cast for sign extension
 }
@@ -724,7 +711,7 @@ emu_result_t rv64f_emulate_r_type(
             break;
         }
         default: {
-            LOG(LOG_ERROR, "rv64_emulate_r4_type: instruction not implemented");
+            LOG(LOG_ERROR, "%s: instruction not implemented", __func__);
             return (ER_FAILURE);
         }
     }
@@ -787,7 +774,7 @@ emu_result_t rv64f_float_emulate(
             break;
         }
         default: {
-            LOG(LOG_ERROR, "rv64f_float_emulate: instruction not implemented");
+            LOG(LOG_ERROR, "%s: instruction not implemented", __func__);
             return (ER_FAILURE);
         }
     }

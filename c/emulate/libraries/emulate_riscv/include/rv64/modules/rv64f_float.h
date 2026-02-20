@@ -30,6 +30,7 @@ typedef enum {
     RV64F_CLASS_QUIET_NAN = 9
 } rv64_class_t;
 
+emu_result_t rv64f_float_init(rv64_hart_t* hart);
 emu_result_t rv64f_float_emulate(
     rv64_hart_t* hart,
     uint32_t raw_instruction,

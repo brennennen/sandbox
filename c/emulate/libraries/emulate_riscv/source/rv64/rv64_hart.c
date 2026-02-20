@@ -222,8 +222,8 @@ emu_result_t emu_rv64_read_m16(rv64_hart_t* hart, uint16_t* out_data) {
     // TODO: mutex/lock?
     *out_data = (hart->shared_system->memory[hart->pc + 1] << 8)
                 | (hart->shared_system->memory[hart->pc]);
-    if (*out_data
-        != 0) {  // if we reached an empty instruction (end of program), don't increment pc.
+    // if we reached an empty instruction (end of program), don't increment pc.
+    if (*out_data != 0) {
         hart->pc += 2;
     }
     return ER_SUCCESS;
@@ -243,8 +243,8 @@ emu_result_t emu_rv64_read_m32(rv64_hart_t* hart, uint32_t* out_data) {
                 | (hart->shared_system->memory[hart->pc + 2] << 16)
                 | (hart->shared_system->memory[hart->pc + 1] << 8)
                 | (hart->shared_system->memory[hart->pc]);
-    if (*out_data
-        != 0) {  // if we reached an empty instruction (end of program), don't increment pc.
+    // if we reached an empty instruction (end of program), don't increment pc.
+    if (*out_data != 0) {
         hart->pc += 4;
     }
     return ER_SUCCESS;
@@ -252,7 +252,7 @@ emu_result_t emu_rv64_read_m32(rv64_hart_t* hart, uint32_t* out_data) {
 
 emu_result_t rv64_hart_init(rv64_hart_t* hart, rv64_shared_system_t* shared_system) {
     hart->shared_system = shared_system;
-    // ???
+    rv64f_float_init(hart);
     return ER_SUCCESS;
 }
 
@@ -293,6 +293,7 @@ static emu_result_t rv64_hart_get_next_instruction(rv64_hart_t* hart, uint32_t* 
 }
 
 static result_iter_t rv64_hart_emulate_next(rv64_hart_t* hart) {
+    hart->current_instruction_pc = hart->pc;
     uint32_t raw_instruction = 0;
 #ifdef RV64C_COMPRESSED_ENABLED
     // TODO: if compressed, don't read 4 bytes, just read 2 bytes?

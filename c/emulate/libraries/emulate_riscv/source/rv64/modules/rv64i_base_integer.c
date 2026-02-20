@@ -38,7 +38,7 @@ static inline void rv64i_lui(rv64_hart_t* hart, int32_t imm20, uint8_t rd) {
 static inline void rv64i_auipc(rv64_hart_t* hart, int32_t imm20, uint8_t rd) {
     // pc is incremented when the instruction is originally read, so need to decrement here.
     // sign-extension for imm20 done in decode
-    hart->registers[rd] = (imm20 << 12) + hart->pc - 4;
+    hart->registers[rd] = hart->current_instruction_pc + (imm20 << 12);
 }
 
 static emu_result_t rv64i_emulate_upper_immediate(
@@ -85,7 +85,7 @@ static inline void rv64i_jal(rv64_hart_t* hart, int32_t offset, uint8_t rd) {
     if (rd != 0) {
         hart->registers[rd] = hart->pc;  // point rd to the next instruction
     }
-    hart->pc = hart->pc + offset - 4;
+    hart->pc = hart->current_instruction_pc + offset;
     LOGD("%s: offset: %d (pc: %ld), rd: %d", __func__, offset, hart->pc, rd);
 }
 
@@ -148,7 +148,7 @@ static inline void rv64i_beq(rv64_hart_t* hart, int32_t offset, uint8_t rs1, uin
         hart->registers[rs2]
     );
     if (hart->registers[rs1] == hart->registers[rs2]) {
-        hart->pc = hart->pc + offset - 4;
+        hart->pc = hart->current_instruction_pc + offset;
     }
 }
 
@@ -696,8 +696,11 @@ static inline void rv64i_sub(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_
     hart->registers[rd] = hart->registers[rs1] - hart->registers[rs2];
 }
 
+/**
+ *
+ */
 static inline void rv64i_sll(rv64_hart_t* hart, uint8_t rs1, uint8_t rs2, uint8_t rd) {
-    hart->registers[rd] = hart->registers[rs1] << hart->registers[rs2];
+    hart->registers[rd] = hart->registers[rs1] << (hart->registers[rs2] & 0x3F);
 }
 
 /**

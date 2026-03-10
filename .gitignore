@@ -34,4 +34,6 @@ zig-out
 # Graphics/Shader
 *.spv
 
+# Misc
+.assets
 

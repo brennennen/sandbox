@@ -23,16 +23,14 @@ struct renderer_t {
     VkSurfaceKHR surface;
     VkSwapchainKHR swapchain;
 
-    // The swapchain "owns" the images we draw to.
-    // We need to keep track of their views so we can use them as render targets.
     uint32_t swapchain_image_count;
     VkImage* swapchain_images;
     VkImageView* swapchain_image_views;
 
     VkDebugUtilsMessengerEXT debug_messenger;
-    VkPhysicalDevice physical_device;  // The hardware GPU
-    VkDevice device;                   // The logical handle to the GPU
-    VkQueue graphics_queue;            // Where we submit draw commands
+    VkPhysicalDevice physical_device;
+    VkDevice device;
+    VkQueue graphics_queue;
 
     VkCommandPool command_pool;
     VkCommandBuffer command_buffer;
@@ -40,11 +38,6 @@ struct renderer_t {
     VkPipeline graphics_pipeline;
     VkPipelineLayout pipeline_layout;
 
-    /*
-     * SYNC OBJECTS:
-     * Vulkan is asynchronous. Semaphores coordinate work between GPU tasks,
-     * while Fences coordinate work between the CPU and the GPU.
-     */
     VkSemaphore image_available_sem;  // Signal: "Image is ready to be drawn to"
     VkSemaphore render_finished_sem;  // Signal: "Rendering is done, ready to show"
     VkFence in_flight_fence;          // Signal: "GPU is finished with this command buffer"
@@ -58,7 +51,6 @@ typedef struct {
 static bool create_graphics_pipeline(renderer_t* r);
 static VkShaderModule create_shader_module(VkDevice device, const char* path);
 
-// We need to find a 'Queue Family' on the GPU that can handle Graphics commands.
 static queue_family_indices_t find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface) {
     queue_family_indices_t indices = {.has_graphics = false};
 
@@ -70,9 +62,7 @@ static queue_family_indices_t find_queue_families(VkPhysicalDevice device, VkSur
 
     for (uint32_t i = 0; i < queue_family_count; i++) {
         VkBool32 present_support = false;
-        // Check if this queue can also talk to our OS window (Surface)
         vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &present_support);
-
         if ((families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) && present_support) {
             indices.graphics_family = i;
             indices.has_graphics = true;
@@ -87,7 +77,6 @@ static bool is_device_suitable(VkPhysicalDevice device, VkSurfaceKHR surface) {
     VkPhysicalDeviceProperties device_properties;
     vkGetPhysicalDeviceProperties(device, &device_properties);
     queue_family_indices_t indices = find_queue_families(device, surface);
-    // For a game engine, we generally want a dedicated (Discrete) GPU if available.
     return indices.has_graphics
            && device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
 }
@@ -125,7 +114,6 @@ static bool create_instance(renderer_t* r) {
         return false;
     }
 
-    // Tell Vulkan which windowing extensions SDL needs (e.g., VK_KHR_win32_surface)
     uint32_t sdl_ext_count = 0;
     const char* const* sdl_exts = SDL_Vulkan_GetInstanceExtensions(&sdl_ext_count);
 
@@ -172,17 +160,10 @@ static bool create_logical_device(renderer_t* r) {
         .pQueuePriorities = &queue_priority,
     };
 
-    /*
-     * DYNAMIC RENDERING (VK 1.3 feature):
-     * This allows us to skip creating RenderPass and Framebuffer objects,
-     * which are historically the most verbose part of Vulkan.
-     */
     VkPhysicalDeviceVulkan13Features features13 = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
         .dynamicRendering = VK_TRUE,
     };
-
-    // Swapchain is technically an extension; we must enable it explicitly.
     const char* device_extensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
     VkDeviceCreateInfo create_info = {
@@ -207,10 +188,6 @@ static bool create_logical_device(renderer_t* r) {
 }
 
 static bool create_command_pool(renderer_t* r) {
-    /*
-     * Command buffers aren't created directly; they are allocated from a pool.
-     * RESET_COMMAND_BUFFER_BIT allows us to reuse the same buffer every frame.
-     */
     queue_family_indices_t indices = find_queue_families(r->physical_device, r->surface);
 
     VkCommandPoolCreateInfo pool_info = {
@@ -249,10 +226,7 @@ static bool create_swapchain(renderer_t* r, int width, int height) {
             break;
         }
     }
-    /*
-     * The swapchain is a queue of images waiting to be presented to the monitor.
-     * Use FIFO present mode to ensure V-Sync and avoid tearing.
-     */
+
     VkSwapchainCreateInfoKHR create_info = {
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
         .surface = r->surface,
@@ -269,7 +243,6 @@ static bool create_swapchain(renderer_t* r, int width, int height) {
         .clipped = VK_TRUE,
     };
 
-    // Wrap the raw swapchain images in ImageViews so the pipeline can use them.
     if (vkCreateSwapchainKHR(r->device, &create_info, nullptr, &r->swapchain) != VK_SUCCESS) {
         log_error("vulkan: failed to create swapchain");
         return false;
@@ -403,14 +376,11 @@ void renderer_draw(renderer_t* r) {
     vkAcquireNextImageKHR(
         r->device, r->swapchain, UINT64_MAX, r->image_available_sem, VK_NULL_HANDLE, &image_index
     );
-    // Record the drawing commands
+
     vkResetCommandBuffer(r->command_buffer, 0);
     VkCommandBufferBeginInfo begin_info = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     vkBeginCommandBuffer(r->command_buffer, &begin_info);
-    /*
-     * IMAGE BARRIERS: Manually transition the image layout.
-     * From "Undefined" (random bits) to "Color Attachment" (ready to draw).
-     */
+
     VkImageMemoryBarrier barrier = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
         .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
@@ -524,11 +494,6 @@ static VkShaderModule create_shader_module(VkDevice device, const char* path) {
 }
 
 static bool create_graphics_pipeline(renderer_t* r) {
-    /*
-     * The Graphics Pipeline is the big state machine of the GPU.
-     * It describes everything: how to read vertices, how to rasterize pixels,
-     * and which shaders to run.
-     */
     VkShaderModule vert_mod = create_shader_module(r->device, "shaders/triangle.vert.spv");
     VkShaderModule frag_mod = create_shader_module(r->device, "shaders/triangle.frag.spv");
 
@@ -542,7 +507,7 @@ static bool create_graphics_pipeline(renderer_t* r) {
          .module = frag_mod,
          .pName = "main"}
     };
-    // Vertex Input: Currently empty because we hardcode triangle coordinates in the vertex shader.
+
     VkPipelineVertexInputStateCreateInfo vertex_input = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
     };
@@ -558,7 +523,7 @@ static bool create_graphics_pipeline(renderer_t* r) {
     VkPipelineRasterizationStateCreateInfo rasterizer = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
         .lineWidth = 1.0f,
-        .cullMode = VK_CULL_MODE_NONE,  // Don't hide the back of the triangle
+        .cullMode = VK_CULL_MODE_NONE,
         .frontFace = VK_FRONT_FACE_CLOCKWISE
     };
     VkPipelineMultisampleStateCreateInfo multisampling = {

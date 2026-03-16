@@ -6,8 +6,8 @@
 #include <SDL3/SDL_vulkan.h>
 
 #include "core/logger.h"
-#include "renderer.h"
-#include "volk.h" // Standard include, build system finds it in .vendor/volk
+#include "modules/graphics/graphics.h"
+#include "volk.h"
 
 #include "vk_gpu_allocator.h"
 #include "vk_types.h"

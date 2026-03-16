@@ -39,7 +39,6 @@ void vk_copy_buffer_to_image(
     uint32_t    height
 );
 
-// Reusable function to create high-performance static buffers
 VkBuffer vk_create_static_buffer(
     renderer_t*        r,
     void*              data,

@@ -8,6 +8,20 @@ typedef struct {
 } vec3_t;
 
 typedef struct {
+    float x;
+    float y;
+    float z;
+    float a;
+} vec4_t;
+
+typedef struct {
+    float r;
+    float g;
+    float b;
+    float a;
+} color_t;
+
+typedef struct {
     float data[4][4];
 } mat4_t;
 

@@ -26,7 +26,6 @@ gpu_allocation_t vk_create_staging_buffer(
     VkMemoryRequirements mem_reqs;
     vkGetBufferMemoryRequirements(r->device, *out_buffer, &mem_reqs);
 
-    // Allocate from the HOST_VISIBLE (vertex) heap
     gpu_allocation_t alloc = gpu_heap_alloc(r->vertex_heap, mem_reqs.size, mem_reqs.alignment);
     vkBindBufferMemory(r->device, *out_buffer, r->vertex_heap->memory, alloc.offset);
 

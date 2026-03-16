@@ -1,5 +1,6 @@
 
 #include <math.h>
+#include <stdio.h>
 
 #include "core/camera.h"
 #include "core/math/mat4_math.h"
@@ -10,19 +11,6 @@ mat4_t mat4_identity() {
     res.data[1][1] = 1.0f;
     res.data[2][2] = 1.0f;
     res.data[3][3] = 1.0f;
-    return res;
-}
-
-mat4_t mat4_rotate_y(float angle) {
-    mat4_t res = mat4_identity();
-    float  s   = sinf(angle);
-    float  c   = cosf(angle);
-
-    res.data[0][0] = c;
-    res.data[0][2] = s; // For a right-handed system
-    res.data[2][0] = -s;
-    res.data[2][2] = c;
-
     return res;
 }
 
@@ -115,12 +103,90 @@ mat4_t mat4_rotate_x(float angle) {
     return res;
 }
 
-mat4_t mat4_view(camera_t cam) {
-    float  p            = -cam.pitch * (M_PI / 180.0f);
-    float  y            = -cam.yaw * (M_PI / 180.0f);
-    mat4_t rot_x        = mat4_rotate_x(p);
-    mat4_t rot_y        = mat4_rotate_y(y);
-    mat4_t trans        = mat4_translate((vec3_t){-cam.pos.x, -cam.pos.y, -cam.pos.z});
-    mat4_t combined_rot = mat4_mul(rot_x, rot_y);
-    return mat4_mul(combined_rot, trans);
+mat4_t mat4_rotate_y(float angle) {
+    mat4_t res = mat4_identity();
+    float  s   = sinf(angle);
+    float  c   = cosf(angle);
+
+    res.data[0][0] = c;
+    res.data[0][2] = s; // For a right-handed system
+    res.data[2][0] = -s;
+    res.data[2][2] = c;
+
+    return res;
+}
+
+mat4_t mat4_rotate_z(float angle) {
+    mat4_t res = mat4_identity();
+    float  s   = sinf(angle);
+    float  c   = cosf(angle);
+
+    res.data[0][0] = c;
+    res.data[0][1] = s;
+    res.data[1][0] = -s;
+    res.data[1][1] = c;
+
+    return res;
+}
+
+mat4_t mat4_look_at(vec3_t eye, vec3_t center, vec3_t up) {
+    // Forward Vector (f)
+    vec3_t f     = {center.x - eye.x, center.y - eye.y, center.z - eye.z};
+    float  f_len = sqrtf(f.x * f.x + f.y * f.y + f.z * f.z);
+    f.x /= f_len;
+    f.y /= f_len;
+    f.z /= f_len;
+
+    // Right Vector (s = cross(f, up))
+    vec3_t s     = {f.y * up.z - f.z * up.y, f.z * up.x - f.x * up.z, f.x * up.y - f.y * up.x};
+    float  s_len = sqrtf(s.x * s.x + s.y * s.y + s.z * s.z);
+    s.x /= s_len;
+    s.y /= s_len;
+    s.z /= s_len;
+
+    // True Up Vector (u = cross(s, f))
+    vec3_t u = {s.y * f.z - s.z * f.y, s.z * f.x - s.x * f.z, s.x * f.y - s.y * f.x};
+
+    mat4_t res     = mat4_identity();
+    res.data[0][0] = s.x;
+    res.data[1][0] = s.y;
+    res.data[2][0] = s.z;
+
+    res.data[0][1] = u.x;
+    res.data[1][1] = u.y;
+    res.data[2][1] = u.z;
+
+    res.data[0][2] = -f.x;
+    res.data[1][2] = -f.y;
+    res.data[2][2] = -f.z;
+
+    res.data[3][0] = -(s.x * eye.x + s.y * eye.y + s.z * eye.z);
+    res.data[3][1] = -(u.x * eye.x + u.y * eye.y + u.z * eye.z);
+    res.data[3][2] = (f.x * eye.x + f.y * eye.y + f.z * eye.z);
+    res.data[3][3] = 1.0f;
+    return res;
+}
+
+// mat4_t mat4_view(camera_t* cam) {
+//     float yaw_rad   = cam->yaw * (M_PI / 180.0f);
+//     float pitch_rad = cam->pitch * (M_PI / 180.0f);
+
+//     // In a Z-up world, +Y is usually "Forward" into the screen.
+//     vec3_t forward;
+//     forward.x = sinf(yaw_rad) * cosf(pitch_rad);
+//     forward.y = cosf(yaw_rad) * cosf(pitch_rad);
+//     forward.z = sinf(pitch_rad);
+
+//     vec3_t target   = {cam->pos.x + forward.x, cam->pos.y + forward.y, cam->pos.z + forward.z};
+//     vec3_t world_up = {0.0f, 0.0f, 1.0f};
+
+//     return mat4_look_at(cam.pos, target, world_up);
+// }
+
+void mat4_print(const char* label, mat4_t m) {
+    printf("%s:\n", label);
+    for (int i = 0; i < 4; i++) {
+        printf("  [ %f, %f, %f, %f ]\n", m.data[i][0], m.data[i][1], m.data[i][2], m.data[i][3]);
+    }
+    printf("\n");
 }

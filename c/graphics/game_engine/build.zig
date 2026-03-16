@@ -19,15 +19,17 @@ pub fn build(b: *std.Build) void {
     game_engine.addCSourceFile(.{ .file = b.path("src/core/logger.c"), .flags = c_flags });
     game_engine.addCSourceFile(.{ .file = b.path("src/core/math/mat4_math.c"), .flags = c_flags });
     game_engine.addCSourceFile(.{ .file = b.path("src/core/camera.c"), .flags = c_flags });
-    game_engine.addCSourceFile(.{ .file = b.path("src/modules/renderer/vulkan/vk_devices.c"), .flags = c_flags });
-    game_engine.addCSourceFile(.{ .file = b.path("src/modules/renderer/vulkan/vk_backend.c"), .flags = c_flags });
-    game_engine.addCSourceFile(.{ .file = b.path("src/modules/renderer/vulkan/vk_resources.c"), .flags = c_flags });
-    game_engine.addCSourceFile(.{ .file = b.path("src/modules/renderer/vulkan/vk_swapchain.c"), .flags = c_flags });
-    game_engine.addCSourceFile(.{ .file = b.path("src/modules/renderer/vulkan/vk_gpu_allocator.c"), .flags = c_flags });
-    game_engine.addCSourceFile(.{ .file = b.path("src/modules/renderer/vulkan/vk_pipeline.c"), .flags = c_flags });
-    game_engine.addCSourceFile(.{ .file = b.path("src/modules/renderer/vulkan/vk_commands.c"), .flags = c_flags });
+    game_engine.addCSourceFile(.{ .file = b.path("src/core/game_engine.c"), .flags = c_flags });
+    game_engine.addCSourceFile(.{ .file = b.path("src/modules/graphics/vulkan/vk_devices.c"), .flags = c_flags });
+    game_engine.addCSourceFile(.{ .file = b.path("src/modules/graphics/vulkan/vk_backend.c"), .flags = c_flags });
+    game_engine.addCSourceFile(.{ .file = b.path("src/modules/graphics/vulkan/vk_resources.c"), .flags = c_flags });
+    game_engine.addCSourceFile(.{ .file = b.path("src/modules/graphics/vulkan/vk_swapchain.c"), .flags = c_flags });
+    game_engine.addCSourceFile(.{ .file = b.path("src/modules/graphics/vulkan/vk_gpu_allocator.c"), .flags = c_flags });
+    game_engine.addCSourceFile(.{ .file = b.path("src/modules/graphics/vulkan/vk_pipeline.c"), .flags = c_flags });
+    game_engine.addCSourceFile(.{ .file = b.path("src/modules/graphics/vulkan/vk_commands.c"), .flags = c_flags });
     game_engine.addCSourceFile(.{ .file = b.path("src/modules/assets/image.c"), .flags = c_flags });
-    game_engine.addCSourceFile(.{ .file = b.path("src/platform/sdl_backend.c"), .flags = c_flags });
+    //game_engine.addCSourceFile(.{ .file = b.path("src/platform/platform.c"), .flags = c_flags });
+    game_engine.addCSourceFile(.{ .file = b.path("src/platform/sdl/sdl_backend.c"), .flags = c_flags });
 
     game_engine.addIncludePath(b.path(".vendor/volk"));
     game_engine.addIncludePath(b.path(".vendor/Vulkan-Headers/include"));
@@ -35,7 +37,7 @@ pub fn build(b: *std.Build) void {
     game_engine.addIncludePath(b.path(".vendor/stb/"));
     game_engine.addIncludePath(b.path("src"));
     game_engine.addIncludePath(b.path("src/modules"));
-    game_engine.addIncludePath(b.path("src/modules/renderer/include"));
+    game_engine.addIncludePath(b.path("src/modules/graphics/include"));
 
     if (target.result.os.tag == .windows) {
         game_engine.addIncludePath(b.path(".vendor/Vulkan/include"));

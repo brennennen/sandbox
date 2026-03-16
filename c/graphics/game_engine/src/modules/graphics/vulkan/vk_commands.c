@@ -1,6 +1,6 @@
 #include "vk_commands.h"
 #include "core/logger.h"
-#include "vk_devices.h"  // Needed for find_queue_families
+#include "vk_devices.h"
 
 bool vk_create_commands(renderer_t* r) {
     queue_family_indices_t indices = find_queue_families(r->physical_device, r->surface);

@@ -1,9 +1,9 @@
-#include "core/logger.h"
-#include "vk_types.h"
-#include "volk.h"
-#include <SDL3/SDL_vulkan.h>
 #include <stdlib.h>
 
+#include "core/logger.h"
+#include "platform/platform.h"
+#include "vk_types.h"
+#include "volk.h"
 
 #include "vk_devices.h"
 
@@ -40,14 +40,15 @@ static bool is_device_suitable(VkPhysicalDevice device, VkSurfaceKHR surface) {
            device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
 }
 
-bool vk_create_instance(renderer_t* r) {
+bool vk_create_instance(renderer_t* r, platform_t* platform) {
     if (volkInitialize() != VK_SUCCESS) {
         log_error("vulkan: could not find a Vulkan loader");
         return false;
     }
 
-    uint32_t           sdl_ext_count = 0;
-    const char* const* sdl_exts      = SDL_Vulkan_GetInstanceExtensions(&sdl_ext_count);
+    uint32_t           extensions_count = 0;
+    const char* const* extensions = platform_get_vulkan_extensions(platform, &extensions_count);
+    // const char* const* sdl_exts      = SDL_Vulkan_GetInstanceExtensions(&sdl_ext_count);
 
     VkApplicationInfo app_info = {
         .sType            = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -60,8 +61,8 @@ bool vk_create_instance(renderer_t* r) {
     VkInstanceCreateInfo create_info = {
         .sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pApplicationInfo        = &app_info,
-        .enabledExtensionCount   = sdl_ext_count,
-        .ppEnabledExtensionNames = sdl_exts,
+        .enabledExtensionCount   = extensions_count,
+        .ppEnabledExtensionNames = extensions,
 #ifdef DEBUG
         .enabledLayerCount   = 1,
         .ppEnabledLayerNames = layers,

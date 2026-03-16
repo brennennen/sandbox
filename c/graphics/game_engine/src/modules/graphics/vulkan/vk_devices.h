@@ -2,17 +2,19 @@
 #ifndef VK_DEVICES_H
 #define VK_DEVICES_H
 
-#include "vk_types.h"
-#include "volk.h"
 #include <stdint.h>
 
+#include "vk_types.h"
+#include "volk.h"
+
+#include "platform/platform.h"
 
 typedef struct {
     uint32_t graphics_family;
     bool     has_graphics;
 } queue_family_indices_t;
 
-bool vk_create_instance(renderer_t* r);
+bool vk_create_instance(renderer_t* r, platform_t* platform);
 bool vk_pick_physical_device(renderer_t* r);
 bool vk_create_logical_device(renderer_t* r);
 

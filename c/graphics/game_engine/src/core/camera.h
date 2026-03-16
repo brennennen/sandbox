@@ -10,4 +10,6 @@ typedef struct {
     float  fov;
 } camera_t;
 
+mat4_t camera_get_view_matrix(const camera_t* camera);
+
 #endif // CAMERA_H

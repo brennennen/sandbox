@@ -7,7 +7,7 @@
 
 #include "core/logger.h"
 #include "core/math/math_types.h"
-#include "renderer.h"
+#include "modules/graphics/graphics.h"
 #include "vk_commands.h"
 #include "vk_devices.h"
 #include "vk_pipeline.h"
@@ -17,10 +17,13 @@
 #include "volk.h"
 
 #include "modules/assets/image.h"
+#include "modules/graphics/graphics_types.h"
 
 #include "vk_gpu_allocator.h"
 
 #include "core/math/mat4_math.h"
+
+#include "modules/graphics/debug/debug_grid.h"
 
 const vertex_t vertices[] = {
     {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}}, // Top (Red)
@@ -42,25 +45,66 @@ const uint16_t square_indices[] = {
 };
 // clang-format on
 
-camera_t* renderer_get_camera(renderer_t* r) { return &r->camera; }
+void init_debug_grid(renderer_t* r) {
+    r->grid_vertex_count = 44;
+    size_t buffer_size   = r->grid_vertex_count * sizeof(vertex_t);
 
-renderer_t* renderer_create(SDL_Window* window, int width, int height) {
+    r->grid_buffer.allocation = gpu_heap_alloc(r->vertex_heap, buffer_size, 16);
+
+    VkBufferCreateInfo buffer_info = {
+        .sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size        = buffer_size,
+        .usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE
+    };
+    vkCreateBuffer(r->device, &buffer_info, NULL, &r->grid_buffer.buffer);
+    vkBindBufferMemory(
+        r->device, r->grid_buffer.buffer, r->vertex_heap->memory, r->grid_buffer.allocation.offset
+    );
+
+    vertex_t* data  = (vertex_t*)r->grid_buffer.allocation.mapped_ptr;
+    int       index = 0;
+    float     size  = 10.0f;
+    float     step  = 1.0f;
+
+    for (int i = 0; i <= 10; i++) {
+        float pos = -5.0f + (float)i * step;
+
+        // grid grey, highlight the center axes in white
+        vec4_t color = {0.3f, 0.3f, 0.3f, 1.0f};
+        if (i == 5)
+            color = (vec4_t){1.0f, 1.0f, 1.0f, 1.0f};
+
+        // Lines parallel to the X-axis (Varying X, Fixed Y, Z = 0)
+        data[index++] = (vertex_t){{-5.0f, pos, 0.0f}, color, {0, 0}};
+        data[index++] = (vertex_t){{5.0f, pos, 0.0f}, color, {0, 0}};
+
+        // Lines parallel to the Y-axis (Fixed X, Varying Y, Z = 0)
+        data[index++] = (vertex_t){{pos, -5.0f, 0.0f}, color, {0, 0}};
+        data[index++] = (vertex_t){{pos, 5.0f, 0.0f}, color, {0, 0}};
+    }
+}
+
+void update_uniform_buffer(renderer_t* r, mat4_t view) {
+    float  aspect = (float)r->swapchain_extent.width / (float)r->swapchain_extent.height;
+    mat4_t proj   = mat4_perspective(0.785f, aspect, 0.1f, 100.0f);
+    ubo_t  ubo    = {.view = view, .proj = proj};
+    memcpy(r->uniform_alloc.mapped_ptr, &ubo, sizeof(ubo));
+}
+
+renderer_t* renderer_create(platform_t* platform, int width, int height) {
     renderer_t* r = calloc(1, sizeof(struct renderer_t));
     if (!r) {
         log_error("renderer: failed to allocate memory for renderer_t");
         return NULL;
     }
 
-    r->camera.pos   = (vec3_t){0.0f, 0.0f, 0.0f};
-    r->camera.yaw   = 0.0f;
-    r->camera.pitch = 0.0f;
-
-    if (!vk_create_instance(r)) {
+    if (!vk_create_instance(r, platform)) {
         free(r);
         return NULL;
     }
 
-    if (!SDL_Vulkan_CreateSurface(window, r->instance, NULL, &r->surface)) {
+    if (!platform_create_vulkan_surface(platform, r->instance, &r->surface)) {
         log_error("vulkan: surface error: %s", SDL_GetError());
         renderer_destroy(r);
         return NULL;
@@ -233,6 +277,8 @@ renderer_t* renderer_create(SDL_Window* window, int width, int height) {
         return NULL;
     }
 
+    init_debug_grid(r);
+
     log_info("renderer: initialization complete");
     return r;
 }
@@ -243,10 +289,12 @@ void renderer_destroy(renderer_t* r) {
 
     if (r->device != VK_NULL_HANDLE) {
         vkDeviceWaitIdle(r->device);
-        if (r->vertex_buffer)
+        if (r->vertex_buffer) {
             vkDestroyBuffer(r->device, r->vertex_buffer, NULL);
-        if (r->index_buffer)
+        }
+        if (r->index_buffer) {
             vkDestroyBuffer(r->device, r->index_buffer, NULL);
+        }
         if (r->vertex_heap) {
             vkFreeMemory(r->device, r->vertex_heap->memory, NULL);
             free(r->vertex_heap);
@@ -254,6 +302,9 @@ void renderer_destroy(renderer_t* r) {
         if (r->device_heap) {
             vkFreeMemory(r->device, r->device_heap->memory, NULL);
             free(r->device_heap);
+        }
+        if (r->grid_buffer.buffer) {
+            vkDestroyBuffer(r->device, r->grid_buffer.buffer, NULL);
         }
 
         vk_destroy_graphics_pipeline(r);
@@ -288,20 +339,11 @@ void renderer_destroy(renderer_t* r) {
     log_info("vulkan: renderer destroyed cleanly");
 }
 
-void update_uniform_buffer(renderer_t* r) {
-    float  aspect = (float)r->swapchain_extent.width / (float)r->swapchain_extent.height;
-    mat4_t proj   = mat4_perspective(0.785f, aspect, 0.1f, 100.0f);
-    // proj.data[1][1] *= -1;
-    mat4_t view  = mat4_view(r->camera);
-    float  time  = (float)SDL_GetTicks() / 1000.0f;
-    mat4_t model = mat4_mul(mat4_rotate_y(time), mat4_translate((vec3_t){0.0f, 0.0f, -5.0f}));
-    ubo_t  ubo   = {.model = model, .view = view, .proj = proj};
-    memcpy(r->uniform_alloc.mapped_ptr, &ubo, sizeof(ubo));
-}
+void renderer_draw(renderer_t* r, platform_t* platform, mat4_t view) {
+    int w;
+    int h;
 
-void renderer_draw(renderer_t* r, SDL_Window* window) {
-    int w, h;
-    SDL_GetWindowSize(window, &w, &h);
+    platform_get_window_size(platform, &w, &h);
 
     if (w == 0 || h == 0) {
         return;
@@ -314,18 +356,16 @@ void renderer_draw(renderer_t* r, SDL_Window* window) {
         r->device, r->swapchain, UINT64_MAX, r->image_available_sem, VK_NULL_HANDLE, &image_index
     );
 
-    // Handle Resize/Out of Date
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-        int w, h;
-        SDL_GetWindowSize(window, &w, &h);
         vk_recreate_swapchain(r, w, h);
         return;
     }
 
-    update_uniform_buffer(r);
+    update_uniform_buffer(r, view);
 
     vkResetFences(r->device, 1, &r->in_flight_fence);
     vkResetCommandBuffer(r->command_buffer, 0);
+
     VkCommandBufferBeginInfo begin_info = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     vkBeginCommandBuffer(r->command_buffer, &begin_info);
 
@@ -338,6 +378,7 @@ void renderer_draw(renderer_t* r, SDL_Window* window) {
         .srcAccessMask    = 0,
         .dstAccessMask    = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
     };
+
     vkCmdPipelineBarrier(
         r->command_buffer,
         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -360,16 +401,36 @@ void renderer_draw(renderer_t* r, SDL_Window* window) {
         .clearValue  = {{{0.1f, 0.1f, 0.2f, 1.0f}}}
     };
 
+    VkRenderingAttachmentInfo depth_attachment = {
+        .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+        .imageView   = r->depth_view,
+        .imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+        .loadOp      = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp     = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .clearValue  = {.depthStencil = {1.0f, 0}} // 1.0 is the "farthest" depth
+    };
+
     VkRenderingInfo rendering_info = {
         .sType                = VK_STRUCTURE_TYPE_RENDERING_INFO,
         .renderArea           = {{0, 0}, {r->swapchain_extent.width, r->swapchain_extent.height}},
         .layerCount           = 1,
         .colorAttachmentCount = 1,
-        .pColorAttachments    = &color_attachment
+        .pColorAttachments    = &color_attachment,
+        .pDepthAttachment     = &depth_attachment
     };
 
     vkCmdBeginRendering(r->command_buffer, &rendering_info);
-    vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, r->graphics_pipeline);
+    VkViewport viewport = {
+        .x        = 0.0f,
+        .y        = (float)r->swapchain_extent.height, // Start at the bottom
+        .width    = (float)r->swapchain_extent.width,
+        .height   = -(float)r->swapchain_extent.height, // Negative height flips the Y axis
+        .minDepth = 0.0f,
+        .maxDepth = 1.0f
+    };
+    VkRect2D scissor = {{0, 0}, r->swapchain_extent};
+    vkCmdSetViewport(r->command_buffer, 0, 1, &viewport);
+    vkCmdSetScissor(r->command_buffer, 0, 1, &scissor);
 
     vkCmdBindDescriptorSets(
         r->command_buffer,
@@ -382,24 +443,48 @@ void renderer_draw(renderer_t* r, SDL_Window* window) {
         NULL
     );
 
-    VkViewport viewport = {
-        0.0f, 0.0f, (float)r->swapchain_extent.width, (float)r->swapchain_extent.height, 0.0f, 1.0f
-    };
-    VkRect2D scissor = {{0, 0}, r->swapchain_extent};
-    vkCmdSetViewport(r->command_buffer, 0, 1, &viewport);
-    vkCmdSetScissor(r->command_buffer, 0, 1, &scissor);
+    vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, r->graphics_pipeline);
 
-    float time = (float)SDL_GetTicks() / 1000.0f;
+    float  ticks             = platform_get_ticks(platform);
+    float  time              = (float)SDL_GetTicks() / 1000.0f;
+    mat4_t rx                = mat4_rotate_x(M_PI / 2.0f);
+    mat4_t rz                = mat4_rotate_z(time);
+    mat4_t t                 = mat4_translate((vec3_t){0.0f, 0.0f, 1.0f});
+    mat4_t combined_rotation = mat4_mul(rx, rz);
+    mat4_t square_model      = mat4_mul(combined_rotation, t);
 
     vkCmdPushConstants(
-        r->command_buffer, r->pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float), &time
+        r->command_buffer,
+        r->pipeline_layout,
+        VK_SHADER_STAGE_VERTEX_BIT,
+        0,
+        sizeof(mat4_t),
+        &square_model
     );
 
     VkDeviceSize offsets[] = {0};
     vkCmdBindVertexBuffers(r->command_buffer, 0, 1, &r->vertex_buffer, offsets);
     vkCmdBindIndexBuffer(r->command_buffer, r->index_buffer, 0, VK_INDEX_TYPE_UINT16);
     vkCmdDrawIndexed(r->command_buffer, 6, 1, 0, 0, 0);
+
+    vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, r->line_pipeline);
+
+    mat4_t identity = mat4_identity();
+    vkCmdPushConstants(
+        r->command_buffer,
+        r->pipeline_layout,
+        VK_SHADER_STAGE_VERTEX_BIT,
+        0,
+        sizeof(mat4_t),
+        &identity
+    );
+
+    VkDeviceSize g_offsets[] = {0};
+    vkCmdBindVertexBuffers(r->command_buffer, 0, 1, &r->grid_buffer.buffer, g_offsets);
+    vkCmdDraw(r->command_buffer, r->grid_vertex_count, 1, 0, 0);
+
     vkCmdEndRendering(r->command_buffer);
+
     barrier.oldLayout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     barrier.newLayout     = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
     barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
@@ -443,10 +528,4 @@ void renderer_draw(renderer_t* r, SDL_Window* window) {
     };
 
     vkQueuePresentKHR(r->graphics_queue, &present_info);
-
-    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-        int w, h;
-        SDL_GetWindowSize(SDL_GetWindowFromID(1), &w, &h);
-        vk_recreate_swapchain(r, w, h);
-    }
 }

@@ -3,13 +3,13 @@
 #include <string.h>
 
 #include "core/logger.h"
+#include "math.h"
 #include "modules/assets/image.h"
 #include "vk_gpu_allocator.h"
-#include "math.h"
 #include "vk_resources.h"
 
 gpu_allocation_t vk_create_staging_buffer(
-    renderer_t*  r,
+    graphics_t*  r,
     void*        data,
     VkDeviceSize size,
     VkBuffer*    out_buffer
@@ -36,7 +36,7 @@ gpu_allocation_t vk_create_staging_buffer(
     return alloc;
 }
 
-VkCommandBuffer vk_begin_single_time_commands(renderer_t* r) {
+VkCommandBuffer vk_begin_single_time_commands(graphics_t* r) {
     VkCommandBufferAllocateInfo alloc_info = {
         .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
@@ -56,7 +56,7 @@ VkCommandBuffer vk_begin_single_time_commands(renderer_t* r) {
     return cmd;
 }
 
-void vk_end_single_time_commands(renderer_t* r, VkCommandBuffer cmd) {
+void vk_end_single_time_commands(graphics_t* r, VkCommandBuffer cmd) {
     vkEndCommandBuffer(cmd);
 
     VkSubmitInfo submit_info = {
@@ -71,7 +71,7 @@ void vk_end_single_time_commands(renderer_t* r, VkCommandBuffer cmd) {
     vkFreeCommandBuffers(r->device, r->command_pool, 1, &cmd);
 }
 
-bool vk_create_texture(renderer_t* r, image_t* img) {
+bool vk_create_texture(graphics_t* r, image_t* img, vk_texture_t* out_tex) {
     VkBuffer         staging_buffer;
     gpu_allocation_t staging_alloc = vk_create_staging_buffer(
         r, img->pixels, img->size, &staging_buffer
@@ -90,39 +90,35 @@ bool vk_create_texture(renderer_t* r, image_t* img) {
         .sharingMode   = VK_SHARING_MODE_EXCLUSIVE,
         .samples       = VK_SAMPLE_COUNT_1_BIT,
     };
-    vkCreateImage(r->device, &image_info, NULL, &r->texture_image);
+    vkCreateImage(r->device, &image_info, NULL, &out_tex->image);
 
     VkMemoryRequirements mem_reqs;
-    vkGetImageMemoryRequirements(r->device, r->texture_image, &mem_reqs);
-    r->texture_allocation = gpu_heap_alloc(r->device_heap, mem_reqs.size, mem_reqs.alignment);
+    vkGetImageMemoryRequirements(r->device, out_tex->image, &mem_reqs);
+    out_tex->allocation = gpu_heap_alloc(r->device_heap, mem_reqs.size, mem_reqs.alignment);
     vkBindImageMemory(
-        r->device, r->texture_image, r->device_heap->memory, r->texture_allocation.offset
+        r->device, out_tex->image, r->device_heap->memory, out_tex->allocation.offset
     );
 
     vk_transition_image_layout(
-        r, r->texture_image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+        r, out_tex->image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
     );
-
-    vk_copy_buffer_to_image(r, staging_buffer, r->texture_image, img->width, img->height);
-
+    vk_copy_buffer_to_image(r, staging_buffer, out_tex->image, img->width, img->height);
     vk_transition_image_layout(
         r,
-        r->texture_image,
+        out_tex->image,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
     );
 
     VkImageViewCreateInfo view_info = {
         .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image            = r->texture_image,
+        .image            = out_tex->image,
         .viewType         = VK_IMAGE_VIEW_TYPE_2D,
         .format           = VK_FORMAT_R8G8B8A8_SRGB,
         .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}
     };
-    if (vkCreateImageView(r->device, &view_info, NULL, &r->texture_view) != VK_SUCCESS) {
-        log_error("vulkan: failed to create texture image view");
+    if (vkCreateImageView(r->device, &view_info, NULL, &out_tex->view) != VK_SUCCESS)
         return false;
-    }
 
     VkSamplerCreateInfo sampler_info = {
         .sType        = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
@@ -132,13 +128,13 @@ bool vk_create_texture(renderer_t* r, image_t* img) {
         .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
         .borderColor  = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
     };
-    vkCreateSampler(r->device, &sampler_info, NULL, &r->texture_sampler);
+    vkCreateSampler(r->device, &sampler_info, NULL, &out_tex->sampler);
 
     vkDestroyBuffer(r->device, staging_buffer, NULL);
     return true;
 }
 
-bool vk_create_dummy_texture(renderer_t* r) {
+bool vk_create_dummy_texture(graphics_t* r) {
     uint32_t pixels[] = {
         0xFFFF00FF,
         0xFF000000,
@@ -218,7 +214,7 @@ bool vk_create_dummy_texture(renderer_t* r) {
 }
 
 void vk_transition_image_layout(
-    renderer_t*   r,
+    graphics_t*   r,
     VkImage       image,
     VkImageLayout old_layout,
     VkImageLayout new_layout
@@ -277,7 +273,7 @@ void vk_transition_image_layout(
     vkFreeCommandBuffers(r->device, r->command_pool, 1, &cmd);
 }
 
-static void copy_buffer(renderer_t* r, VkBuffer src, VkBuffer dst, VkDeviceSize size) {
+static void copy_buffer(graphics_t* r, VkBuffer src, VkBuffer dst, VkDeviceSize size) {
     VkCommandBufferAllocateInfo alloc_info = {
         .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
@@ -311,7 +307,7 @@ static void copy_buffer(renderer_t* r, VkBuffer src, VkBuffer dst, VkDeviceSize 
 }
 
 void vk_copy_buffer_to_image(
-    renderer_t* r,
+    graphics_t* r,
     VkBuffer    buffer,
     VkImage     image,
     uint32_t    width,
@@ -358,7 +354,7 @@ void vk_copy_buffer_to_image(
 }
 
 VkBuffer vk_create_static_buffer(
-    renderer_t*        r,
+    graphics_t*        r,
     void*              data,
     VkDeviceSize       size,
     VkBufferUsageFlags usage
@@ -399,7 +395,7 @@ VkBuffer vk_create_static_buffer(
     return device_buffer;
 }
 
-void vk_transition_depth_layout(renderer_t* r, VkImage image) {
+void vk_transition_depth_layout(graphics_t* r, VkImage image) {
     VkCommandBuffer cmd = vk_begin_single_time_commands(r);
 
     VkImageMemoryBarrier barrier = {
@@ -408,9 +404,7 @@ void vk_transition_depth_layout(renderer_t* r, VkImage image) {
         .newLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
         .image     = image,
         .subresourceRange =
-            {.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
-             .levelCount = 1,
-             .layerCount = 1},
+            {.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .layerCount = 1},
         .srcAccessMask = 0,
         .dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
                          VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
@@ -432,7 +426,7 @@ void vk_transition_depth_layout(renderer_t* r, VkImage image) {
     vk_end_single_time_commands(r, cmd);
 }
 
-bool vk_setup_depth_buffer(renderer_t* r, uint32_t width, uint32_t height) {
+bool vk_setup_depth_buffer(graphics_t* r, uint32_t width, uint32_t height) {
     VkImageCreateInfo depth_info = {
         .sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .imageType     = VK_IMAGE_TYPE_2D,

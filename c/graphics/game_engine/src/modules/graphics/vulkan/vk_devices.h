@@ -14,9 +14,9 @@ typedef struct {
     bool     has_graphics;
 } queue_family_indices_t;
 
-bool vk_create_instance(renderer_t* r, platform_t* platform);
-bool vk_pick_physical_device(renderer_t* r);
-bool vk_create_logical_device(renderer_t* r);
+bool vk_create_instance(graphics_t* r, platform_t* platform);
+bool vk_pick_physical_device(graphics_t* r);
+bool vk_create_logical_device(graphics_t* r);
 
 queue_family_indices_t find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface);
 

@@ -2,7 +2,7 @@
 #include "core/logger.h"
 #include "vk_devices.h"
 
-bool vk_create_commands(renderer_t* r) {
+bool vk_create_commands(graphics_t* r) {
     queue_family_indices_t indices = find_queue_families(r->physical_device, r->surface);
 
     VkCommandPoolCreateInfo pool_info = {
@@ -31,7 +31,7 @@ bool vk_create_commands(renderer_t* r) {
     return true;
 }
 
-void vk_copy_buffer(renderer_t* r, VkBuffer src, VkBuffer dst, VkDeviceSize size) {
+void vk_copy_buffer(graphics_t* r, VkBuffer src, VkBuffer dst, VkDeviceSize size) {
     VkCommandBufferAllocateInfo alloc_info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
@@ -64,7 +64,7 @@ void vk_copy_buffer(renderer_t* r, VkBuffer src, VkBuffer dst, VkDeviceSize size
     vkFreeCommandBuffers(r->device, r->command_pool, 1, &temp_cmd);
 }
 
-void vk_destroy_commands(renderer_t* r) {
+void vk_destroy_commands(graphics_t* r) {
     if (r->command_pool) {
         vkDestroyCommandPool(r->device, r->command_pool, NULL);
     }

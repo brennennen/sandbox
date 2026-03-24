@@ -12,7 +12,6 @@ typedef struct {
     size_t   size;
 } image_t;
 
-// API
 bool image_load(const char* path, image_t* out_image);
 void image_free(image_t* image);
 

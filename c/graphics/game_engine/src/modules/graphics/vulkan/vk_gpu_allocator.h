@@ -12,7 +12,7 @@
 
 // typedef struct gpu_heap_t gpu_heap_t;
 
-gpu_heap_t* gpu_heap_create(renderer_t* r, VkDeviceSize size, VkMemoryPropertyFlags properties);
+gpu_heap_t* gpu_heap_create(graphics_t* r, VkDeviceSize size, VkMemoryPropertyFlags properties);
 
 gpu_allocation_t gpu_heap_alloc(gpu_heap_t* heap, VkDeviceSize size, VkDeviceSize alignment);
 

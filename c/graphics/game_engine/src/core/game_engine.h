@@ -5,14 +5,16 @@
 
 #include "core/camera.h"
 
+#include "modules/graphics/graphics_types.h"
+
 typedef struct platform_t platform_t;
-typedef struct renderer_t renderer_t;
+typedef struct graphics_t graphics_t;
 
 typedef struct {
     bool is_running;
 
     platform_t* platform;
-    renderer_t* renderer;
+    graphics_t* graphics;
     // physics_t* physics;
     // audio_engine_t* audio;
 
@@ -21,6 +23,13 @@ typedef struct {
     // scene_t* active_scene;
 
     uint64_t last_time;
+
+    int      frame_count;
+    uint64_t fps_last_time;
+
+    mesh_handle_t test_mesh;
+
+    texture_handle_t test_texture;
 
 } game_engine_t;
 

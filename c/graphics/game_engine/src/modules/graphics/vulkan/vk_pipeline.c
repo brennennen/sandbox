@@ -38,40 +38,67 @@ VkShaderModule vk_create_shader_module(VkDevice device, const char* path) {
     return shader_module;
 }
 
-// Internal helper to avoid code duplication
-static VkPipeline create_pipeline_internal(renderer_t* r, VkPrimitiveTopology topology) {
-    VkShaderModule vert_mod = vk_create_shader_module(r->device, "shaders/triangle.vert.spv");
-    VkShaderModule frag_mod = vk_create_shader_module(r->device, "shaders/triangle.frag.spv");
+static VkPipeline create_pipeline_internal(
+    graphics_t*         r,
+    VkPrimitiveTopology topology,
+    const char*         vert_path,
+    const char*         frag_path
+) {
+
+    VkShaderModule vert_mod = vk_create_shader_module(r->device, vert_path);
+    VkShaderModule frag_mod = vk_create_shader_module(r->device, frag_path);
 
     VkPipelineShaderStageCreateInfo stages[2] = {
-        {.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-         .stage  = VK_SHADER_STAGE_VERTEX_BIT,
-         .module = vert_mod,
-         .pName  = "main"},
-        {.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-         .stage  = VK_SHADER_STAGE_FRAGMENT_BIT,
-         .module = frag_mod,
-         .pName  = "main"}
+        {
+            .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .stage  = VK_SHADER_STAGE_VERTEX_BIT,
+            .module = vert_mod,
+            .pName  = "main",
+        },
+        {
+            .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .stage  = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .module = frag_mod,
+            .pName  = "main",
+        }
     };
 
     VkVertexInputBindingDescription binding_desc = {
         .binding = 0, .stride = sizeof(vertex_t), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX
     };
 
-    VkVertexInputAttributeDescription attr_descs[3] = {
-        {.location = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = offsetof(vertex_t, pos)},
-        {.location = 1,
-         .format   = VK_FORMAT_R32G32B32A32_SFLOAT,
-         .offset   = offsetof(vertex_t, color)},
-        {.location = 2, .format = VK_FORMAT_R32G32_SFLOAT, .offset = offsetof(vertex_t, uv)}
-    };
+    VkVertexInputAttributeDescription attribute_descriptions[4] = {0};
+
+    // Position
+    attribute_descriptions[0].binding  = 0;
+    attribute_descriptions[0].location = 0;
+    attribute_descriptions[0].format   = VK_FORMAT_R32G32B32_SFLOAT;
+    attribute_descriptions[0].offset   = offsetof(vertex_t, pos);
+
+    // Color
+    attribute_descriptions[1].binding  = 0;
+    attribute_descriptions[1].location = 1;
+    attribute_descriptions[1].format   = VK_FORMAT_R32G32B32A32_SFLOAT;
+    attribute_descriptions[1].offset   = offsetof(vertex_t, color);
+
+    // UV
+    attribute_descriptions[2].binding  = 0;
+    attribute_descriptions[2].location = 2;
+    attribute_descriptions[2].format   = VK_FORMAT_R32G32_SFLOAT;
+    attribute_descriptions[2].offset   = offsetof(vertex_t, uv);
+
+    // Normal
+    attribute_descriptions[3].binding  = 0;
+    attribute_descriptions[3].location = 3;
+    attribute_descriptions[3].format   = VK_FORMAT_R32G32B32_SFLOAT;
+    attribute_descriptions[3].offset   = offsetof(vertex_t, normal);
 
     VkPipelineVertexInputStateCreateInfo vertex_input = {
         .sType                         = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         .vertexBindingDescriptionCount = 1,
         .pVertexBindingDescriptions    = &binding_desc,
-        .vertexAttributeDescriptionCount = 3,
-        .pVertexAttributeDescriptions    = attr_descs
+        .vertexAttributeDescriptionCount = 4,
+        .pVertexAttributeDescriptions    = attribute_descriptions
     };
 
     VkPipelineInputAssemblyStateCreateInfo input_assembly = {
@@ -84,8 +111,8 @@ static VkPipeline create_pipeline_internal(renderer_t* r, VkPrimitiveTopology to
         .sType       = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
         .polygonMode = VK_POLYGON_MODE_FILL,
         .lineWidth   = 1.0f,
-        .cullMode = VK_CULL_MODE_BACK_BIT,
-        .frontFace = VK_FRONT_FACE_CLOCKWISE,
+        .cullMode    = VK_CULL_MODE_BACK_BIT,
+        .frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE,
     };
 
     VkPipelineMultisampleStateCreateInfo multisampling = {
@@ -143,7 +170,7 @@ static VkPipeline create_pipeline_internal(renderer_t* r, VkPrimitiveTopology to
         .pDepthStencilState  = &depth_stencil,
         .pColorBlendState    = &color_blending,
         .pDynamicState       = &dynamic_info,
-        .layout              = r->pipeline_layout, // Shared layout
+        .layout              = r->pipeline_layout,
     };
 
     VkPipeline pipeline;
@@ -158,7 +185,7 @@ static VkPipeline create_pipeline_internal(renderer_t* r, VkPrimitiveTopology to
     return pipeline;
 }
 
-bool vk_create_graphics_pipeline(renderer_t* r) {
+bool vk_create_graphics_pipeline(graphics_t* r) {
     VkDescriptorSetLayoutBinding bindings[2] = {
         {
             .binding         = 0,
@@ -204,13 +231,20 @@ bool vk_create_graphics_pipeline(renderer_t* r) {
         return false;
     }
 
-    r->graphics_pipeline = create_pipeline_internal(r, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-    r->line_pipeline     = create_pipeline_internal(r, VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
+    r->graphics_pipeline = create_pipeline_internal(
+        r,
+        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        "shaders/triangle.vert.spv",
+        "shaders/triangle.frag.spv"
+    );
+    r->line_pipeline = create_pipeline_internal(
+        r, VK_PRIMITIVE_TOPOLOGY_LINE_LIST, "shaders/unlit.vert.spv", "shaders/unlit.frag.spv"
+    );
 
     return (r->graphics_pipeline != VK_NULL_HANDLE && r->line_pipeline != VK_NULL_HANDLE);
 }
 
-void vk_destroy_graphics_pipeline(renderer_t* r) {
+void vk_destroy_graphics_pipeline(graphics_t* r) {
     if (r->graphics_pipeline)
         vkDestroyPipeline(r->device, r->graphics_pipeline, NULL);
     if (r->pipeline_layout)

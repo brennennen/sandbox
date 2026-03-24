@@ -40,7 +40,7 @@ static bool is_device_suitable(VkPhysicalDevice device, VkSurfaceKHR surface) {
            device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
 }
 
-bool vk_create_instance(renderer_t* r, platform_t* platform) {
+bool vk_create_instance(graphics_t* r, platform_t* platform) {
     if (volkInitialize() != VK_SUCCESS) {
         log_error("vulkan: could not find a Vulkan loader");
         return false;
@@ -81,7 +81,7 @@ bool vk_create_instance(renderer_t* r, platform_t* platform) {
     return true;
 }
 
-bool vk_pick_physical_device(renderer_t* r) {
+bool vk_pick_physical_device(graphics_t* r) {
     uint32_t device_count = 0;
     vkEnumeratePhysicalDevices(r->instance, &device_count, NULL);
 
@@ -108,7 +108,7 @@ bool vk_pick_physical_device(renderer_t* r) {
     return r->physical_device != VK_NULL_HANDLE;
 }
 
-bool vk_create_logical_device(renderer_t* r) {
+bool vk_create_logical_device(graphics_t* r) {
     queue_family_indices_t indices = find_queue_families(r->physical_device, r->surface);
 
     float                   queue_priority    = 1.0f;

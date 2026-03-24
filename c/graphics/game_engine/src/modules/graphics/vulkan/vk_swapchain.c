@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "core/logger.h"
 
-bool vk_create_swapchain(renderer_t* r, int width, int height) {
+bool vk_create_swapchain(graphics_t* r, int width, int height) {
     VkSurfaceCapabilitiesKHR capabilities;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(r->physical_device, r->surface, &capabilities);
 
@@ -72,7 +72,7 @@ bool vk_create_swapchain(renderer_t* r, int width, int height) {
     return true;
 }
 
-void vk_recreate_swapchain(renderer_t* r, int width, int height) {
+void vk_recreate_swapchain(graphics_t* r, int width, int height) {
     if (width == 0 || height == 0) {
         return;
     }
@@ -82,7 +82,7 @@ void vk_recreate_swapchain(renderer_t* r, int width, int height) {
     log_info("vulkan: swapchain recreated for %dx%d", width, height);
 }
 
-void vk_destroy_swapchain(renderer_t* r) {
+void vk_destroy_swapchain(graphics_t* r) {
     if (!r->device || !r->swapchain) return;
 
     for (uint32_t i = 0; i < r->swapchain_image_count; i++) {

@@ -1,4 +1,5 @@
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -17,6 +18,7 @@
 #include "volk.h"
 
 #include "modules/assets/image.h"
+#include "modules/assets/obj.h"
 #include "modules/graphics/graphics_types.h"
 
 #include "vk_gpu_allocator.h"
@@ -25,28 +27,11 @@
 
 #include "modules/graphics/debug/debug_grid.h"
 
-const vertex_t vertices[] = {
-    {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}}, // Top (Red)
-    {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},  // Bottom Right (Green)
-    {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}  // Bottom Left (Blue)
-};
+static void init_debug_grid(graphics_t* r) {
+    int   grid_size = 10;
+    float grid_step = 1.0f;
 
-const vertex_t square_vertices[] = {
-    // Pos          // Color (RGBA: All White) // UV
-    {{-0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}}, // Top-Left
-    {{0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}},  // Top-Right
-    {{0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},   // Bottom-Right
-    {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},  // Bottom-Left
-};
-// clang-format off
-const uint16_t square_indices[] = {
-    0, 1, 2,  // Triangle 1: Top-Left -> Top-Right -> Bottom-Right
-    2, 3, 0   // Triangle 2: Bottom-Right -> Bottom-Left -> Top-Left
-};
-// clang-format on
-
-void init_debug_grid(renderer_t* r) {
-    r->grid_vertex_count = 44;
+    r->grid_vertex_count = debug_grid_vertex_count(grid_size);
     size_t buffer_size   = r->grid_vertex_count * sizeof(vertex_t);
 
     r->grid_buffer.allocation = gpu_heap_alloc(r->vertex_heap, buffer_size, 16);
@@ -62,87 +47,36 @@ void init_debug_grid(renderer_t* r) {
         r->device, r->grid_buffer.buffer, r->vertex_heap->memory, r->grid_buffer.allocation.offset
     );
 
-    vertex_t* data  = (vertex_t*)r->grid_buffer.allocation.mapped_ptr;
-    int       index = 0;
-    float     size  = 10.0f;
-    float     step  = 1.0f;
-
-    for (int i = 0; i <= 10; i++) {
-        float pos = -5.0f + (float)i * step;
-
-        // grid grey, highlight the center axes in white
-        vec4_t color = {0.3f, 0.3f, 0.3f, 1.0f};
-        if (i == 5)
-            color = (vec4_t){1.0f, 1.0f, 1.0f, 1.0f};
-
-        // Lines parallel to the X-axis (Varying X, Fixed Y, Z = 0)
-        data[index++] = (vertex_t){{-5.0f, pos, 0.0f}, color, {0, 0}};
-        data[index++] = (vertex_t){{5.0f, pos, 0.0f}, color, {0, 0}};
-
-        // Lines parallel to the Y-axis (Fixed X, Varying Y, Z = 0)
-        data[index++] = (vertex_t){{pos, -5.0f, 0.0f}, color, {0, 0}};
-        data[index++] = (vertex_t){{pos, 5.0f, 0.0f}, color, {0, 0}};
-    }
+    vertex_t* mapped_data = (vertex_t*)r->grid_buffer.allocation.mapped_ptr;
+    generate_grid(mapped_data, grid_size, grid_step);
 }
 
-void update_uniform_buffer(renderer_t* r, mat4_t view) {
+void update_uniform_buffer(graphics_t* r, mat4_t view) {
     float  aspect = (float)r->swapchain_extent.width / (float)r->swapchain_extent.height;
     mat4_t proj   = mat4_perspective(0.785f, aspect, 0.1f, 100.0f);
     ubo_t  ubo    = {.view = view, .proj = proj};
     memcpy(r->uniform_alloc.mapped_ptr, &ubo, sizeof(ubo));
 }
 
-renderer_t* renderer_create(platform_t* platform, int width, int height) {
-    renderer_t* r = calloc(1, sizeof(struct renderer_t));
-    if (!r) {
-        log_error("renderer: failed to allocate memory for renderer_t");
-        return NULL;
-    }
-
-    if (!vk_create_instance(r, platform)) {
-        free(r);
-        return NULL;
-    }
-
-    if (!platform_create_vulkan_surface(platform, r->instance, &r->surface)) {
-        log_error("vulkan: surface error: %s", SDL_GetError());
-        renderer_destroy(r);
-        return NULL;
-    }
-
-    if (!vk_pick_physical_device(r)) {
-        renderer_destroy(r);
-        return NULL;
-    }
-
-    if (!vk_create_logical_device(r)) {
-        renderer_destroy(r);
-        return NULL;
-    }
-
+static bool init_memory_heaps(graphics_t* r) {
     r->vertex_heap = gpu_heap_create(
         r,
-        1024 * 1024 * 128, // 128MB Staging
+        1024 * 1024 * 128,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
     );
-
-    r->device_heap = gpu_heap_create(
-        r,
-        1024 * 1024 * 256, // 256MB Device Local
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-    );
+    r->device_heap = gpu_heap_create(r, 1024 * 1024 * 256, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     if (!r->vertex_heap || !r->device_heap) {
         log_error("vulkan: failed to create GPU memory heaps");
-        renderer_destroy(r);
-        return NULL;
+        return false;
     }
+    return true;
+}
 
-    VkDeviceSize ubo_size = sizeof(ubo_t);
-
+static bool init_uniform_buffer(graphics_t* r) {
     VkBufferCreateInfo ubo_info = {
         .sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .size        = ubo_size,
+        .size        = sizeof(ubo_t),
         .usage       = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
     };
@@ -157,113 +91,31 @@ renderer_t* renderer_create(platform_t* platform, int width, int height) {
         r->device, r->uniform_buffer, r->vertex_heap->memory, r->uniform_alloc.offset
     );
 
-    if (!vk_create_commands(r)) {
-        log_error("vulkan: failed to create command pool");
-        renderer_destroy(r);
-        return NULL;
-    }
+    return true;
+}
 
-    if (!vk_setup_depth_buffer(r, width, height)) {
-        renderer_destroy(r);
-        return NULL;
-    }
-
-    const char* test_image_path = "test.png";
-    image_t     img;
-    bool        loaded = image_load(test_image_path, &img);
-
-    if (loaded) {
-        vk_create_texture(r, &img);
-        image_free(&img);
-    } else {
-        log_warn("vulkan: could not find '%s', using placeholder", test_image_path);
-        image_t dummy = image_create_placeholder();
-        vk_create_texture(r, &dummy);
-        image_free(&dummy);
-    }
-
-    r->vertex_buffer = vk_create_static_buffer(
-        r, (void*)square_vertices, sizeof(square_vertices), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
-    );
-
-    r->index_buffer = vk_create_static_buffer(
-        r, (void*)square_indices, sizeof(square_indices), VK_BUFFER_USAGE_INDEX_BUFFER_BIT
-    );
-
-    if (!r->vertex_buffer || !r->index_buffer) {
-        log_error("vulkan: failed to create geometry buffers");
-        renderer_destroy(r);
-        return NULL;
-    }
-
-    if (!vk_create_swapchain(r, width, height)) {
-        log_error("vulkan: failed to create swapchain");
-        renderer_destroy(r);
-        return NULL;
-    }
-
-    if (!vk_create_graphics_pipeline(r)) {
-        log_error("vulkan: failed to build graphics pipeline");
-        renderer_destroy(r);
-        return NULL;
-    }
-
+static bool init_descriptors(graphics_t* r) {
     VkDescriptorPoolSize pool_sizes[] = {
         {.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1},
         {.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = 1},
     };
+
     VkDescriptorPoolCreateInfo pool_info = {
         .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .poolSizeCount = 2,
         .pPoolSizes    = pool_sizes,
         .maxSets       = 1
     };
+
     if (vkCreateDescriptorPool(r->device, &pool_info, NULL, &r->descriptor_pool) != VK_SUCCESS) {
         log_error("vulkan: failed to create descriptor pool");
-        renderer_destroy(r);
-        return NULL;
+        return false;
     }
 
-    VkDescriptorSetAllocateInfo alloc_info = {
-        .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-        .descriptorPool     = r->descriptor_pool,
-        .descriptorSetCount = 1,
-        .pSetLayouts        = &r->descriptor_set_layout,
-    };
-    vkAllocateDescriptorSets(r->device, &alloc_info, &r->descriptor_set);
+    return true;
+}
 
-    VkDescriptorBufferInfo buffer_info = {
-        .buffer = r->uniform_buffer,
-        .offset = r->uniform_alloc.offset,
-        .range  = sizeof(ubo_t),
-    };
-
-    VkDescriptorImageInfo image_info = {
-        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        .imageView   = r->texture_view,
-        .sampler     = r->texture_sampler,
-    };
-
-    VkWriteDescriptorSet descriptor_writes[2] = {
-        {
-            .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet          = r->descriptor_set,
-            .dstBinding      = 0,
-            .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .descriptorCount = 1,
-            .pBufferInfo     = &buffer_info,
-        },
-        {
-            .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet          = r->descriptor_set,
-            .dstBinding      = 1,
-            .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .descriptorCount = 1,
-            .pImageInfo      = &image_info,
-        }
-    };
-    vkUpdateDescriptorSets(r->device, 2, descriptor_writes, 0, NULL);
-
+static bool init_sync_objects(graphics_t* r) {
     VkSemaphoreCreateInfo sem_info   = {.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     VkFenceCreateInfo     fence_info = {
             .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, .flags = VK_FENCE_CREATE_SIGNALED_BIT
@@ -273,17 +125,50 @@ renderer_t* renderer_create(platform_t* platform, int width, int height) {
         vkCreateSemaphore(r->device, &sem_info, NULL, &r->render_finished_sem) != VK_SUCCESS ||
         vkCreateFence(r->device, &fence_info, NULL, &r->in_flight_fence) != VK_SUCCESS) {
         log_error("vulkan: failed to create sync objects");
-        renderer_destroy(r);
+        return false;
+    }
+    return true;
+}
+
+graphics_t* graphics_create(platform_t* platform, int width, int height) {
+    graphics_t* r = calloc(1, sizeof(struct graphics_t));
+    if (!r) {
+        log_error("renderer: failed to allocate memory for graphics_t");
         return NULL;
+    }
+
+    if (!vk_create_instance(r, platform) ||
+        !platform_create_vulkan_surface(platform, r->instance, &r->surface) ||
+        !vk_pick_physical_device(r) || !vk_create_logical_device(r)) {
+        goto init_failed;
+    }
+
+    if (!init_memory_heaps(r) || !init_uniform_buffer(r) || !vk_create_commands(r) ||
+        !vk_setup_depth_buffer(r, width, height)) {
+        goto init_failed;
+    }
+
+    if (!vk_create_swapchain(r, width, height) || !vk_create_graphics_pipeline(r) ||
+        !init_descriptors(r)) {
+        goto init_failed;
+    }
+
+    if (!init_sync_objects(r)) {
+        goto init_failed;
     }
 
     init_debug_grid(r);
 
     log_info("renderer: initialization complete");
     return r;
+
+init_failed:
+    log_error("renderer: initialization aborted due to failure");
+    graphics_destroy(r);
+    return NULL;
 }
 
-void renderer_destroy(renderer_t* r) {
+void graphics_destroy(graphics_t* r) {
     if (r == NULL)
         return;
 
@@ -306,6 +191,8 @@ void renderer_destroy(renderer_t* r) {
         if (r->grid_buffer.buffer) {
             vkDestroyBuffer(r->device, r->grid_buffer.buffer, NULL);
         }
+
+        vkDestroyBuffer(r->device, r->model_index_buffer, NULL);
 
         vk_destroy_graphics_pipeline(r);
         vk_destroy_commands(r);
@@ -339,15 +226,11 @@ void renderer_destroy(renderer_t* r) {
     log_info("vulkan: renderer destroyed cleanly");
 }
 
-void renderer_draw(renderer_t* r, platform_t* platform, mat4_t view) {
-    int w;
-    int h;
-
+static int32_t begin_frame(graphics_t* r, platform_t* platform, mat4_t view) {
+    int w, h;
     platform_get_window_size(platform, &w, &h);
-
-    if (w == 0 || h == 0) {
-        return;
-    }
+    if (w == 0 || h == 0)
+        return -1;
 
     vkWaitForFences(r->device, 1, &r->in_flight_fence, VK_TRUE, UINT64_MAX);
 
@@ -358,7 +241,7 @@ void renderer_draw(renderer_t* r, platform_t* platform, mat4_t view) {
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
         vk_recreate_swapchain(r, w, h);
-        return;
+        return -1;
     }
 
     update_uniform_buffer(r, view);
@@ -378,16 +261,15 @@ void renderer_draw(renderer_t* r, platform_t* platform, mat4_t view) {
         .srcAccessMask    = 0,
         .dstAccessMask    = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
     };
-
     vkCmdPipelineBarrier(
         r->command_buffer,
         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
         0,
         0,
-        nullptr,
+        NULL,
         0,
-        nullptr,
+        NULL,
         1,
         &barrier
     );
@@ -407,7 +289,7 @@ void renderer_draw(renderer_t* r, platform_t* platform, mat4_t view) {
         .imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
         .loadOp      = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp     = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .clearValue  = {.depthStencil = {1.0f, 0}} // 1.0 is the "farthest" depth
+        .clearValue  = {.depthStencil = {1.0f, 0}}
     };
 
     VkRenderingInfo rendering_info = {
@@ -420,11 +302,12 @@ void renderer_draw(renderer_t* r, platform_t* platform, mat4_t view) {
     };
 
     vkCmdBeginRendering(r->command_buffer, &rendering_info);
+
     VkViewport viewport = {
         .x        = 0.0f,
-        .y        = (float)r->swapchain_extent.height, // Start at the bottom
+        .y        = (float)r->swapchain_extent.height,
         .width    = (float)r->swapchain_extent.width,
-        .height   = -(float)r->swapchain_extent.height, // Negative height flips the Y axis
+        .height   = -(float)r->swapchain_extent.height,
         .minDepth = 0.0f,
         .maxDepth = 1.0f
     };
@@ -432,72 +315,30 @@ void renderer_draw(renderer_t* r, platform_t* platform, mat4_t view) {
     vkCmdSetViewport(r->command_buffer, 0, 1, &viewport);
     vkCmdSetScissor(r->command_buffer, 0, 1, &scissor);
 
-    vkCmdBindDescriptorSets(
-        r->command_buffer,
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        r->pipeline_layout,
-        0,
-        1,
-        &r->descriptor_set,
-        0,
-        NULL
-    );
+    return (int32_t)image_index;
+}
 
-    vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, r->graphics_pipeline);
-
-    float  ticks             = platform_get_ticks(platform);
-    float  time              = (float)SDL_GetTicks() / 1000.0f;
-    mat4_t rx                = mat4_rotate_x(M_PI / 2.0f);
-    mat4_t rz                = mat4_rotate_z(time);
-    mat4_t t                 = mat4_translate((vec3_t){0.0f, 0.0f, 1.0f});
-    mat4_t combined_rotation = mat4_mul(rx, rz);
-    mat4_t square_model      = mat4_mul(combined_rotation, t);
-
-    vkCmdPushConstants(
-        r->command_buffer,
-        r->pipeline_layout,
-        VK_SHADER_STAGE_VERTEX_BIT,
-        0,
-        sizeof(mat4_t),
-        &square_model
-    );
-
-    VkDeviceSize offsets[] = {0};
-    vkCmdBindVertexBuffers(r->command_buffer, 0, 1, &r->vertex_buffer, offsets);
-    vkCmdBindIndexBuffer(r->command_buffer, r->index_buffer, 0, VK_INDEX_TYPE_UINT16);
-    vkCmdDrawIndexed(r->command_buffer, 6, 1, 0, 0, 0);
-
-    vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, r->line_pipeline);
-
-    mat4_t identity = mat4_identity();
-    vkCmdPushConstants(
-        r->command_buffer,
-        r->pipeline_layout,
-        VK_SHADER_STAGE_VERTEX_BIT,
-        0,
-        sizeof(mat4_t),
-        &identity
-    );
-
-    VkDeviceSize g_offsets[] = {0};
-    vkCmdBindVertexBuffers(r->command_buffer, 0, 1, &r->grid_buffer.buffer, g_offsets);
-    vkCmdDraw(r->command_buffer, r->grid_vertex_count, 1, 0, 0);
-
+static void end_frame(graphics_t* r, uint32_t image_index) {
     vkCmdEndRendering(r->command_buffer);
 
-    barrier.oldLayout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    barrier.newLayout     = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    barrier.dstAccessMask = 0;
+    VkImageMemoryBarrier barrier = {
+        .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .oldLayout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .newLayout        = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        .image            = r->swapchain_images[image_index],
+        .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1},
+        .srcAccessMask    = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        .dstAccessMask    = 0
+    };
     vkCmdPipelineBarrier(
         r->command_buffer,
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
         0,
         0,
-        nullptr,
+        NULL,
         0,
-        nullptr,
+        NULL,
         1,
         &barrier
     );
@@ -515,7 +356,6 @@ void renderer_draw(renderer_t* r, platform_t* platform, mat4_t view) {
                   .signalSemaphoreCount = 1,
                   .pSignalSemaphores    = &r->render_finished_sem,
     };
-
     vkQueueSubmit(r->graphics_queue, 1, &submit_info, r->in_flight_fence);
 
     VkPresentInfoKHR present_info = {
@@ -526,6 +366,186 @@ void renderer_draw(renderer_t* r, platform_t* platform, mat4_t view) {
         .pSwapchains        = &r->swapchain,
         .pImageIndices      = &image_index,
     };
-
     vkQueuePresentKHR(r->graphics_queue, &present_info);
+}
+
+mesh_handle_t graphics_upload_mesh(graphics_t* graphics, mesh_data_t* data) {
+    if (graphics->mesh_count >= MAX_MESHES) {
+        log_error("Mesh pool exhausted! Cannot upload new mesh.");
+        return (mesh_handle_t){.id = UINT32_MAX};
+    }
+
+    uint32_t   id      = graphics->mesh_count++;
+    vk_mesh_t* vk_mesh = &graphics->mesh_pool[id];
+
+    vk_mesh->vertex_buffer = vk_create_static_buffer(
+        graphics,
+        data->vertices,
+        data->vertex_count * sizeof(vertex_t),
+        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+    );
+
+    if (data->index_count > 0) {
+        vk_mesh->index_buffer = vk_create_static_buffer(
+            graphics,
+            data->indices,
+            data->index_count * sizeof(uint16_t),
+            VK_BUFFER_USAGE_INDEX_BUFFER_BIT
+        );
+    } else {
+        vk_mesh->index_buffer = VK_NULL_HANDLE;
+    }
+
+    vk_mesh->vertex_count = data->vertex_count;
+    vk_mesh->index_count  = data->index_count;
+    vk_mesh->is_active    = true;
+
+    log_info(
+        "vulkan: uploaded mesh to pool slot %d (%d vertices, %d indices)",
+        id,
+        data->vertex_count,
+        data->index_count
+    );
+
+    return (mesh_handle_t){.id = id};
+}
+
+texture_handle_t graphics_upload_texture(graphics_t* r, image_t* img) {
+    if (r->texture_count >= MAX_TEXTURES) {
+        log_error("vulkan: texture pool exhausted!");
+        return (texture_handle_t){.id = UINT32_MAX};
+    }
+
+    uint32_t      id  = r->texture_count++;
+    vk_texture_t* tex = &r->texture_pool[id];
+
+    if (!vk_create_texture(r, img, tex)) {
+        log_error("vulkan: failed to create texture for pool slot %d", id);
+        return (texture_handle_t){.id = UINT32_MAX};
+    }
+
+    VkDescriptorSetAllocateInfo alloc_info = {
+        .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .descriptorPool     = r->descriptor_pool,
+        .descriptorSetCount = 1,
+        .pSetLayouts        = &r->descriptor_set_layout,
+    };
+
+    if (vkAllocateDescriptorSets(r->device, &alloc_info, &tex->descriptor_set) != VK_SUCCESS) {
+        log_error("vulkan: failed to allocate descriptor set for texture %d", id);
+        return (texture_handle_t){.id = UINT32_MAX};
+    }
+
+    VkDescriptorBufferInfo buffer_info = {
+        .buffer = r->uniform_buffer, .offset = r->uniform_alloc.offset, .range = sizeof(ubo_t)
+    };
+
+    VkDescriptorImageInfo image_info = {
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        .imageView   = tex->view,
+        .sampler     = tex->sampler
+    };
+
+    VkWriteDescriptorSet descriptor_writes[2] = {
+        {.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+         .dstSet          = tex->descriptor_set,
+         .dstBinding      = 0,
+         .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+         .descriptorCount = 1,
+         .pBufferInfo     = &buffer_info},
+        {.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+         .dstSet          = tex->descriptor_set,
+         .dstBinding      = 1,
+         .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+         .descriptorCount = 1,
+         .pImageInfo      = &image_info}
+    };
+
+    vkUpdateDescriptorSets(r->device, 2, descriptor_writes, 0, NULL);
+
+    tex->is_active = true;
+    log_info("vulkan: uploaded texture to pool slot %d", id);
+
+    return (texture_handle_t){.id = id};
+}
+
+void graphics_draw(
+    graphics_t*      r,
+    platform_t*      platform,
+    mat4_t           view,
+    render_object_t* objects,
+    uint32_t         object_count
+) {
+    int32_t image_index = begin_frame(r, platform, view);
+    if (image_index < 0) {
+        return;
+    }
+
+    vkCmdBindDescriptorSets(
+        r->command_buffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        r->pipeline_layout,
+        0,
+        1,
+        &r->descriptor_set,
+        0,
+        NULL
+    );
+    vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, r->graphics_pipeline);
+
+    VkDeviceSize offsets[] = {0};
+
+    for (uint32_t i = 0; i < object_count; i++) {
+        render_object_t* obj     = &objects[i];
+        vk_mesh_t*       vk_mesh = &r->mesh_pool[obj->mesh.id];
+        vk_texture_t*    vk_tex  = &r->texture_pool[obj->texture.id];
+
+        if (!vk_mesh->is_active || !vk_tex->is_active)
+            continue;
+
+        vkCmdPushConstants(
+            r->command_buffer,
+            r->pipeline_layout,
+            VK_SHADER_STAGE_VERTEX_BIT,
+            0,
+            sizeof(mat4_t),
+            &obj->transform
+        );
+
+        vkCmdBindDescriptorSets(
+            r->command_buffer,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            r->pipeline_layout,
+            0,
+            1,
+            &vk_tex->descriptor_set,
+            0,
+            NULL
+        );
+
+        VkDeviceSize offsets[] = {0};
+        vkCmdBindVertexBuffers(r->command_buffer, 0, 1, &vk_mesh->vertex_buffer, offsets);
+
+        if (vk_mesh->index_count > 0) {
+            vkCmdBindIndexBuffer(r->command_buffer, vk_mesh->index_buffer, 0, VK_INDEX_TYPE_UINT16);
+            vkCmdDrawIndexed(r->command_buffer, vk_mesh->index_count, 1, 0, 0, 0);
+        } else {
+            vkCmdDraw(r->command_buffer, vk_mesh->vertex_count, 1, 0, 0);
+        }
+    }
+
+    vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, r->line_pipeline);
+    mat4_t identity = mat4_identity();
+    vkCmdPushConstants(
+        r->command_buffer,
+        r->pipeline_layout,
+        VK_SHADER_STAGE_VERTEX_BIT,
+        0,
+        sizeof(mat4_t),
+        &identity
+    );
+
+    vkCmdBindVertexBuffers(r->command_buffer, 0, 1, &r->grid_buffer.buffer, offsets);
+    vkCmdDraw(r->command_buffer, r->grid_vertex_count, 1, 0, 0);
+    end_frame(r, (uint32_t)image_index);
 }

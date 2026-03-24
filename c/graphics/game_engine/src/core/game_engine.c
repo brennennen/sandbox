@@ -11,6 +11,7 @@
 #include "core/math/mat4_math.h"
 #include "core/math/math_types.h"
 #include "game_engine.h"
+#include "modules/assets/obj.h"
 #include "modules/graphics/graphics.h"
 #include "platform/platform.h"
 
@@ -26,8 +27,8 @@ bool game_engine_init(game_engine_t* game_engine) {
     int h;
     platform_get_window_size(game_engine->platform, &w, &h);
 
-    game_engine->renderer = renderer_create(game_engine->platform, w, h);
-    if (!game_engine->renderer)
+    game_engine->graphics = graphics_create(game_engine->platform, w, h);
+    if (!game_engine->graphics)
         return false;
 
     platform_set_relative_mouse(game_engine->platform, true);
@@ -37,6 +38,30 @@ bool game_engine_init(game_engine_t* game_engine) {
     game_engine->main_camera->pos   = (vec3_t){0.0f, -5.0f, 2.0f};
     game_engine->main_camera->pitch = -20.0f;
     game_engine->main_camera->yaw   = 0.0f;
+
+    game_engine->last_time     = platform_get_ticks(game_engine->platform);
+    game_engine->fps_last_time = game_engine->last_time;
+    game_engine->frame_count   = 0;
+
+    mesh_data_t suzanne_data;
+    if (load_obj("suzanne.obj", &suzanne_data)) {
+        game_engine->test_mesh = graphics_upload_mesh(game_engine->graphics, &suzanne_data);
+        free_mesh(&suzanne_data);
+    } else {
+        log_error("Failed to load suzanne.obj");
+        game_engine->test_mesh.id = UINT32_MAX;
+    }
+
+    image_t img;
+    if (image_load("test.png", &img)) {
+        game_engine->test_texture = graphics_upload_texture(game_engine->graphics, &img);
+        image_free(&img);
+    } else {
+        log_warn("Failed to load test.png, generating dummy texture.");
+        image_t dummy             = image_create_placeholder();
+        game_engine->test_texture = graphics_upload_texture(game_engine->graphics, &dummy);
+        image_free(&dummy);
+    }
 
     game_engine->is_running = true;
     return true;
@@ -113,19 +138,47 @@ bool game_engine_tick(game_engine_t* game_engine) {
         delta_time = 0.1f;
     }
 
+    game_engine->frame_count++;
+
+    if (current_time - game_engine->fps_last_time >= 1000) {
+        char title[128];
+        snprintf(
+            title,
+            sizeof(title),
+            "Game Engine | FPS: %d | dt: %.4fs",
+            game_engine->frame_count,
+            delta_time
+        );
+        platform_set_title(game_engine->platform, title);
+
+        game_engine->frame_count   = 0;
+        game_engine->fps_last_time = current_time;
+    }
+
     game_engine_handle_inputs(game_engine);
 
     mat4_t view = camera_get_view_matrix(game_engine->main_camera);
 
-    renderer_draw(game_engine->renderer, game_engine->platform, view);
+    float time = (float)current_time / 1000.0f;
+
+    render_object_t scene_objects[1];
+
+    mat4_t rz = mat4_rotate_z(time * 0.5f);
+    mat4_t t  = mat4_translate((vec3_t){0.0f, 0.0f, 1.0f});
+
+    scene_objects[0].mesh      = game_engine->test_mesh;
+    scene_objects[0].texture   = game_engine->test_texture;
+    scene_objects[0].transform = mat4_mul(rz, t);
+
+    graphics_draw(game_engine->graphics, game_engine->platform, view, scene_objects, 1);
 
     return true;
 }
 
 void game_engine_shutdown(game_engine_t* game_engine) {
     log_info("Shutting down engine...");
-    if (game_engine->renderer) {
-        renderer_destroy(game_engine->renderer);
+    if (game_engine->graphics) {
+        graphics_destroy(game_engine->graphics);
     }
     if (game_engine->platform) {
         platform_destroy(game_engine->platform);

@@ -16,7 +16,7 @@ static inline VkDeviceSize align_up(VkDeviceSize addr, VkDeviceSize align) {
     return (addr + align - 1) & ~(align - 1);
 }
 
-gpu_heap_t* gpu_heap_create(renderer_t* r, VkDeviceSize size, VkMemoryPropertyFlags properties) {
+gpu_heap_t* gpu_heap_create(graphics_t* r, VkDeviceSize size, VkMemoryPropertyFlags properties) {
     if (!r) {
         printf("[ERROR]: Renderer is NULL\n");
         return NULL;

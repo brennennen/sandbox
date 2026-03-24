@@ -3,19 +3,27 @@
 
 #include "core/camera.h"
 #include "core/math/math_types.h"
-
+#include "modules/assets/image.h"
+#include "modules/graphics/graphics_types.h"
 #include "platform/platform.h"
 
-/**
- *
- * Opaque pointer (PIMPL)
- */
-typedef struct renderer_t renderer_t;
+typedef struct graphics_t graphics_t;
+typedef struct platform_t platform_t;
 
-renderer_t* renderer_create(platform_t* platform, int width, int height);
+graphics_t* graphics_create(platform_t* platform, int width, int height);
 
-void renderer_destroy(renderer_t* r);
+void graphics_destroy(graphics_t* graphics);
 
-void renderer_draw(renderer_t* r, platform_t* platform, mat4_t view);
+mesh_handle_t graphics_upload_mesh(graphics_t* graphics, mesh_data_t* img);
+
+texture_handle_t graphics_upload_texture(graphics_t* graphics, image_t* data);
+
+void graphics_draw(
+    graphics_t*      graphics,
+    platform_t*      platform,
+    mat4_t           view,
+    render_object_t* objects,
+    uint32_t         object_count
+);
 
 #endif

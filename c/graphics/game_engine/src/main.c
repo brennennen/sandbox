@@ -1,16 +1,12 @@
 
 #include <math.h>
-#include <stdio.h>
 
 #include <SDL3/SDL.h>
 
 #include "core/game_engine.h"
 #include "core/logger.h"
-#include "core/math/mat4_math.h"
-#include "modules/graphics/graphics.h"
-#include "platform/platform.h"
 
-#define RENDERER_VULKAN
+
 
 int main(int argc, char* argv[]) {
     log_init();

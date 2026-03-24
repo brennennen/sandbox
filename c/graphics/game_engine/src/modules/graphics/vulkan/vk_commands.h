@@ -3,8 +3,8 @@
 
 #include "vk_types.h"
 
-bool vk_create_commands(renderer_t* r);
-void vk_destroy_commands(renderer_t* r);
-void vk_copy_buffer(renderer_t* r, VkBuffer src, VkBuffer dst, VkDeviceSize size);
+bool vk_create_commands(graphics_t* r);
+void vk_destroy_commands(graphics_t* r);
+void vk_copy_buffer(graphics_t* r, VkBuffer src, VkBuffer dst, VkDeviceSize size);
 
 #endif

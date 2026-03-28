@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+#include "modules/graphics/graphics.h"
 #include "volk.h"
 
 #include "core/math/math_types.h"
@@ -134,6 +135,9 @@ typedef struct {
  * Manages the Swapchain (the bridge between Vulkan and the OS Windowing system).
  */
 typedef struct {
+    present_mode_t   abstract_present_mode;
+    VkPresentModeKHR present_mode;
+
     VkSwapchainKHR swapchain;
     VkFormat       format;
     VkExtent2D     extent;

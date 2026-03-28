@@ -27,7 +27,14 @@ bool game_engine_init(game_engine_t* game_engine) {
     int h;
     platform_get_window_size(game_engine->platform, &w, &h);
 
-    game_engine->graphics = graphics_create(game_engine->platform, w, h);
+    graphics_config_t graphics_config = {
+        .width        = w,
+        .height       = h,
+        .app_name     = "Game Engine",
+        .present_mode = PRESENT_MODE_VSYNC,
+    };
+
+    game_engine->graphics = graphics_create(game_engine->platform, &graphics_config);
     if (!game_engine->graphics)
         return false;
 
@@ -67,7 +74,7 @@ bool game_engine_init(game_engine_t* game_engine) {
     return true;
 }
 
-static void game_engine_handle_inputs(game_engine_t* game_engine) {
+static void game_engine_handle_inputs(game_engine_t* game_engine, float delta_time) {
     camera_t*   camera   = game_engine->main_camera;
     platform_t* platform = game_engine->platform;
 
@@ -87,7 +94,8 @@ static void game_engine_handle_inputs(game_engine_t* game_engine) {
         camera->pitch = -89.0f;
     }
 
-    const float cam_speed = 0.05f;
+    const float base_cam_speed = 5.0f;
+    float       cam_speed      = base_cam_speed * delta_time;
 
     float yaw_rad   = camera->yaw * (M_PI / 180.0f);
     float forward_x = sinf(yaw_rad);
@@ -129,6 +137,14 @@ bool game_engine_tick(game_engine_t* game_engine) {
     if (platform_get_key(game_engine->platform, KEY_ESCAPE)) {
         return false;
     }
+    if (platform_get_key(game_engine->platform, KEY_F12)) {
+        present_mode_t current_mode = graphics_get_present_mode(game_engine->graphics);
+        present_mode_t next_mode = (current_mode == PRESENT_MODE_VSYNC)
+                                   ? PRESENT_MODE_MAILBOX
+                                   : PRESENT_MODE_VSYNC;
+        graphics_set_present_mode(game_engine->graphics, next_mode);
+        log_info("Toggled Present Mode to: %d", next_mode);
+    }
 
     uint64_t current_time  = platform_get_ticks(game_engine->platform);
     float    delta_time    = (current_time - game_engine->last_time) / 1000.0f;
@@ -155,7 +171,7 @@ bool game_engine_tick(game_engine_t* game_engine) {
         game_engine->fps_last_time = current_time;
     }
 
-    game_engine_handle_inputs(game_engine);
+    game_engine_handle_inputs(game_engine, delta_time);
 
     mat4_t view = camera_get_view_matrix(game_engine->main_camera);
 

@@ -186,7 +186,7 @@ static bool init_sync_objects(graphics_t* r) {
     return true;
 }
 
-graphics_t* graphics_create(platform_t* platform, int width, int height) {
+graphics_t* graphics_create(platform_t* platform, graphics_config_t* config) {
     graphics_t* r = calloc(1, sizeof(struct graphics_t));
     if (!r) {
         log_error("renderer: failed to allocate memory for graphics_t");
@@ -200,12 +200,13 @@ graphics_t* graphics_create(platform_t* platform, int width, int height) {
     }
 
     if (!init_memory_heaps(r) || !init_uniform_buffer(r) || !vk_create_commands(r) ||
-        !vk_setup_depth_buffer(r, width, height)) {
+        !vk_setup_depth_buffer(r, config->width, config->height)) {
         goto init_failed;
     }
 
-    if (!vk_create_swapchain(r, width, height) || !vk_create_graphics_pipeline(r) ||
-        !init_descriptors(r)) {
+    r->display.abstract_present_mode = config->present_mode;
+    if (!vk_create_swapchain(r, config->width, config->height, config->present_mode) ||
+        !vk_create_graphics_pipeline(r) || !init_descriptors(r)) {
         goto init_failed;
     }
 
@@ -285,6 +286,22 @@ void graphics_destroy(graphics_t* r) {
     log_info("vulkan: renderer destroyed cleanly");
 }
 
+present_mode_t graphics_get_present_mode(const graphics_t* graphics) {
+    return graphics->display.abstract_present_mode;
+}
+
+void graphics_set_present_mode(graphics_t* r, present_mode_t mode) {
+    if (r->display.abstract_present_mode == mode) {
+        return; // No change needed
+    }
+    VkPresentModeKHR vk_mode = choose_swapchain_present_mode(
+        r->core.physical_device, r->core.surface, mode
+    );
+    r->display.abstract_present_mode = mode;
+    r->display.present_mode          = vk_mode;
+    vk_recreate_swapchain(r, r->display.extent.width, r->display.extent.height, mode);
+}
+
 static int32_t begin_frame(graphics_t* r, platform_t* platform, mat4_t view) {
     int w;
     int h;
@@ -307,7 +324,7 @@ static int32_t begin_frame(graphics_t* r, platform_t* platform, mat4_t view) {
     );
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-        vk_recreate_swapchain(r, w, h);
+        vk_recreate_swapchain(r, w, h, r->display.present_mode);
         return -1;
     }
 

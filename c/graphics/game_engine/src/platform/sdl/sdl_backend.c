@@ -24,6 +24,11 @@ static SDL_Scancode key_map[KEY_MAX] = {
     [KEY_LSHIFT] = SDL_SCANCODE_LSHIFT,
     [KEY_P]      = SDL_SCANCODE_P,
     [KEY_ESCAPE] = SDL_SCANCODE_ESCAPE,
+    [KEY_F1]     = SDL_SCANCODE_F1,
+    [KEY_F2]     = SDL_SCANCODE_F2,
+    [KEY_F3]     = SDL_SCANCODE_F3,
+    [KEY_F4]     = SDL_SCANCODE_F4,
+    [KEY_F12]    = SDL_SCANCODE_F12
 };
 
 platform_t* platform_create(const char* title, int width, int height) {

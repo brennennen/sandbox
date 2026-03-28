@@ -20,6 +20,11 @@ typedef enum {
     KEY_LSHIFT,
     KEY_P,
     KEY_ESCAPE,
+    KEY_F1,
+    KEY_F2,
+    KEY_F3,
+    KEY_F4,
+    KEY_F12,
     KEY_MAX
 } platform_key_t;
 

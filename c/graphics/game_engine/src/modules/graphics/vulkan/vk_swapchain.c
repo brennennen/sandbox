@@ -1,99 +1,115 @@
 #include "vk_swapchain.h"
-#include <stdlib.h>
 #include "core/logger.h"
+#include <stdlib.h>
 
-bool vk_create_swapchain(graphics_t* r, int width, int height) {
+bool vk_create_swapchain(graphics_t* graphics, int width, int height) {
     VkSurfaceCapabilitiesKHR capabilities;
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(r->physical_device, r->surface, &capabilities);
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+        graphics->core.physical_device, graphics->core.surface, &capabilities
+    );
 
     uint32_t format_count = 0;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(r->physical_device, r->surface, &format_count, NULL);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(
+        graphics->core.physical_device, graphics->core.surface, &format_count, NULL
+    );
     VkSurfaceFormatKHR formats[format_count];
-    vkGetPhysicalDeviceSurfaceFormatsKHR(r->physical_device, r->surface, &format_count, formats);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(
+        graphics->core.physical_device, graphics->core.surface, &format_count, formats
+    );
 
     // Default to first, but prefer SRGB for better color accuracy
     VkSurfaceFormatKHR selected_format = formats[0];
     for (uint32_t i = 0; i < format_count; i++) {
-        if (formats[i].format == VK_FORMAT_B8G8R8A8_SRGB
-            && formats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+        if (formats[i].format == VK_FORMAT_B8G8R8A8_SRGB &&
+            formats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
             selected_format = formats[i];
             break;
         }
     }
 
-    r->swapchain_format = selected_format.format;
-    r->swapchain_extent.width = (uint32_t)width;
-    r->swapchain_extent.height = (uint32_t)height;
+    graphics->display.format        = selected_format.format;
+    graphics->display.extent.width  = (uint32_t)width;
+    graphics->display.extent.height = (uint32_t)height;
 
     VkSwapchainCreateInfoKHR create_info = {
-        .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-        .surface = r->surface,
-        .minImageCount = 3,  // Triple buffering
-        .imageFormat = selected_format.format,
-        .imageColorSpace = selected_format.colorSpace,
-        .imageExtent = {(uint32_t)width, (uint32_t)height},
+        .sType            = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+        .surface          = graphics->core.surface,
+        .minImageCount    = 3, // Triple buffering
+        .imageFormat      = selected_format.format,
+        .imageColorSpace  = selected_format.colorSpace,
+        .imageExtent      = {(uint32_t)width, (uint32_t)height},
         .imageArrayLayers = 1,
-        .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        .imageUsage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
         .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
-        .preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR,
-        .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-        .presentMode = VK_PRESENT_MODE_FIFO_KHR,  // V-Sync
-        .clipped = VK_TRUE,
+        .preTransform     = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR,
+        .compositeAlpha   = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+        .presentMode      = VK_PRESENT_MODE_FIFO_KHR, // V-Sync
+        .clipped          = VK_TRUE,
     };
 
-    if (vkCreateSwapchainKHR(r->device, &create_info, NULL, &r->swapchain) != VK_SUCCESS) {
+    if (vkCreateSwapchainKHR(
+            graphics->core.device, &create_info, NULL, &graphics->display.swapchain
+        ) != VK_SUCCESS) {
         log_error("vulkan: failed to create swapchain");
         return false;
     }
 
     // Fetch the images created by the swapchain
-    vkGetSwapchainImagesKHR(r->device, r->swapchain, &r->swapchain_image_count, NULL);
-    r->swapchain_images = malloc(sizeof(VkImage) * r->swapchain_image_count);
     vkGetSwapchainImagesKHR(
-        r->device, r->swapchain, &r->swapchain_image_count, r->swapchain_images
+        graphics->core.device, graphics->display.swapchain, &graphics->display.image_count, NULL
+    );
+    graphics->display.images = malloc(sizeof(VkImage) * graphics->display.image_count);
+    vkGetSwapchainImagesKHR(
+        graphics->core.device,
+        graphics->display.swapchain,
+        &graphics->display.image_count,
+        graphics->display.images
     );
 
     // Create a View for every image
-    r->swapchain_image_views = malloc(sizeof(VkImageView) * r->swapchain_image_count);
-    for (uint32_t i = 0; i < r->swapchain_image_count; i++) {
+    graphics->display.image_views = malloc(sizeof(VkImageView) * graphics->display.image_count);
+    for (uint32_t i = 0; i < graphics->display.image_count; i++) {
         VkImageViewCreateInfo view_info = {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .image = r->swapchain_images[i],
-            .viewType = VK_IMAGE_VIEW_TYPE_2D,
-            .format = selected_format.format,
+            .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .image            = graphics->display.images[i],
+            .viewType         = VK_IMAGE_VIEW_TYPE_2D,
+            .format           = selected_format.format,
             .subresourceRange = {
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1
             },
         };
-        vkCreateImageView(r->device, &view_info, NULL, &r->swapchain_image_views[i]);
+        vkCreateImageView(
+            graphics->core.device, &view_info, NULL, &graphics->display.image_views[i]
+        );
     }
 
-    log_info("vulkan: swapchain created with %u images", r->swapchain_image_count);
+    log_info("vulkan: swapchain created with %u images", graphics->display.image_count);
     return true;
 }
 
-void vk_recreate_swapchain(graphics_t* r, int width, int height) {
+void vk_recreate_swapchain(graphics_t* graphics, int width, int height) {
     if (width == 0 || height == 0) {
         return;
     }
-    vkDeviceWaitIdle(r->device);            // Wait for the GPU to finish using the old swapchain
-    vk_destroy_swapchain(r);                // Clean up the old swapchain
-    vk_create_swapchain(r, width, height);  // Create the new one with the updated dimensions
+    vkDeviceWaitIdle(graphics->core.device); // Wait for the GPU to finish using the old swapchain
+    vk_destroy_swapchain(graphics);          // Clean up the old swapchain
+    vk_create_swapchain(graphics, width, height); // Create the new one with the updated dimensions
     log_info("vulkan: swapchain recreated for %dx%d", width, height);
 }
 
-void vk_destroy_swapchain(graphics_t* r) {
-    if (!r->device || !r->swapchain) return;
+void vk_destroy_swapchain(graphics_t* graphics) {
+    if (!graphics->core.device || !graphics->display.swapchain)
+        return;
 
-    for (uint32_t i = 0; i < r->swapchain_image_count; i++) {
-        vkDestroyImageView(r->device, r->swapchain_image_views[i], NULL);
+    for (uint32_t i = 0; i < graphics->display.image_count; i++) {
+        vkDestroyImageView(graphics->core.device, graphics->display.image_views[i], NULL);
     }
 
-    vkDestroySwapchainKHR(r->device, r->swapchain, NULL);
+    vkDestroySwapchainKHR(graphics->core.device, graphics->display.swapchain, NULL);
 
-    free(r->swapchain_images);
-    free(r->swapchain_image_views);
+    free(graphics->display.images);
+    free(graphics->display.image_views);
 
-    r->swapchain_images = NULL;
-    r->swapchain_image_views = NULL;
+    graphics->display.images      = NULL;
+    graphics->display.image_views = NULL;
 }

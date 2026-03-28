@@ -9,7 +9,7 @@ layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec2 fragUV;
 layout(location = 2) out vec3 fragNormal;
 
-layout(binding = 0) uniform UBO {
+layout(set = 0, binding = 0) uniform UBO {
     mat4 view;
     mat4 proj;
 } ubo;
@@ -22,5 +22,6 @@ void main() {
     gl_Position = ubo.proj * ubo.view * push.model * vec4(inPos, 1.0);
     fragColor = inColor;
     fragUV = inUV;
-    fragNormal = mat3(push.model) * inNormal;
+
+    fragNormal = normalize(mat3(push.model) * inNormal);
 }

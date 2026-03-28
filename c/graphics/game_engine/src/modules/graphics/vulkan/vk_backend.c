@@ -34,7 +34,7 @@ static void init_debug_grid(graphics_t* r) {
     r->grid_vertex_count = debug_grid_vertex_count(grid_size);
     size_t buffer_size   = r->grid_vertex_count * sizeof(vertex_t);
 
-    r->grid_buffer.allocation = gpu_heap_alloc(r->vertex_heap, buffer_size, 16);
+    r->grid_buffer.allocation = gpu_heap_alloc(r->assets.vertex_heap, buffer_size, 16);
 
     VkBufferCreateInfo buffer_info = {
         .sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -42,31 +42,37 @@ static void init_debug_grid(graphics_t* r) {
         .usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE
     };
-    vkCreateBuffer(r->device, &buffer_info, NULL, &r->grid_buffer.buffer);
+    vkCreateBuffer(r->core.device, &buffer_info, NULL, &r->grid_buffer.buffer);
     vkBindBufferMemory(
-        r->device, r->grid_buffer.buffer, r->vertex_heap->memory, r->grid_buffer.allocation.offset
+        r->core.device,
+        r->grid_buffer.buffer,
+        r->assets.vertex_heap->memory,
+        r->grid_buffer.allocation.offset
     );
 
     vertex_t* mapped_data = (vertex_t*)r->grid_buffer.allocation.mapped_ptr;
     generate_grid(mapped_data, grid_size, grid_step);
 }
 
-void update_uniform_buffer(graphics_t* r, mat4_t view) {
-    float  aspect = (float)r->swapchain_extent.width / (float)r->swapchain_extent.height;
+void update_uniform_buffer(graphics_t* r, mat4_t view, uint32_t current_frame) {
+    float  aspect = (float)r->display.extent.width / (float)r->display.extent.height;
     mat4_t proj   = mat4_perspective(0.785f, aspect, 0.1f, 100.0f);
     ubo_t  ubo    = {.view = view, .proj = proj};
-    memcpy(r->uniform_alloc.mapped_ptr, &ubo, sizeof(ubo));
+    // Update pointer:
+    memcpy(r->frames[current_frame].uniform_alloc.mapped_ptr, &ubo, sizeof(ubo));
 }
 
 static bool init_memory_heaps(graphics_t* r) {
-    r->vertex_heap = gpu_heap_create(
+    r->assets.vertex_heap = gpu_heap_create(
         r,
         1024 * 1024 * 128,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
     );
-    r->device_heap = gpu_heap_create(r, 1024 * 1024 * 256, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    r->assets.device_heap = gpu_heap_create(
+        r, 1024 * 1024 * 256, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+    );
 
-    if (!r->vertex_heap || !r->device_heap) {
+    if (!r->assets.vertex_heap || !r->assets.device_heap) {
         log_error("vulkan: failed to create GPU memory heaps");
         return false;
     }
@@ -74,44 +80,89 @@ static bool init_memory_heaps(graphics_t* r) {
 }
 
 static bool init_uniform_buffer(graphics_t* r) {
-    VkBufferCreateInfo ubo_info = {
-        .sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .size        = sizeof(ubo_t),
-        .usage       = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-    };
+    for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
+        VkBufferCreateInfo ubo_info = {
+            .sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .size        = sizeof(ubo_t),
+            .usage       = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        };
+        vkCreateBuffer(r->core.device, &ubo_info, NULL, &r->frames[i].uniform_buffer);
 
-    vkCreateBuffer(r->device, &ubo_info, NULL, &r->uniform_buffer);
+        VkMemoryRequirements mem_reqs;
+        vkGetBufferMemoryRequirements(r->core.device, r->frames[i].uniform_buffer, &mem_reqs);
 
-    VkMemoryRequirements mem_reqs;
-    vkGetBufferMemoryRequirements(r->device, r->uniform_buffer, &mem_reqs);
-
-    r->uniform_alloc = gpu_heap_alloc(r->vertex_heap, mem_reqs.size, mem_reqs.alignment);
-    vkBindBufferMemory(
-        r->device, r->uniform_buffer, r->vertex_heap->memory, r->uniform_alloc.offset
-    );
-
+        r->frames[i].uniform_alloc = gpu_heap_alloc(
+            r->assets.vertex_heap, mem_reqs.size, mem_reqs.alignment
+        );
+        vkBindBufferMemory(
+            r->core.device,
+            r->frames[i].uniform_buffer,
+            r->assets.vertex_heap->memory,
+            r->frames[i].uniform_alloc.offset
+        );
+    }
     return true;
 }
 
 static bool init_descriptors(graphics_t* r) {
     VkDescriptorPoolSize pool_sizes[] = {
-        {.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1},
-        {.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = 1},
+        {
+            .type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .descriptorCount = 1024,
+        },
+        {
+            .type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .descriptorCount = 1024,
+        },
     };
 
     VkDescriptorPoolCreateInfo pool_info = {
         .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .poolSizeCount = 2,
         .pPoolSizes    = pool_sizes,
-        .maxSets       = 1
+        .maxSets       = 1024,
     };
 
-    if (vkCreateDescriptorPool(r->device, &pool_info, NULL, &r->descriptor_pool) != VK_SUCCESS) {
+    if (vkCreateDescriptorPool(r->core.device, &pool_info, NULL, &r->descriptor_pool) !=
+        VK_SUCCESS) {
         log_error("vulkan: failed to create descriptor pool");
         return false;
     }
 
+    VkDescriptorSetLayout global_layouts[FRAMES_IN_FLIGHT];
+    for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
+        global_layouts[i] = r->pipelines.global_set_layout;
+    }
+
+    VkDescriptorSetAllocateInfo alloc_info = {
+        .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .descriptorPool     = r->descriptor_pool,
+        .descriptorSetCount = 1, // Allocate one per frame
+        .pSetLayouts        = &r->pipelines.global_set_layout,
+    };
+
+    // Safely allocate and write the UBOs to each frame's struct
+    for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
+        if (vkAllocateDescriptorSets(
+                r->core.device, &alloc_info, &r->frames[i].global_descriptor_set
+            ) != VK_SUCCESS) {
+            return false;
+        }
+
+        VkDescriptorBufferInfo buffer_info = {
+            .buffer = r->frames[i].uniform_buffer, .offset = 0, .range = sizeof(ubo_t)
+        };
+        VkWriteDescriptorSet descriptor_write = {
+            .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet          = r->frames[i].global_descriptor_set,
+            .dstBinding      = 0,
+            .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .descriptorCount = 1,
+            .pBufferInfo     = &buffer_info
+        };
+        vkUpdateDescriptorSets(r->core.device, 1, &descriptor_write, 0, NULL);
+    }
     return true;
 }
 
@@ -121,12 +172,17 @@ static bool init_sync_objects(graphics_t* r) {
             .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, .flags = VK_FENCE_CREATE_SIGNALED_BIT
     };
 
-    if (vkCreateSemaphore(r->device, &sem_info, NULL, &r->image_available_sem) != VK_SUCCESS ||
-        vkCreateSemaphore(r->device, &sem_info, NULL, &r->render_finished_sem) != VK_SUCCESS ||
-        vkCreateFence(r->device, &fence_info, NULL, &r->in_flight_fence) != VK_SUCCESS) {
-        log_error("vulkan: failed to create sync objects");
-        return false;
+    for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
+        if (vkCreateSemaphore(r->core.device, &sem_info, NULL, &r->frames[i].image_available_sem) !=
+                VK_SUCCESS ||
+            vkCreateSemaphore(r->core.device, &sem_info, NULL, &r->frames[i].render_finished_sem) !=
+                VK_SUCCESS ||
+            vkCreateFence(r->core.device, &fence_info, NULL, &r->frames[i].in_flight_fence) !=
+                VK_SUCCESS) {
+            return false;
+        }
     }
+    r->current_frame = 0;
     return true;
 }
 
@@ -138,7 +194,7 @@ graphics_t* graphics_create(platform_t* platform, int width, int height) {
     }
 
     if (!vk_create_instance(r, platform) ||
-        !platform_create_vulkan_surface(platform, r->instance, &r->surface) ||
+        !platform_create_vulkan_surface(platform, r->core.instance, &r->core.surface) ||
         !vk_pick_physical_device(r) || !vk_create_logical_device(r)) {
         goto init_failed;
     }
@@ -172,54 +228,57 @@ void graphics_destroy(graphics_t* r) {
     if (r == NULL)
         return;
 
-    if (r->device != VK_NULL_HANDLE) {
-        vkDeviceWaitIdle(r->device);
-        if (r->vertex_buffer) {
-            vkDestroyBuffer(r->device, r->vertex_buffer, NULL);
+    if (r->core.device != VK_NULL_HANDLE) {
+        vkDeviceWaitIdle(r->core.device);
+
+        if (r->assets.vertex_heap) {
+            vkFreeMemory(r->core.device, r->assets.vertex_heap->memory, NULL);
+            free(r->assets.vertex_heap);
         }
-        if (r->index_buffer) {
-            vkDestroyBuffer(r->device, r->index_buffer, NULL);
-        }
-        if (r->vertex_heap) {
-            vkFreeMemory(r->device, r->vertex_heap->memory, NULL);
-            free(r->vertex_heap);
-        }
-        if (r->device_heap) {
-            vkFreeMemory(r->device, r->device_heap->memory, NULL);
-            free(r->device_heap);
-        }
-        if (r->grid_buffer.buffer) {
-            vkDestroyBuffer(r->device, r->grid_buffer.buffer, NULL);
+        if (r->assets.device_heap) {
+            vkFreeMemory(r->core.device, r->assets.device_heap->memory, NULL);
+            free(r->assets.device_heap);
         }
 
-        vkDestroyBuffer(r->device, r->model_index_buffer, NULL);
+        if (r->grid_buffer.buffer) {
+            vkDestroyBuffer(r->core.device, r->grid_buffer.buffer, NULL);
+        }
 
         vk_destroy_graphics_pipeline(r);
         vk_destroy_commands(r);
 
-        if (r->image_available_sem)
-            vkDestroySemaphore(r->device, r->image_available_sem, NULL);
-        if (r->render_finished_sem)
-            vkDestroySemaphore(r->device, r->render_finished_sem, NULL);
-        if (r->in_flight_fence)
-            vkDestroyFence(r->device, r->in_flight_fence, NULL);
-
-        if (r->depth_view) {
-            vkDestroyImageView(r->device, r->depth_view, NULL);
+        if (r->descriptor_pool) {
+            vkDestroyDescriptorPool(r->core.device, r->descriptor_pool, NULL);
         }
-        if (r->depth_image) {
-            vkDestroyImage(r->device, r->depth_image, NULL);
+
+        for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
+            if (r->frames[i].image_available_sem)
+                vkDestroySemaphore(r->core.device, r->frames[i].image_available_sem, NULL);
+            if (r->frames[i].render_finished_sem)
+                vkDestroySemaphore(r->core.device, r->frames[i].render_finished_sem, NULL);
+            if (r->frames[i].in_flight_fence)
+                vkDestroyFence(r->core.device, r->frames[i].in_flight_fence, NULL);
+            // You can also add buffer cleanup here!
+            if (r->frames[i].uniform_buffer)
+                vkDestroyBuffer(r->core.device, r->frames[i].uniform_buffer, NULL);
+        }
+
+        if (r->display.depth_view) {
+            vkDestroyImageView(r->core.device, r->display.depth_view, NULL);
+        }
+        if (r->display.depth_image) {
+            vkDestroyImage(r->core.device, r->display.depth_image, NULL);
         }
 
         vk_destroy_swapchain(r);
-        vkDestroyDevice(r->device, NULL);
+        vkDestroyDevice(r->core.device, NULL);
     }
 
-    if (r->instance != VK_NULL_HANDLE) {
-        if (r->surface != VK_NULL_HANDLE) {
-            vkDestroySurfaceKHR(r->instance, r->surface, NULL);
+    if (r->core.instance != VK_NULL_HANDLE) {
+        if (r->core.surface != VK_NULL_HANDLE) {
+            vkDestroySurfaceKHR(r->core.instance, r->core.surface, NULL);
         }
-        vkDestroyInstance(r->instance, NULL);
+        vkDestroyInstance(r->core.instance, NULL);
     }
 
     free(r);
@@ -227,16 +286,24 @@ void graphics_destroy(graphics_t* r) {
 }
 
 static int32_t begin_frame(graphics_t* r, platform_t* platform, mat4_t view) {
-    int w, h;
+    int w;
+    int h;
     platform_get_window_size(platform, &w, &h);
     if (w == 0 || h == 0)
         return -1;
 
-    vkWaitForFences(r->device, 1, &r->in_flight_fence, VK_TRUE, UINT64_MAX);
+    vkWaitForFences(
+        r->core.device, 1, &r->frames[r->current_frame].in_flight_fence, VK_TRUE, UINT64_MAX
+    );
 
     uint32_t image_index;
     VkResult result = vkAcquireNextImageKHR(
-        r->device, r->swapchain, UINT64_MAX, r->image_available_sem, VK_NULL_HANDLE, &image_index
+        r->core.device,
+        r->display.swapchain,
+        UINT64_MAX,
+        r->frames[r->current_frame].image_available_sem,
+        VK_NULL_HANDLE,
+        &image_index
     );
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
@@ -244,9 +311,9 @@ static int32_t begin_frame(graphics_t* r, platform_t* platform, mat4_t view) {
         return -1;
     }
 
-    update_uniform_buffer(r, view);
-
-    vkResetFences(r->device, 1, &r->in_flight_fence);
+    update_uniform_buffer(r, view, r->current_frame);
+    vkResetFences(r->core.device, 1, &r->frames[r->current_frame].in_flight_fence);
+    r->command_buffer = r->frames[r->current_frame].command_buffer;
     vkResetCommandBuffer(r->command_buffer, 0);
 
     VkCommandBufferBeginInfo begin_info = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
@@ -256,7 +323,7 @@ static int32_t begin_frame(graphics_t* r, platform_t* platform, mat4_t view) {
         .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
         .oldLayout        = VK_IMAGE_LAYOUT_UNDEFINED,
         .newLayout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .image            = r->swapchain_images[image_index],
+        .image            = r->display.images[image_index],
         .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1},
         .srcAccessMask    = 0,
         .dstAccessMask    = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
@@ -276,7 +343,7 @@ static int32_t begin_frame(graphics_t* r, platform_t* platform, mat4_t view) {
 
     VkRenderingAttachmentInfo color_attachment = {
         .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-        .imageView   = r->swapchain_image_views[image_index],
+        .imageView   = r->display.image_views[image_index],
         .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .loadOp      = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp     = VK_ATTACHMENT_STORE_OP_STORE,
@@ -285,7 +352,7 @@ static int32_t begin_frame(graphics_t* r, platform_t* platform, mat4_t view) {
 
     VkRenderingAttachmentInfo depth_attachment = {
         .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-        .imageView   = r->depth_view,
+        .imageView   = r->display.depth_view,
         .imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
         .loadOp      = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp     = VK_ATTACHMENT_STORE_OP_DONT_CARE,
@@ -294,7 +361,7 @@ static int32_t begin_frame(graphics_t* r, platform_t* platform, mat4_t view) {
 
     VkRenderingInfo rendering_info = {
         .sType                = VK_STRUCTURE_TYPE_RENDERING_INFO,
-        .renderArea           = {{0, 0}, {r->swapchain_extent.width, r->swapchain_extent.height}},
+        .renderArea           = {{0, 0}, {r->display.extent.width, r->display.extent.height}},
         .layerCount           = 1,
         .colorAttachmentCount = 1,
         .pColorAttachments    = &color_attachment,
@@ -305,13 +372,13 @@ static int32_t begin_frame(graphics_t* r, platform_t* platform, mat4_t view) {
 
     VkViewport viewport = {
         .x        = 0.0f,
-        .y        = (float)r->swapchain_extent.height,
-        .width    = (float)r->swapchain_extent.width,
-        .height   = -(float)r->swapchain_extent.height,
+        .y        = (float)r->display.extent.height,
+        .width    = (float)r->display.extent.width,
+        .height   = -(float)r->display.extent.height,
         .minDepth = 0.0f,
         .maxDepth = 1.0f
     };
-    VkRect2D scissor = {{0, 0}, r->swapchain_extent};
+    VkRect2D scissor = {{0, 0}, r->display.extent};
     vkCmdSetViewport(r->command_buffer, 0, 1, &viewport);
     vkCmdSetScissor(r->command_buffer, 0, 1, &scissor);
 
@@ -325,7 +392,7 @@ static void end_frame(graphics_t* r, uint32_t image_index) {
         .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
         .oldLayout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .newLayout        = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-        .image            = r->swapchain_images[image_index],
+        .image            = r->display.images[image_index],
         .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1},
         .srcAccessMask    = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
         .dstAccessMask    = 0
@@ -349,34 +416,38 @@ static void end_frame(graphics_t* r, uint32_t image_index) {
     VkSubmitInfo         submit_info   = {
                   .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
                   .waitSemaphoreCount   = 1,
-                  .pWaitSemaphores      = &r->image_available_sem,
+                  .pWaitSemaphores      = &r->frames[r->current_frame].image_available_sem,
                   .pWaitDstStageMask    = wait_stages,
                   .commandBufferCount   = 1,
                   .pCommandBuffers      = &r->command_buffer,
                   .signalSemaphoreCount = 1,
-                  .pSignalSemaphores    = &r->render_finished_sem,
+                  .pSignalSemaphores    = &r->frames[r->current_frame].render_finished_sem,
     };
-    vkQueueSubmit(r->graphics_queue, 1, &submit_info, r->in_flight_fence);
+    vkQueueSubmit(
+        r->core.graphics_queue, 1, &submit_info, r->frames[r->current_frame].in_flight_fence
+    );
 
     VkPresentInfoKHR present_info = {
         .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores    = &r->render_finished_sem,
+        .pWaitSemaphores    = &r->frames[r->current_frame].render_finished_sem,
         .swapchainCount     = 1,
-        .pSwapchains        = &r->swapchain,
+        .pSwapchains        = &r->display.swapchain,
         .pImageIndices      = &image_index,
     };
-    vkQueuePresentKHR(r->graphics_queue, &present_info);
+    vkQueuePresentKHR(r->core.graphics_queue, &present_info);
+
+    r->current_frame = (r->current_frame + 1) % FRAMES_IN_FLIGHT;
 }
 
 mesh_handle_t graphics_upload_mesh(graphics_t* graphics, mesh_data_t* data) {
-    if (graphics->mesh_count >= MAX_MESHES) {
+    if (graphics->assets.mesh_count >= MAX_MESHES) {
         log_error("Mesh pool exhausted! Cannot upload new mesh.");
         return (mesh_handle_t){.id = UINT32_MAX};
     }
 
-    uint32_t   id      = graphics->mesh_count++;
-    vk_mesh_t* vk_mesh = &graphics->mesh_pool[id];
+    uint32_t   id      = graphics->assets.mesh_count++;
+    vk_mesh_t* vk_mesh = &graphics->assets.meshes[id];
 
     vk_mesh->vertex_buffer = vk_create_static_buffer(
         graphics,
@@ -411,13 +482,15 @@ mesh_handle_t graphics_upload_mesh(graphics_t* graphics, mesh_data_t* data) {
 }
 
 texture_handle_t graphics_upload_texture(graphics_t* r, image_t* img) {
-    if (r->texture_count >= MAX_TEXTURES) {
+    if (r->assets.texture_count >= MAX_TEXTURES) {
         log_error("vulkan: texture pool exhausted!");
-        return (texture_handle_t){.id = UINT32_MAX};
+        return (texture_handle_t){
+            .id = UINT32_MAX,
+        };
     }
 
-    uint32_t      id  = r->texture_count++;
-    vk_texture_t* tex = &r->texture_pool[id];
+    uint32_t      id  = r->assets.texture_count++;
+    vk_texture_t* tex = &r->assets.textures[id];
 
     if (!vk_create_texture(r, img, tex)) {
         log_error("vulkan: failed to create texture for pool slot %d", id);
@@ -428,17 +501,13 @@ texture_handle_t graphics_upload_texture(graphics_t* r, image_t* img) {
         .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
         .descriptorPool     = r->descriptor_pool,
         .descriptorSetCount = 1,
-        .pSetLayouts        = &r->descriptor_set_layout,
+        .pSetLayouts        = &r->pipelines.object_set_layout,
     };
 
-    if (vkAllocateDescriptorSets(r->device, &alloc_info, &tex->descriptor_set) != VK_SUCCESS) {
+    if (vkAllocateDescriptorSets(r->core.device, &alloc_info, &tex->descriptor_set) != VK_SUCCESS) {
         log_error("vulkan: failed to allocate descriptor set for texture %d", id);
         return (texture_handle_t){.id = UINT32_MAX};
     }
-
-    VkDescriptorBufferInfo buffer_info = {
-        .buffer = r->uniform_buffer, .offset = r->uniform_alloc.offset, .range = sizeof(ubo_t)
-    };
 
     VkDescriptorImageInfo image_info = {
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -446,22 +515,16 @@ texture_handle_t graphics_upload_texture(graphics_t* r, image_t* img) {
         .sampler     = tex->sampler
     };
 
-    VkWriteDescriptorSet descriptor_writes[2] = {
-        {.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-         .dstSet          = tex->descriptor_set,
-         .dstBinding      = 0,
-         .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-         .descriptorCount = 1,
-         .pBufferInfo     = &buffer_info},
-        {.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-         .dstSet          = tex->descriptor_set,
-         .dstBinding      = 1,
-         .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-         .descriptorCount = 1,
-         .pImageInfo      = &image_info}
+    VkWriteDescriptorSet descriptor_write = {
+        .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet          = tex->descriptor_set,
+        .dstBinding      = 0,
+        .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .pImageInfo      = &image_info
     };
 
-    vkUpdateDescriptorSets(r->device, 2, descriptor_writes, 0, NULL);
+    vkUpdateDescriptorSets(r->core.device, 1, &descriptor_write, 0, NULL);
 
     tex->is_active = true;
     log_info("vulkan: uploaded texture to pool slot %d", id);
@@ -481,31 +544,30 @@ void graphics_draw(
         return;
     }
 
+    vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, r->pipelines.graphics);
     vkCmdBindDescriptorSets(
         r->command_buffer,
         VK_PIPELINE_BIND_POINT_GRAPHICS,
-        r->pipeline_layout,
+        r->pipelines.layout,
         0,
         1,
-        &r->descriptor_set,
+        &r->frames[r->current_frame].global_descriptor_set,
         0,
         NULL
     );
-    vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, r->graphics_pipeline);
 
     VkDeviceSize offsets[] = {0};
-
     for (uint32_t i = 0; i < object_count; i++) {
         render_object_t* obj     = &objects[i];
-        vk_mesh_t*       vk_mesh = &r->mesh_pool[obj->mesh.id];
-        vk_texture_t*    vk_tex  = &r->texture_pool[obj->texture.id];
+        vk_mesh_t*       vk_mesh = &r->assets.meshes[obj->mesh.id];
+        vk_texture_t*    vk_tex  = &r->assets.textures[obj->texture.id];
 
         if (!vk_mesh->is_active || !vk_tex->is_active)
             continue;
 
         vkCmdPushConstants(
             r->command_buffer,
-            r->pipeline_layout,
+            r->pipelines.layout,
             VK_SHADER_STAGE_VERTEX_BIT,
             0,
             sizeof(mat4_t),
@@ -515,15 +577,13 @@ void graphics_draw(
         vkCmdBindDescriptorSets(
             r->command_buffer,
             VK_PIPELINE_BIND_POINT_GRAPHICS,
-            r->pipeline_layout,
-            0,
+            r->pipelines.layout,
+            1,
             1,
             &vk_tex->descriptor_set,
             0,
             NULL
         );
-
-        VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(r->command_buffer, 0, 1, &vk_mesh->vertex_buffer, offsets);
 
         if (vk_mesh->index_count > 0) {
@@ -534,11 +594,12 @@ void graphics_draw(
         }
     }
 
-    vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, r->line_pipeline);
+    vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, r->pipelines.line);
+
     mat4_t identity = mat4_identity();
     vkCmdPushConstants(
         r->command_buffer,
-        r->pipeline_layout,
+        r->pipelines.layout,
         VK_SHADER_STAGE_VERTEX_BIT,
         0,
         sizeof(mat4_t),
@@ -547,5 +608,6 @@ void graphics_draw(
 
     vkCmdBindVertexBuffers(r->command_buffer, 0, 1, &r->grid_buffer.buffer, offsets);
     vkCmdDraw(r->command_buffer, r->grid_vertex_count, 1, 0, 0);
+
     end_frame(r, (uint32_t)image_index);
 }

@@ -21,13 +21,15 @@ gpu_allocation_t vk_create_staging_buffer(
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
     };
 
-    vkCreateBuffer(r->device, &buffer_info, NULL, out_buffer);
+    vkCreateBuffer(r->core.device, &buffer_info, NULL, out_buffer);
 
     VkMemoryRequirements mem_reqs;
-    vkGetBufferMemoryRequirements(r->device, *out_buffer, &mem_reqs);
+    vkGetBufferMemoryRequirements(r->core.device, *out_buffer, &mem_reqs);
 
-    gpu_allocation_t alloc = gpu_heap_alloc(r->vertex_heap, mem_reqs.size, mem_reqs.alignment);
-    vkBindBufferMemory(r->device, *out_buffer, r->vertex_heap->memory, alloc.offset);
+    gpu_allocation_t alloc = gpu_heap_alloc(
+        r->assets.vertex_heap, mem_reqs.size, mem_reqs.alignment
+    );
+    vkBindBufferMemory(r->core.device, *out_buffer, r->assets.vertex_heap->memory, alloc.offset);
 
     if (data) {
         memcpy(alloc.mapped_ptr, data, size);
@@ -45,7 +47,7 @@ VkCommandBuffer vk_begin_single_time_commands(graphics_t* r) {
     };
 
     VkCommandBuffer cmd;
-    vkAllocateCommandBuffers(r->device, &alloc_info, &cmd);
+    vkAllocateCommandBuffers(r->core.device, &alloc_info, &cmd);
 
     VkCommandBufferBeginInfo begin_info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -65,10 +67,10 @@ void vk_end_single_time_commands(graphics_t* r, VkCommandBuffer cmd) {
         .pCommandBuffers    = &cmd,
     };
 
-    vkQueueSubmit(r->graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
-    vkQueueWaitIdle(r->graphics_queue);
+    vkQueueSubmit(r->core.graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
+    vkQueueWaitIdle(r->core.graphics_queue);
 
-    vkFreeCommandBuffers(r->device, r->command_pool, 1, &cmd);
+    vkFreeCommandBuffers(r->core.device, r->command_pool, 1, &cmd);
 }
 
 bool vk_create_texture(graphics_t* r, image_t* img, vk_texture_t* out_tex) {
@@ -90,13 +92,13 @@ bool vk_create_texture(graphics_t* r, image_t* img, vk_texture_t* out_tex) {
         .sharingMode   = VK_SHARING_MODE_EXCLUSIVE,
         .samples       = VK_SAMPLE_COUNT_1_BIT,
     };
-    vkCreateImage(r->device, &image_info, NULL, &out_tex->image);
+    vkCreateImage(r->core.device, &image_info, NULL, &out_tex->image);
 
     VkMemoryRequirements mem_reqs;
-    vkGetImageMemoryRequirements(r->device, out_tex->image, &mem_reqs);
-    out_tex->allocation = gpu_heap_alloc(r->device_heap, mem_reqs.size, mem_reqs.alignment);
+    vkGetImageMemoryRequirements(r->core.device, out_tex->image, &mem_reqs);
+    out_tex->allocation = gpu_heap_alloc(r->assets.device_heap, mem_reqs.size, mem_reqs.alignment);
     vkBindImageMemory(
-        r->device, out_tex->image, r->device_heap->memory, out_tex->allocation.offset
+        r->core.device, out_tex->image, r->assets.device_heap->memory, out_tex->allocation.offset
     );
 
     vk_transition_image_layout(
@@ -117,7 +119,7 @@ bool vk_create_texture(graphics_t* r, image_t* img, vk_texture_t* out_tex) {
         .format           = VK_FORMAT_R8G8B8A8_SRGB,
         .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}
     };
-    if (vkCreateImageView(r->device, &view_info, NULL, &out_tex->view) != VK_SUCCESS)
+    if (vkCreateImageView(r->core.device, &view_info, NULL, &out_tex->view) != VK_SUCCESS)
         return false;
 
     VkSamplerCreateInfo sampler_info = {
@@ -128,88 +130,9 @@ bool vk_create_texture(graphics_t* r, image_t* img, vk_texture_t* out_tex) {
         .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
         .borderColor  = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
     };
-    vkCreateSampler(r->device, &sampler_info, NULL, &out_tex->sampler);
+    vkCreateSampler(r->core.device, &sampler_info, NULL, &out_tex->sampler);
 
-    vkDestroyBuffer(r->device, staging_buffer, NULL);
-    return true;
-}
-
-bool vk_create_dummy_texture(graphics_t* r) {
-    uint32_t pixels[] = {
-        0xFFFF00FF,
-        0xFF000000,
-        0xFF000000,
-        0xFFFF00FF,
-    };
-    VkDeviceSize image_size = sizeof(pixels);
-    uint32_t     width      = 2;
-    uint32_t     height     = 2;
-
-    VkBuffer staging_buffer;
-
-    gpu_allocation_t staging_alloc = vk_create_staging_buffer(
-        r, pixels, image_size, &staging_buffer
-    );
-
-    VkImageCreateInfo image_info = {
-        .sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-        .imageType     = VK_IMAGE_TYPE_2D,
-        .extent        = {width, height, 1},
-        .mipLevels     = 1,
-        .arrayLayers   = 1,
-        .format        = VK_FORMAT_R8G8B8A8_SRGB,
-        .tiling        = VK_IMAGE_TILING_OPTIMAL,
-        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .usage         = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-        .sharingMode   = VK_SHARING_MODE_EXCLUSIVE,
-        .samples       = VK_SAMPLE_COUNT_1_BIT,
-    };
-
-    vkCreateImage(r->device, &image_info, NULL, &r->texture_image);
-
-    VkMemoryRequirements mem_reqs;
-    vkGetImageMemoryRequirements(r->device, r->texture_image, &mem_reqs);
-    r->texture_allocation = gpu_heap_alloc(r->device_heap, mem_reqs.size, mem_reqs.alignment);
-    vkBindImageMemory(
-        r->device, r->texture_image, r->device_heap->memory, r->texture_allocation.offset
-    );
-
-    vk_transition_image_layout(
-        r, r->texture_image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
-    );
-
-    vk_copy_buffer_to_image(r, staging_buffer, r->texture_image, width, height);
-
-    vk_transition_image_layout(
-        r,
-        r->texture_image,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-    );
-
-    VkImageViewCreateInfo view_info = {
-        .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image            = r->texture_image,
-        .viewType         = VK_IMAGE_VIEW_TYPE_2D,
-        .format           = VK_FORMAT_R8G8B8A8_SRGB,
-        .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}
-    };
-    if (vkCreateImageView(r->device, &view_info, NULL, &r->texture_view) != VK_SUCCESS) {
-        log_error("vulkan: failed to create texture image view");
-        return false;
-    }
-
-    VkSamplerCreateInfo sampler_info = {
-        .sType        = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-        .magFilter    = VK_FILTER_NEAREST,
-        .minFilter    = VK_FILTER_NEAREST,
-        .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-        .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-        .borderColor  = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
-    };
-    vkCreateSampler(r->device, &sampler_info, NULL, &r->texture_sampler);
-
-    vkDestroyBuffer(r->device, staging_buffer, NULL);
+    vkDestroyBuffer(r->core.device, staging_buffer, NULL);
     return true;
 }
 
@@ -227,7 +150,7 @@ void vk_transition_image_layout(
     };
 
     VkCommandBuffer cmd;
-    vkAllocateCommandBuffers(r->device, &alloc_info, &cmd);
+    vkAllocateCommandBuffers(r->core.device, &alloc_info, &cmd);
 
     VkCommandBufferBeginInfo begin_info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -268,9 +191,9 @@ void vk_transition_image_layout(
     VkSubmitInfo submit_info = {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO, .commandBufferCount = 1, .pCommandBuffers = &cmd
     };
-    vkQueueSubmit(r->graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
-    vkQueueWaitIdle(r->graphics_queue);
-    vkFreeCommandBuffers(r->device, r->command_pool, 1, &cmd);
+    vkQueueSubmit(r->core.graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
+    vkQueueWaitIdle(r->core.graphics_queue);
+    vkFreeCommandBuffers(r->core.device, r->command_pool, 1, &cmd);
 }
 
 static void copy_buffer(graphics_t* r, VkBuffer src, VkBuffer dst, VkDeviceSize size) {
@@ -282,7 +205,7 @@ static void copy_buffer(graphics_t* r, VkBuffer src, VkBuffer dst, VkDeviceSize 
     };
 
     VkCommandBuffer temp_cmd;
-    vkAllocateCommandBuffers(r->device, &alloc_info, &temp_cmd);
+    vkAllocateCommandBuffers(r->core.device, &alloc_info, &temp_cmd);
 
     VkCommandBufferBeginInfo begin_info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -300,10 +223,10 @@ static void copy_buffer(graphics_t* r, VkBuffer src, VkBuffer dst, VkDeviceSize 
         .pCommandBuffers    = &temp_cmd,
     };
 
-    vkQueueSubmit(r->graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
-    vkQueueWaitIdle(r->graphics_queue);
+    vkQueueSubmit(r->core.graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
+    vkQueueWaitIdle(r->core.graphics_queue);
 
-    vkFreeCommandBuffers(r->device, r->command_pool, 1, &temp_cmd);
+    vkFreeCommandBuffers(r->core.device, r->command_pool, 1, &temp_cmd);
 }
 
 void vk_copy_buffer_to_image(
@@ -321,7 +244,7 @@ void vk_copy_buffer_to_image(
     };
 
     VkCommandBuffer cmd;
-    vkAllocateCommandBuffers(r->device, &alloc_info, &cmd);
+    vkAllocateCommandBuffers(r->core.device, &alloc_info, &cmd);
 
     VkCommandBufferBeginInfo begin_info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -347,10 +270,10 @@ void vk_copy_buffer_to_image(
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO, .commandBufferCount = 1, .pCommandBuffers = &cmd
     };
 
-    vkQueueSubmit(r->graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
-    vkQueueWaitIdle(r->graphics_queue);
+    vkQueueSubmit(r->core.graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
+    vkQueueWaitIdle(r->core.graphics_queue);
 
-    vkFreeCommandBuffers(r->device, r->command_pool, 1, &cmd);
+    vkFreeCommandBuffers(r->core.device, r->command_pool, 1, &cmd);
 }
 
 VkBuffer vk_create_static_buffer(
@@ -365,12 +288,14 @@ VkBuffer vk_create_static_buffer(
         .size  = size,
         .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
     };
-    vkCreateBuffer(r->device, &s_info, NULL, &staging_buffer);
+    vkCreateBuffer(r->core.device, &s_info, NULL, &staging_buffer);
 
     VkMemoryRequirements s_reqs;
-    vkGetBufferMemoryRequirements(r->device, staging_buffer, &s_reqs);
-    gpu_allocation_t s_alloc = gpu_heap_alloc(r->vertex_heap, s_reqs.size, s_reqs.alignment);
-    vkBindBufferMemory(r->device, staging_buffer, r->vertex_heap->memory, s_alloc.offset);
+    vkGetBufferMemoryRequirements(r->core.device, staging_buffer, &s_reqs);
+    gpu_allocation_t s_alloc = gpu_heap_alloc(r->assets.vertex_heap, s_reqs.size, s_reqs.alignment);
+    vkBindBufferMemory(
+        r->core.device, staging_buffer, r->assets.vertex_heap->memory, s_alloc.offset
+    );
 
     if (s_alloc.mapped_ptr) {
         memcpy(s_alloc.mapped_ptr, data, size);
@@ -382,15 +307,17 @@ VkBuffer vk_create_static_buffer(
         .size  = size,
         .usage = usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
     };
-    vkCreateBuffer(r->device, &d_info, NULL, &device_buffer);
+    vkCreateBuffer(r->core.device, &d_info, NULL, &device_buffer);
 
     VkMemoryRequirements d_reqs;
-    vkGetBufferMemoryRequirements(r->device, device_buffer, &d_reqs);
-    gpu_allocation_t d_alloc = gpu_heap_alloc(r->device_heap, d_reqs.size, d_reqs.alignment);
-    vkBindBufferMemory(r->device, device_buffer, r->device_heap->memory, d_alloc.offset);
+    vkGetBufferMemoryRequirements(r->core.device, device_buffer, &d_reqs);
+    gpu_allocation_t d_alloc = gpu_heap_alloc(r->assets.device_heap, d_reqs.size, d_reqs.alignment);
+    vkBindBufferMemory(
+        r->core.device, device_buffer, r->assets.device_heap->memory, d_alloc.offset
+    );
 
     copy_buffer(r, staging_buffer, device_buffer, size);
-    vkDestroyBuffer(r->device, staging_buffer, NULL);
+    vkDestroyBuffer(r->core.device, staging_buffer, NULL);
 
     return device_buffer;
 }
@@ -440,18 +367,25 @@ bool vk_setup_depth_buffer(graphics_t* r, uint32_t width, uint32_t height) {
         .samples       = VK_SAMPLE_COUNT_1_BIT,
     };
 
-    if (vkCreateImage(r->device, &depth_info, NULL, &r->depth_image) != VK_SUCCESS)
+    if (vkCreateImage(r->core.device, &depth_info, NULL, &r->display.depth_image) != VK_SUCCESS)
         return false;
 
     VkMemoryRequirements mem_reqs;
-    vkGetImageMemoryRequirements(r->device, r->depth_image, &mem_reqs);
-    r->depth_alloc = gpu_heap_alloc(r->device_heap, mem_reqs.size, mem_reqs.alignment);
-    vkBindImageMemory(r->device, r->depth_image, r->device_heap->memory, r->depth_alloc.offset);
-    vk_transition_depth_layout(r, r->depth_image);
+    vkGetImageMemoryRequirements(r->core.device, r->display.depth_image, &mem_reqs);
+    r->display.depth_alloc = gpu_heap_alloc(
+        r->assets.device_heap, mem_reqs.size, mem_reqs.alignment
+    );
+    vkBindImageMemory(
+        r->core.device,
+        r->display.depth_image,
+        r->assets.device_heap->memory,
+        r->display.depth_alloc.offset
+    );
+    vk_transition_depth_layout(r, r->display.depth_image);
 
     VkImageViewCreateInfo view_info = {
         .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image            = r->depth_image,
+        .image            = r->display.depth_image,
         .viewType         = VK_IMAGE_VIEW_TYPE_2D,
         .format           = VK_FORMAT_D32_SFLOAT,
         .subresourceRange = {
@@ -459,5 +393,6 @@ bool vk_setup_depth_buffer(graphics_t* r, uint32_t width, uint32_t height) {
         }
     };
 
-    return vkCreateImageView(r->device, &view_info, NULL, &r->depth_view) == VK_SUCCESS;
+    return vkCreateImageView(r->core.device, &view_info, NULL, &r->display.depth_view) ==
+           VK_SUCCESS;
 }

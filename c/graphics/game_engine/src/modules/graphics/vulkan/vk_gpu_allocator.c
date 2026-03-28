@@ -21,7 +21,7 @@ gpu_heap_t* gpu_heap_create(graphics_t* r, VkDeviceSize size, VkMemoryPropertyFl
         printf("[ERROR]: Renderer is NULL\n");
         return NULL;
     }
-    if (!r->device) {
+    if (!r->core.device) {
         printf("[ERROR]: Device is NULL in gpu_heap_create\n");
         return NULL;
     }
@@ -36,7 +36,7 @@ gpu_heap_t* gpu_heap_create(graphics_t* r, VkDeviceSize size, VkMemoryPropertyFl
     heap->mapped_data = nullptr;
 
     VkPhysicalDeviceMemoryProperties mem_props;
-    vkGetPhysicalDeviceMemoryProperties(r->physical_device, &mem_props);
+    vkGetPhysicalDeviceMemoryProperties(r->core.physical_device, &mem_props);
 
     uint32_t type_filter = 0xFFFFFFFF;
     uint32_t type_index  = 0;
@@ -55,13 +55,13 @@ gpu_heap_t* gpu_heap_create(graphics_t* r, VkDeviceSize size, VkMemoryPropertyFl
         .memoryTypeIndex = type_index
     };
 
-    if (vkAllocateMemory(r->device, &alloc_info, nullptr, &heap->memory) != VK_SUCCESS) {
+    if (vkAllocateMemory(r->core.device, &alloc_info, nullptr, &heap->memory) != VK_SUCCESS) {
         free(heap);
         return nullptr;
     }
 
     if (properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
-        vkMapMemory(r->device, heap->memory, 0, size, 0, &heap->mapped_data);
+        vkMapMemory(r->core.device, heap->memory, 0, size, 0, &heap->mapped_data);
     } else {
         heap->mapped_data = NULL;
     }

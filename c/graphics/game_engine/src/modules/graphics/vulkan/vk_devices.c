@@ -71,19 +71,19 @@ bool vk_create_instance(graphics_t* r, platform_t* platform) {
 #endif
     };
 
-    if (vkCreateInstance(&create_info, NULL, &r->instance) != VK_SUCCESS) {
+    if (vkCreateInstance(&create_info, NULL, &r->core.instance) != VK_SUCCESS) {
         log_error("vulkan: failed to create instance");
         return false;
     }
 
-    volkLoadInstance(r->instance);
+    volkLoadInstance(r->core.instance);
     log_info("vulkan: instance created");
     return true;
 }
 
 bool vk_pick_physical_device(graphics_t* r) {
     uint32_t device_count = 0;
-    vkEnumeratePhysicalDevices(r->instance, &device_count, NULL);
+    vkEnumeratePhysicalDevices(r->core.instance, &device_count, NULL);
 
     if (device_count == 0) {
         log_error("vulkan: failed to find GPUs with Vulkan support");
@@ -91,25 +91,25 @@ bool vk_pick_physical_device(graphics_t* r) {
     }
 
     VkPhysicalDevice devices[device_count];
-    vkEnumeratePhysicalDevices(r->instance, &device_count, devices);
+    vkEnumeratePhysicalDevices(r->core.instance, &device_count, devices);
 
     for (uint32_t i = 0; i < device_count; i++) {
-        if (is_device_suitable(devices[i], r->surface)) {
-            r->physical_device = devices[i];
+        if (is_device_suitable(devices[i], r->core.surface)) {
+            r->core.physical_device = devices[i];
             VkPhysicalDeviceProperties props;
-            vkGetPhysicalDeviceProperties(r->physical_device, &props);
+            vkGetPhysicalDeviceProperties(r->core.physical_device, &props);
             log_info("vulkan: selected GPU: %s", props.deviceName);
             return true;
         }
     }
 
     // Fallback to the first available device if no discrete GPU is found
-    r->physical_device = devices[0];
-    return r->physical_device != VK_NULL_HANDLE;
+    r->core.physical_device = devices[0];
+    return r->core.physical_device != VK_NULL_HANDLE;
 }
 
 bool vk_create_logical_device(graphics_t* r) {
-    queue_family_indices_t indices = find_queue_families(r->physical_device, r->surface);
+    queue_family_indices_t indices = find_queue_families(r->core.physical_device, r->core.surface);
 
     float                   queue_priority    = 1.0f;
     VkDeviceQueueCreateInfo queue_create_info = {
@@ -135,13 +135,14 @@ bool vk_create_logical_device(graphics_t* r) {
         .ppEnabledExtensionNames = device_extensions,
     };
 
-    if (vkCreateDevice(r->physical_device, &create_info, NULL, &r->device) != VK_SUCCESS) {
+    if (vkCreateDevice(r->core.physical_device, &create_info, NULL, &r->core.device) !=
+        VK_SUCCESS) {
         log_error("vulkan: failed to create logical device");
         return false;
     }
 
-    volkLoadDevice(r->device);
-    vkGetDeviceQueue(r->device, indices.graphics_family, 0, &r->graphics_queue);
+    volkLoadDevice(r->core.device);
+    vkGetDeviceQueue(r->core.device, indices.graphics_family, 0, &r->core.graphics_queue);
 
     log_info("vulkan: logical device and graphics queue ready");
     return true;

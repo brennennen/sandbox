@@ -1,3 +1,8 @@
+/**
+ *
+ * https://docs.vulkan.org/spec/latest/chapters/pipelines.html
+ */
+
 #include "vk_pipeline.h"
 
 #include <stdio.h>
@@ -45,8 +50,8 @@ static VkPipeline create_pipeline_internal(
     const char*         frag_path
 ) {
 
-    VkShaderModule vert_mod = vk_create_shader_module(r->device, vert_path);
-    VkShaderModule frag_mod = vk_create_shader_module(r->device, frag_path);
+    VkShaderModule vert_mod = vk_create_shader_module(r->core.device, vert_path);
+    VkShaderModule frag_mod = vk_create_shader_module(r->core.device, frag_path);
 
     VkPipelineShaderStageCreateInfo stages[2] = {
         {
@@ -142,7 +147,7 @@ static VkPipeline create_pipeline_internal(
     VkPipelineRenderingCreateInfo rendering_info = {
         .sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
         .colorAttachmentCount    = 1,
-        .pColorAttachmentFormats = &r->swapchain_format,
+        .pColorAttachmentFormats = &r->display.format,
         .depthAttachmentFormat   = VK_FORMAT_D32_SFLOAT,
     };
 
@@ -170,47 +175,63 @@ static VkPipeline create_pipeline_internal(
         .pDepthStencilState  = &depth_stencil,
         .pColorBlendState    = &color_blending,
         .pDynamicState       = &dynamic_info,
-        .layout              = r->pipeline_layout,
+        .layout              = r->pipelines.layout,
     };
 
     VkPipeline pipeline;
-    if (vkCreateGraphicsPipelines(r->device, VK_NULL_HANDLE, 1, &pipeline_info, NULL, &pipeline) !=
-        VK_SUCCESS) {
+    if (vkCreateGraphicsPipelines(
+            r->core.device, VK_NULL_HANDLE, 1, &pipeline_info, NULL, &pipeline
+        ) != VK_SUCCESS) {
         log_error("vulkan: failed to create pipeline with topology %d", topology);
         return VK_NULL_HANDLE;
     }
 
-    vkDestroyShaderModule(r->device, vert_mod, NULL);
-    vkDestroyShaderModule(r->device, frag_mod, NULL);
+    vkDestroyShaderModule(r->core.device, vert_mod, NULL);
+    vkDestroyShaderModule(r->core.device, frag_mod, NULL);
     return pipeline;
 }
 
 bool vk_create_graphics_pipeline(graphics_t* r) {
-    VkDescriptorSetLayoutBinding bindings[2] = {
-        {
-            .binding         = 0,
-            .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .descriptorCount = 1,
-            .stageFlags      = VK_SHADER_STAGE_VERTEX_BIT,
-        },
-        {
-            .binding         = 1,
-            .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .descriptorCount = 1,
-            .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT,
-        }
+    VkDescriptorSetLayoutBinding global_binding = {
+        .binding         = 0,
+        .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags      = VK_SHADER_STAGE_VERTEX_BIT,
     };
-
-    VkDescriptorSetLayoutCreateInfo ds_layout_info = {
+    VkDescriptorSetLayoutCreateInfo global_info = {
         .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .bindingCount = 2,
-        .pBindings    = bindings,
+        .bindingCount = 1,
+        .pBindings    = &global_binding,
     };
-
-    if (vkCreateDescriptorSetLayout(r->device, &ds_layout_info, NULL, &r->descriptor_set_layout) !=
-        VK_SUCCESS) {
+    if (vkCreateDescriptorSetLayout(
+            r->core.device, &global_info, NULL, &r->pipelines.global_set_layout
+        ) != VK_SUCCESS) {
+        log_error("vulkan: failed to create global descriptor set layout");
         return false;
     }
+
+    VkDescriptorSetLayoutBinding object_binding = {
+        .binding         = 0,
+        .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT,
+    };
+    VkDescriptorSetLayoutCreateInfo object_info = {
+        .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .bindingCount = 1,
+        .pBindings    = &object_binding,
+    };
+    if (vkCreateDescriptorSetLayout(
+            r->core.device, &object_info, NULL, &r->pipelines.object_set_layout
+        ) != VK_SUCCESS) {
+        log_error("vulkan: failed to create object descriptor set layout");
+        return false;
+    }
+
+    VkDescriptorSetLayout layouts[] = {
+        r->pipelines.global_set_layout,
+        r->pipelines.object_set_layout,
+    };
 
     VkPushConstantRange push_constant = {
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
@@ -220,33 +241,36 @@ bool vk_create_graphics_pipeline(graphics_t* r) {
 
     VkPipelineLayoutCreateInfo pipeline_layout_info = {
         .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .setLayoutCount         = 1,
-        .pSetLayouts            = &r->descriptor_set_layout,
+        .setLayoutCount         = 2,
+        .pSetLayouts            = layouts,
         .pushConstantRangeCount = 1,
         .pPushConstantRanges    = &push_constant,
     };
 
-    if (vkCreatePipelineLayout(r->device, &pipeline_layout_info, NULL, &r->pipeline_layout) !=
+    if (vkCreatePipelineLayout(r->core.device, &pipeline_layout_info, NULL, &r->pipelines.layout) !=
         VK_SUCCESS) {
+        log_error("vulkan: failed to create pipeline layout");
         return false;
     }
 
-    r->graphics_pipeline = create_pipeline_internal(
+    r->pipelines.graphics = create_pipeline_internal(
         r,
         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
         "shaders/triangle.vert.spv",
         "shaders/triangle.frag.spv"
     );
-    r->line_pipeline = create_pipeline_internal(
+    r->pipelines.line = create_pipeline_internal(
         r, VK_PRIMITIVE_TOPOLOGY_LINE_LIST, "shaders/unlit.vert.spv", "shaders/unlit.frag.spv"
     );
 
-    return (r->graphics_pipeline != VK_NULL_HANDLE && r->line_pipeline != VK_NULL_HANDLE);
+    return (r->pipelines.graphics != VK_NULL_HANDLE && r->pipelines.line != VK_NULL_HANDLE);
 }
 
 void vk_destroy_graphics_pipeline(graphics_t* r) {
-    if (r->graphics_pipeline)
-        vkDestroyPipeline(r->device, r->graphics_pipeline, NULL);
-    if (r->pipeline_layout)
-        vkDestroyPipelineLayout(r->device, r->pipeline_layout, NULL);
+    if (r->pipelines.graphics) {
+        vkDestroyPipeline(r->core.device, r->pipelines.graphics, NULL);
+    }
+    if (r->pipelines.layout) {
+        vkDestroyPipelineLayout(r->core.device, r->pipelines.layout, NULL);
+    }
 }

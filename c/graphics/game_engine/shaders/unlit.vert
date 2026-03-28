@@ -7,7 +7,7 @@ layout(location = 3) in vec3 inNormal; // Ignored
 
 layout(location = 0) out vec4 fragColor;
 
-layout(binding = 0) uniform UBO {
+layout(set = 0, binding = 0) uniform UBO {
     mat4 view;
     mat4 proj;
 } ubo;

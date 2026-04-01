@@ -12,6 +12,7 @@ typedef struct graphics_t graphics_t;
 
 typedef struct {
     bool is_running;
+    bool is_paused;
 
     platform_t* platform;
     graphics_t* graphics;

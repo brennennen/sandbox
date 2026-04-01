@@ -5,14 +5,18 @@
 #include <SDL3/SDL_vulkan.h>
 
 #include "core/logger.h"
-#include "sdl_backend.h"
 
 #include "platform/platform.h"
+
+#define MAX_KEYS 512 // SDL_NUM_SCANCODES is 512
 
 struct platform_t {
     SDL_Window* window;
     float       mouse_dx;
     float       mouse_dy;
+
+    const bool* current_keys;
+    bool        previous_keys[MAX_KEYS];
 };
 
 static SDL_Scancode key_map[KEY_MAX] = {
@@ -37,19 +41,22 @@ platform_t* platform_create(const char* title, int width, int height) {
         return NULL;
     }
 
-    platform_t* p            = calloc(1, sizeof(struct platform_t));
+    platform_t* platform     = calloc(1, sizeof(struct platform_t));
     uint32_t    window_flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE;
 
-    p->window = SDL_CreateWindow(title, width, height, window_flags);
-    if (!p->window) {
+    platform->window = SDL_CreateWindow(title, width, height, window_flags);
+    if (!platform->window) {
         log_error("SDL_CreateWindow failed");
-        free(p);
+        free(platform);
         SDL_Quit();
         return NULL;
     }
 
+    platform->current_keys = SDL_GetKeyboardState(NULL);
+    memset(platform->previous_keys, 0, sizeof(platform->previous_keys));
+
     log_info("platform: window created successfully");
-    return p;
+    return platform;
 }
 
 void platform_destroy(platform_t* p) {
@@ -61,21 +68,22 @@ void platform_destroy(platform_t* p) {
     log_info("platform: cleaned up");
 }
 
-bool platform_update(platform_t* p) {
-    p->mouse_dx = 0.0f;
-    p->mouse_dy = 0.0f;
+bool platform_update(platform_t* platform) {
+    memcpy(platform->previous_keys, platform->current_keys, sizeof(platform->previous_keys));
+    platform->mouse_dx = 0.0f;
+    platform->mouse_dy = 0.0f;
 
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_EVENT_QUIT) {
-            return false; // Tell main loop to exit
+            return false;
         }
         if (event.type == SDL_EVENT_MOUSE_MOTION) {
-            p->mouse_dx += event.motion.xrel;
-            p->mouse_dy += event.motion.yrel;
+            platform->mouse_dx += event.motion.xrel;
+            platform->mouse_dy += event.motion.yrel;
         }
     }
-    return true; // Keep running
+    return true;
 }
 
 bool platform_process_events(platform_t* p) {
@@ -98,17 +106,32 @@ void platform_set_relative_mouse(platform_t* p, bool enable) {
 
 void* platform_get_native_window(platform_t* p) { return p->window; }
 
-bool platform_get_key(platform_t* p, platform_key_t key) {
-    const bool* keystate = SDL_GetKeyboardState(NULL);
-    return keystate[key_map[key]];
-}
-
 void platform_get_mouse_delta(platform_t* p, float* dx, float* dy) {
     *dx = p->mouse_dx;
     *dy = p->mouse_dy;
 }
 
 uint64_t platform_get_ticks(platform_t* p) { return SDL_GetTicks(); }
+
+bool platform_get_key(platform_t* platform, platform_key_t key) {
+    if (key >= KEY_MAX)
+        return false;
+    return platform->current_keys[key_map[key]];
+}
+
+bool platform_get_key_pressed(platform_t* platform, platform_key_t key) {
+    if (key >= KEY_MAX)
+        return false;
+    SDL_Scancode sdl_key = key_map[key];
+    return platform->current_keys[sdl_key] && !platform->previous_keys[sdl_key];
+}
+
+bool platform_get_key_released(platform_t* platform, platform_key_t key) {
+    if (key >= KEY_MAX)
+        return false;
+    SDL_Scancode sdl_key = key_map[key];
+    return !platform->current_keys[sdl_key] && platform->previous_keys[sdl_key];
+}
 
 // #ifdef RENDERER_VULKAN
 bool platform_create_vulkan_surface(platform_t* p, VkInstance instance, VkSurfaceKHR* surface) {

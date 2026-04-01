@@ -16,9 +16,7 @@ gpu_allocation_t vk_create_staging_buffer(
     VkBuffer*    out_buffer
 );
 
-VkCommandBuffer vk_begin_single_time_commands(graphics_t* r);
 
-void vk_end_single_time_commands(graphics_t* r, VkCommandBuffer cmd);
 
 bool vk_create_texture(graphics_t* r, image_t* img, vk_texture_t* out_tex);
 
@@ -44,8 +42,5 @@ VkBuffer vk_create_static_buffer(
     VkBufferUsageFlags usage
 );
 
-void vk_transition_depth_layout(graphics_t* r, VkImage image);
-
-bool vk_setup_depth_buffer(graphics_t* r, uint32_t width, uint32_t height);
 
 #endif

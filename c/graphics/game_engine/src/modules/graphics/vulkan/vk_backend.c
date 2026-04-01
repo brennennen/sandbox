@@ -71,6 +71,9 @@ static bool init_memory_heaps(graphics_t* r) {
     r->assets.device_heap = gpu_heap_create(
         r, 1024 * 1024 * 256, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
     );
+    r->assets.display_heap = gpu_heap_create(
+        r, 1024 * 1024 * 32, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+    );
 
     if (!r->assets.vertex_heap || !r->assets.device_heap) {
         log_error("vulkan: failed to create GPU memory heaps");
@@ -205,7 +208,9 @@ graphics_t* graphics_create(platform_t* platform, graphics_config_t* config) {
     }
 
     r->display.abstract_present_mode = config->present_mode;
-    if (!vk_create_swapchain(r, config->width, config->height, config->present_mode) ||
+    if (!vk_create_swapchain(
+            r, config->width, config->height, config->present_mode, VK_NULL_HANDLE
+        ) ||
         !vk_create_graphics_pipeline(r) || !init_descriptors(r)) {
         goto init_failed;
     }
@@ -292,14 +297,10 @@ present_mode_t graphics_get_present_mode(const graphics_t* graphics) {
 
 void graphics_set_present_mode(graphics_t* r, present_mode_t mode) {
     if (r->display.abstract_present_mode == mode) {
-        return; // No change needed
+        return;
     }
-    VkPresentModeKHR vk_mode = choose_swapchain_present_mode(
-        r->core.physical_device, r->core.surface, mode
-    );
     r->display.abstract_present_mode = mode;
-    r->display.present_mode          = vk_mode;
-    vk_recreate_swapchain(r, r->display.extent.width, r->display.extent.height, mode);
+    vk_recreate_swapchain(r, r->display.extent.width, r->display.extent.height);
 }
 
 static int32_t begin_frame(graphics_t* r, platform_t* platform, mat4_t view) {
@@ -324,7 +325,7 @@ static int32_t begin_frame(graphics_t* r, platform_t* platform, mat4_t view) {
     );
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-        vk_recreate_swapchain(r, w, h, r->display.present_mode);
+        vk_recreate_swapchain(r, w, h);
         return -1;
     }
 

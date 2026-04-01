@@ -31,7 +31,7 @@ bool game_engine_init(game_engine_t* game_engine) {
         .width        = w,
         .height       = h,
         .app_name     = "Game Engine",
-        .present_mode = PRESENT_MODE_VSYNC,
+        .present_mode = PRESENT_MODE_IMMEDIATE, // PRESENT_MODE_VSYNC,
     };
 
     game_engine->graphics = graphics_create(game_engine->platform, &graphics_config);
@@ -124,24 +124,29 @@ static void game_engine_handle_inputs(game_engine_t* game_engine, float delta_ti
         camera->pos.z += cam_speed;
     if (platform_get_key(platform, KEY_LSHIFT))
         camera->pos.z -= cam_speed;
-
-    if (platform_get_key(platform, KEY_P)) {
-        printf("Cam Pos: %.2f, %.2f, %.2f\n", camera->pos.x, camera->pos.y, camera->pos.z);
-    }
 }
 
 bool game_engine_tick(game_engine_t* game_engine) {
     if (!platform_update(game_engine->platform)) {
         return false;
     }
-    if (platform_get_key(game_engine->platform, KEY_ESCAPE)) {
+    if (platform_get_key_pressed(game_engine->platform, KEY_F4)) {
         return false;
     }
-    if (platform_get_key(game_engine->platform, KEY_F12)) {
+    if (platform_get_key_pressed(game_engine->platform, KEY_ESCAPE)) {
+        game_engine->is_paused = !game_engine->is_paused;
+        if (game_engine->is_paused) {
+            platform_set_relative_mouse(game_engine->platform, false);
+            log_info("paused");
+        } else {
+            platform_set_relative_mouse(game_engine->platform, true);
+            log_info("unpaused");
+        }
+    }
+    if (platform_get_key_pressed(game_engine->platform, KEY_F12)) {
         present_mode_t current_mode = graphics_get_present_mode(game_engine->graphics);
-        present_mode_t next_mode = (current_mode == PRESENT_MODE_VSYNC)
-                                   ? PRESENT_MODE_MAILBOX
-                                   : PRESENT_MODE_VSYNC;
+        present_mode_t next_mode    = (current_mode == PRESENT_MODE_VSYNC) ? PRESENT_MODE_IMMEDIATE
+                                                                           : PRESENT_MODE_VSYNC;
         graphics_set_present_mode(game_engine->graphics, next_mode);
         log_info("Toggled Present Mode to: %d", next_mode);
     }
@@ -171,7 +176,9 @@ bool game_engine_tick(game_engine_t* game_engine) {
         game_engine->fps_last_time = current_time;
     }
 
-    game_engine_handle_inputs(game_engine, delta_time);
+    if (!game_engine->is_paused) {
+        game_engine_handle_inputs(game_engine, delta_time);
+    }
 
     mat4_t view = camera_get_view_matrix(game_engine->main_camera);
 

@@ -158,6 +158,7 @@ typedef struct {
 typedef struct {
     gpu_heap_t* vertex_heap;
     gpu_heap_t* device_heap;
+    gpu_heap_t* display_heap;
 
     vk_mesh_t meshes[MAX_MESHES];
     uint32_t  mesh_count;

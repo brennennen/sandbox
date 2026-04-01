@@ -2,6 +2,8 @@
 
 #include "core/logger.h"
 #include "modules/graphics/graphics.h"
+#include "vk_commands.h"
+#include "vk_gpu_allocator.h"
 #include "vk_swapchain.h"
 
 VkPresentModeKHR choose_swapchain_present_mode(
@@ -42,7 +44,8 @@ bool vk_create_swapchain(
     graphics_t*    graphics,
     int            width,
     int            height,
-    present_mode_t abstract_present_mode
+    present_mode_t abstract_present_mode,
+    VkSwapchainKHR old_swapchain
 ) {
     VkSurfaceCapabilitiesKHR capabilities;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
@@ -91,6 +94,7 @@ bool vk_create_swapchain(
         .compositeAlpha   = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
         .presentMode      = present_mode,
         .clipped          = VK_TRUE,
+        .oldSwapchain     = old_swapchain,
     };
 
     if (vkCreateSwapchainKHR(
@@ -99,6 +103,8 @@ bool vk_create_swapchain(
         log_error("vulkan: failed to create swapchain");
         return false;
     }
+
+    // vkDestroySwapchainKHR(graphics->core.device, old_swapchain, NULL);
 
     // Fetch the images created by the swapchain
     vkGetSwapchainImagesKHR(
@@ -133,19 +139,139 @@ bool vk_create_swapchain(
     return true;
 }
 
-void vk_recreate_swapchain(
-    graphics_t*    graphics,
-    int            width,
-    int            height,
-    present_mode_t present_mode
-) {
-    if (width == 0 || height == 0) {
+VkCommandBuffer vk_begin_single_time_commands(graphics_t* r) {
+    VkCommandBufferAllocateInfo alloc_info = {
+        .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandPool        = r->command_pool,
+        .commandBufferCount = 1,
+    };
+
+    VkCommandBuffer cmd;
+    vkAllocateCommandBuffers(r->core.device, &alloc_info, &cmd);
+
+    VkCommandBufferBeginInfo begin_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
+
+    vkBeginCommandBuffer(cmd, &begin_info);
+    return cmd;
+}
+
+void vk_end_single_time_commands(graphics_t* r, VkCommandBuffer cmd) {
+    vkEndCommandBuffer(cmd);
+
+    VkSubmitInfo submit_info = {
+        .sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .commandBufferCount = 1,
+        .pCommandBuffers    = &cmd,
+    };
+
+    vkQueueSubmit(r->core.graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
+    vkQueueWaitIdle(r->core.graphics_queue);
+
+    vkFreeCommandBuffers(r->core.device, r->command_pool, 1, &cmd);
+}
+
+static void vk_transition_depth_layout(graphics_t* r, VkImage image) {
+    VkCommandBuffer cmd = vk_begin_immediate_submit(r);
+
+    VkImageMemoryBarrier barrier = {
+        .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .oldLayout        = VK_IMAGE_LAYOUT_UNDEFINED,
+        .newLayout        = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+        .image            = image,
+        .subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1},
+        .srcAccessMask    = 0,
+        .dstAccessMask    = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+                         VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+    };
+
+    vkCmdPipelineBarrier(
+        cmd,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+        0,
+        0,
+        NULL,
+        0,
+        NULL,
+        1,
+        &barrier
+    );
+    vk_end_immediate_submit(r);
+}
+
+bool vk_setup_depth_buffer(graphics_t* r, uint32_t width, uint32_t height) {
+    VkImageCreateInfo depth_info = {
+        .sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .imageType     = VK_IMAGE_TYPE_2D,
+        .extent        = {width, height, 1},
+        .mipLevels     = 1,
+        .arrayLayers   = 1,
+        .format        = VK_FORMAT_D32_SFLOAT,
+        .tiling        = VK_IMAGE_TILING_OPTIMAL,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .usage         = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+        .samples       = VK_SAMPLE_COUNT_1_BIT,
+    };
+
+    if (vkCreateImage(r->core.device, &depth_info, NULL, &r->display.depth_image) != VK_SUCCESS)
+        return false;
+
+    VkMemoryRequirements mem_reqs;
+    vkGetImageMemoryRequirements(r->core.device, r->display.depth_image, &mem_reqs);
+    r->display.depth_alloc = gpu_heap_alloc(
+        r->assets.display_heap, mem_reqs.size, mem_reqs.alignment
+    );
+    vkBindImageMemory(
+        r->core.device,
+        r->display.depth_image,
+        r->assets.display_heap->memory,
+        r->display.depth_alloc.offset
+    );
+    vk_transition_depth_layout(r, r->display.depth_image);
+
+    VkImageViewCreateInfo view_info = {
+        .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image            = r->display.depth_image,
+        .viewType         = VK_IMAGE_VIEW_TYPE_2D,
+        .format           = VK_FORMAT_D32_SFLOAT,
+        .subresourceRange = {
+            .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .layerCount = 1
+        }
+    };
+
+    return vkCreateImageView(r->core.device, &view_info, NULL, &r->display.depth_view) ==
+           VK_SUCCESS;
+}
+
+void vk_recreate_swapchain(graphics_t* graphics, int width, int height) {
+    if (width == 0 || height == 0)
         return;
+    vkDeviceWaitIdle(graphics->core.device);
+
+    VkSwapchainKHR old_swapchain = graphics->display.swapchain;
+
+    for (uint32_t i = 0; i < graphics->display.image_count; i++) {
+        vkDestroyImageView(graphics->core.device, graphics->display.image_views[i], NULL);
     }
-    vkDeviceWaitIdle(graphics->core.device); // Wait for the GPU to finish using the old swapchain
-    vk_destroy_swapchain(graphics);
-    vk_create_swapchain(graphics, width, height, present_mode);
-    log_info("vulkan: swapchain recreated for %dx%d", width, height);
+    vkDestroyImageView(graphics->core.device, graphics->display.depth_view, NULL);
+    vkDestroyImage(graphics->core.device, graphics->display.depth_image, NULL);
+
+    free(graphics->display.images);
+    free(graphics->display.image_views);
+
+    graphics->assets.display_heap->used = 0;
+
+    vk_create_swapchain(
+        graphics, width, height, graphics->display.abstract_present_mode, old_swapchain
+    );
+    vk_setup_depth_buffer(graphics, width, height);
+
+    vkDestroySwapchainKHR(graphics->core.device, old_swapchain, NULL);
+    log_info("vulkan: swapchain and depth buffer recreated for %dx%d", width, height);
 }
 
 void vk_destroy_swapchain(graphics_t* graphics) {

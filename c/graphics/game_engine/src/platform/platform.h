@@ -39,6 +39,9 @@ void*    platform_get_native_window(platform_t* p);
 bool     platform_get_key(platform_t* p, platform_key_t key);
 void     platform_get_mouse_delta(platform_t* p, float* dx, float* dy);
 uint64_t platform_get_ticks(platform_t* p);
+bool     platform_get_key(platform_t* platform, platform_key_t key_code);
+bool     platform_get_key_pressed(platform_t* platform, platform_key_t key_code);
+bool     platform_get_key_released(platform_t* platform, platform_key_t key_code);
 
 // TODO: wrap this in #ifdef RENDERER_VULKAN?
 // #ifdef RENDERER_VULKAN

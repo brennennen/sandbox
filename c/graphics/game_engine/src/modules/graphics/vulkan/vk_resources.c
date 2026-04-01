@@ -38,40 +38,7 @@ gpu_allocation_t vk_create_staging_buffer(
     return alloc;
 }
 
-VkCommandBuffer vk_begin_single_time_commands(graphics_t* r) {
-    VkCommandBufferAllocateInfo alloc_info = {
-        .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandPool        = r->command_pool,
-        .commandBufferCount = 1,
-    };
 
-    VkCommandBuffer cmd;
-    vkAllocateCommandBuffers(r->core.device, &alloc_info, &cmd);
-
-    VkCommandBufferBeginInfo begin_info = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-    };
-
-    vkBeginCommandBuffer(cmd, &begin_info);
-    return cmd;
-}
-
-void vk_end_single_time_commands(graphics_t* r, VkCommandBuffer cmd) {
-    vkEndCommandBuffer(cmd);
-
-    VkSubmitInfo submit_info = {
-        .sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-        .commandBufferCount = 1,
-        .pCommandBuffers    = &cmd,
-    };
-
-    vkQueueSubmit(r->core.graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
-    vkQueueWaitIdle(r->core.graphics_queue);
-
-    vkFreeCommandBuffers(r->core.device, r->command_pool, 1, &cmd);
-}
 
 bool vk_create_texture(graphics_t* r, image_t* img, vk_texture_t* out_tex) {
     VkBuffer         staging_buffer;
@@ -320,79 +287,4 @@ VkBuffer vk_create_static_buffer(
     vkDestroyBuffer(r->core.device, staging_buffer, NULL);
 
     return device_buffer;
-}
-
-void vk_transition_depth_layout(graphics_t* r, VkImage image) {
-    VkCommandBuffer cmd = vk_begin_single_time_commands(r);
-
-    VkImageMemoryBarrier barrier = {
-        .sType     = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-        .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .newLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-        .image     = image,
-        .subresourceRange =
-            {.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .layerCount = 1},
-        .srcAccessMask = 0,
-        .dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
-                         VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
-    };
-
-    vkCmdPipelineBarrier(
-        cmd,
-        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-        0,
-        0,
-        NULL,
-        0,
-        NULL,
-        1,
-        &barrier
-    );
-
-    vk_end_single_time_commands(r, cmd);
-}
-
-bool vk_setup_depth_buffer(graphics_t* r, uint32_t width, uint32_t height) {
-    VkImageCreateInfo depth_info = {
-        .sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-        .imageType     = VK_IMAGE_TYPE_2D,
-        .extent        = {width, height, 1},
-        .mipLevels     = 1,
-        .arrayLayers   = 1,
-        .format        = VK_FORMAT_D32_SFLOAT,
-        .tiling        = VK_IMAGE_TILING_OPTIMAL,
-        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .usage         = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-        .samples       = VK_SAMPLE_COUNT_1_BIT,
-    };
-
-    if (vkCreateImage(r->core.device, &depth_info, NULL, &r->display.depth_image) != VK_SUCCESS)
-        return false;
-
-    VkMemoryRequirements mem_reqs;
-    vkGetImageMemoryRequirements(r->core.device, r->display.depth_image, &mem_reqs);
-    r->display.depth_alloc = gpu_heap_alloc(
-        r->assets.device_heap, mem_reqs.size, mem_reqs.alignment
-    );
-    vkBindImageMemory(
-        r->core.device,
-        r->display.depth_image,
-        r->assets.device_heap->memory,
-        r->display.depth_alloc.offset
-    );
-    vk_transition_depth_layout(r, r->display.depth_image);
-
-    VkImageViewCreateInfo view_info = {
-        .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image            = r->display.depth_image,
-        .viewType         = VK_IMAGE_VIEW_TYPE_2D,
-        .format           = VK_FORMAT_D32_SFLOAT,
-        .subresourceRange = {
-            .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT, .levelCount = 1, .layerCount = 1
-        }
-    };
-
-    return vkCreateImageView(r->core.device, &view_info, NULL, &r->display.depth_view) ==
-           VK_SUCCESS;
 }

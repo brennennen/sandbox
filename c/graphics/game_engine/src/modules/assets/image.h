@@ -18,4 +18,6 @@ void image_free(image_t* image);
 image_t image_create_placeholder();
 image_t image_create_checkerboard(uint32_t w, uint32_t h);
 
+bool image_load_from_memory(const void* buffer, int len, image_t* out_image);
+
 #endif

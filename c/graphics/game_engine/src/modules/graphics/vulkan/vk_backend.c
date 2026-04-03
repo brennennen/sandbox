@@ -58,18 +58,17 @@ void update_uniform_buffer(graphics_t* r, mat4_t view, uint32_t current_frame) {
     float  aspect = (float)r->display.extent.width / (float)r->display.extent.height;
     mat4_t proj   = mat4_perspective(0.785f, aspect, 0.1f, 100.0f);
     ubo_t  ubo    = {.view = view, .proj = proj};
-    // Update pointer:
     memcpy(r->frames[current_frame].uniform_alloc.mapped_ptr, &ubo, sizeof(ubo));
 }
 
 static bool init_memory_heaps(graphics_t* r) {
     r->assets.vertex_heap = gpu_heap_create(
         r,
-        1024 * 1024 * 128,
+        1024 * 1024 * 1024,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
     );
     r->assets.device_heap = gpu_heap_create(
-        r, 1024 * 1024 * 256, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+        r, 1024 * 1024 * 1024, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
     );
     r->assets.display_heap = gpu_heap_create(
         r, 1024 * 1024 * 32, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
@@ -478,7 +477,7 @@ mesh_handle_t graphics_upload_mesh(graphics_t* graphics, mesh_data_t* data) {
         vk_mesh->index_buffer = vk_create_static_buffer(
             graphics,
             data->indices,
-            data->index_count * sizeof(uint16_t),
+            data->index_count * sizeof(uint32_t),
             VK_BUFFER_USAGE_INDEX_BUFFER_BIT
         );
     } else {
@@ -550,10 +549,28 @@ texture_handle_t graphics_upload_texture(graphics_t* r, image_t* img) {
     return (texture_handle_t){.id = id};
 }
 
+static VkPipeline get_draw_mode_pipeline(vk_pipelines_t* pipelines, draw_mode_t draw_mode) {
+    switch (draw_mode) {
+    case DRAW_MODE_LIT:
+        return pipelines->graphics;
+    case DRAW_MODE_DEBUG_WIREFRAME:
+        return pipelines->debug_wireframe;
+    case DRAW_MODE_DEBUG_LIGHTING:
+        return pipelines->debug_lighting;
+    case DRAW_MODE_DEBUG_ALBEDO:
+        return pipelines->debug_albedo;
+    case DRAW_MODE_DEBUG_NORMAL:
+        return pipelines->debug_normal;
+    default:
+        return pipelines->graphics;
+    }
+}
+
 void graphics_draw(
     graphics_t*      r,
     platform_t*      platform,
     mat4_t           view,
+    draw_mode_t      draw_mode,
     render_object_t* objects,
     uint32_t         object_count
 ) {
@@ -562,7 +579,12 @@ void graphics_draw(
         return;
     }
 
-    vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, r->pipelines.graphics);
+   // VkPipeline current_pipeline = r->pipelines.graphics;
+    VkPipeline current_pipeline = get_draw_mode_pipeline(&r->pipelines, draw_mode);
+
+    //VkPipeline current_pipeline = wireframe_mode ? r->pipelines.wireframe : r->pipelines.graphics;
+    vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, current_pipeline);
+
     vkCmdBindDescriptorSets(
         r->command_buffer,
         VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -605,7 +627,7 @@ void graphics_draw(
         vkCmdBindVertexBuffers(r->command_buffer, 0, 1, &vk_mesh->vertex_buffer, offsets);
 
         if (vk_mesh->index_count > 0) {
-            vkCmdBindIndexBuffer(r->command_buffer, vk_mesh->index_buffer, 0, VK_INDEX_TYPE_UINT16);
+            vkCmdBindIndexBuffer(r->command_buffer, vk_mesh->index_buffer, 0, VK_INDEX_TYPE_UINT32);
             vkCmdDrawIndexed(r->command_buffer, vk_mesh->index_count, 1, 0, 0, 0);
         } else {
             vkCmdDraw(r->command_buffer, vk_mesh->vertex_count, 1, 0, 0);

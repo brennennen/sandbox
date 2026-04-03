@@ -20,6 +20,8 @@ pub fn build(b: *std.Build) void {
     game_engine.addCSourceFile(.{ .file = b.path("src/core/math/mat4_math.c"), .flags = c_flags });
     game_engine.addCSourceFile(.{ .file = b.path("src/core/camera.c"), .flags = c_flags });
     game_engine.addCSourceFile(.{ .file = b.path("src/core/game_engine.c"), .flags = c_flags });
+    game_engine.addCSourceFile(.{ .file = b.path("src/modules/graphics/graphics.c"), .flags = c_flags });
+
     game_engine.addCSourceFile(.{ .file = b.path("src/modules/graphics/debug/debug_grid.c"), .flags = c_flags });
     game_engine.addCSourceFile(.{ .file = b.path("src/modules/graphics/vulkan/vk_devices.c"), .flags = c_flags });
     game_engine.addCSourceFile(.{ .file = b.path("src/modules/graphics/vulkan/vk_backend.c"), .flags = c_flags });
@@ -30,6 +32,7 @@ pub fn build(b: *std.Build) void {
     game_engine.addCSourceFile(.{ .file = b.path("src/modules/graphics/vulkan/vk_commands.c"), .flags = c_flags });
     game_engine.addCSourceFile(.{ .file = b.path("src/modules/assets/image.c"), .flags = c_flags });
     game_engine.addCSourceFile(.{ .file = b.path("src/modules/assets/obj.c"), .flags = c_flags });
+    game_engine.addCSourceFile(.{ .file = b.path("src/modules/assets/gltf.c"), .flags = c_flags });
     //game_engine.addCSourceFile(.{ .file = b.path("src/platform/platform.c"), .flags = c_flags });
     game_engine.addCSourceFile(.{ .file = b.path("src/platform/sdl/sdl_backend.c"), .flags = c_flags });
 
@@ -37,6 +40,7 @@ pub fn build(b: *std.Build) void {
     game_engine.addIncludePath(b.path(".vendor/Vulkan-Headers/include"));
     game_engine.addIncludePath(b.path(".vendor/VulkanMemoryAllocator/include"));
     game_engine.addIncludePath(b.path(".vendor/stb/"));
+    game_engine.addIncludePath(b.path(".vendor/"));
     game_engine.addIncludePath(b.path("src"));
     game_engine.addIncludePath(b.path("src/modules"));
     game_engine.addIncludePath(b.path("src/modules/graphics/include"));
@@ -61,6 +65,10 @@ pub fn build(b: *std.Build) void {
     const shaders = [_][2][]const u8{
         .{ "shaders/triangle.vert", "shaders/triangle.vert.spv" },
         .{ "shaders/triangle.frag", "shaders/triangle.frag.spv" },
+        .{ "shaders/debug_wireframe.frag", "shaders/debug_wireframe.frag.spv" },
+        .{ "shaders/debug_lighting_only.frag", "shaders/debug_lighting_only.frag.spv" },
+        .{ "shaders/debug_albedo.frag", "shaders/debug_albedo.frag.spv" },
+        .{ "shaders/debug_normals.frag", "shaders/debug_normals.frag.spv" },
         .{ "shaders/unlit.vert", "shaders/unlit.vert.spv" },
         .{ "shaders/unlit.frag", "shaders/unlit.frag.spv" },
     };

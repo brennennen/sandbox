@@ -52,7 +52,7 @@ bool load_obj(const char* filepath, mesh_data_t* out_mesh) {
 
     vertex_t* unique_verts = NULL;
     int       vert_count = 0, vert_cap = 0;
-    uint16_t* indices   = NULL;
+    uint32_t* indices   = NULL;
     int       ind_count = 0, ind_cap = 0;
 
     char line[128];
@@ -97,7 +97,7 @@ bool load_obj(const char* filepath, mesh_data_t* out_mesh) {
 
             if (ind_count + 3 > ind_cap) {
                 ind_cap = ind_cap == 0 ? 128 : ind_cap * 2;
-                indices = realloc(indices, ind_cap * sizeof(uint16_t));
+                indices = realloc(indices, ind_cap * sizeof(uint32_t));
             }
 
             for (int i = 0; i < 3; i++) {
@@ -129,14 +129,14 @@ bool load_obj(const char* filepath, mesh_data_t* out_mesh) {
                 }
 
                 if (found_index != -1) {
-                    indices[ind_count++] = (uint16_t)found_index;
+                    indices[ind_count++] = (uint32_t)found_index;
                 } else {
                     if (vert_count >= vert_cap) {
                         vert_cap     = vert_cap == 0 ? 128 : vert_cap * 2;
                         unique_verts = realloc(unique_verts, vert_cap * sizeof(vertex_t));
                     }
                     unique_verts[vert_count] = v;
-                    indices[ind_count++]     = (uint16_t)vert_count;
+                    indices[ind_count++]     = (uint32_t)vert_count;
                     vert_count++;
                 }
             }

@@ -32,6 +32,7 @@ static SDL_Scancode key_map[KEY_MAX] = {
     [KEY_F2]     = SDL_SCANCODE_F2,
     [KEY_F3]     = SDL_SCANCODE_F3,
     [KEY_F4]     = SDL_SCANCODE_F4,
+    [KEY_F5]     = SDL_SCANCODE_F5,
     [KEY_F12]    = SDL_SCANCODE_F12
 };
 

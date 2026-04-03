@@ -4,7 +4,8 @@
 #include <stdbool.h>
 
 #include "core/camera.h"
-
+#include "core/scene.h"
+#include "modules/graphics/graphics.h"
 #include "modules/graphics/graphics_types.h"
 
 typedef struct platform_t platform_t;
@@ -28,9 +29,13 @@ typedef struct {
     int      frame_count;
     uint64_t fps_last_time;
 
+    scene_t main_scene;
+
     mesh_handle_t test_mesh;
 
     texture_handle_t test_texture;
+
+    draw_mode_t draw_mode;
 
 } game_engine_t;
 

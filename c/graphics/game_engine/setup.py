@@ -64,7 +64,7 @@ def download_vulkan_headers():
     os.remove(zip_path)
     print("Vulkan headers ready at .vendor/Vulkan-Headers")
 
-def download_stb():
+def download_stb_image():
     # todo: wget https://github.com/nothings/stb/tree/master
     stb_dir = os.path.join(VENDOR_DIR, "stb")
     if os.path.exists(stb_dir):
@@ -74,9 +74,16 @@ def download_stb():
     print("Downloading stb...")
     urllib.request.urlretrieve(stb_image, os.path.join(stb_dir, "stb_image.h"))
 
+def download_cgltf():
+    cgltf_url = "https://raw.githubusercontent.com/jkuhlmann/cgltf/refs/heads/master/cgltf.h"
+    print("Downloading cgltf...")
+    urllib.request.urlretrieve(cgltf_url, os.path.join(VENDOR_DIR, "cgltf.h"))
+
+
 if __name__ == "__main__":
     os.makedirs(VENDOR_DIR, exist_ok=True)
     download_sdl()
     download_volk()
     download_vulkan_headers()
-    download_stb()
+    download_stb_image()
+    download_cgltf()

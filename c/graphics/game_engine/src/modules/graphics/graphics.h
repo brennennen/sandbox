@@ -25,6 +25,19 @@ typedef enum {
     PRESENT_MODE_VSYNC,
 } present_mode_t;
 
+/**
+ * What pipeline and shaders to use.
+ */
+typedef enum {
+    DRAW_MODE_LIT,             // standard rendering
+    DRAW_MODE_DEBUG_WIREFRAME, // only render edges, no faces
+    DRAW_MODE_DEBUG_LIGHTING,  // render faces with lighting information, but no albedo
+    DRAW_MODE_DEBUG_ALBEDO,    // render faces unlit with albedo
+    DRAW_MODE_DEBUG_NORMAL,    // render faces with normal as face color
+    DRAW_MODE_COUNT,
+} draw_mode_t;
+extern const char* const draw_mode_names[];
+
 typedef struct {
     int            width;
     int            height;
@@ -46,6 +59,7 @@ void graphics_draw(
     graphics_t*      graphics,
     platform_t*      platform,
     mat4_t           view,
+    draw_mode_t      draw_mode,
     render_object_t* objects,
     uint32_t         object_count
 );

@@ -49,3 +49,18 @@ void image_free(image_t* image) {
         image->pixels = NULL;
     }
 }
+
+bool image_load_from_memory(const void* buffer, int len, image_t* out_image) {
+    out_image->pixels = stbi_load_from_memory(
+        (const stbi_uc*)buffer,
+        len,
+        &out_image->width,
+        &out_image->height,
+        &out_image->channels,
+        STBI_rgb_alpha
+    );
+
+    out_image->channels = 4;
+
+    return out_image->pixels != NULL;
+}

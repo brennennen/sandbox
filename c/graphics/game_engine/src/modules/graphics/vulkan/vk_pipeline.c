@@ -11,6 +11,7 @@
 #include "core/logger.h"
 
 #include "modules/graphics/graphics_types.h"
+// #include "vulkan_core.h"
 
 VkShaderModule vk_create_shader_module(VkDevice device, const char* path) {
     FILE* file = fopen(path, "rb");
@@ -46,6 +47,8 @@ VkShaderModule vk_create_shader_module(VkDevice device, const char* path) {
 static VkPipeline create_pipeline_internal(
     graphics_t*         r,
     VkPrimitiveTopology topology,
+    VkPolygonMode       polygon_mode,
+    VkCullModeFlags     cull_mode,
     const char*         vert_path,
     const char*         frag_path
 ) {
@@ -114,9 +117,9 @@ static VkPipeline create_pipeline_internal(
 
     VkPipelineRasterizationStateCreateInfo rasterizer = {
         .sType       = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
-        .polygonMode = VK_POLYGON_MODE_FILL,
+        .polygonMode = polygon_mode,
         .lineWidth   = 1.0f,
-        .cullMode    = VK_CULL_MODE_BACK_BIT,
+        .cullMode    = cull_mode,
         .frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE,
     };
 
@@ -165,11 +168,12 @@ static VkPipeline create_pipeline_internal(
         .pStages             = stages,
         .pVertexInputState   = &vertex_input,
         .pInputAssemblyState = &input_assembly,
-        .pViewportState      = &(
-            VkPipelineViewportStateCreateInfo
-        ){.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-               .viewportCount = 1,
-               .scissorCount  = 1},
+        .pViewportState =
+            &(VkPipelineViewportStateCreateInfo){
+                .sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+                .viewportCount = 1,
+                .scissorCount  = 1,
+            },
         .pRasterizationState = &rasterizer,
         .pMultisampleState   = &multisampling,
         .pDepthStencilState  = &depth_stencil,
@@ -256,19 +260,79 @@ bool vk_create_graphics_pipeline(graphics_t* r) {
     r->pipelines.graphics = create_pipeline_internal(
         r,
         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        VK_POLYGON_MODE_FILL,
+        VK_CULL_MODE_BACK_BIT,
         "shaders/triangle.vert.spv",
         "shaders/triangle.frag.spv"
     );
+    r->pipelines.debug_wireframe = create_pipeline_internal(
+        r,
+        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        VK_POLYGON_MODE_LINE,
+        VK_CULL_MODE_NONE,
+        "shaders/triangle.vert.spv",
+        "shaders/debug_wireframe.frag.spv"
+    );
+    r->pipelines.debug_lighting = create_pipeline_internal(
+        r,
+        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        VK_POLYGON_MODE_FILL,
+        VK_CULL_MODE_BACK_BIT,
+        "shaders/triangle.vert.spv",
+        "shaders/debug_lighting_only.frag.spv"
+    );
+    r->pipelines.debug_albedo = create_pipeline_internal(
+        r,
+        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        VK_POLYGON_MODE_FILL,
+        VK_CULL_MODE_BACK_BIT,
+        "shaders/triangle.vert.spv",
+        "shaders/debug_albedo.frag.spv"
+    );
+    r->pipelines.debug_normal = create_pipeline_internal(
+        r,
+        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        VK_POLYGON_MODE_FILL,
+        VK_CULL_MODE_BACK_BIT,
+        "shaders/triangle.vert.spv",
+        "shaders/debug_normals.frag.spv"
+    );
     r->pipelines.line = create_pipeline_internal(
-        r, VK_PRIMITIVE_TOPOLOGY_LINE_LIST, "shaders/unlit.vert.spv", "shaders/unlit.frag.spv"
+        r,
+        VK_PRIMITIVE_TOPOLOGY_LINE_LIST,
+        VK_POLYGON_MODE_FILL,
+        VK_CULL_MODE_BACK_BIT,
+        "shaders/unlit.vert.spv",
+        "shaders/unlit.frag.spv"
     );
 
-    return (r->pipelines.graphics != VK_NULL_HANDLE && r->pipelines.line != VK_NULL_HANDLE);
+    // return (r->pipelines.graphics != VK_NULL_HANDLE && r->pipelines.line != VK_NULL_HANDLE);
+    return (
+        r->pipelines.graphics != VK_NULL_HANDLE && r->pipelines.debug_wireframe != VK_NULL_HANDLE &&
+        r->pipelines.debug_lighting != VK_NULL_HANDLE &&
+        r->pipelines.debug_albedo != VK_NULL_HANDLE &&
+        r->pipelines.debug_normal != VK_NULL_HANDLE && r->pipelines.line != VK_NULL_HANDLE
+    );
 }
 
 void vk_destroy_graphics_pipeline(graphics_t* r) {
     if (r->pipelines.graphics) {
         vkDestroyPipeline(r->core.device, r->pipelines.graphics, NULL);
+    }
+    if (r->pipelines.debug_wireframe) {
+        vkDestroyPipeline(r->core.device, r->pipelines.debug_wireframe, NULL);
+    }
+    if (r->pipelines.debug_lighting) {
+        vkDestroyPipeline(r->core.device, r->pipelines.debug_lighting, NULL);
+    }
+    if (r->pipelines.debug_albedo) {
+        vkDestroyPipeline(r->core.device, r->pipelines.debug_albedo, NULL);
+    }
+    if (r->pipelines.debug_normal) {
+        vkDestroyPipeline(r->core.device, r->pipelines.debug_normal, NULL);
+    }
+    if (r->pipelines.line) {
+        vkDestroyPipeline(r->core.device, r->pipelines.line, NULL);
     }
     if (r->pipelines.layout) {
         vkDestroyPipelineLayout(r->core.device, r->pipelines.layout, NULL);

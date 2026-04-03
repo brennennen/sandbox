@@ -5,7 +5,9 @@
 -Isrc/modules/platform
 -Isrc/modules/platform
 -Isrc/modules/renderer
+-I.vendor/
 -I.vendor/volk
+-I.vendor/stb
 -I.vendor/Vulkan-Headers/include
 -I.vendor/Vulkan-Headers/include/vulkan
 -I.vendor/SDL3-3.4.0/x86_64-w64-mingw32/include

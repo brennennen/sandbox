@@ -24,6 +24,7 @@ typedef enum {
     KEY_F2,
     KEY_F3,
     KEY_F4,
+    KEY_F5,
     KEY_F12,
     KEY_MAX
 } platform_key_t;

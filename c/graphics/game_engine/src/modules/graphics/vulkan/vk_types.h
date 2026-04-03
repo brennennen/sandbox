@@ -180,6 +180,10 @@ typedef struct {
     VkPipelineLayout layout;
     VkPipeline       graphics;
     VkPipeline       transparent;
+    VkPipeline       debug_wireframe;
+    VkPipeline       debug_lighting;
+    VkPipeline       debug_albedo;
+    VkPipeline       debug_normal;
     VkPipeline       line;
 } vk_pipelines_t;
 

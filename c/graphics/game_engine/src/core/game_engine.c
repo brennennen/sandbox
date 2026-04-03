@@ -11,6 +11,7 @@
 #include "core/math/mat4_math.h"
 #include "core/math/math_types.h"
 #include "game_engine.h"
+#include "modules/assets/gltf.h"
 #include "modules/assets/obj.h"
 #include "modules/graphics/graphics.h"
 #include "platform/platform.h"
@@ -50,24 +51,26 @@ bool game_engine_init(game_engine_t* game_engine) {
     game_engine->fps_last_time = game_engine->last_time;
     game_engine->frame_count   = 0;
 
-    mesh_data_t suzanne_data;
-    if (load_obj("suzanne.obj", &suzanne_data)) {
-        game_engine->test_mesh = graphics_upload_mesh(game_engine->graphics, &suzanne_data);
-        free_mesh(&suzanne_data);
-    } else {
-        log_error("Failed to load suzanne.obj");
-        game_engine->test_mesh.id = UINT32_MAX;
-    }
+    mesh_data_t my_model_data;
 
-    image_t img;
-    if (image_load("test.png", &img)) {
-        game_engine->test_texture = graphics_upload_texture(game_engine->graphics, &img);
-        image_free(&img);
-    } else {
-        log_warn("Failed to load test.png, generating dummy texture.");
-        image_t dummy             = image_create_placeholder();
-        game_engine->test_texture = graphics_upload_texture(game_engine->graphics, &dummy);
-        image_free(&dummy);
+    // TODO: go back to pink/black checkerboard default texture?
+    uint8_t white_pixel[4]  = {255, 255, 255, 255};
+    image_t dummy_white_img = {
+        .width    = 1,
+        .height   = 1,
+        .channels = 4,
+        .size     = 4,
+        .pixels   = white_pixel,
+    };
+    texture_handle_t default_tex = graphics_upload_texture(game_engine->graphics, &dummy_white_img);
+
+    if (!load_gltf_scene(
+            "test_glb.glb",
+            &game_engine->main_scene,
+            game_engine->graphics,
+            game_engine->test_texture
+        )) {
+        log_error("Failed to load complex GLTF scene");
     }
 
     game_engine->is_running = true;
@@ -133,6 +136,10 @@ bool game_engine_tick(game_engine_t* game_engine) {
     if (platform_get_key_pressed(game_engine->platform, KEY_F4)) {
         return false;
     }
+    if (platform_get_key_pressed(game_engine->platform, KEY_F5)) {
+        game_engine->draw_mode = (game_engine->draw_mode + 1) % DRAW_MODE_COUNT;
+        log_info("draw mode: %s", draw_mode_names[game_engine->draw_mode]);
+    }
     if (platform_get_key_pressed(game_engine->platform, KEY_ESCAPE)) {
         game_engine->is_paused = !game_engine->is_paused;
         if (game_engine->is_paused) {
@@ -181,19 +188,14 @@ bool game_engine_tick(game_engine_t* game_engine) {
     }
 
     mat4_t view = camera_get_view_matrix(game_engine->main_camera);
-
-    float time = (float)current_time / 1000.0f;
-
-    render_object_t scene_objects[1];
-
-    mat4_t rz = mat4_rotate_z(time * 0.5f);
-    mat4_t t  = mat4_translate((vec3_t){0.0f, 0.0f, 1.0f});
-
-    scene_objects[0].mesh      = game_engine->test_mesh;
-    scene_objects[0].texture   = game_engine->test_texture;
-    scene_objects[0].transform = mat4_mul(rz, t);
-
-    graphics_draw(game_engine->graphics, game_engine->platform, view, scene_objects, 1);
+    graphics_draw(
+        game_engine->graphics,
+        game_engine->platform,
+        view,
+        game_engine->draw_mode,
+        game_engine->main_scene.objects,
+        game_engine->main_scene.object_count
+    );
 
     return true;
 }

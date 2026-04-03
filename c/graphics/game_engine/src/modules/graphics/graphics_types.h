@@ -20,7 +20,7 @@ typedef struct {
     vertex_t* vertices;
     uint32_t  vertex_count;
 
-    uint16_t* indices;
+    uint32_t* indices;
     uint32_t  index_count;
 } mesh_data_t;
 

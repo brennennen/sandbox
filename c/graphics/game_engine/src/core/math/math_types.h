@@ -11,7 +11,7 @@ typedef struct {
     float x;
     float y;
     float z;
-    float a;
+    float w;
 } vec4_t;
 
 typedef struct {
@@ -21,8 +21,14 @@ typedef struct {
     float a;
 } color_t;
 
-typedef struct {
-    float data[4][4];
+// typedef struct {
+//     float data[4][4];
+// } mat4_t;
+
+typedef union {
+    float  data[4][4];
+    float  elements[16];
+    vec4_t columns[4];
 } mat4_t;
 
 #ifndef M_PI

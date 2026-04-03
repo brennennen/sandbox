@@ -9,9 +9,6 @@ layout(location = 0) out vec4 outColor;
 layout(set = 1, binding = 0) uniform sampler2D texSampler;
 
 void main() {
-    vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0));
-    float diff = max(dot(fragNormal, lightDir), 0.15);
-    //vec4 texColor = texture(texSampler, fragUV);
     vec4 texColor = texture(texSampler, fragUV) * fragColor;
-    outColor = vec4(texColor.rgb * diff, texColor.a);
+    outColor = texColor;
 }

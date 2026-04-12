@@ -1,10 +1,11 @@
 -std=c23
--Isrc
--Isrc/core
--Isrc/core/math
--Isrc/modules/platform
--Isrc/modules/platform
--Isrc/modules/renderer
+-Ilibs/engine
+-Ilibs/engine/core
+-Ilibs/engine/core/math
+-Ilibs/engine/modules/platform
+-Ilibs/engine/modules/platform
+-Ilibs/engine/modules/renderer
+-Ilibs/
 -I.vendor/
 -I.vendor/volk
 -I.vendor/stb

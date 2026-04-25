@@ -5,6 +5,7 @@
 #include "engine/core/logger.h"
 #include "engine/modules/assets/image.h"
 #include "math.h"
+#include "shared/scene_types.h"
 #include "vk_gpu_allocator.h"
 #include "vk_resources.h"
 
@@ -38,11 +39,36 @@ gpu_allocation_t vk_create_staging_buffer(
     return alloc;
 }
 
-bool vk_create_texture(graphics_t* r, image_t* img, vk_texture_t* out_tex) {
+static VkFormat get_vk_format(pak_texture_format_t pak_format) {
+    switch (pak_format) {
+    case PAK_TEX_FORMAT_RGBA8_UNORM:
+    case PAK_TEX_FORMAT_PNG_UNORM:
+        return VK_FORMAT_R8G8B8A8_UNORM;
+    case PAK_TEX_FORMAT_RGBA8_SRGB:
+    case PAK_TEX_FORMAT_PNG_SRGB:
+        return VK_FORMAT_R8G8B8A8_SRGB;
+    case PAK_TEX_FORMAT_R8_UNORM:
+        return VK_FORMAT_R8_UNORM;
+    default:
+        log_warn("vulkan: Unknown pak texture format, defaulting to UNORM");
+        return VK_FORMAT_R8G8B8A8_UNORM;
+    }
+}
+
+bool vk_create_texture(
+    graphics_t*          r,
+    image_t*             img,
+    vk_texture_t*        out_tex,
+    pak_texture_format_t format
+) {
+    size_t scratch_offset = r->assets.vertex_heap->offset;
+
     VkBuffer         staging_buffer;
     gpu_allocation_t staging_alloc = vk_create_staging_buffer(
         r, img->pixels, img->size, &staging_buffer
     );
+
+    VkFormat tex_format = get_vk_format(format);
 
     VkImageCreateInfo image_info = {
         .sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -50,7 +76,7 @@ bool vk_create_texture(graphics_t* r, image_t* img, vk_texture_t* out_tex) {
         .extent        = {img->width, img->height, 1},
         .mipLevels     = 1,
         .arrayLayers   = 1,
-        .format        = VK_FORMAT_R8G8B8A8_SRGB,
+        .format        = tex_format,
         .tiling        = VK_IMAGE_TILING_OPTIMAL,
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
         .usage         = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
@@ -61,6 +87,15 @@ bool vk_create_texture(graphics_t* r, image_t* img, vk_texture_t* out_tex) {
 
     VkMemoryRequirements mem_reqs;
     vkGetImageMemoryRequirements(r->core.device, out_tex->image, &mem_reqs);
+
+    if (r->assets.device_heap->offset + mem_reqs.size > r->assets.device_heap->capacity) {
+        log_error("CRITICAL: Device Heap Exhausted! Cannot allocate Texture.");
+        vkDestroyImage(r->core.device, out_tex->image, NULL);
+        vkDestroyBuffer(r->core.device, staging_buffer, NULL);
+        r->assets.vertex_heap->offset = scratch_offset;
+        return false;
+    }
+
     out_tex->allocation = gpu_heap_alloc(r->assets.device_heap, mem_reqs.size, mem_reqs.alignment);
     vkBindImageMemory(
         r->core.device, out_tex->image, r->assets.device_heap->memory, out_tex->allocation.offset
@@ -81,7 +116,7 @@ bool vk_create_texture(graphics_t* r, image_t* img, vk_texture_t* out_tex) {
         .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         .image            = out_tex->image,
         .viewType         = VK_IMAGE_VIEW_TYPE_2D,
-        .format           = VK_FORMAT_R8G8B8A8_SRGB,
+        .format           = tex_format,
         .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}
     };
     if (vkCreateImageView(r->core.device, &view_info, NULL, &out_tex->view) != VK_SUCCESS)
@@ -89,15 +124,18 @@ bool vk_create_texture(graphics_t* r, image_t* img, vk_texture_t* out_tex) {
 
     VkSamplerCreateInfo sampler_info = {
         .sType        = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-        .magFilter    = VK_FILTER_NEAREST,
-        .minFilter    = VK_FILTER_NEAREST,
+        .magFilter    = VK_FILTER_LINEAR,
+        .minFilter    = VK_FILTER_LINEAR,
+        .mipmapMode   = VK_SAMPLER_MIPMAP_MODE_LINEAR,
         .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
         .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
         .borderColor  = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
     };
     vkCreateSampler(r->core.device, &sampler_info, NULL, &out_tex->sampler);
 
     vkDestroyBuffer(r->core.device, staging_buffer, NULL);
+    r->assets.vertex_heap->offset = scratch_offset;
     return true;
 }
 
@@ -247,6 +285,8 @@ VkBuffer vk_create_static_buffer(
     VkDeviceSize       size,
     VkBufferUsageFlags usage
 ) {
+    size_t scratch_offset = r->assets.vertex_heap->offset;
+
     VkBuffer           staging_buffer;
     VkBufferCreateInfo s_info = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -258,6 +298,13 @@ VkBuffer vk_create_static_buffer(
     VkMemoryRequirements s_reqs;
     vkGetBufferMemoryRequirements(r->core.device, staging_buffer, &s_reqs);
     gpu_allocation_t s_alloc = gpu_heap_alloc(r->assets.vertex_heap, s_reqs.size, s_reqs.alignment);
+
+    if (s_alloc.mapped_ptr == NULL) {
+        log_error("CRITICAL: Vertex Heap Exhausted!");
+        vkDestroyBuffer(r->core.device, staging_buffer, NULL);
+        return VK_NULL_HANDLE;
+    }
+
     vkBindBufferMemory(
         r->core.device, staging_buffer, r->assets.vertex_heap->memory, s_alloc.offset
     );
@@ -276,6 +323,15 @@ VkBuffer vk_create_static_buffer(
 
     VkMemoryRequirements d_reqs;
     vkGetBufferMemoryRequirements(r->core.device, device_buffer, &d_reqs);
+
+    if (r->assets.device_heap->offset + d_reqs.size > r->assets.device_heap->capacity) {
+        log_error("CRITICAL: Device Heap Exhausted! Cannot allocate static buffer.");
+        vkDestroyBuffer(r->core.device, staging_buffer, NULL);
+        vkDestroyBuffer(r->core.device, device_buffer, NULL);
+        r->assets.vertex_heap->offset = scratch_offset;
+        return VK_NULL_HANDLE;
+    }
+
     gpu_allocation_t d_alloc = gpu_heap_alloc(r->assets.device_heap, d_reqs.size, d_reqs.alignment);
     vkBindBufferMemory(
         r->core.device, device_buffer, r->assets.device_heap->memory, d_alloc.offset
@@ -283,6 +339,6 @@ VkBuffer vk_create_static_buffer(
 
     copy_buffer(r, staging_buffer, device_buffer, size);
     vkDestroyBuffer(r->core.device, staging_buffer, NULL);
-
+    r->assets.vertex_heap->offset = scratch_offset;
     return device_buffer;
 }

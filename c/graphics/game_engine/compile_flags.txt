@@ -5,7 +5,10 @@
 -Ilibs/engine/modules/platform
 -Ilibs/engine/modules/platform
 -Ilibs/engine/modules/renderer
+-Ilibs/engine/modules/graphics
+-Ilibs/engine/modules/graphics/vulkan
 -Ilibs/
+-Ishared/
 -I.vendor/
 -I.vendor/volk
 -I.vendor/stb

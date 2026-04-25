@@ -48,7 +48,6 @@ bool vk_create_instance(graphics_t* r, platform_t* platform) {
 
     uint32_t           extensions_count = 0;
     const char* const* extensions = platform_get_vulkan_extensions(platform, &extensions_count);
-    // const char* const* sdl_exts      = SDL_Vulkan_GetInstanceExtensions(&sdl_ext_count);
 
     VkApplicationInfo app_info = {
         .sType            = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -103,7 +102,6 @@ bool vk_pick_physical_device(graphics_t* r) {
         }
     }
 
-    // Fallback to the first available device if no discrete GPU is found
     r->core.physical_device = devices[0];
     return r->core.physical_device != VK_NULL_HANDLE;
 }

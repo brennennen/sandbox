@@ -8,12 +8,13 @@
 
 #include "engine/core/logger.h"
 #include "engine/core/math/mat4_math.h"
-#include "engine/core/math/math_types.h"
 #include "engine/modules/assets/image.h"
 #include "engine/modules/assets/obj.h"
 #include "engine/modules/graphics/debug/debug_grid.h"
 #include "engine/modules/graphics/graphics.h"
 #include "engine/modules/graphics/graphics_types.h"
+#include "shared/math_types.h"
+#include "shared/scene_types.h"
 
 #include "vk_commands.h"
 #include "vk_devices.h"
@@ -62,11 +63,12 @@ void update_uniform_buffer(graphics_t* r, mat4_t view, uint32_t current_frame) {
 static bool init_memory_heaps(graphics_t* r) {
     r->assets.vertex_heap = gpu_heap_create(
         r,
-        1024 * 1024 * 1024,
+        1ULL * 1024 * 1024 * 1024,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
     );
+    // TODO: change to lower value! set to 10GB for large/sponza scene, check out AMD VMA.
     r->assets.device_heap = gpu_heap_create(
-        r, 1024 * 1024 * 1024, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+        r, 10ULL * 1024 * 1024 * 1024, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
     );
     r->assets.display_heap = gpu_heap_create(
         r, 1024 * 1024 * 32, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
@@ -138,11 +140,10 @@ static bool init_descriptors(graphics_t* r) {
     VkDescriptorSetAllocateInfo alloc_info = {
         .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
         .descriptorPool     = r->descriptor_pool,
-        .descriptorSetCount = 1, // Allocate one per frame
+        .descriptorSetCount = 1,
         .pSetLayouts        = &r->pipelines.global_set_layout,
     };
 
-    // Safely allocate and write the UBOs to each frame's struct
     for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
         if (vkAllocateDescriptorSets(
                 r->core.device, &alloc_info, &r->frames[i].global_descriptor_set
@@ -261,7 +262,6 @@ void graphics_destroy(graphics_t* r) {
                 vkDestroySemaphore(r->core.device, r->frames[i].render_finished_sem, NULL);
             if (r->frames[i].in_flight_fence)
                 vkDestroyFence(r->core.device, r->frames[i].in_flight_fence, NULL);
-            // You can also add buffer cleanup here!
             if (r->frames[i].uniform_buffer)
                 vkDestroyBuffer(r->core.device, r->frames[i].uniform_buffer, NULL);
         }
@@ -456,7 +456,7 @@ static void end_frame(graphics_t* r, uint32_t image_index) {
 }
 
 mesh_handle_t graphics_upload_mesh(graphics_t* graphics, mesh_data_t* data) {
-    if (graphics->assets.mesh_count >= MAX_MESHES) {
+    if (graphics->assets.mesh_count >= VK_MAX_MESHES) {
         log_error("Mesh pool exhausted! Cannot upload new mesh.");
         return (mesh_handle_t){.id = UINT32_MAX};
     }
@@ -470,6 +470,10 @@ mesh_handle_t graphics_upload_mesh(graphics_t* graphics, mesh_data_t* data) {
         data->vertex_count * sizeof(vertex_t),
         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
     );
+    if (vk_mesh->vertex_buffer == VK_NULL_HANDLE) {
+        log_error("vulkan: Failed to allocate vertex buffer for mesh. Aborting.");
+        return (mesh_handle_t){.id = UINT32_MAX};
+    }
 
     if (data->index_count > 0) {
         vk_mesh->index_buffer = vk_create_static_buffer(
@@ -478,6 +482,12 @@ mesh_handle_t graphics_upload_mesh(graphics_t* graphics, mesh_data_t* data) {
             data->index_count * sizeof(uint32_t),
             VK_BUFFER_USAGE_INDEX_BUFFER_BIT
         );
+        if (vk_mesh->index_buffer == VK_NULL_HANDLE) {
+            log_error("vulkan: Failed to allocate index buffer for mesh. Rolling back.");
+            vkDestroyBuffer(graphics->core.device, vk_mesh->vertex_buffer, NULL);
+            vk_mesh->vertex_buffer = VK_NULL_HANDLE;
+            return (mesh_handle_t){.id = UINT32_MAX};
+        }
     } else {
         vk_mesh->index_buffer = VK_NULL_HANDLE;
     }
@@ -496,21 +506,43 @@ mesh_handle_t graphics_upload_mesh(graphics_t* graphics, mesh_data_t* data) {
     return (mesh_handle_t){.id = id};
 }
 
-texture_handle_t graphics_upload_texture(graphics_t* r, image_t* img) {
-    if (r->assets.texture_count >= MAX_TEXTURES) {
+texture_handle_t graphics_upload_texture(graphics_t* r, image_t* img, pak_texture_format_t format) {
+    if (r->assets.texture_count >= VK_MAX_TEXTURES) {
         log_error("vulkan: texture pool exhausted!");
-        return (texture_handle_t){
-            .id = UINT32_MAX,
-        };
+        return (texture_handle_t){.id = GRAPHICS_INVALID_HANDLE};
     }
 
     uint32_t      id  = r->assets.texture_count++;
     vk_texture_t* tex = &r->assets.textures[id];
 
-    if (!vk_create_texture(r, img, tex)) {
+    if (!vk_create_texture(r, img, tex, format)) {
         log_error("vulkan: failed to create texture for pool slot %d", id);
-        return (texture_handle_t){.id = UINT32_MAX};
+        return (texture_handle_t){.id = GRAPHICS_INVALID_HANDLE};
     }
+
+    tex->is_active = true;
+    log_info("vulkan: uploaded texture to pool slot %d", id);
+
+    return (texture_handle_t){.id = id};
+}
+
+material_handle_t graphics_create_material(
+    graphics_t*      r,
+    texture_handle_t albedo,
+    texture_handle_t normal
+) {
+    if (albedo.id == GRAPHICS_INVALID_HANDLE || normal.id == GRAPHICS_INVALID_HANDLE) {
+        log_error("vulkan: Cannot create material with invalid texture handles. Skipping.");
+        return (material_handle_t){.id = GRAPHICS_INVALID_HANDLE};
+    }
+
+    if (r->assets.material_count >= VK_MAX_MATERIALS) {
+        log_error("vulkan: material pool exhausted!");
+        return (material_handle_t){.id = GRAPHICS_INVALID_HANDLE};
+    }
+
+    uint32_t       id  = r->assets.material_count++;
+    vk_material_t* mat = &r->assets.materials[id];
 
     VkDescriptorSetAllocateInfo alloc_info = {
         .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -519,32 +551,46 @@ texture_handle_t graphics_upload_texture(graphics_t* r, image_t* img) {
         .pSetLayouts        = &r->pipelines.object_set_layout,
     };
 
-    if (vkAllocateDescriptorSets(r->core.device, &alloc_info, &tex->descriptor_set) != VK_SUCCESS) {
-        log_error("vulkan: failed to allocate descriptor set for texture %d", id);
-        return (texture_handle_t){.id = UINT32_MAX};
+    if (vkAllocateDescriptorSets(r->core.device, &alloc_info, &mat->descriptor_set) != VK_SUCCESS) {
+        log_error("vulkan: failed to allocate material descriptor set");
+        return (material_handle_t){.id = GRAPHICS_INVALID_HANDLE};
     }
 
-    VkDescriptorImageInfo image_info = {
+    vk_texture_t* a_tex = &r->assets.textures[albedo.id];
+    vk_texture_t* n_tex = &r->assets.textures[normal.id];
+
+    VkDescriptorImageInfo albedo_info = {
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        .imageView   = tex->view,
-        .sampler     = tex->sampler
+        .imageView   = a_tex->view,
+        .sampler     = a_tex->sampler
     };
 
-    VkWriteDescriptorSet descriptor_write = {
-        .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstSet          = tex->descriptor_set,
-        .dstBinding      = 0,
-        .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        .descriptorCount = 1,
-        .pImageInfo      = &image_info
+    VkDescriptorImageInfo normal_info = {
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        .imageView   = n_tex->view,
+        .sampler     = n_tex->sampler
     };
 
-    vkUpdateDescriptorSets(r->core.device, 1, &descriptor_write, 0, NULL);
+    VkWriteDescriptorSet writes[2] = {0};
 
-    tex->is_active = true;
-    log_info("vulkan: uploaded texture to pool slot %d", id);
+    writes[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writes[0].dstSet          = mat->descriptor_set;
+    writes[0].dstBinding      = 0;
+    writes[0].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    writes[0].descriptorCount = 1;
+    writes[0].pImageInfo      = &albedo_info;
 
-    return (texture_handle_t){.id = id};
+    writes[1].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writes[1].dstSet          = mat->descriptor_set;
+    writes[1].dstBinding      = 1;
+    writes[1].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    writes[1].descriptorCount = 1;
+    writes[1].pImageInfo      = &normal_info;
+
+    vkUpdateDescriptorSets(r->core.device, 2, writes, 0, NULL);
+
+    mat->is_active = true;
+    return (material_handle_t){.id = id};
 }
 
 static VkPipeline get_draw_mode_pipeline(vk_pipelines_t* pipelines, draw_mode_t draw_mode) {
@@ -557,8 +603,16 @@ static VkPipeline get_draw_mode_pipeline(vk_pipelines_t* pipelines, draw_mode_t 
         return pipelines->debug_lighting;
     case DRAW_MODE_DEBUG_ALBEDO:
         return pipelines->debug_albedo;
+    case DRAW_MODE_DEBUG_GEOMETRY_NORMAL:
+        return pipelines->debug_geometry_normal;
+    case DRAW_MODE_DEBUG_TEXTURE_NORMAL:
+        return pipelines->debug_texture_normal;
     case DRAW_MODE_DEBUG_NORMAL:
         return pipelines->debug_normal;
+    case DRAW_MODE_DEBUG_TANGENT:
+        return pipelines->debug_tangent;
+    case DRAW_MODE_DEBUG_BITANGENT:
+        return pipelines->debug_bitangent;
     case DRAW_MODE_DEBUG_VERTEX_COLOR:
         return pipelines->debug_vertex_color;
     default:
@@ -579,11 +633,8 @@ void graphics_draw(
         return;
     }
 
-    // VkPipeline current_pipeline = r->pipelines.graphics;
     VkPipeline current_pipeline = get_draw_mode_pipeline(&r->pipelines, draw_mode);
 
-    // VkPipeline current_pipeline = wireframe_mode ? r->pipelines.wireframe :
-    // r->pipelines.graphics;
     vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, current_pipeline);
 
     vkCmdBindDescriptorSets(
@@ -599,11 +650,17 @@ void graphics_draw(
 
     VkDeviceSize offsets[] = {0};
     for (uint32_t i = 0; i < object_count; i++) {
-        render_object_t* obj     = &objects[i];
-        vk_mesh_t*       vk_mesh = &r->assets.meshes[obj->mesh.id];
-        vk_texture_t*    vk_tex  = &r->assets.textures[obj->texture.id];
+        render_object_t* obj = &objects[i];
 
-        if (!vk_mesh->is_active || !vk_tex->is_active)
+        if (obj->mesh.id == GRAPHICS_INVALID_HANDLE ||
+            obj->material.id == GRAPHICS_INVALID_HANDLE) {
+            continue;
+        }
+
+        vk_mesh_t*     vk_mesh = &r->assets.meshes[obj->mesh.id];
+        vk_material_t* vk_mat  = &r->assets.materials[obj->material.id];
+
+        if (!vk_mesh->is_active || !vk_mat->is_active)
             continue;
 
         vkCmdPushConstants(
@@ -621,10 +678,11 @@ void graphics_draw(
             r->pipelines.layout,
             1,
             1,
-            &vk_tex->descriptor_set,
+            &vk_mat->descriptor_set,
             0,
             NULL
         );
+
         vkCmdBindVertexBuffers(r->command_buffer, 0, 1, &vk_mesh->vertex_buffer, offsets);
 
         if (vk_mesh->index_count > 0) {

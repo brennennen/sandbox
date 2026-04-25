@@ -4,10 +4,11 @@
 #include <stdlib.h>
 
 #include "engine/core/logger.h"
-#include "engine/core/pak_format.h"
 #include "engine/core/vfs.h"
 #include "engine/core/world.h"
 #include "engine/modules/assets/image.h"
+#include "shared/pak_format.h"
+#include "shared/scene_types.h"
 
 pak_entity_t loaded_entities[MAX_LOADED_ENTITIES];
 uint32_t     loaded_entity_count = 0;
@@ -89,12 +90,15 @@ bool world_load_texture_image(uint32_t tex_idx, image_t* out_img) {
     out_img->height   = info->height;
     out_img->channels = info->channels;
 
-    if (info->format == PAK_TEX_FORMAT_RGBA8) {
+    if (info->format == PAK_TEX_FORMAT_RGBA8_UNORM || info->format == PAK_TEX_FORMAT_RGBA8_SRGB ||
+        info->format == PAK_TEX_FORMAT_R8_UNORM) {
+
         out_img->size   = info->byte_size;
         out_img->pixels = malloc(info->byte_size);
         fread(out_img->pixels, 1, info->byte_size, file);
         return true;
-    } else if (info->format == PAK_TEX_FORMAT_PNG) {
+    } else if (info->format == PAK_TEX_FORMAT_PNG_UNORM ||
+               info->format == PAK_TEX_FORMAT_PNG_SRGB) {
         uint8_t* compressed_buffer = malloc(info->byte_size);
         fread(compressed_buffer, 1, info->byte_size, file);
         bool success = image_load_from_memory(compressed_buffer, info->byte_size, out_img);
@@ -104,6 +108,6 @@ bool world_load_texture_image(uint32_t tex_idx, image_t* out_img) {
         free(compressed_buffer);
         return success;
     }
-
+    log_warn("world: Unrecognized texture format %d at index %d", info->format, tex_idx);
     return false;
 }

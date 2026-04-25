@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-#include "tools/core/scene_types.h"
+#include "shared/scene_types.h"
 
 char* read_file_to_string(const char* filepath);
 bool  parse_scene_file(const char* text, const char* base_dir, scene_desc_t* out_scene);

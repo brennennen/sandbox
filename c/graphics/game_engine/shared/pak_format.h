@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 // #include "core/math/math_types.h"
-#include "math/math_types.h"
+#include "math_types.h"
 
 #define PAK_MAGIC 0x4B415057 // "WPAK"
 
@@ -15,8 +15,31 @@ typedef struct {
     uint32_t chunk_count;
 } pak_header_t;
 
+typedef union {
+    float data[2];
+    struct {
+        float u;
+        float v;
+    };
+} pak_uv_t;
+
+typedef struct {
+    float r;
+    float g;
+    float b;
+    float a;
+} pak_color_t;
+
+typedef struct {
+    vec3_t   pos;
+    vec4_t   color;
+    pak_uv_t uv;
+    vec3_t   normal;
+    vec4_t   tangent;
+} pak_vertex_t;
+
 // TOOD: fix this up, replace all pak_vertex_t references with vertex_t
-typedef vertex_t pak_vertex_t;
+// typedef vertex_t pak_vertex_t;
 
 typedef struct {
     uint32_t model_id;
@@ -24,7 +47,12 @@ typedef struct {
     uint32_t vertex_count;
     uint32_t index_offset;
     uint32_t index_count;
-    int32_t  texture_id;
+
+    // int32_t  texture_id;
+    int32_t base_color_texture_id;
+    int32_t normal_texture_id;
+    int32_t metallic_roughness_texture_id;
+
 } pak_mesh_t;
 
 typedef struct {

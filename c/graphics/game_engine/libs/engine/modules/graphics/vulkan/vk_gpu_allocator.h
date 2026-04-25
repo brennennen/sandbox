@@ -6,11 +6,7 @@
 
 #include "volk.h"
 
-// #include "modules/graphics/graphics.h"
-
 #include "vk_types.h"
-
-// typedef struct gpu_heap_t gpu_heap_t;
 
 gpu_heap_t* gpu_heap_create(graphics_t* r, VkDeviceSize size, VkMemoryPropertyFlags properties);
 

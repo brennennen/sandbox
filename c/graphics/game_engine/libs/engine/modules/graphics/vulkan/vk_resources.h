@@ -2,6 +2,7 @@
 #define VK_RESOURCES_H
 
 #include "engine/modules/assets/image.h"
+#include "shared/scene_types.h"
 
 #include "vk_types.h"
 
@@ -17,7 +18,12 @@ gpu_allocation_t vk_create_staging_buffer(
     VkBuffer*    out_buffer
 );
 
-bool vk_create_texture(graphics_t* r, image_t* img, vk_texture_t* out_tex);
+bool vk_create_texture(
+    graphics_t*          r,
+    image_t*             img,
+    vk_texture_t*        out_tex,
+    pak_texture_format_t format
+);
 
 void vk_transition_image_layout(
     graphics_t*   r,

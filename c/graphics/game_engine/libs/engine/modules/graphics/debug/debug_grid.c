@@ -1,7 +1,7 @@
 
 #include "engine/modules/graphics/graphics_types.h"
 
-#include "engine/core/math/math_types.h"
+#include "shared/math_types.h"
 
 #include "debug_grid.h"
 

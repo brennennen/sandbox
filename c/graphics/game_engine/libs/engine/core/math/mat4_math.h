@@ -3,7 +3,7 @@
 
 #include "engine/core/camera.h"
 #include "engine/core/math/mat4_math.h"
-#include "engine/core/math/math_types.h"
+#include "shared/math_types.h"
 
 mat4_t mat4_identity();
 mat4_t mat4_translate(vec3_t v);

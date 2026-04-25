@@ -79,6 +79,16 @@ def download_cgltf():
     print("Downloading cgltf...")
     urllib.request.urlretrieve(cgltf_url, os.path.join(VENDOR_DIR, "cgltf.h"))
 
+def download_bc7enc():
+    bc7enc_dir = os.path.join(VENDOR_DIR, "bc7enc")
+    if os.path.exists(bc7enc_dir):
+        return
+    os.makedirs(bc7enc_dir, exist_ok=True)
+    bc7enc_c_url = "https://raw.githubusercontent.com/richgel999/bc7enc/refs/heads/master/bc7enc.c"
+    bc7enc_h_url = "https://raw.githubusercontent.com/richgel999/bc7enc/refs/heads/master/bc7enc.h"
+    print("Downloading bc7enc...")
+    urllib.request.urlretrieve(bc7enc_c_url, os.path.join(bc7enc_dir, "bc7enc.c"))
+    urllib.request.urlretrieve(bc7enc_h_url, os.path.join(bc7enc_dir, "bc7enc.h"))
 
 if __name__ == "__main__":
     os.makedirs(VENDOR_DIR, exist_ok=True)
@@ -87,3 +97,4 @@ if __name__ == "__main__":
     download_vulkan_headers()
     download_stb_image()
     download_cgltf()
+    download_bc7enc()

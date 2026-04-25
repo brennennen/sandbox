@@ -1,15 +1,17 @@
 
 #include "graphics.h"
-// #include "math3d.h"
-// #include "vulkan/vk_backend.h"
 
 const char* const draw_mode_names[] = {
-    [DRAW_MODE_LIT]                = "LIT",
-    [DRAW_MODE_DEBUG_WIREFRAME]    = "DEBUG_WIREFRAME",
-    [DRAW_MODE_DEBUG_LIGHTING]     = "DEBUG_LIGHTING_ONLY",
-    [DRAW_MODE_DEBUG_ALBEDO]       = "DEBUG_ALBEDO",
-    [DRAW_MODE_DEBUG_NORMAL]       = "DEBUG_NORMAL",
-    [DRAW_MODE_DEBUG_VERTEX_COLOR] = "DRAW_MODE_DEBUG_VERTEX_COLOR",
+    [DRAW_MODE_LIT]                   = "LIT",
+    [DRAW_MODE_DEBUG_WIREFRAME]       = "DEBUG_WIREFRAME",
+    [DRAW_MODE_DEBUG_LIGHTING]        = "DEBUG_LIGHTING_ONLY",
+    [DRAW_MODE_DEBUG_ALBEDO]          = "DEBUG_ALBEDO",
+    [DRAW_MODE_DEBUG_GEOMETRY_NORMAL] = "DEBUG_GEOMETRY_NORMAL",
+    [DRAW_MODE_DEBUG_TEXTURE_NORMAL]  = "DEBUG_TEXTURE_NORMAL",
+    [DRAW_MODE_DEBUG_NORMAL]          = "DEBUG_NORMAL",
+    [DRAW_MODE_DEBUG_TANGENT]         = "DEBUG_TANGENT",
+    [DRAW_MODE_DEBUG_BITANGENT]       = "DEBUG_BITANGENT",
+    [DRAW_MODE_DEBUG_VERTEX_COLOR]    = "DRAW_MODE_DEBUG_VERTEX_COLOR",
 };
 
 // void renderer_submit_mesh(

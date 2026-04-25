@@ -3,8 +3,9 @@
 
 #include <stdbool.h>
 
-#include "engine/core/pak_format.h"
 #include "engine/modules/assets/image.h"
+#include "shared/pak_format.h"
+
 
 #define MAX_LOADED_ENTITIES 1024
 #define MAX_LOADED_MESHES 1024

@@ -10,7 +10,6 @@
 
 #include "engine/core/logger.h"
 #include "engine/modules/graphics/graphics_types.h"
-// #include "vulkan_core.h"
 
 VkShaderModule vk_create_shader_module(VkDevice device, const char* path) {
     FILE* file = fopen(path, "rb");
@@ -74,7 +73,7 @@ static VkPipeline create_pipeline_internal(
         .binding = 0, .stride = sizeof(vertex_t), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX
     };
 
-    VkVertexInputAttributeDescription attribute_descriptions[4] = {0};
+    VkVertexInputAttributeDescription attribute_descriptions[5] = {0};
 
     // Position
     attribute_descriptions[0].binding  = 0;
@@ -100,11 +99,17 @@ static VkPipeline create_pipeline_internal(
     attribute_descriptions[3].format   = VK_FORMAT_R32G32B32_SFLOAT;
     attribute_descriptions[3].offset   = offsetof(vertex_t, normal);
 
+    // Tangent
+    attribute_descriptions[4].binding  = 0;
+    attribute_descriptions[4].location = 4;
+    attribute_descriptions[4].format   = VK_FORMAT_R32G32B32A32_SFLOAT;
+    attribute_descriptions[4].offset   = offsetof(vertex_t, tangent);
+
     VkPipelineVertexInputStateCreateInfo vertex_input = {
         .sType                         = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         .vertexBindingDescriptionCount = 1,
         .pVertexBindingDescriptions    = &binding_desc,
-        .vertexAttributeDescriptionCount = 4,
+        .vertexAttributeDescriptionCount = 5,
         .pVertexAttributeDescriptions    = attribute_descriptions
     };
 
@@ -213,17 +218,28 @@ bool vk_create_graphics_pipeline(graphics_t* r) {
         return false;
     }
 
-    VkDescriptorSetLayoutBinding object_binding = {
+    VkDescriptorSetLayoutBinding albedo_binding = {
         .binding         = 0,
         .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .descriptorCount = 1,
         .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT,
     };
+
+    VkDescriptorSetLayoutBinding normal_binding = {
+        .binding         = 1,
+        .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT,
+    };
+
+    VkDescriptorSetLayoutBinding object_bindings[] = {albedo_binding, normal_binding};
+
     VkDescriptorSetLayoutCreateInfo object_info = {
         .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .bindingCount = 1,
-        .pBindings    = &object_binding,
+        .bindingCount = 2,
+        .pBindings    = object_bindings,
     };
+
     if (vkCreateDescriptorSetLayout(
             r->core.device, &object_info, NULL, &r->pipelines.object_set_layout
         ) != VK_SUCCESS) {
@@ -288,6 +304,22 @@ bool vk_create_graphics_pipeline(graphics_t* r) {
         "shaders/triangle.vert.spv",
         "shaders/debug_albedo.frag.spv"
     );
+    r->pipelines.debug_geometry_normal = create_pipeline_internal(
+        r,
+        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        VK_POLYGON_MODE_FILL,
+        VK_CULL_MODE_BACK_BIT,
+        "shaders/triangle.vert.spv",
+        "shaders/debug_geometry_normals.frag.spv"
+    );
+    r->pipelines.debug_texture_normal = create_pipeline_internal(
+        r,
+        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        VK_POLYGON_MODE_FILL,
+        VK_CULL_MODE_BACK_BIT,
+        "shaders/triangle.vert.spv",
+        "shaders/debug_texture_normals.frag.spv"
+    );
     r->pipelines.debug_normal = create_pipeline_internal(
         r,
         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
@@ -295,6 +327,22 @@ bool vk_create_graphics_pipeline(graphics_t* r) {
         VK_CULL_MODE_BACK_BIT,
         "shaders/triangle.vert.spv",
         "shaders/debug_normals.frag.spv"
+    );
+    r->pipelines.debug_tangent = create_pipeline_internal(
+        r,
+        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        VK_POLYGON_MODE_FILL,
+        VK_CULL_MODE_BACK_BIT,
+        "shaders/triangle.vert.spv",
+        "shaders/debug_tangent.frag.spv"
+    );
+    r->pipelines.debug_bitangent = create_pipeline_internal(
+        r,
+        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        VK_POLYGON_MODE_FILL,
+        VK_CULL_MODE_BACK_BIT,
+        "shaders/triangle.vert.spv",
+        "shaders/debug_bitangent.frag.spv"
     );
     r->pipelines.debug_vertex_color = create_pipeline_internal(
         r,

@@ -46,6 +46,8 @@ pub fn build(b: *std.Build) void {
         ".vendor/VulkanMemoryAllocator/include",
         ".vendor/stb",
         ".vendor",
+        ".",
+        "shared",
         "libs",
         "engine",
         "engine/modules",
@@ -124,6 +126,7 @@ pub fn build(b: *std.Build) void {
         ".vendor/stb",
         ".vendor",
         ".",
+        "shared",
         "libs",
         "engine",
         "libs/tools/core",
@@ -162,6 +165,7 @@ pub fn build(b: *std.Build) void {
 
     const game_includes = [_][]const u8{
         ".",
+        "shared",
         "libs",
     };
 
@@ -249,7 +253,11 @@ pub fn build(b: *std.Build) void {
         .{ "shaders/debug_wireframe.frag", "shaders/debug_wireframe.frag.spv" },
         .{ "shaders/debug_lighting_only.frag", "shaders/debug_lighting_only.frag.spv" },
         .{ "shaders/debug_albedo.frag", "shaders/debug_albedo.frag.spv" },
+        .{ "shaders/debug_geometry_normals.frag", "shaders/debug_geometry_normals.frag.spv" },
+        .{ "shaders/debug_texture_normals.frag", "shaders/debug_texture_normals.frag.spv" },
         .{ "shaders/debug_normals.frag", "shaders/debug_normals.frag.spv" },
+        .{ "shaders/debug_tangent.frag", "shaders/debug_tangent.frag.spv" },
+        .{ "shaders/debug_bitangent.frag", "shaders/debug_bitangent.frag.spv" },
         .{ "shaders/debug_vertex_color.frag", "shaders/debug_vertex_color.frag.spv" },
         .{ "shaders/unlit.vert", "shaders/unlit.vert.spv" },
         .{ "shaders/unlit.frag", "shaders/unlit.frag.spv" },

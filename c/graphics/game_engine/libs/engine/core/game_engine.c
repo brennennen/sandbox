@@ -10,14 +10,13 @@
 #include "engine/core/game_engine.h"
 #include "engine/core/logger.h"
 #include "engine/core/math/mat4_math.h"
-#include "engine/core/math/math_types.h"
 #include "engine/core/vfs.h"
 #include "engine/core/world.h"
-
 #include "engine/modules/assets/gltf.h"
 #include "engine/modules/assets/obj.h"
 #include "engine/modules/graphics/graphics.h"
 #include "engine/platform/platform.h"
+#include "shared/math_types.h"
 
 static texture_handle_t default_tex;
 
@@ -56,7 +55,21 @@ bool game_engine_init(game_engine_t* game_engine) {
         .size     = 4,
         .pixels   = white_pixel,
     };
-    default_tex = graphics_upload_texture(game_engine->graphics, &dummy_white_img);
+    default_tex = graphics_upload_texture(
+        game_engine->graphics, &dummy_white_img, PAK_TEX_FORMAT_RGBA8_SRGB
+    );
+
+    static uint8_t flat_normal_pixel[4] = {128, 128, 255, 255};
+    image_t        dummy_normal_img     = {
+                   .width    = 1,
+                   .height   = 1,
+                   .channels = 4,
+                   .size     = 4,
+                   .pixels   = flat_normal_pixel,
+    };
+    texture_handle_t default_normal_tex = graphics_upload_texture(
+        game_engine->graphics, &dummy_normal_img, PAK_TEX_FORMAT_R8_UNORM
+    );
 
     if (!vfs_mount_archive("./../../.assets/test_zone.pak")) {
         log_error("Failed to mount base game archive!");
@@ -69,8 +82,11 @@ bool game_engine_init(game_engine_t* game_engine) {
 
         for (uint32_t t = 0; t < loaded_texture_count; t++) {
             image_t img = {0};
+
+            pak_texture_format_t pak_format = loaded_textures[t].format;
+
             if (world_load_texture_image(t, &img)) {
-                gpu_textures[t] = graphics_upload_texture(game_engine->graphics, &img);
+                gpu_textures[t] = graphics_upload_texture(game_engine->graphics, &img, pak_format);
                 image_free(&img);
             } else {
                 gpu_textures[t] = default_tex;
@@ -93,8 +109,19 @@ bool game_engine_init(game_engine_t* game_engine) {
             mesh_handle_t vram_handle = graphics_upload_mesh(game_engine->graphics, &raw_mesh_data);
 
             texture_handle_t mesh_tex = default_tex;
-            if (mesh_def->texture_id >= 0 && mesh_def->texture_id < (int32_t)loaded_texture_count) {
-                mesh_tex = gpu_textures[mesh_def->texture_id];
+            if (mesh_def->base_color_texture_id >= 0 &&
+                mesh_def->base_color_texture_id < (int32_t)loaded_texture_count) {
+                mesh_tex = gpu_textures[mesh_def->base_color_texture_id];
+            }
+            texture_handle_t norm_tex = default_normal_tex;
+            if (mesh_def->normal_texture_id >= 0 &&
+                mesh_def->normal_texture_id < (int32_t)loaded_texture_count) {
+                norm_tex = gpu_textures[mesh_def->normal_texture_id];
+            }
+
+            if (mesh_def->base_color_texture_id >= 0 &&
+                mesh_def->base_color_texture_id < (int32_t)loaded_texture_count) {
+                mesh_tex = gpu_textures[mesh_def->base_color_texture_id];
             }
 
             mat4_t final_transform = mat4_identity();
@@ -105,9 +132,12 @@ bool game_engine_init(game_engine_t* game_engine) {
                 }
             }
 
-            uint32_t obj_idx                              = game_engine->main_scene.object_count++;
-            game_engine->main_scene.objects[obj_idx].mesh = vram_handle;
-            game_engine->main_scene.objects[obj_idx].texture   = mesh_tex;
+            uint32_t obj_idx = game_engine->main_scene.object_count++;
+
+            game_engine->main_scene.objects[obj_idx].mesh     = vram_handle;
+            game_engine->main_scene.objects[obj_idx].material = graphics_create_material(
+                game_engine->graphics, mesh_tex, norm_tex
+            );
             game_engine->main_scene.objects[obj_idx].transform = final_transform;
         }
     }

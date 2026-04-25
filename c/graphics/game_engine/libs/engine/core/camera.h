@@ -1,7 +1,7 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
-#include "engine/core/math/math_types.h"
+#include "shared/math_types.h"
 
 typedef struct {
     vec3_t pos;

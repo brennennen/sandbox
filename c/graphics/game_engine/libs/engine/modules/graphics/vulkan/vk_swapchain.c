@@ -62,7 +62,6 @@ bool vk_create_swapchain(
         graphics->core.physical_device, graphics->core.surface, &format_count, formats
     );
 
-    // Default to first, but prefer SRGB for better color accuracy
     VkSurfaceFormatKHR selected_format = formats[0];
     for (uint32_t i = 0; i < format_count; i++) {
         if (formats[i].format == VK_FORMAT_B8G8R8A8_SRGB &&
@@ -84,7 +83,7 @@ bool vk_create_swapchain(
     VkSwapchainCreateInfoKHR create_info = {
         .sType            = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
         .surface          = graphics->core.surface,
-        .minImageCount    = 3, // Triple buffering
+        .minImageCount    = 3,
         .imageFormat      = selected_format.format,
         .imageColorSpace  = selected_format.colorSpace,
         .imageExtent      = {(uint32_t)width, (uint32_t)height},
@@ -105,9 +104,6 @@ bool vk_create_swapchain(
         return false;
     }
 
-    // vkDestroySwapchainKHR(graphics->core.device, old_swapchain, NULL);
-
-    // Fetch the images created by the swapchain
     vkGetSwapchainImagesKHR(
         graphics->core.device, graphics->display.swapchain, &graphics->display.image_count, NULL
     );
@@ -119,7 +115,6 @@ bool vk_create_swapchain(
         graphics->display.images
     );
 
-    // Create a View for every image
     graphics->display.image_views = malloc(sizeof(VkImageView) * graphics->display.image_count);
     for (uint32_t i = 0; i < graphics->display.image_count; i++) {
         VkImageViewCreateInfo view_info = {

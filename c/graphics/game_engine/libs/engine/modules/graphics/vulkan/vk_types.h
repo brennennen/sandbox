@@ -3,16 +3,18 @@
 
 #include <stdint.h>
 
-#include "engine/modules/graphics/graphics.h"
 #include "volk.h"
 
-#include "engine/core/math/math_types.h"
+#include "engine/modules/graphics/graphics.h"
 #include "engine/modules/graphics/graphics_types.h"
+#include "shared/math_types.h"
 
-#define MAX_MESHES 1024
-#define MAX_SUBMESHES_PER_MESH 16
+#define VK_MAX_MESHES 1024
+#define VK_MAX_SUBMESHES_PER_MESH 16
 
-#define MAX_TEXTURES 1024
+#define VK_MAX_TEXTURES 1024
+
+#define VK_MAX_MATERIALS 1024
 
 #define FRAMES_IN_FLIGHT 2
 
@@ -99,6 +101,8 @@ typedef struct {
     // mat4_t model;
     mat4_t view;
     mat4_t proj;
+    // vec4_t sun_direction;
+    // vec4_t sun_color;
 } ubo_t;
 
 /**
@@ -160,11 +164,14 @@ typedef struct {
     gpu_heap_t* device_heap;
     gpu_heap_t* display_heap;
 
-    vk_mesh_t meshes[MAX_MESHES];
+    vk_mesh_t meshes[VK_MAX_MESHES];
     uint32_t  mesh_count;
 
-    vk_texture_t textures[MAX_TEXTURES];
+    vk_texture_t textures[VK_MAX_TEXTURES];
     uint32_t     texture_count;
+
+    vk_material_t materials[VK_MAX_MATERIALS];
+    uint32_t      material_count;
 } vk_assets_t;
 
 /**
@@ -183,7 +190,11 @@ typedef struct {
     VkPipeline       debug_wireframe;
     VkPipeline       debug_lighting;
     VkPipeline       debug_albedo;
+    VkPipeline       debug_geometry_normal;
+    VkPipeline       debug_texture_normal;
     VkPipeline       debug_normal;
+    VkPipeline       debug_tangent;
+    VkPipeline       debug_bitangent;
     VkPipeline       debug_vertex_color;
     VkPipeline       line;
 } vk_pipelines_t;

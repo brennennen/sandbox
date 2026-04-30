@@ -13,6 +13,7 @@ AlignConsecutiveAssignments:
   AlignCompound: false
 
 AlignConsecutiveDeclarations: true
+#BinPackBracedList: false
 Cpp11BracedListStyle: true
 AlignAfterOpenBracket: BlockIndent
 

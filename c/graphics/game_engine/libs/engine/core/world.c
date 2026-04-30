@@ -91,7 +91,8 @@ bool world_load_texture_image(uint32_t tex_idx, image_t* out_img) {
     out_img->channels = info->channels;
 
     if (info->format == PAK_TEX_FORMAT_RGBA8_UNORM || info->format == PAK_TEX_FORMAT_RGBA8_SRGB ||
-        info->format == PAK_TEX_FORMAT_R8_UNORM) {
+        info->format == PAK_TEX_FORMAT_R8_UNORM || info->format == PAK_TEX_FORMAT_BC7_UNORM ||
+        info->format == PAK_TEX_FORMAT_BC7_SRGB) {
 
         out_img->size   = info->byte_size;
         out_img->pixels = malloc(info->byte_size);

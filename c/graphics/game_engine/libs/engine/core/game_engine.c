@@ -71,7 +71,7 @@ bool game_engine_init(game_engine_t* game_engine) {
         game_engine->graphics, &dummy_normal_img, PAK_TEX_FORMAT_R8_UNORM
     );
 
-    if (!vfs_mount_archive("./../../.assets/test_zone.pak")) {
+    if (!vfs_mount_archive("./../../.assets/sponza.pak")) {
         log_error("Failed to mount base game archive!");
     }
 

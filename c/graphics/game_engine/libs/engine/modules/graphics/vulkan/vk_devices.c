@@ -117,6 +117,11 @@ bool vk_create_logical_device(graphics_t* r) {
         .pQueuePriorities = &queue_priority,
     };
 
+    VkPhysicalDeviceFeatures core_features = {
+        .textureCompressionBC = VK_TRUE,
+        .samplerAnisotropy    = VK_TRUE,
+    };
+
     VkPhysicalDeviceVulkan13Features features13 = {
         .sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
         .dynamicRendering = VK_TRUE,
@@ -131,6 +136,7 @@ bool vk_create_logical_device(graphics_t* r) {
         .pQueueCreateInfos       = &queue_create_info,
         .enabledExtensionCount   = 1,
         .ppEnabledExtensionNames = device_extensions,
+        .pEnabledFeatures        = &core_features
     };
 
     if (vkCreateDevice(r->core.physical_device, &create_info, NULL, &r->core.device) !=

@@ -124,6 +124,7 @@ pub fn build(b: *std.Build) void {
 
     const tools_includes = [_][]const u8{
         ".vendor/stb",
+        ".vendor/bc7",
         ".vendor",
         ".",
         "shared",
@@ -135,6 +136,9 @@ pub fn build(b: *std.Build) void {
     };
 
     const tools_sources = [_][]const u8{
+        ".vendor/bc7/bc7enc.c",
+        "libs/tools/core/mesh_utilities.c",
+        "libs/tools/core/tools_core.c",
         "libs/tools/bakers/gltf_baker.c",
         "libs/tools/parsers/scene_parser.c",
     };

@@ -49,6 +49,10 @@ static VkFormat get_vk_format(pak_texture_format_t pak_format) {
         return VK_FORMAT_R8G8B8A8_SRGB;
     case PAK_TEX_FORMAT_R8_UNORM:
         return VK_FORMAT_R8_UNORM;
+    case PAK_TEX_FORMAT_BC7_UNORM:
+        return VK_FORMAT_BC7_UNORM_BLOCK;
+    case PAK_TEX_FORMAT_BC7_SRGB:
+        return VK_FORMAT_BC7_SRGB_BLOCK;
     default:
         log_warn("vulkan: Unknown pak texture format, defaulting to UNORM");
         return VK_FORMAT_R8G8B8A8_UNORM;

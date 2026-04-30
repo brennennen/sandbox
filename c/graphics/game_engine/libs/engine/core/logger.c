@@ -6,7 +6,6 @@
 
 #include "engine/core/logger.h"
 #include "engine/platform/platform.h"
-#include "engine/platform/platform_mutex.h"
 
 platform_mutex_t log_mutex = NULL;
 

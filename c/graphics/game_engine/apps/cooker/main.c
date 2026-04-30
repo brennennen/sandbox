@@ -6,13 +6,14 @@
 
 #include "engine/core/logger.h"
 #include "shared/scene_types.h"
+#include "tools/core/tools_core.h"
 #include "tools/parsers/scene_parser.h"
 
 // todo: figure out how to handle platform stuff the logger is dependent on.
-void* platform_mutex_create(void) { return (void*)1; }
-void  platform_mutex_destroy(void* mutex) { (void)mutex; }
-void  platform_mutex_lock(void* mutex) { (void)mutex; }
-void  platform_mutex_unlock(void* mutex) { (void)mutex; }
+// void* platform_mutex_create(void) { return (void*)1; }
+// void  platform_mutex_destroy(void* mutex) { (void)mutex; }
+// void  platform_mutex_lock(void* mutex) { (void)mutex; }
+// void  platform_mutex_unlock(void* mutex) { (void)mutex; }
 
 static void extract_base_dir(const char* input_file, char* base_dir, size_t max_len) {
     strncpy(base_dir, ".", max_len);
@@ -82,6 +83,7 @@ int main(int argc, char** argv) {
     }
 
     clock_t start_time = clock();
+    tools_init();
     log_info("Initializing Level Cooker...");
 
     const char* input_file  = argv[1];

@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -12,45 +13,112 @@
 #define CGLTF_IMPLEMENTATION
 #include "cgltf.h"
 
-static bool extract_primitive2(cgltf_primitive* primitive, mesh_data_t* out_mesh) {
-    if (primitive->attributes_count == 0)
-        return false;
-
-    out_mesh->vertex_count = primitive->attributes[0].data->count;
-    out_mesh->vertices     = calloc(out_mesh->vertex_count, sizeof(vertex_t));
-
-    for (cgltf_size i = 0; i < primitive->attributes_count; i++) {
-        cgltf_attribute* attribute = &primitive->attributes[i];
-
-        if (attribute->type == cgltf_attribute_type_position) {
-            for (cgltf_size v = 0; v < out_mesh->vertex_count; v++) {
-                cgltf_accessor_read_float(attribute->data, v, out_mesh->vertices[v].pos.data, 3);
-            }
-        } else if (attribute->type == cgltf_attribute_type_normal) {
-            for (cgltf_size v = 0; v < out_mesh->vertex_count; v++) {
-                cgltf_accessor_read_float(attribute->data, v, out_mesh->vertices[v].normal.data, 3);
-            }
-        } else if (attribute->type == cgltf_attribute_type_texcoord) {
-            for (cgltf_size v = 0; v < out_mesh->vertex_count; v++) {
-                cgltf_accessor_read_float(attribute->data, v, out_mesh->vertices[v].uv.data, 2);
-            }
-        }
+static void calculate_tangents(mesh_data_t* mesh) {
+    for (uint32_t i = 0; i < mesh->vertex_count; i++) {
+        mesh->vertices[i].tangent = (vec4_t){0.0f, 0.0f, 0.0f, 0.0f};
     }
 
-    if (primitive->indices != NULL) {
-        out_mesh->index_count = primitive->indices->count;
-        out_mesh->indices     = malloc(out_mesh->index_count * sizeof(uint32_t));
+    vec3_t* bitangents = calloc(mesh->vertex_count, sizeof(vec3_t));
 
-        for (cgltf_size i = 0; i < out_mesh->index_count; i++) {
-            uint32_t index_val   = cgltf_accessor_read_index(primitive->indices, i);
-            out_mesh->indices[i] = index_val; //(uint16_t)index_val;
+    uint32_t triangle_count = mesh->index_count > 0 ? mesh->index_count / 3
+                                                    : mesh->vertex_count / 3;
+
+    for (uint32_t t = 0; t < triangle_count; t++) {
+        uint32_t i0 = mesh->index_count > 0 ? mesh->indices[t * 3 + 0] : t * 3 + 0;
+        uint32_t i1 = mesh->index_count > 0 ? mesh->indices[t * 3 + 1] : t * 3 + 1;
+        uint32_t i2 = mesh->index_count > 0 ? mesh->indices[t * 3 + 2] : t * 3 + 2;
+
+        vertex_t* v0 = &mesh->vertices[i0];
+        vertex_t* v1 = &mesh->vertices[i1];
+        vertex_t* v2 = &mesh->vertices[i2];
+
+        float e1x = v1->pos.data[0] - v0->pos.data[0];
+        float e1y = v1->pos.data[1] - v0->pos.data[1];
+        float e1z = v1->pos.data[2] - v0->pos.data[2];
+
+        float e2x = v2->pos.data[0] - v0->pos.data[0];
+        float e2y = v2->pos.data[1] - v0->pos.data[1];
+        float e2z = v2->pos.data[2] - v0->pos.data[2];
+
+        float duv1x = v1->uv.data[0] - v0->uv.data[0];
+        float duv1y = v1->uv.data[1] - v0->uv.data[1];
+
+        float duv2x = v2->uv.data[0] - v0->uv.data[0];
+        float duv2y = v2->uv.data[1] - v0->uv.data[1];
+
+        float det = duv1x * duv2y - duv2x * duv1y;
+        float f   = 1.0f;
+        if (det > 0.000001f || det < -0.000001f) {
+            f = 1.0f / det;
         }
-    } else {
-        out_mesh->index_count = 0;
-        out_mesh->indices     = NULL;
+
+        if (f > 999999.0f || f < -999999.0f)
+            f = 1.0f;
+
+        float tx = f * (duv2y * e1x - duv1y * e2x);
+        float ty = f * (duv2y * e1y - duv1y * e2y);
+        float tz = f * (duv2y * e1z - duv1y * e2z);
+
+        float bx = f * (-duv2x * e1x + duv1x * e2x);
+        float by = f * (-duv2x * e1y + duv1x * e2y);
+        float bz = f * (-duv2x * e1z + duv1x * e2z);
+
+        v0->tangent.data[0] += tx;
+        v0->tangent.data[1] += ty;
+        v0->tangent.data[2] += tz;
+        v1->tangent.data[0] += tx;
+        v1->tangent.data[1] += ty;
+        v1->tangent.data[2] += tz;
+        v2->tangent.data[0] += tx;
+        v2->tangent.data[1] += ty;
+        v2->tangent.data[2] += tz;
+
+        bitangents[i0].data[0] += bx;
+        bitangents[i0].data[1] += by;
+        bitangents[i0].data[2] += bz;
+        bitangents[i1].data[0] += bx;
+        bitangents[i1].data[1] += by;
+        bitangents[i1].data[2] += bz;
+        bitangents[i2].data[0] += bx;
+        bitangents[i2].data[1] += by;
+        bitangents[i2].data[2] += bz;
     }
 
-    return true;
+    for (uint32_t i = 0; i < mesh->vertex_count; i++) {
+        vec3_t n = mesh->vertices[i].normal;
+        vec4_t t = mesh->vertices[i].tangent;
+        vec3_t b = bitangents[i];
+
+        // Gram-Schmidt process: t = t - n * dot(n, t)
+        float dot_nt = n.data[0] * t.data[0] + n.data[1] * t.data[1] + n.data[2] * t.data[2];
+
+        float ox = t.data[0] - n.data[0] * dot_nt;
+        float oy = t.data[1] - n.data[1] * dot_nt;
+        float oz = t.data[2] - n.data[2] * dot_nt;
+
+        // Normalize
+        float len = sqrtf(ox * ox + oy * oy + oz * oz);
+        if (len > 0.0001f) {
+            ox /= len;
+            oy /= len;
+            oz /= len;
+        } else {
+            ox = 1.0f;
+            oy = 0.0f;
+            oz = 0.0f;
+        }
+
+        // Calculate Handedness (W component) using dot(cross(N, T), B)
+        float cx = n.data[1] * oz - n.data[2] * oy;
+        float cy = n.data[2] * ox - n.data[0] * oz;
+        float cz = n.data[0] * oy - n.data[1] * ox;
+
+        float handedness = (cx * b.data[0] + cy * b.data[1] + cz * b.data[2]) < 0.0f ? -1.0f : 1.0f;
+
+        mesh->vertices[i].tangent = (vec4_t){ox, oy, oz, handedness};
+    }
+
+    free(bitangents);
 }
 
 static bool extract_primitive(cgltf_primitive* primitive, mesh_data_t* out_mesh) {
@@ -80,6 +148,12 @@ static bool extract_primitive(cgltf_primitive* primitive, mesh_data_t* out_mesh)
         } else if (attribute->type == cgltf_attribute_type_normal) {
             for (cgltf_size v = 0; v < out_mesh->vertex_count; v++) {
                 cgltf_accessor_read_float(attribute->data, v, out_mesh->vertices[v].normal.data, 3);
+            }
+        } else if (attribute->type == cgltf_attribute_type_tangent) {
+            for (cgltf_size v = 0; v < out_mesh->vertex_count; v++) {
+                cgltf_accessor_read_float(
+                    attribute->data, v, out_mesh->vertices[v].tangent.data, 4
+                );
             }
         }
 
@@ -148,6 +222,19 @@ static void process_gltf_node(
         for (cgltf_size i = 0; i < node->mesh->primitives_count; i++) {
             mesh_data_t mesh_data;
             if (extract_primitive(&node->mesh->primitives[i], &mesh_data)) {
+
+                bool has_tangents = false;
+                for (cgltf_size a = 0; a < node->mesh->primitives[i].attributes_count; a++) {
+                    if (node->mesh->primitives[i].attributes[a].type ==
+                        cgltf_attribute_type_tangent) {
+                        has_tangents = true;
+                        break;
+                    }
+                }
+                if (!has_tangents) {
+                    calculate_tangents(&mesh_data);
+                }
+
                 mesh_handle_t handle = graphics_upload_mesh(gfx, &mesh_data);
                 free(mesh_data.vertices);
                 if (mesh_data.indices)
@@ -166,8 +253,14 @@ static void process_gltf_node(
                 }
 
                 if (scene->object_count < MAX_SCENE_OBJECTS) {
+                    material_handle_t mat_handle = graphics_create_material(
+                        gfx, mat_tex, default_tex
+                    );
+
                     scene->objects[scene->object_count++] = (render_object_t){
-                        .mesh = handle, .texture = mat_tex, .transform = global_transform
+                        .mesh      = handle,
+                        .material  = mat_handle,
+                        .transform = global_transform
                     };
                 }
             }
@@ -225,7 +318,9 @@ bool load_gltf_scene(
                 if (image_load_from_memory(tex_data, tex_size, &img)) {
                     img.size = img.width * img.height * 4;
 
-                    texture_handle_t uploaded = graphics_upload_texture(gfx, &img);
+                    texture_handle_t uploaded = graphics_upload_texture(
+                        gfx, &img, PAK_TEX_FORMAT_RGBA8_SRGB
+                    );
                     if (uploaded.id != UINT32_MAX) {
                         texture_cache[i] = uploaded;
                     }

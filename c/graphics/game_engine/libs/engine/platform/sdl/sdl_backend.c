@@ -7,7 +7,6 @@
 #include "engine/core/logger.h"
 
 #include "engine/platform/platform.h"
-#include "engine/platform/platform_mutex.h"
 
 #define MAX_KEYS 512 // SDL_NUM_SCANCODES is 512
 
@@ -20,22 +19,42 @@ struct platform_t {
     bool        previous_keys[MAX_KEYS];
 };
 
+// clang-format off
 static SDL_Scancode key_map[KEY_MAX] = {
-    [KEY_W]      = SDL_SCANCODE_W,
-    [KEY_A]      = SDL_SCANCODE_A,
-    [KEY_S]      = SDL_SCANCODE_S,
-    [KEY_D]      = SDL_SCANCODE_D,
-    [KEY_SPACE]  = SDL_SCANCODE_SPACE,
+    [KEY_Q] = SDL_SCANCODE_Q,
+    [KEY_W] = SDL_SCANCODE_W,
+    [KEY_E] = SDL_SCANCODE_E,
+    [KEY_R] = SDL_SCANCODE_R,
+    [KEY_T] = SDL_SCANCODE_T,
+    [KEY_A] = SDL_SCANCODE_A,
+    [KEY_S] = SDL_SCANCODE_S,
+    [KEY_D] = SDL_SCANCODE_D,
+    [KEY_F] = SDL_SCANCODE_F,
+    [KEY_G] = SDL_SCANCODE_G,
+    [KEY_SPACE] = SDL_SCANCODE_SPACE,
     [KEY_LSHIFT] = SDL_SCANCODE_LSHIFT,
-    [KEY_P]      = SDL_SCANCODE_P,
+    [KEY_LCTRL] = SDL_SCANCODE_LCTRL,
+    [KEY_LALT] = SDL_SCANCODE_LALT,
+    [KEY_P] = SDL_SCANCODE_P,
     [KEY_ESCAPE] = SDL_SCANCODE_ESCAPE,
-    [KEY_F1]     = SDL_SCANCODE_F1,
-    [KEY_F2]     = SDL_SCANCODE_F2,
-    [KEY_F3]     = SDL_SCANCODE_F3,
-    [KEY_F4]     = SDL_SCANCODE_F4,
-    [KEY_F5]     = SDL_SCANCODE_F5,
-    [KEY_F12]    = SDL_SCANCODE_F12
+    [KEY_1] = SDL_SCANCODE_1,
+    [KEY_2] = SDL_SCANCODE_2,
+    [KEY_3] = SDL_SCANCODE_3,
+    [KEY_4] = SDL_SCANCODE_4,
+    [KEY_F1] = SDL_SCANCODE_F1,
+    [KEY_F2] = SDL_SCANCODE_F2,
+    [KEY_F3] = SDL_SCANCODE_F3,
+    [KEY_F4] = SDL_SCANCODE_F4,
+    [KEY_F5] = SDL_SCANCODE_F5,
+    [KEY_F6] = SDL_SCANCODE_F6,
+    [KEY_F7] = SDL_SCANCODE_F7,
+    [KEY_F8] = SDL_SCANCODE_F8,
+    [KEY_F9] = SDL_SCANCODE_F9,
+    [KEY_F10] = SDL_SCANCODE_F10,
+    [KEY_F11] = SDL_SCANCODE_F11,
+    [KEY_F12] = SDL_SCANCODE_F12,
 };
+// clang-format on
 
 platform_t* platform_create(const char* title, int width, int height) {
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
@@ -135,6 +154,7 @@ bool platform_get_key_released(platform_t* platform, platform_key_t key) {
     return !platform->current_keys[sdl_key] && platform->previous_keys[sdl_key];
 }
 
+// MARK: mutex/semaphores
 platform_mutex_t platform_mutex_create(void) { return (platform_mutex_t)SDL_CreateMutex(); }
 
 void platform_mutex_lock(platform_mutex_t mutex) {
@@ -151,6 +171,39 @@ void platform_mutex_destroy(platform_mutex_t mutex) {
     if (mutex)
         SDL_DestroyMutex((SDL_Mutex*)mutex);
 }
+
+// MARK: atomics
+void platform_atomic_int_set(platform_atomic_int_t* atomic, int value) {
+    SDL_SetAtomicInt((SDL_AtomicInt*)&atomic->value, value);
+}
+
+int platform_atomic_int_add(platform_atomic_int_t* atomic, int value) {
+    return SDL_AddAtomicInt((SDL_AtomicInt*)&atomic->value, value);
+}
+
+int platform_atomic_int_get(platform_atomic_int_t* atomic) {
+    return SDL_GetAtomicInt((SDL_AtomicInt*)&atomic->value);
+}
+
+// MARK: threading
+int platform_get_core_count() { return SDL_GetNumLogicalCPUCores(); }
+
+platform_thread_t platform_thread_create(platform_thread_func fn, const char* name, void* data) {
+    SDL_Thread* thread = SDL_CreateThread((SDL_ThreadFunction)fn, name, data);
+    if (!thread) {
+        log_error("Platform: Failed to create thread '%s'", name);
+        return NULL;
+    }
+    return (platform_thread_t)thread;
+}
+
+void platform_thread_wait(platform_thread_t thread) {
+    if (thread) {
+        SDL_WaitThread((SDL_Thread*)thread, NULL);
+    }
+}
+
+// MARK: gpu api specific
 
 // #ifdef RENDERER_VULKAN
 bool platform_create_vulkan_surface(platform_t* p, VkInstance instance, VkSurfaceKHR* surface) {

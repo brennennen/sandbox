@@ -12,7 +12,6 @@
 #include "vk_types.h"
 #include "volk.h"
 
-
 static inline VkDeviceSize align_up(VkDeviceSize addr, VkDeviceSize align) {
     return (addr + align - 1) & ~(align - 1);
 }
@@ -91,12 +90,12 @@ gpu_allocation_t gpu_heap_alloc(gpu_heap_t* heap, uint64_t size, uint64_t alignm
     heap->offset = aligned_offset + size;
     heap->used += size;
     float percent = ((float)heap->offset / (float)heap->capacity) * 100.0f;
-    printf(
-        "[DEBUG]: GPU Alloc: %llu bytes at offset %llu (%.2f%% of heap used)\n",
-        size,
-        aligned_offset,
-        percent
-    );
+    // printf(
+    //     "[DEBUG]: GPU Alloc: %llu bytes at offset %llu (%.2f%% of heap used)\n",
+    //     size,
+    //     aligned_offset,
+    //     percent
+    // );
 
     return alloc;
 }

@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-// #include "engine/core/math/math_types.h"
+#include "engine/core/math/mat4.h"
 
 #include "shared/math_types.h"
 
@@ -41,6 +41,9 @@ typedef struct {
 
     uint32_t* indices;
     uint32_t  index_count;
+
+    vec3_t bounding_center;
+    float  bounding_radius;
 } mesh_data_t;
 
 typedef struct {

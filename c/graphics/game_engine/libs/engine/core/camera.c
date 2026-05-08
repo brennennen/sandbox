@@ -1,5 +1,5 @@
 #include "engine/core/camera.h"
-#include "engine/core/math/mat4_math.h"
+#include "engine/core/math/mat4.h"
 #include <math.h>
 
 mat4_t camera_get_view_matrix(const camera_t* camera) {

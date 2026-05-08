@@ -10,8 +10,18 @@ layout(location = 0) out vec4 outColor;
 layout(set = 1, binding = 0) uniform sampler2D texSampler;
 layout(set = 1, binding = 1) uniform sampler2D normalMapSampler;
 
+layout(push_constant) uniform PushConstants {
+    mat4 transform;
+    uint is_masked;
+} pc;
+
 void main() {
     vec3 finalNormal;
+    vec4 texColor = texture(texSampler, fragUV) * fragColor;
+
+    if (pc.is_masked == 1 && texColor.a < 0.5) {
+        discard;
+    }
 
     if (fragTangent.w == 0.0) {
         finalNormal = normalize(fragNormal);
@@ -36,6 +46,5 @@ void main() {
     vec3 fillColor = vec3(0.8, 0.85, 1.0);
     float fillDiff = max(dot(finalNormal, fillDir), 0.0) * 0.4;
     vec3 totalLight = ambient + (keyColor * keyDiff) + (fillColor * fillDiff);
-    vec4 texColor = texture(texSampler, fragUV) * fragColor;
     outColor = vec4(texColor.rgb * totalLight, texColor.a);
 }

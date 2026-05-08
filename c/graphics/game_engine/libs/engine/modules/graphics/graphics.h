@@ -40,6 +40,7 @@ typedef enum {
     DRAW_MODE_DEBUG_TANGENT,
     DRAW_MODE_DEBUG_BITANGENT,
     DRAW_MODE_DEBUG_VERTEX_COLOR, // render the vertex color
+    DRAW_MODE_DEBUG_MIPMAPS,
 
     DRAW_MODE_COUNT,
 } draw_mode_t;
@@ -65,18 +66,23 @@ texture_handle_t graphics_upload_texture(graphics_t* r, image_t* img, pak_textur
 material_handle_t graphics_create_material(
     graphics_t*      r,
     texture_handle_t albedo,
-    texture_handle_t normal
+    texture_handle_t normal,
+    bool             is_alpha_masked
 );
 
 void graphics_draw(
     graphics_t*      graphics,
     platform_t*      platform,
     mat4_t           view,
+    mat4_t           culling_view_proj,
+    bool             is_culling_frozen,
     draw_mode_t      draw_mode,
     render_object_t* objects,
     uint32_t         object_count
 );
 
 void graphics_destroy(graphics_t* graphics);
+
+void graphics_update_debug_frustum(graphics_t* r, mat4_t inv_vp);
 
 #endif

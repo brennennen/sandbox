@@ -3,13 +3,12 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
-
-#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "engine/core/game_engine.h"
 #include "engine/core/logger.h"
-#include "engine/core/math/mat4_math.h"
+#include "engine/core/math/mat4.h"
 #include "engine/core/vfs.h"
 #include "engine/core/world.h"
 #include "engine/modules/assets/gltf.h"
@@ -96,14 +95,16 @@ bool game_engine_init(game_engine_t* game_engine) {
         for (uint32_t i = 0; i < loaded_mesh_count; i++) {
             pak_mesh_t* mesh_def = &loaded_meshes[i];
 
-            vertex_t* vertex_start = &loaded_vertices[mesh_def->vertex_offset];
+            vertex_t* vertex_start = (vertex_t*)&loaded_vertices[mesh_def->vertex_offset];
             uint32_t* index_start  = &loaded_indices[mesh_def->index_offset];
 
             mesh_data_t raw_mesh_data = {
-                .vertices     = vertex_start,
-                .vertex_count = mesh_def->vertex_count,
-                .indices      = index_start,
-                .index_count  = mesh_def->index_count
+                .vertices        = vertex_start,
+                .vertex_count    = mesh_def->vertex_count,
+                .indices         = index_start,
+                .index_count     = mesh_def->index_count,
+                .bounding_center = mesh_def->bounding_center,
+                .bounding_radius = mesh_def->bounding_radius,
             };
 
             mesh_handle_t vram_handle = graphics_upload_mesh(game_engine->graphics, &raw_mesh_data);
@@ -136,7 +137,7 @@ bool game_engine_init(game_engine_t* game_engine) {
 
             game_engine->main_scene.objects[obj_idx].mesh     = vram_handle;
             game_engine->main_scene.objects[obj_idx].material = graphics_create_material(
-                game_engine->graphics, mesh_tex, norm_tex
+                game_engine->graphics, mesh_tex, norm_tex, mesh_def->is_alpha_masked
             );
             game_engine->main_scene.objects[obj_idx].transform = final_transform;
         }
@@ -219,6 +220,16 @@ bool game_engine_tick(game_engine_t* game_engine) {
         game_engine->draw_mode = (game_engine->draw_mode + 1) % DRAW_MODE_COUNT;
         log_info("draw mode: %s", draw_mode_names[game_engine->draw_mode]);
     }
+    if (platform_get_key_pressed(game_engine->platform, KEY_F6)) {
+        game_engine->debug_freeze_culling = !game_engine->debug_freeze_culling;
+        if (game_engine->debug_freeze_culling) {
+            log_info("Frustum Culling: FROZEN");
+            mat4_t inv_culling = mat4_inverse(game_engine->culling_view_proj);
+            graphics_update_debug_frustum(game_engine->graphics, inv_culling);
+        } else {
+            log_info("Frustum Culling: UNFREEZE");
+        }
+    }
     if (platform_get_key_pressed(game_engine->platform, KEY_ESCAPE)) {
         game_engine->is_paused = !game_engine->is_paused;
         if (game_engine->is_paused) {
@@ -267,10 +278,25 @@ bool game_engine_tick(game_engine_t* game_engine) {
     }
 
     mat4_t view = camera_get_view_matrix(game_engine->main_camera);
+
+    int w;
+    int h;
+    platform_get_window_size(game_engine->platform, &w, &h);
+    float aspect = (float)w / (float)h;
+
+    mat4_t proj              = mat4_perspective(0.785f, aspect, 0.1f, 5000.0f);
+    mat4_t current_view_proj = mat4_mul(proj, view);
+
+    if (!game_engine->debug_freeze_culling) {
+        game_engine->culling_view_proj = current_view_proj;
+    }
+
     graphics_draw(
         game_engine->graphics,
         game_engine->platform,
         view,
+        game_engine->culling_view_proj,
+        game_engine->debug_freeze_culling,
         game_engine->draw_mode,
         game_engine->main_scene.objects,
         game_engine->main_scene.object_count

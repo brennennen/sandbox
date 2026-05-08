@@ -70,9 +70,11 @@ def download_stb_image():
     if os.path.exists(stb_dir):
         return
     stb_image = "https://raw.githubusercontent.com/nothings/stb/refs/heads/master/stb_image.h"
+    stb_image_resize2 = "https://raw.githubusercontent.com/nothings/stb/refs/heads/master/stb_image_resize2.h"
     os.makedirs(stb_dir, exist_ok=True)
     print("Downloading stb...")
     urllib.request.urlretrieve(stb_image, os.path.join(stb_dir, "stb_image.h"))
+    urllib.request.urlretrieve(stb_image_resize2, os.path.join(stb_dir, "stb_image_resize2.h"))
 
 def download_cgltf():
     cgltf_url = "https://raw.githubusercontent.com/jkuhlmann/cgltf/refs/heads/master/cgltf.h"

@@ -5,7 +5,7 @@
 
 #include "bc7/bc7enc.h"
 #include "engine/core/logger.h"
-#include "engine/core/math/mat4_math.h"
+#include "engine/core/math/mat4.h"
 #include "gltf_baker.h"
 #include "mesh_utilities.h"
 #include "shared/scene_types.h"

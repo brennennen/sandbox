@@ -5,7 +5,7 @@
 #include <string.h>
 
 #include "engine/core/logger.h"
-#include "engine/core/math/mat4_math.h"
+#include "engine/core/math/mat4.h"
 
 #include "gltf_baker.h"
 #include "scene_parser.h"
@@ -225,9 +225,12 @@ static void parse_entity_statement(const char** cursor, scene_desc_t* out_scene)
     mat4_t rot_y = mat4_rotate_y(ry);
     mat4_t rot_z = mat4_rotate_z(rz);
 
-    mat4_t r_mat         = mat4_mul(rot_y, mat4_mul(rot_x, rot_z));
-    mat4_t sr_mat        = mat4_mul(s_mat, r_mat);
-    new_entity.transform = mat4_mul(sr_mat, t_mat);
+    // mat4_t r_mat         = mat4_mul(rot_y, mat4_mul(rot_x, rot_z));
+    // mat4_t sr_mat        = mat4_mul(s_mat, r_mat);
+    // new_entity.transform = mat4_mul(sr_mat, t_mat);
+    mat4_t r_mat         = mat4_mul(mat4_mul(rot_z, rot_x), rot_y);
+    mat4_t sr_mat        = mat4_mul(r_mat, s_mat);
+    new_entity.transform = mat4_mul(t_mat, sr_mat);
 
     out_scene->entities[out_scene->entity_count++] = new_entity;
     log_info("Baked Entity: %s (Model %d)", name_tok.string_value, new_entity.model_id);

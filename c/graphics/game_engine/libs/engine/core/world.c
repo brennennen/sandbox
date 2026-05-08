@@ -86,9 +86,10 @@ bool world_load_texture_image(uint32_t tex_idx, image_t* out_img) {
 
     fseek(file, info->byte_offset, SEEK_SET);
 
-    out_img->width    = info->width;
-    out_img->height   = info->height;
-    out_img->channels = info->channels;
+    out_img->width      = info->width;
+    out_img->height     = info->height;
+    out_img->channels   = info->channels;
+    out_img->mip_levels = info->mip_levels;
 
     if (info->format == PAK_TEX_FORMAT_RGBA8_UNORM || info->format == PAK_TEX_FORMAT_RGBA8_SRGB ||
         info->format == PAK_TEX_FORMAT_R8_UNORM || info->format == PAK_TEX_FORMAT_BC7_UNORM ||

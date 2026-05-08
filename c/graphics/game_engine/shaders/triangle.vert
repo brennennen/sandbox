@@ -18,6 +18,7 @@ layout(set = 0, binding = 0) uniform UBO {
 
 layout(push_constant) uniform Push {
     mat4 model;
+    uint is_alpha_masked;
 } push;
 
 void main() {

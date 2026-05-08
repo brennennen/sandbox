@@ -21,7 +21,13 @@ typedef union {
 } vec4_t;
 
 typedef union {
-    float  data[4][4];
+    float  m[3][3];     /** Matrix [r][c] notation access. */
+    float  elements[9]; /** Flat array access. */
+    vec3_t columns[3];  /** Column oriented vertex access. */
+} mat3_t;
+
+typedef union {
+    float  m[4][4];
     float  elements[16];
     vec4_t columns[4];
 } mat4_t;

@@ -9,6 +9,7 @@
 -Ilibs/engine/modules/graphics/vulkan
 -Ilibs/
 -Ishared/
+-I
 -I.vendor/
 -I.vendor/volk
 -I.vendor/stb

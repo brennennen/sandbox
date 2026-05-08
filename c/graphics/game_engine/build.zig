@@ -6,7 +6,10 @@ pub fn build(b: *std.Build) void {
 
     //b.install_path = ".build";
 
-    const c_flags = &.{"-std=c23"};
+    const c_flags = &.{
+        "-std=c23",
+        "-fno-sanitize=alignment", // needed for stb_image_resize2
+    };
 
     //
     // MARK: Core
@@ -62,7 +65,7 @@ pub fn build(b: *std.Build) void {
 
     const engine_sources = [_][]const u8{
         ".vendor/volk/volk.c",
-        "libs/engine/core/math/mat4_math.c",
+        "libs/engine/core/math/mat4.c",
         "libs/engine/core/camera.c",
         "libs/engine/core/game_engine.c",
         "libs/engine/core/world.c",
@@ -140,7 +143,9 @@ pub fn build(b: *std.Build) void {
         "libs/tools/core/mesh_utilities.c",
         "libs/tools/core/tools_core.c",
         "libs/tools/bakers/gltf_baker.c",
+        "libs/tools/parsers/asset_parser.c",
         "libs/tools/parsers/scene_parser.c",
+        "libs/tools/importers/gltf_extract.c",
     };
 
     for (tools_sources) |file| {
@@ -208,6 +213,47 @@ pub fn build(b: *std.Build) void {
     run_step.dependOn(&run_game_cmd.step);
 
     //
+    // MARK: GLTF Importer
+    //
+    const gltf_importer_mod = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+
+    gltf_importer_mod.addCSourceFile(.{ .file = b.path("apps/gltf_importer/main.c"), .flags = c_flags });
+
+    for (include_paths) |path| {
+        gltf_importer_mod.addIncludePath(b.path(path));
+    }
+
+    const gltf_importer_exe = b.addExecutable(.{
+        .name = "gltf_importer",
+        .root_module = gltf_importer_mod,
+    });
+
+    if (target.result.os.tag == .windows) {
+        gltf_importer_mod.addIncludePath(b.path(".vendor/Vulkan/include"));
+        const sdl_path = ".vendor/SDL3-3.4.0/x86_64-w64-mingw32";
+        gltf_importer_mod.addIncludePath(b.path(sdl_path ++ "/include"));
+        gltf_importer_mod.addObjectFile(b.path(sdl_path ++ "/lib/libSDL3.dll.a"));
+    }
+
+    gltf_importer_mod.linkLibrary(engine_lib);
+    gltf_importer_mod.linkLibrary(tools_lib);
+    b.installArtifact(gltf_importer_exe);
+
+    const run_gltf_importer_cmd = b.addRunArtifact(gltf_importer_exe);
+    run_gltf_importer_cmd.step.dependOn(b.getInstallStep());
+
+    if (b.args) |args| {
+        run_gltf_importer_cmd.addArgs(args);
+    }
+
+    const gltf_import_step = b.step("gltf_import", "Run the gltf importer");
+    gltf_import_step.dependOn(&run_gltf_importer_cmd.step);
+
+    //
     // MARK: Cooker
     //
     const cooker_mod = b.createModule(.{
@@ -263,6 +309,7 @@ pub fn build(b: *std.Build) void {
         .{ "shaders/debug_tangent.frag", "shaders/debug_tangent.frag.spv" },
         .{ "shaders/debug_bitangent.frag", "shaders/debug_bitangent.frag.spv" },
         .{ "shaders/debug_vertex_color.frag", "shaders/debug_vertex_color.frag.spv" },
+        .{ "shaders/debug_mipmaps.frag", "shaders/debug_mipmaps.frag.spv" },
         .{ "shaders/unlit.vert", "shaders/unlit.vert.spv" },
         .{ "shaders/unlit.frag", "shaders/unlit.frag.spv" },
     };

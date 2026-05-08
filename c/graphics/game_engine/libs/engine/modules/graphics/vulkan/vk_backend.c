@@ -6,8 +6,9 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
 
+#include "engine/core/frustum.h"
 #include "engine/core/logger.h"
-#include "engine/core/math/mat4_math.h"
+#include "engine/core/math/mat4.h"
 #include "engine/modules/assets/image.h"
 #include "engine/modules/assets/obj.h"
 #include "engine/modules/graphics/debug/debug_grid.h"
@@ -51,6 +52,72 @@ static void init_debug_grid(graphics_t* r) {
 
     vertex_t* mapped_data = (vertex_t*)r->grid_buffer.allocation.mapped_ptr;
     generate_grid(mapped_data, grid_size, grid_step);
+}
+
+void init_debug_frustum_buffer(graphics_t* r) {
+    size_t buffer_size           = 24 * sizeof(vertex_t);
+    r->frustum_buffer.allocation = gpu_heap_alloc(r->assets.vertex_heap, buffer_size, 16);
+
+    VkBufferCreateInfo buffer_info = {
+        .sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size        = buffer_size,
+        .usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE
+    };
+    vkCreateBuffer(r->core.device, &buffer_info, NULL, &r->frustum_buffer.buffer);
+    vkBindBufferMemory(
+        r->core.device,
+        r->frustum_buffer.buffer,
+        r->assets.vertex_heap->memory,
+        r->frustum_buffer.allocation.offset
+    );
+}
+
+void graphics_update_debug_frustum(graphics_t* r, mat4_t inv_vp) {
+    // 8 corners of Vulkan's NDC space
+    vec4_t ndc[8] = {
+        {-1, -1, 0, 1},
+        {1, -1, 0, 1},
+        {1, 1, 0, 1},
+        {-1, 1, 0, 1}, // Near
+        {-1, -1, 1, 1},
+        {1, -1, 1, 1},
+        {1, 1, 1, 1},
+        {-1, 1, 1, 1} // Far
+    };
+
+    vec3_t corners[8];
+    for (int i = 0; i < 8; i++) {
+        vec4_t world_pos = mat4_mul_vec4(inv_vp, ndc[i]);
+        corners[i]       = (vec3_t){
+            world_pos.x / world_pos.w,
+            world_pos.y / world_pos.w,
+            world_pos.z / world_pos.w,
+        };
+    }
+
+    vec4_t c = {1.0f, 1.0f, 0.0f, 1.0f}; // yellow
+    // clang-format off
+    vertex_t lines[24] = {
+        // near face
+        {.pos = corners[0], .color = c}, {.pos = corners[1], .color = c},
+        {.pos = corners[1], .color = c}, {.pos = corners[2], .color = c},
+        {.pos = corners[2], .color = c}, {.pos = corners[3], .color = c},
+        {.pos = corners[3], .color = c}, {.pos = corners[0], .color = c},
+        // far face
+        {.pos = corners[4], .color = c}, {.pos = corners[5], .color = c},
+        {.pos = corners[5], .color = c}, {.pos = corners[6], .color = c},
+        {.pos = corners[6], .color = c}, {.pos = corners[7], .color = c},
+        {.pos = corners[7], .color = c}, {.pos = corners[4], .color = c},
+        // edges
+        {.pos = corners[0], .color = c}, {.pos = corners[4], .color = c},
+        {.pos = corners[1], .color = c}, {.pos = corners[5], .color = c},
+        {.pos = corners[2], .color = c}, {.pos = corners[6], .color = c},
+        {.pos = corners[3], .color = c}, {.pos = corners[7], .color = c},
+    };
+    // clang-format on
+
+    memcpy(r->frustum_buffer.allocation.mapped_ptr, lines, sizeof(lines));
 }
 
 void update_uniform_buffer(graphics_t* r, mat4_t view, uint32_t current_frame) {
@@ -218,6 +285,7 @@ graphics_t* graphics_create(platform_t* platform, graphics_config_t* config) {
     }
 
     init_debug_grid(r);
+    init_debug_frustum_buffer(r);
 
     log_info("renderer: initialization complete");
     return r;
@@ -246,6 +314,9 @@ void graphics_destroy(graphics_t* r) {
 
         if (r->grid_buffer.buffer) {
             vkDestroyBuffer(r->core.device, r->grid_buffer.buffer, NULL);
+        }
+        if (r->frustum_buffer.buffer) {
+            vkDestroyBuffer(r->core.device, r->frustum_buffer.buffer, NULL);
         }
 
         vk_destroy_graphics_pipeline(r);
@@ -492,9 +563,11 @@ mesh_handle_t graphics_upload_mesh(graphics_t* graphics, mesh_data_t* data) {
         vk_mesh->index_buffer = VK_NULL_HANDLE;
     }
 
-    vk_mesh->vertex_count = data->vertex_count;
-    vk_mesh->index_count  = data->index_count;
-    vk_mesh->is_active    = true;
+    vk_mesh->vertex_count    = data->vertex_count;
+    vk_mesh->index_count     = data->index_count;
+    vk_mesh->bounding_center = data->bounding_center;
+    vk_mesh->bounding_radius = data->bounding_radius;
+    vk_mesh->is_active       = true;
 
     log_info(
         "vulkan: uploaded mesh to pool slot %d (%d vertices, %d indices)",
@@ -529,7 +602,8 @@ texture_handle_t graphics_upload_texture(graphics_t* r, image_t* img, pak_textur
 material_handle_t graphics_create_material(
     graphics_t*      r,
     texture_handle_t albedo,
-    texture_handle_t normal
+    texture_handle_t normal,
+    bool             is_alpha_masked
 ) {
     if (albedo.id == GRAPHICS_INVALID_HANDLE || normal.id == GRAPHICS_INVALID_HANDLE) {
         log_error("vulkan: Cannot create material with invalid texture handles. Skipping.");
@@ -589,7 +663,8 @@ material_handle_t graphics_create_material(
 
     vkUpdateDescriptorSets(r->core.device, 2, writes, 0, NULL);
 
-    mat->is_active = true;
+    mat->is_active       = true;
+    mat->is_alpha_masked = is_alpha_masked;
     return (material_handle_t){.id = id};
 }
 
@@ -615,15 +690,24 @@ static VkPipeline get_draw_mode_pipeline(vk_pipelines_t* pipelines, draw_mode_t 
         return pipelines->debug_bitangent;
     case DRAW_MODE_DEBUG_VERTEX_COLOR:
         return pipelines->debug_vertex_color;
+    case DRAW_MODE_DEBUG_MIPMAPS:
+        return pipelines->debug_mipmaps;
     default:
         return pipelines->graphics;
     }
 }
 
+typedef struct {
+    mat4_t   transform;
+    uint32_t is_alpha_masked;
+} push_constants_t;
+
 void graphics_draw(
     graphics_t*      r,
     platform_t*      platform,
     mat4_t           view,
+    mat4_t           culling_view_proj,
+    bool             is_culling_frozen,
     draw_mode_t      draw_mode,
     render_object_t* objects,
     uint32_t         object_count
@@ -632,6 +716,11 @@ void graphics_draw(
     if (image_index < 0) {
         return;
     }
+    float  aspect    = (float)r->display.extent.width / (float)r->display.extent.height;
+    mat4_t proj      = mat4_perspective(0.785f, aspect, 0.1f, 100.0f);
+    mat4_t view_proj = mat4_mul(proj, view);
+    // frustum_t frustum   = frustum_extract(view_proj);
+    frustum_t frustum = frustum_extract(culling_view_proj);
 
     VkPipeline current_pipeline = get_draw_mode_pipeline(&r->pipelines, draw_mode);
 
@@ -648,6 +737,8 @@ void graphics_draw(
         NULL
     );
 
+    int culled_count = 0;
+
     VkDeviceSize offsets[] = {0};
     for (uint32_t i = 0; i < object_count; i++) {
         render_object_t* obj = &objects[i];
@@ -663,13 +754,31 @@ void graphics_draw(
         if (!vk_mesh->is_active || !vk_mat->is_active)
             continue;
 
+        vec3_t obj_pos = mat4_transform_point(obj->transform, vk_mesh->bounding_center);
+        float  scale   = sqrtf(
+            obj->transform.m[0][0] * obj->transform.m[0][0] +
+            obj->transform.m[0][1] * obj->transform.m[0][1] +
+            obj->transform.m[0][2] * obj->transform.m[0][2]
+        );
+        float bounding_radius = vk_mesh->bounding_radius * scale;
+
+        if (!frustum_test_sphere(&frustum, obj_pos, bounding_radius)) {
+            culled_count++;
+            continue; // SKIP THE DRAW CALL!
+        }
+
+        push_constants_t push_constants = {
+            .transform       = obj->transform,
+            .is_alpha_masked = vk_mat->is_alpha_masked ? 1 : 0,
+        };
+
         vkCmdPushConstants(
             r->command_buffer,
             r->pipelines.layout,
-            VK_SHADER_STAGE_VERTEX_BIT,
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
             0,
-            sizeof(mat4_t),
-            &obj->transform
+            sizeof(push_constants_t),
+            &push_constants
         );
 
         vkCmdBindDescriptorSets(
@@ -693,20 +802,45 @@ void graphics_draw(
         }
     }
 
+    // log_info("Rendered: %d | Culled: %d", object_count - culled_count, culled_count);
+
     vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, r->pipelines.line);
 
+    push_constants_t grid_pc = {
+        .transform       = mat4_identity(),
+        .is_alpha_masked = 0,
+    };
     mat4_t identity = mat4_identity();
     vkCmdPushConstants(
         r->command_buffer,
         r->pipelines.layout,
         VK_SHADER_STAGE_VERTEX_BIT,
         0,
-        sizeof(mat4_t),
-        &identity
+        sizeof(push_constants_t),
+        &grid_pc
     );
 
     vkCmdBindVertexBuffers(r->command_buffer, 0, 1, &r->grid_buffer.buffer, offsets);
     vkCmdDraw(r->command_buffer, r->grid_vertex_count, 1, 0, 0);
+
+    if (is_culling_frozen) {
+        push_constants_t frustum_pc = {
+            .transform       = mat4_identity(),
+            .is_alpha_masked = 0,
+        };
+
+        vkCmdPushConstants(
+            r->command_buffer,
+            r->pipelines.layout,
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+            0,
+            sizeof(push_constants_t),
+            &frustum_pc
+        );
+
+        vkCmdBindVertexBuffers(r->command_buffer, 0, 1, &r->frustum_buffer.buffer, offsets);
+        vkCmdDraw(r->command_buffer, 24, 1, 0, 0);
+    }
 
     end_frame(r, (uint32_t)image_index);
 }

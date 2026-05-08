@@ -37,6 +37,9 @@ typedef struct {
 
     draw_mode_t draw_mode;
 
+    bool   debug_freeze_culling;
+    mat4_t culling_view_proj;
+
 } game_engine_t;
 
 bool game_engine_init(game_engine_t* game_engine);

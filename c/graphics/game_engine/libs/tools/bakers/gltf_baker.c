@@ -6,9 +6,11 @@
 #include "cgltf.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+#include "stb_image_resize2.h"
 
 #include "engine/core/logger.h"
-#include "engine/core/math/mat4_math.h"
+#include "engine/core/math/mat4.h"
 #include "engine/platform/platform.h"
 #include "gltf_baker.h"
 #include "shared/scene_types.h"
@@ -32,19 +34,42 @@ static void parse_primitive_material(
     pak_mesh_t*      current_mesh,
     vec4_t*          out_base_color,
     cgltf_int*       out_uv_index,
-    bool*            out_has_normal_map
+    bool*            out_has_normal_map,
+    bool*            out_is_alpha_masked
 ) {
-    *out_base_color     = (vec4_t){1.0f, 1.0f, 1.0f, 1.0f};
-    *out_uv_index       = 0;
-    *out_has_normal_map = false;
+    *out_base_color      = (vec4_t){1.0f, 1.0f, 1.0f, 1.0f};
+    *out_uv_index        = 0;
+    *out_has_normal_map  = false;
+    *out_is_alpha_masked = true;
 
     if (!prim->material) {
         log_info("Primitive has NO Material attached.");
         return;
     }
 
+    const char* alpha_mode_str = "UNKNOWN";
+    switch (prim->material->alpha_mode) {
+    case cgltf_alpha_mode_opaque:
+        alpha_mode_str = "OPAQUE";
+        break;
+    case cgltf_alpha_mode_mask:
+        alpha_mode_str = "MASK";
+        break;
+    case cgltf_alpha_mode_blend:
+        alpha_mode_str = "BLEND";
+        break;
+    case cgltf_alpha_mode_max_enum:
+    default:
+        break;
+    }
+
     const char* mat_name = prim->material->name ? prim->material->name : "Unnamed";
-    log_info("Primitive Material: %s", mat_name);
+    log_info("Primitive Material: '%s' | Alpha Mode: %s", mat_name, alpha_mode_str);
+
+    if (prim->material->alpha_mode == cgltf_alpha_mode_mask ||
+        prim->material->alpha_mode == cgltf_alpha_mode_blend) {
+        *out_is_alpha_masked = true;
+    }
 
     if (prim->material->has_pbr_metallic_roughness) {
         cgltf_float* factor = prim->material->pbr_metallic_roughness.base_color_factor;
@@ -88,25 +113,16 @@ static void parse_primitive_material(
 static void parse_primitive_vertices(
     cgltf_primitive* prim,
     scene_desc_t*    out_scene,
+    pak_mesh_t*      current_mesh,
     uint32_t         vertex_offset,
     mat4_t           global_transform,
     vec4_t           base_color,
     cgltf_int        uv_index
 ) {
     uint32_t vertex_count = prim->attributes[0].data->count;
-
-    // PRE-CALCULATE MATRIX MATH ONCE PER MESH, NOT PER VERTEX
-    float m00 = global_transform.data[0][0], m10 = global_transform.data[1][0],
-          m20 = global_transform.data[2][0];
-    float m01 = global_transform.data[0][1], m11 = global_transform.data[1][1],
-          m21 = global_transform.data[2][1];
-    float m02 = global_transform.data[0][2], m12 = global_transform.data[1][2],
-          m22 = global_transform.data[2][2];
-
-    // Cofactor matrix for correct normal transformation
-    float c00 = m11 * m22 - m12 * m21, c01 = m02 * m21 - m01 * m22, c02 = m01 * m12 - m02 * m11;
-    float c10 = m12 * m20 - m10 * m22, c11 = m00 * m22 - m02 * m20, c12 = m02 * m10 - m00 * m12;
-    float c20 = m10 * m21 - m11 * m20, c21 = m01 * m20 - m00 * m21, c22 = m00 * m11 - m01 * m10;
+    mat3_t   cofactor     = mat4_get_normal_matrix(global_transform);
+    vec3_t min_bounds = {FLT_MAX, FLT_MAX, FLT_MAX};
+    vec3_t max_bounds = {-FLT_MAX, -FLT_MAX, -FLT_MAX};
 
     for (size_t v = 0; v < vertex_count; v++) {
         pak_vertex_t* out_vert = &out_scene->vertices[vertex_offset + v];
@@ -131,37 +147,35 @@ static void parse_primitive_vertices(
             }
         }
 
-        out_vert->pos.x = local_pos.x * m00 + local_pos.y * m10 + local_pos.z * m20 +
-                          global_transform.data[3][0];
-        out_vert->pos.y = local_pos.x * m01 + local_pos.y * m11 + local_pos.z * m21 +
-                          global_transform.data[3][1];
-        out_vert->pos.z = local_pos.x * m02 + local_pos.y * m12 + local_pos.z * m22 +
-                          global_transform.data[3][2];
+        out_vert->pos     = mat4_transform_point(global_transform, local_pos);
+        out_vert->normal  = mat3_transform_normal(cofactor, local_norm);
+        out_vert->tangent = mat4_transform_tangent(global_transform, local_tangent);
 
-        float nx    = local_norm.x * c00 + local_norm.y * c01 + local_norm.z * c02;
-        float ny    = local_norm.x * c10 + local_norm.y * c11 + local_norm.z * c12;
-        float nz    = local_norm.x * c20 + local_norm.y * c21 + local_norm.z * c22;
-        float n_len = sqrtf(nx * nx + ny * ny + nz * nz);
+        if (out_vert->pos.x < min_bounds.x)
+            min_bounds.x = out_vert->pos.x;
+        if (out_vert->pos.y < min_bounds.y)
+            min_bounds.y = out_vert->pos.y;
+        if (out_vert->pos.z < min_bounds.z)
+            min_bounds.z = out_vert->pos.z;
 
-        if (n_len > 0.00001f) {
-            nx /= n_len;
-            ny /= n_len;
-            nz /= n_len;
-        }
-        out_vert->normal = (vec3_t){nx, ny, nz};
-
-        float tx    = local_tangent.x * m00 + local_tangent.y * m10 + local_tangent.z * m20;
-        float ty    = local_tangent.x * m01 + local_tangent.y * m11 + local_tangent.z * m21;
-        float tz    = local_tangent.x * m02 + local_tangent.y * m12 + local_tangent.z * m22;
-        float t_len = sqrtf(tx * tx + ty * ty + tz * tz);
-
-        if (t_len > 0.00001f) {
-            tx /= t_len;
-            ty /= t_len;
-            tz /= t_len;
-        }
-        out_vert->tangent = (vec4_t){tx, ty, tz, local_tangent.w};
+        if (out_vert->pos.x > max_bounds.x)
+            max_bounds.x = out_vert->pos.x;
+        if (out_vert->pos.y > max_bounds.y)
+            max_bounds.y = out_vert->pos.y;
+        if (out_vert->pos.z > max_bounds.z)
+            max_bounds.z = out_vert->pos.z;
     }
+
+    current_mesh->bounding_center = (vec3_t){(min_bounds.x + max_bounds.x) * 0.5f,
+                                             (min_bounds.y + max_bounds.y) * 0.5f,
+                                             (min_bounds.z + max_bounds.z) * 0.5f};
+
+    vec3_t diff = {
+        max_bounds.x - current_mesh->bounding_center.x,
+        max_bounds.y - current_mesh->bounding_center.y,
+        max_bounds.z - current_mesh->bounding_center.z
+    };
+    current_mesh->bounding_radius = sqrtf(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
 }
 
 static void parse_primitive_indices(
@@ -219,11 +233,27 @@ static void bake_gltf_mesh(
         vec4_t    base_color;
         cgltf_int uv_index;
         bool      has_normal_map;
+        bool      is_alpha_masked;
         parse_primitive_material(
-            prim, data, img_map, out_scene, current_mesh, &base_color, &uv_index, &has_normal_map
+            prim,
+            data,
+            img_map,
+            out_scene,
+            current_mesh,
+            &base_color,
+            &uv_index,
+            &has_normal_map,
+            &is_alpha_masked
         );
+        current_mesh->is_alpha_masked = is_alpha_masked;
         parse_primitive_vertices(
-            prim, out_scene, prim_vertex_offset, global_transform, base_color, uv_index
+            prim,
+            out_scene,
+            current_mesh,
+            prim_vertex_offset,
+            global_transform,
+            base_color,
+            uv_index
         );
         parse_primitive_indices(prim, out_scene, current_mesh, prim_vertex_offset);
 
@@ -266,7 +296,8 @@ static void bake_gltf_node(
         cgltf_node_transform_local(node, matrix);
         memcpy(&local_transform, matrix, sizeof(mat4_t));
     }
-    mat4_t global_transform = mat4_mul(local_transform, parent_transform);
+    // mat4_t global_transform = mat4_mul(local_transform, parent_transform);
+    mat4_t global_transform = mat4_mul(parent_transform, local_transform);
     bake_gltf_mesh(node, global_transform, out_scene, model_id, data, img_map);
     for (size_t i = 0; i < node->children_count; i++) {
         bake_gltf_node(node->children[i], global_transform, out_scene, model_id, data, img_map);
@@ -313,73 +344,106 @@ typedef struct {
     platform_atomic_int_t next_job_idx;
 } bake_context_t;
 
-static void process_texture_job(bake_context_t* ctx, uint32_t gltf_idx, uint32_t tex_idx) {
-    cgltf_image*  gltf_img  = &ctx->data->images[gltf_idx];
-    scene_desc_t* out_scene = ctx->out_scene;
+static uint32_t calculate_bc7_mip_chain_size(uint32_t w, uint32_t h, uint32_t mip_levels) {
+    uint32_t total_size = 0;
+    for (uint32_t i = 0; i < mip_levels; i++) {
+        uint32_t blocks_x = (w + 3) / 4;
+        uint32_t blocks_y = (h + 3) / 4;
+        total_size += blocks_x * blocks_y * 16; // 16 bytes per BC7 block
+        w = (w > 1) ? w / 2 : 1;
+        h = (h > 1) ? h / 2 : 1;
+    }
+    return total_size;
+}
 
-    void* src_data = (uint8_t*)gltf_img->buffer_view->buffer->data + gltf_img->buffer_view->offset;
-    uint32_t compressed_size = gltf_img->buffer_view->size;
-
-    if (!ctx->opt_fast_textures) {
-        return; // Skip compression if fast textures are disabled
+static bool try_load_from_cache(
+    const char*   cache_path,
+    void*         src_data,
+    uint32_t      compressed_size,
+    scene_desc_t* out_scene,
+    uint32_t      tex_idx
+) {
+    FILE* cache_file = fopen(cache_path, "rb");
+    if (!cache_file) {
+        return false;
     }
 
-    uint64_t data_hash = hash_data(src_data, compressed_size);
-    char     cache_path[512];
-    snprintf(
-        cache_path, sizeof(cache_path), "./.cache/tex_%llx.bc7", (unsigned long long)data_hash
-    );
+    fseek(cache_file, 0, SEEK_END);
+    long cached_size = ftell(cache_file);
+    fseek(cache_file, 0, SEEK_SET);
 
-    FILE* cache_file = fopen(cache_path, "rb");
-    if (cache_file) {
-        fseek(cache_file, 0, SEEK_END);
-        long cached_size = ftell(cache_file);
-        fseek(cache_file, 0, SEEK_SET);
+    int w;
+    int h;
+    int channels;
+    stbi_info_from_memory(src_data, compressed_size, &w, &h, &channels);
 
-        int w, h, channels;
-        stbi_info_from_memory(src_data, compressed_size, &w, &h, &channels);
+    uint32_t max_dim    = (w > h) ? w : h;
+    uint32_t mip_levels = (uint32_t)(floorf(log2f((float)max_dim))) + 1;
 
-        out_scene->textures[tex_idx].byte_size   = cached_size;
-        out_scene->textures[tex_idx].width       = w;
-        out_scene->textures[tex_idx].height      = h;
-        out_scene->textures[tex_idx].channels    = 4;
-        out_scene->textures[tex_idx].format      = PAK_TEX_FORMAT_BC7_UNORM;
-        out_scene->textures[tex_idx].byte_offset = 0;
+    pak_texture_t* tex = &out_scene->textures[tex_idx];
+    tex->byte_size     = cached_size;
+    tex->width         = w;
+    tex->height        = h;
+    tex->channels      = 4;
+    tex->format        = PAK_TEX_FORMAT_BC7_UNORM;
+    tex->byte_offset   = 0;
+    tex->mip_levels    = mip_levels;
 
-        out_scene->raw_texture_bytes[tex_idx] = malloc(cached_size);
-        fread(out_scene->raw_texture_bytes[tex_idx], 1, cached_size, cache_file);
-        fclose(cache_file);
+    out_scene->raw_texture_bytes[tex_idx] = malloc(cached_size);
+    fread(out_scene->raw_texture_bytes[tex_idx], 1, cached_size, cache_file);
+    fclose(cache_file);
 
-        log_info("  -> [CACHE HIT] Loaded BC7 instantly from %s", cache_path);
+    log_info("  -> [CACHE HIT] Loaded BC7 from %s", cache_path);
+    return true;
+}
+
+static void build_and_cache_texture(
+    const char*   cache_path,
+    void*         src_data,
+    uint32_t      compressed_size,
+    scene_desc_t* out_scene,
+    uint32_t      tex_idx
+) {
+    int      w, h, channels;
+    stbi_uc* raw_pixels = stbi_load_from_memory(src_data, compressed_size, &w, &h, &channels, 4);
+    if (!raw_pixels) {
+        log_error("Failed to decode raw image data for texture %d", tex_idx);
         return;
     }
 
-    // Cache Miss: Compress
-    int      w, h, channels;
-    stbi_uc* raw_pixels = stbi_load_from_memory(src_data, compressed_size, &w, &h, &channels, 4);
+    uint32_t max_dim    = (w > h) ? w : h;
+    uint32_t mip_levels = (uint32_t)(floorf(log2f((float)max_dim))) + 1;
+    uint32_t total_size = calculate_bc7_mip_chain_size(w, h, mip_levels);
 
-    if (raw_pixels) {
-        uint32_t blocks_x             = (w + 3) / 4;
-        uint32_t blocks_y             = (h + 3) / 4;
-        uint32_t compressed_byte_size = blocks_x * blocks_y * 16;
+    pak_texture_t* tex = &out_scene->textures[tex_idx];
+    tex->byte_size     = total_size;
+    tex->width         = w;
+    tex->height        = h;
+    tex->channels      = 4;
+    tex->format        = PAK_TEX_FORMAT_BC7_UNORM;
+    tex->byte_offset   = 0;
+    tex->mip_levels    = mip_levels;
 
-        out_scene->textures[tex_idx].byte_size   = compressed_byte_size;
-        out_scene->textures[tex_idx].width       = w;
-        out_scene->textures[tex_idx].height      = h;
-        out_scene->textures[tex_idx].channels    = 4;
-        out_scene->textures[tex_idx].format      = PAK_TEX_FORMAT_BC7_UNORM;
-        out_scene->textures[tex_idx].byte_offset = 0;
+    out_scene->raw_texture_bytes[tex_idx] = malloc(total_size);
+    uint8_t* bc7_dst                      = out_scene->raw_texture_bytes[tex_idx];
 
-        out_scene->raw_texture_bytes[tex_idx] = malloc(compressed_byte_size);
-        uint8_t* bc7_dst                      = out_scene->raw_texture_bytes[tex_idx];
+    bc7enc_compress_block_params pack_params;
+    bc7enc_compress_block_params_init_gltf(&pack_params);
+    bc7enc_compress_block_params_init_linear_weights_gltf(&pack_params);
+    pack_params.m_max_partitions_mode = 0;
+    pack_params.m_try_least_squares   = BC7ENC_FALSE;
+    pack_params.m_use_mode5_for_alpha = 1;
+    pack_params.m_use_mode7_for_alpha = 1;
 
-        bc7enc_compress_block_params pack_params;
-        bc7enc_compress_block_params_init_gltf(&pack_params);
-        bc7enc_compress_block_params_init_linear_weights_gltf(&pack_params);
-        pack_params.m_max_partitions_mode = 0;
-        pack_params.m_try_least_squares   = BC7ENC_FALSE;
+    uint32_t dst_offset         = 0;
+    uint32_t mip_w              = w;
+    uint32_t mip_h              = h;
+    uint8_t* current_mip_pixels = raw_pixels;
 
-        uint32_t dst_offset = 0;
+    for (uint32_t mip = 0; mip < mip_levels; mip++) {
+        uint32_t blocks_x = (mip_w + 3) / 4;
+        uint32_t blocks_y = (mip_h + 3) / 4;
+
         for (uint32_t by = 0; by < blocks_y; by++) {
             for (uint32_t bx = 0; bx < blocks_x; bx++) {
                 uint32_t block_pixels[16] = {0};
@@ -387,31 +451,73 @@ static void process_texture_job(bake_context_t* ctx, uint32_t gltf_idx, uint32_t
                     for (uint32_t px = 0; px < 4; px++) {
                         uint32_t global_x = bx * 4 + px;
                         uint32_t global_y = by * 4 + py;
-                        global_x          = (global_x < (uint32_t)w) ? global_x : (uint32_t)w - 1;
-                        global_y          = (global_y < (uint32_t)h) ? global_y : (uint32_t)h - 1;
 
-                        uint32_t src_idx          = (global_y * w + global_x) * 4;
-                        block_pixels[py * 4 + px] = ((uint32_t)raw_pixels[src_idx + 0] << 0) |
-                                                    ((uint32_t)raw_pixels[src_idx + 1] << 8) |
-                                                    ((uint32_t)raw_pixels[src_idx + 2] << 16) |
-                                                    ((uint32_t)raw_pixels[src_idx + 3] << 24);
+                        global_x = (global_x < mip_w) ? global_x : mip_w - 1;
+                        global_y = (global_y < mip_h) ? global_y : mip_h - 1;
+
+                        uint32_t src_idx = (global_y * mip_w + global_x) * 4;
+                        block_pixels[py * 4 + px] =
+                            ((uint32_t)current_mip_pixels[src_idx + 0] << 0) |
+                            ((uint32_t)current_mip_pixels[src_idx + 1] << 8) |
+                            ((uint32_t)current_mip_pixels[src_idx + 2] << 16) |
+                            ((uint32_t)current_mip_pixels[src_idx + 3] << 24);
                     }
                 }
                 bc7enc_compress_block(&bc7_dst[dst_offset], block_pixels, &pack_params);
                 dst_offset += 16;
             }
         }
-        stbi_image_free(raw_pixels);
 
-        FILE* write_cache = fopen(cache_path, "wb");
-        if (write_cache) {
-            fwrite(bc7_dst, 1, compressed_byte_size, write_cache);
-            fclose(write_cache);
-            log_info("  -> [CACHE MISS] Compressed & Saved to %s", cache_path);
-        } else {
-            log_warn("  -> Failed to write cache. Does .cache/ exist?");
+        if (mip < mip_levels - 1) {
+            uint32_t next_w          = (mip_w > 1) ? mip_w / 2 : 1;
+            uint32_t next_h          = (mip_h > 1) ? mip_h / 2 : 1;
+            uint8_t* next_mip_pixels = malloc(next_w * next_h * 4);
+
+            stbir_resize_uint8_linear(
+                current_mip_pixels, mip_w, mip_h, 0, next_mip_pixels, next_w, next_h, 0, STBIR_RGBA
+            );
+
+            if (current_mip_pixels != raw_pixels)
+                free(current_mip_pixels);
+
+            current_mip_pixels = next_mip_pixels;
+            mip_w              = next_w;
+            mip_h              = next_h;
         }
     }
+
+    if (current_mip_pixels != raw_pixels)
+        free(current_mip_pixels);
+    stbi_image_free(raw_pixels);
+
+    FILE* write_cache = fopen(cache_path, "wb");
+    if (write_cache) {
+        fwrite(bc7_dst, 1, total_size, write_cache);
+        fclose(write_cache);
+        log_info("  -> [CACHE MISS] Compressed %d Mips & Saved to %s", mip_levels, cache_path);
+    } else {
+        log_warn("  -> Failed to write cache. Does .cache/ exist?");
+    }
+}
+
+static void process_texture_job(bake_context_t* ctx, uint32_t gltf_idx, uint32_t tex_idx) {
+    if (!ctx->opt_fast_textures)
+        return;
+
+    cgltf_image* gltf_img = &ctx->data->images[gltf_idx];
+    void* src_data = (uint8_t*)gltf_img->buffer_view->buffer->data + gltf_img->buffer_view->offset;
+    uint32_t comp_size = gltf_img->buffer_view->size;
+
+    uint64_t data_hash = hash_data(src_data, comp_size);
+    char     cache_path[512];
+    snprintf(
+        cache_path, sizeof(cache_path), "./.cache/tex_%llx.bc7", (unsigned long long)data_hash
+    );
+
+    if (try_load_from_cache(cache_path, src_data, comp_size, ctx->out_scene, tex_idx)) {
+        return;
+    }
+    build_and_cache_texture(cache_path, src_data, comp_size, ctx->out_scene, tex_idx);
 }
 
 static int texture_worker_thread(void* thread_data) {
@@ -497,10 +603,10 @@ bool bake_model(
 
     mat4_t root_transform = mat4_identity();
     if (opt_z_up) {
-        root_transform.data[1][1] = 0.0f;
-        root_transform.data[1][2] = 1.0f;
-        root_transform.data[2][1] = -1.0f;
-        root_transform.data[2][2] = 0.0f;
+        root_transform.m[1][1] = 0.0f;
+        root_transform.m[1][2] = 1.0f;
+        root_transform.m[2][1] = -1.0f;
+        root_transform.m[2][2] = 0.0f;
     }
 
     for (size_t i = 0; i < gltf_scene->nodes_count; i++) {

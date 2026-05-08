@@ -10,6 +10,7 @@ typedef struct {
     uint32_t channels;
     void*    pixels;
     size_t   size;
+    uint32_t mip_levels;
 } image_t;
 
 bool image_load(const char* path, image_t* out_image);

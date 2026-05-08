@@ -52,6 +52,10 @@ typedef struct {
     int32_t base_color_texture_id;
     int32_t normal_texture_id;
     int32_t metallic_roughness_texture_id;
+    bool    is_alpha_masked;
+
+    vec3_t bounding_center;
+    float  bounding_radius;
 
 } pak_mesh_t;
 
@@ -74,6 +78,7 @@ typedef struct {
     uint32_t width;
     uint32_t height;
     uint32_t channels;
+    uint32_t mip_levels;
 } pak_texture_t;
 
 typedef struct {

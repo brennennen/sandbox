@@ -5,6 +5,7 @@
 
 #include "volk.h"
 
+#include "engine/core/math/mat4.h"
 #include "engine/modules/graphics/graphics.h"
 #include "engine/modules/graphics/graphics_types.h"
 #include "shared/math_types.h"
@@ -45,6 +46,9 @@ typedef struct {
     // submesh_t submeshes[MAX_SUBMESHES_PER_MESH];
     // uint32_t  submesh_count;
 
+    vec3_t bounding_center;
+    float  bounding_radius;
+
     bool is_active;
 } vk_mesh_t;
 
@@ -70,6 +74,7 @@ typedef struct {
 
     VkDescriptorSet descriptor_set;
     bool            is_active;
+    bool            is_alpha_masked;
 } vk_material_t;
 
 /**
@@ -196,6 +201,7 @@ typedef struct {
     VkPipeline       debug_tangent;
     VkPipeline       debug_bitangent;
     VkPipeline       debug_vertex_color;
+    VkPipeline       debug_mipmaps;
     VkPipeline       line;
 } vk_pipelines_t;
 
@@ -231,6 +237,9 @@ struct graphics_t {
 
     gpu_buffer_t grid_buffer;
     uint32_t     grid_vertex_count;
+
+    gpu_buffer_t frustum_buffer;
+    uint32_t     frustum_vertex_count;
 };
 
 #endif

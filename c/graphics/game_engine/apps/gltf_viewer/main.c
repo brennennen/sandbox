@@ -70,14 +70,14 @@ bool gltf_viewer_init(gtlf_viewer_t* gltf_viewer) {
     };
     texture_handle_t default_tex = graphics_upload_texture(game_engine->graphics, &dummy_white_img);
 
-    if (!load_gltf_scene(
-            "test_glb.glb",
-            &game_engine->main_scene,
-            game_engine->graphics,
-            game_engine->test_texture
-        )) {
-        log_error("Failed to load complex GLTF scene");
-    }
+    // if (!load_gltf_scene(
+    //         "test_glb.glb",
+    //         &game_engine->main_scene,
+    //         game_engine->graphics,
+    //         game_engine->test_texture
+    //     )) {
+    //     log_error("Failed to load complex GLTF scene");
+    // }
 
     game_engine->is_running = true;
     return true;

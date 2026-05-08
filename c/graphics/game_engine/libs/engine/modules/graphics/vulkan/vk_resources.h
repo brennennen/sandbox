@@ -4,6 +4,7 @@
 #include "engine/modules/assets/image.h"
 #include "shared/scene_types.h"
 
+#include "scene_types.h"
 #include "vk_types.h"
 
 mat4_t mat4_identity();
@@ -29,15 +30,18 @@ void vk_transition_image_layout(
     graphics_t*   r,
     VkImage       image,
     VkImageLayout old_layout,
-    VkImageLayout new_layout
+    VkImageLayout new_layout,
+    uint32_t      mip_levels
 );
 
 void vk_copy_buffer_to_image(
-    graphics_t* r,
-    VkBuffer    buffer,
-    VkImage     image,
-    uint32_t    width,
-    uint32_t    height
+    graphics_t*          r,
+    VkBuffer             buffer,
+    VkImage              image,
+    uint32_t             width,
+    uint32_t             height,
+    uint32_t             mip_levels,
+    pak_texture_format_t format
 );
 
 VkBuffer vk_create_static_buffer(

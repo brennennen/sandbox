@@ -253,9 +253,9 @@ bool vk_create_graphics_pipeline(graphics_t* r) {
     };
 
     VkPushConstantRange push_constant = {
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
         .offset     = 0,
-        .size       = sizeof(mat4_t),
+        .size       = sizeof(mat4_t) + sizeof(uint32_t),
     };
 
     VkPipelineLayoutCreateInfo pipeline_layout_info = {
@@ -351,6 +351,14 @@ bool vk_create_graphics_pipeline(graphics_t* r) {
         VK_CULL_MODE_BACK_BIT,
         "shaders/triangle.vert.spv",
         "shaders/debug_vertex_color.frag.spv"
+    );
+    r->pipelines.debug_mipmaps = create_pipeline_internal(
+        r,
+        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        VK_POLYGON_MODE_FILL,
+        VK_CULL_MODE_BACK_BIT,
+        "shaders/triangle.vert.spv",
+        "shaders/debug_mipmaps.frag.spv"
     );
     r->pipelines.line = create_pipeline_internal(
         r,

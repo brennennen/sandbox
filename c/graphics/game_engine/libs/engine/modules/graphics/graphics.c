@@ -12,6 +12,7 @@ const char* const draw_mode_names[] = {
     [DRAW_MODE_DEBUG_TANGENT]         = "DEBUG_TANGENT",
     [DRAW_MODE_DEBUG_BITANGENT]       = "DEBUG_BITANGENT",
     [DRAW_MODE_DEBUG_VERTEX_COLOR]    = "DRAW_MODE_DEBUG_VERTEX_COLOR",
+    [DRAW_MODE_DEBUG_MIPMAPS]         = "DRAW_MODE_DEBUG_MIPMAPS",
 };
 
 // void renderer_submit_mesh(

@@ -65,6 +65,7 @@ bool vk_create_texture(
     vk_texture_t*        out_tex,
     pak_texture_format_t format
 ) {
+    log_info("Vulkan: Creating image with %d mips", img->mip_levels);
     size_t scratch_offset = r->assets.vertex_heap->offset;
 
     VkBuffer         staging_buffer;
@@ -74,11 +75,13 @@ bool vk_create_texture(
 
     VkFormat tex_format = get_vk_format(format);
 
+    uint32_t mips = (img->mip_levels > 0) ? img->mip_levels : 1;
+
     VkImageCreateInfo image_info = {
         .sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .imageType     = VK_IMAGE_TYPE_2D,
         .extent        = {img->width, img->height, 1},
-        .mipLevels     = 1,
+        .mipLevels     = mips,
         .arrayLayers   = 1,
         .format        = tex_format,
         .tiling        = VK_IMAGE_TILING_OPTIMAL,
@@ -106,14 +109,17 @@ bool vk_create_texture(
     );
 
     vk_transition_image_layout(
-        r, out_tex->image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+        r, out_tex->image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mips
     );
-    vk_copy_buffer_to_image(r, staging_buffer, out_tex->image, img->width, img->height);
+    vk_copy_buffer_to_image(
+        r, staging_buffer, out_tex->image, img->width, img->height, mips, format
+    );
     vk_transition_image_layout(
         r,
         out_tex->image,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        mips
     );
 
     VkImageViewCreateInfo view_info = {
@@ -121,7 +127,13 @@ bool vk_create_texture(
         .image            = out_tex->image,
         .viewType         = VK_IMAGE_VIEW_TYPE_2D,
         .format           = tex_format,
-        .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}
+        .subresourceRange = {
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            0,
+            mips,
+            0,
+            1,
+        }
     };
     if (vkCreateImageView(r->core.device, &view_info, NULL, &out_tex->view) != VK_SUCCESS)
         return false;
@@ -135,6 +147,8 @@ bool vk_create_texture(
         .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
         .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
         .borderColor  = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+        .maxLod       = (float)mips,
+        .mipLodBias   = 0.0f,
     };
     vkCreateSampler(r->core.device, &sampler_info, NULL, &out_tex->sampler);
 
@@ -147,7 +161,8 @@ void vk_transition_image_layout(
     graphics_t*   r,
     VkImage       image,
     VkImageLayout old_layout,
-    VkImageLayout new_layout
+    VkImageLayout new_layout,
+    uint32_t      mip_levels
 ) {
     VkCommandBufferAllocateInfo alloc_info = {
         .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -173,7 +188,13 @@ void vk_transition_image_layout(
         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .image               = image,
-        .subresourceRange    = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1},
+        .subresourceRange    = {
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            0,
+            mip_levels,
+            0,
+            1,
+        },
     };
 
     VkPipelineStageFlags source_stage;
@@ -237,11 +258,13 @@ static void copy_buffer(graphics_t* r, VkBuffer src, VkBuffer dst, VkDeviceSize 
 }
 
 void vk_copy_buffer_to_image(
-    graphics_t* r,
-    VkBuffer    buffer,
-    VkImage     image,
-    uint32_t    width,
-    uint32_t    height
+    graphics_t*          r,
+    VkBuffer             buffer,
+    VkImage              image,
+    uint32_t             width,
+    uint32_t             height,
+    uint32_t             mip_levels,
+    pak_texture_format_t format
 ) {
     VkCommandBufferAllocateInfo alloc_info = {
         .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -260,16 +283,38 @@ void vk_copy_buffer_to_image(
 
     vkBeginCommandBuffer(cmd, &begin_info);
 
-    VkBufferImageCopy region = {
-        .bufferOffset      = 0,
-        .bufferRowLength   = 0,
-        .bufferImageHeight = 0,
-        .imageSubresource  = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
-        .imageOffset       = {0, 0, 0},
-        .imageExtent       = {width, height, 1},
-    };
+    bool is_bc7 = (format == PAK_TEX_FORMAT_BC7_UNORM || format == PAK_TEX_FORMAT_BC7_SRGB);
 
-    vkCmdCopyBufferToImage(cmd, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+    VkBufferImageCopy regions[16];
+    uint32_t          current_offset = 0;
+    uint32_t          mip_w          = width;
+    uint32_t          mip_h          = height;
+
+    for (uint32_t i = 0; i < mip_levels; i++) {
+        regions[i] = (VkBufferImageCopy){
+            .bufferOffset      = current_offset,
+            .bufferRowLength   = 0,
+            .bufferImageHeight = 0,
+            .imageSubresource  = {VK_IMAGE_ASPECT_COLOR_BIT, i, 0, 1},
+            .imageOffset       = {0, 0, 0},
+            .imageExtent       = {mip_w, mip_h, 1},
+        };
+
+        if (is_bc7) {
+            uint32_t blocks_x = (mip_w + 3) / 4;
+            uint32_t blocks_y = (mip_h + 3) / 4;
+            current_offset += blocks_x * blocks_y * 16;
+        } else {
+            current_offset += mip_w * mip_h * 4;
+        }
+
+        mip_w = (mip_w > 1) ? mip_w / 2 : 1;
+        mip_h = (mip_h > 1) ? mip_h / 2 : 1;
+    }
+
+    vkCmdCopyBufferToImage(
+        cmd, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mip_levels, regions
+    );
 
     vkEndCommandBuffer(cmd);
 

@@ -75,6 +75,8 @@ typedef struct {
     VkDescriptorSet descriptor_set;
     bool            is_active;
     bool            is_alpha_masked;
+    float           metallic_factor;
+    float           roughness_factor;
 } vk_material_t;
 
 /**
@@ -108,6 +110,7 @@ typedef struct {
     mat4_t proj;
     // vec4_t sun_direction;
     // vec4_t sun_color;
+    vec4_t camera_pos;
 } ubo_t;
 
 /**
@@ -177,6 +180,11 @@ typedef struct {
 
     vk_material_t materials[VK_MAX_MATERIALS];
     uint32_t      material_count;
+
+    texture_handle_t default_albedo;
+    texture_handle_t default_normal;
+    texture_handle_t default_ao_metallic_roughness;
+
 } vk_assets_t;
 
 /**
@@ -190,20 +198,21 @@ typedef struct {
     VkDescriptorSetLayout object_set_layout;
 
     VkPipelineLayout layout;
-    VkPipeline       graphics;
+    VkPipeline       forward_lit;
     VkPipeline       transparent;
-    VkPipeline       debug_wireframe;
-    VkPipeline       debug_lighting;
-    VkPipeline       debug_albedo;
-    VkPipeline       debug_geometry_normal;
-    VkPipeline       debug_texture_normal;
-    VkPipeline       debug_normal;
-    VkPipeline       debug_tangent;
-    VkPipeline       debug_bitangent;
-    VkPipeline       debug_vertex_color;
-    VkPipeline       debug_mipmaps;
+    VkPipeline       skybox;
     VkPipeline       line;
+    VkPipeline       debug_forward_lit;
+    VkPipeline       debug_wireframe;
 } vk_pipelines_t;
+
+typedef struct {
+    mat4_t   transform;
+    uint32_t is_alpha_masked;
+    uint32_t debug_mode;
+    float    metallic_factor;
+    float    roughness_factor;
+} push_constants_t;
 
 /**
  * @brief Immediate Submission / DMA context.

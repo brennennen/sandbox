@@ -2,7 +2,7 @@
 #include "graphics.h"
 
 const char* const draw_mode_names[] = {
-    [DRAW_MODE_LIT]                   = "LIT",
+    [DRAW_MODE_FORWARD_LIT]           = "FORWARD_LIT",
     [DRAW_MODE_DEBUG_WIREFRAME]       = "DEBUG_WIREFRAME",
     [DRAW_MODE_DEBUG_LIGHTING]        = "DEBUG_LIGHTING_ONLY",
     [DRAW_MODE_DEBUG_ALBEDO]          = "DEBUG_ALBEDO",
@@ -13,6 +13,10 @@ const char* const draw_mode_names[] = {
     [DRAW_MODE_DEBUG_BITANGENT]       = "DEBUG_BITANGENT",
     [DRAW_MODE_DEBUG_VERTEX_COLOR]    = "DRAW_MODE_DEBUG_VERTEX_COLOR",
     [DRAW_MODE_DEBUG_MIPMAPS]         = "DRAW_MODE_DEBUG_MIPMAPS",
+    [DRAW_MODE_DEBUG_SPECULAR]        = "DRAW_MODE_DEBUG_SPECULAR",
+    [DRAW_MODE_DEBUG_AO]              = "DRAW_MODE_DEBUG_AO",
+    [DRAW_MODE_DEBUG_ROUGHNESS]       = "DRAW_MODE_DEBUG_ROUGHNESS",
+    [DRAW_MODE_DEBUG_METALLIC]        = "DRAW_MODE_DEBUG_METALLIC",
 };
 
 // void renderer_submit_mesh(

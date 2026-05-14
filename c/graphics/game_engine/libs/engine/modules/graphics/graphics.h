@@ -30,10 +30,10 @@ typedef enum {
  * What pipeline and shaders to use.
  */
 typedef enum {
-    DRAW_MODE_LIT,                   // standard rendering
+    DRAW_MODE_FORWARD_LIT,           // standard rendering
     DRAW_MODE_DEBUG_WIREFRAME,       // only render edges, no faces
-    DRAW_MODE_DEBUG_LIGHTING,        // render faces with lighting information, but no albedo
     DRAW_MODE_DEBUG_ALBEDO,          // render faces unlit with albedo
+    DRAW_MODE_DEBUG_LIGHTING,        // render faces with lighting information, but no albedo
     DRAW_MODE_DEBUG_GEOMETRY_NORMAL, // render faces with geometry normal as face color
     DRAW_MODE_DEBUG_TEXTURE_NORMAL,  // render faces with texture normal as face color
     DRAW_MODE_DEBUG_NORMAL,          // combined normal
@@ -41,6 +41,10 @@ typedef enum {
     DRAW_MODE_DEBUG_BITANGENT,
     DRAW_MODE_DEBUG_VERTEX_COLOR, // render the vertex color
     DRAW_MODE_DEBUG_MIPMAPS,
+    DRAW_MODE_DEBUG_SPECULAR,
+    DRAW_MODE_DEBUG_AO,
+    DRAW_MODE_DEBUG_ROUGHNESS,
+    DRAW_MODE_DEBUG_METALLIC,
 
     DRAW_MODE_COUNT,
 } draw_mode_t;
@@ -67,13 +71,17 @@ material_handle_t graphics_create_material(
     graphics_t*      r,
     texture_handle_t albedo,
     texture_handle_t normal,
-    bool             is_alpha_masked
+    texture_handle_t metallic_roughness,
+    bool             is_alpha_masked,
+    float            metallic_factor,
+    float            roughness_factor
 );
 
 void graphics_draw(
     graphics_t*      graphics,
     platform_t*      platform,
     mat4_t           view,
+    vec3_t           camera_pos,
     mat4_t           culling_view_proj,
     bool             is_culling_frozen,
     draw_mode_t      draw_mode,

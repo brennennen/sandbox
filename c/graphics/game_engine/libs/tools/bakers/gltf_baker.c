@@ -27,7 +27,7 @@ static uint64_t hash_data(const void* data, size_t length) {
 }
 
 static void parse_primitive_material(
-    cgltf_primitive* prim,
+    cgltf_primitive* primitive,
     cgltf_data*      data,
     int32_t*         img_map,
     scene_desc_t*    out_scene,
@@ -42,13 +42,13 @@ static void parse_primitive_material(
     *out_has_normal_map  = false;
     *out_is_alpha_masked = true;
 
-    if (!prim->material) {
+    if (!primitive->material) {
         log_info("Primitive has NO Material attached.");
         return;
     }
 
     const char* alpha_mode_str = "UNKNOWN";
-    switch (prim->material->alpha_mode) {
+    switch (primitive->material->alpha_mode) {
     case cgltf_alpha_mode_opaque:
         alpha_mode_str = "OPAQUE";
         break;
@@ -63,22 +63,33 @@ static void parse_primitive_material(
         break;
     }
 
-    const char* mat_name = prim->material->name ? prim->material->name : "Unnamed";
+    const char* mat_name = primitive->material->name ? primitive->material->name : "Unnamed";
     log_info("Primitive Material: '%s' | Alpha Mode: %s", mat_name, alpha_mode_str);
 
-    if (prim->material->alpha_mode == cgltf_alpha_mode_mask ||
-        prim->material->alpha_mode == cgltf_alpha_mode_blend) {
+    if (primitive->material->alpha_mode == cgltf_alpha_mode_mask ||
+        primitive->material->alpha_mode == cgltf_alpha_mode_blend) {
         *out_is_alpha_masked = true;
     }
 
-    if (prim->material->has_pbr_metallic_roughness) {
-        cgltf_float* factor = prim->material->pbr_metallic_roughness.base_color_factor;
+    if (primitive->material->has_pbr_metallic_roughness) {
+        cgltf_pbr_metallic_roughness* cgltf_pbr = &primitive->material->pbr_metallic_roughness;
+        cgltf_float* factor = primitive->material->pbr_metallic_roughness.base_color_factor;
         *out_base_color     = (vec4_t){factor[0], factor[1], factor[2], factor[3]};
+        current_mesh->metallic_factor  = cgltf_pbr->metallic_factor;
+        current_mesh->roughness_factor = cgltf_pbr->roughness_factor;
 
-        cgltf_texture_view* bc_view = &prim->material->pbr_metallic_roughness.base_color_texture;
-        if (bc_view->texture && bc_view->texture->image) {
-            *out_uv_index                       = bc_view->texcoord;
-            size_t img_idx                      = bc_view->texture->image - data->images;
+        log_info(
+            "  - PBR Factors -> Metallic: %.2f | Roughness: %.2f",
+            current_mesh->metallic_factor,
+            current_mesh->roughness_factor
+        );
+
+        cgltf_texture_view* base_color_view =
+            &primitive->material->pbr_metallic_roughness.base_color_texture;
+
+        if (base_color_view->texture && base_color_view->texture->image) {
+            *out_uv_index                       = base_color_view->texcoord;
+            size_t img_idx                      = base_color_view->texture->image - data->images;
             current_mesh->base_color_texture_id = img_map[img_idx];
 
             // Upgrade UNORM to SRGB for base color
@@ -95,9 +106,28 @@ static void parse_primitive_material(
                 current_mesh->base_color_texture_id
             );
         }
+
+        cgltf_texture_view* ao_metallic_roughness_view =
+            &primitive->material->pbr_metallic_roughness.metallic_roughness_texture;
+        if (ao_metallic_roughness_view->texture && ao_metallic_roughness_view->texture->image) {
+            size_t img_idx = ao_metallic_roughness_view->texture->image - data->images;
+            current_mesh->ao_roughness_metallic_texture_id = img_map[img_idx];
+
+            log_info(
+                "  - MR Map Texture -> PAK ID %d (Left as UNORM)",
+                current_mesh->ao_roughness_metallic_texture_id
+            );
+        } else {
+            log_warn("  ! WARNING: Material '%s' has NO Metallic/Roughness Map.", mat_name);
+        }
+    } else {
+        // Fallback for meshes that completely lack a PBR material definition
+        current_mesh->metallic_factor  = 0.0f; // Default to non-metal
+        current_mesh->roughness_factor = 1.0f; // Default to fully rough (matte)
+        log_warn("  ! WARNING: Material '%s' is not PBR. Using fallback factors.", mat_name);
     }
 
-    cgltf_texture* nrm_tex = prim->material->normal_texture.texture;
+    cgltf_texture* nrm_tex = primitive->material->normal_texture.texture;
     if (nrm_tex && nrm_tex->image) {
         size_t img_idx                  = nrm_tex->image - data->images;
         current_mesh->normal_texture_id = img_map[img_idx];
@@ -111,7 +141,7 @@ static void parse_primitive_material(
 }
 
 static void parse_primitive_vertices(
-    cgltf_primitive* prim,
+    cgltf_primitive* primitive,
     scene_desc_t*    out_scene,
     pak_mesh_t*      current_mesh,
     uint32_t         vertex_offset,
@@ -119,10 +149,10 @@ static void parse_primitive_vertices(
     vec4_t           base_color,
     cgltf_int        uv_index
 ) {
-    uint32_t vertex_count = prim->attributes[0].data->count;
+    uint32_t vertex_count = primitive->attributes[0].data->count;
     mat3_t   cofactor     = mat4_get_normal_matrix(global_transform);
-    vec3_t min_bounds = {FLT_MAX, FLT_MAX, FLT_MAX};
-    vec3_t max_bounds = {-FLT_MAX, -FLT_MAX, -FLT_MAX};
+    vec3_t   min_bounds   = {FLT_MAX, FLT_MAX, FLT_MAX};
+    vec3_t   max_bounds   = {-FLT_MAX, -FLT_MAX, -FLT_MAX};
 
     for (size_t v = 0; v < vertex_count; v++) {
         pak_vertex_t* out_vert = &out_scene->vertices[vertex_offset + v];
@@ -134,8 +164,8 @@ static void parse_primitive_vertices(
         out_vert->uv    = (pak_uv_t){0.0f, 0.0f};
         out_vert->color = base_color;
 
-        for (size_t a = 0; a < prim->attributes_count; a++) {
-            cgltf_attribute* attr = &prim->attributes[a];
+        for (size_t a = 0; a < primitive->attributes_count; a++) {
+            cgltf_attribute* attr = &primitive->attributes[a];
             if (attr->type == cgltf_attribute_type_position) {
                 cgltf_accessor_read_float(attr->data, v, (float*)&local_pos, 3);
             } else if (attr->type == cgltf_attribute_type_normal) {
@@ -179,16 +209,16 @@ static void parse_primitive_vertices(
 }
 
 static void parse_primitive_indices(
-    cgltf_primitive* prim,
+    cgltf_primitive* primitive,
     scene_desc_t*    out_scene,
     pak_mesh_t*      current_mesh,
     uint32_t         prim_vertex_offset
 ) {
-    if (!prim->indices)
+    if (!primitive->indices)
         return;
 
-    for (size_t i = 0; i < prim->indices->count; i++) {
-        uint32_t raw_index                           = cgltf_accessor_read_index(prim->indices, i);
+    for (size_t i = 0; i < primitive->indices->count; i++) {
+        uint32_t raw_index = cgltf_accessor_read_index(primitive->indices, i);
         out_scene->indices[out_scene->index_count++] = raw_index + (prim_vertex_offset -
                                                                     current_mesh->vertex_offset);
         current_mesh->index_count++;
@@ -207,25 +237,25 @@ static void bake_gltf_mesh(
         return;
 
     for (size_t p = 0; p < node->mesh->primitives_count; p++) {
-        cgltf_primitive* prim = &node->mesh->primitives[p];
-        if (prim->attributes_count == 0)
+        cgltf_primitive* primitive = &node->mesh->primitives[p];
+        if (primitive->attributes_count == 0)
             continue;
 
         if (out_scene->mesh_count >= PAK_MAX_MESHES ||
-            out_scene->vertex_count + prim->attributes[0].data->count >= PAK_MAX_VERTICES) {
+            out_scene->vertex_count + primitive->attributes[0].data->count >= PAK_MAX_VERTICES) {
             log_error("Cooker out of memory! Too many meshes or vertices.");
             return;
         }
 
-        pak_mesh_t* current_mesh                    = &out_scene->meshes[out_scene->mesh_count++];
-        current_mesh->model_id                      = model_id;
-        current_mesh->vertex_offset                 = out_scene->vertex_count;
-        current_mesh->index_offset                  = out_scene->index_count;
-        current_mesh->vertex_count                  = prim->attributes[0].data->count;
-        current_mesh->index_count                   = 0;
-        current_mesh->base_color_texture_id         = -1;
-        current_mesh->normal_texture_id             = -1;
-        current_mesh->metallic_roughness_texture_id = -1;
+        pak_mesh_t* current_mesh            = &out_scene->meshes[out_scene->mesh_count++];
+        current_mesh->model_id              = model_id;
+        current_mesh->vertex_offset         = out_scene->vertex_count;
+        current_mesh->index_offset          = out_scene->index_count;
+        current_mesh->vertex_count          = primitive->attributes[0].data->count;
+        current_mesh->index_count           = 0;
+        current_mesh->base_color_texture_id = -1;
+        current_mesh->normal_texture_id     = -1;
+        current_mesh->ao_roughness_metallic_texture_id = -1;
 
         uint32_t prim_vertex_offset = out_scene->vertex_count;
         out_scene->vertex_count += current_mesh->vertex_count;
@@ -235,7 +265,7 @@ static void bake_gltf_mesh(
         bool      has_normal_map;
         bool      is_alpha_masked;
         parse_primitive_material(
-            prim,
+            primitive,
             data,
             img_map,
             out_scene,
@@ -247,7 +277,7 @@ static void bake_gltf_mesh(
         );
         current_mesh->is_alpha_masked = is_alpha_masked;
         parse_primitive_vertices(
-            prim,
+            primitive,
             out_scene,
             current_mesh,
             prim_vertex_offset,
@@ -255,17 +285,17 @@ static void bake_gltf_mesh(
             base_color,
             uv_index
         );
-        parse_primitive_indices(prim, out_scene, current_mesh, prim_vertex_offset);
+        parse_primitive_indices(primitive, out_scene, current_mesh, prim_vertex_offset);
 
         if (has_normal_map) {
             uint32_t* temp_indices     = NULL;
             uint32_t  temp_index_count = 0;
 
-            if (prim->indices) {
-                temp_index_count = prim->indices->count;
+            if (primitive->indices) {
+                temp_index_count = primitive->indices->count;
                 temp_indices     = malloc(temp_index_count * sizeof(uint32_t));
                 for (size_t i = 0; i < temp_index_count; i++) {
-                    temp_indices[i] = cgltf_accessor_read_index(prim->indices, i);
+                    temp_indices[i] = cgltf_accessor_read_index(primitive->indices, i);
                 }
             }
 
@@ -276,8 +306,9 @@ static void bake_gltf_mesh(
                 temp_index_count
             );
 
-            if (temp_indices)
+            if (temp_indices) {
                 free(temp_indices);
+            }
         }
     }
 }

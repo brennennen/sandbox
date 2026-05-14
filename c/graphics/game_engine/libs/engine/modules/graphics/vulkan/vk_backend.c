@@ -27,6 +27,32 @@
 
 #include "vk_gpu_allocator.h"
 
+static bool init_default_textures(graphics_t* r) {
+    uint8_t white_pixels[4]  = {255, 255, 255, 255};
+    image_t albedo_img       = {.width = 1, .height = 1, .channels = 4, .pixels = white_pixels};
+    r->assets.default_albedo = graphics_upload_texture(r, &albedo_img, PAK_TEX_FORMAT_RGBA8_SRGB);
+
+    uint8_t flat_normal_pixels[4] = {128, 128, 255, 255};
+    image_t normal_img = {.width = 1, .height = 1, .channels = 4, .pixels = flat_normal_pixels};
+    r->assets.default_normal = graphics_upload_texture(r, &normal_img, PAK_TEX_FORMAT_RGBA8_UNORM);
+
+    uint8_t arm_pixels[4] = {255, 255, 255, 255};
+    image_t mr_img        = {.width = 1, .height = 1, .channels = 4, .pixels = arm_pixels};
+    r->assets.default_ao_metallic_roughness = graphics_upload_texture(
+        r, &mr_img, PAK_TEX_FORMAT_RGBA8_UNORM
+    );
+
+    if (r->assets.default_albedo.id == GRAPHICS_INVALID_HANDLE ||
+        r->assets.default_normal.id == GRAPHICS_INVALID_HANDLE ||
+        r->assets.default_ao_metallic_roughness.id == GRAPHICS_INVALID_HANDLE) {
+        log_error("vulkan: Failed to initialize default fallback textures.");
+        return false;
+    }
+
+    log_info("vulkan: Default fallback textures initialized.");
+    return true;
+}
+
 static void init_debug_grid(graphics_t* r) {
     int   grid_size = 10;
     float grid_step = 1.0f;
@@ -120,10 +146,14 @@ void graphics_update_debug_frustum(graphics_t* r, mat4_t inv_vp) {
     memcpy(r->frustum_buffer.allocation.mapped_ptr, lines, sizeof(lines));
 }
 
-void update_uniform_buffer(graphics_t* r, mat4_t view, uint32_t current_frame) {
+void update_uniform_buffer(graphics_t* r, mat4_t view, vec3_t cam_pos, uint32_t current_frame) {
     float  aspect = (float)r->display.extent.width / (float)r->display.extent.height;
     mat4_t proj   = mat4_perspective(0.785f, aspect, 0.1f, 100.0f);
-    ubo_t  ubo    = {.view = view, .proj = proj};
+    ubo_t  ubo    = {
+            .view       = view,
+            .proj       = proj,
+            .camera_pos = {cam_pos.x, cam_pos.y, cam_pos.z, 1.0f},
+    };
     memcpy(r->frames[current_frame].uniform_alloc.mapped_ptr, &ubo, sizeof(ubo));
 }
 
@@ -286,6 +316,9 @@ graphics_t* graphics_create(platform_t* platform, graphics_config_t* config) {
 
     init_debug_grid(r);
     init_debug_frustum_buffer(r);
+    if (!init_default_textures(r)) {
+        goto init_failed;
+    }
 
     log_info("renderer: initialization complete");
     return r;
@@ -371,7 +404,7 @@ void graphics_set_present_mode(graphics_t* r, present_mode_t mode) {
     vk_recreate_swapchain(r, r->display.extent.width, r->display.extent.height);
 }
 
-static int32_t begin_frame(graphics_t* r, platform_t* platform, mat4_t view) {
+static int32_t begin_frame(graphics_t* r, platform_t* platform, mat4_t view, vec3_t cam_pos) {
     int w;
     int h;
     platform_get_window_size(platform, &w, &h);
@@ -397,7 +430,7 @@ static int32_t begin_frame(graphics_t* r, platform_t* platform, mat4_t view) {
         return -1;
     }
 
-    update_uniform_buffer(r, view, r->current_frame);
+    update_uniform_buffer(r, view, cam_pos, r->current_frame);
     vkResetFences(r->core.device, 1, &r->frames[r->current_frame].in_flight_fence);
     r->command_buffer = r->frames[r->current_frame].command_buffer;
     vkResetCommandBuffer(r->command_buffer, 0);
@@ -569,7 +602,7 @@ mesh_handle_t graphics_upload_mesh(graphics_t* graphics, mesh_data_t* data) {
     vk_mesh->bounding_radius = data->bounding_radius;
     vk_mesh->is_active       = true;
 
-    log_info(
+    log_debug(
         "vulkan: uploaded mesh to pool slot %d (%d vertices, %d indices)",
         id,
         data->vertex_count,
@@ -594,7 +627,7 @@ texture_handle_t graphics_upload_texture(graphics_t* r, image_t* img, pak_textur
     }
 
     tex->is_active = true;
-    log_info("vulkan: uploaded texture to pool slot %d", id);
+    log_debug("vulkan: uploaded texture to pool slot %d", id);
 
     return (texture_handle_t){.id = id};
 }
@@ -603,7 +636,10 @@ material_handle_t graphics_create_material(
     graphics_t*      r,
     texture_handle_t albedo,
     texture_handle_t normal,
-    bool             is_alpha_masked
+    texture_handle_t metallic_roughness,
+    bool             is_alpha_masked,
+    float            metallic_factor,
+    float            roughness_factor
 ) {
     if (albedo.id == GRAPHICS_INVALID_HANDLE || normal.id == GRAPHICS_INVALID_HANDLE) {
         log_error("vulkan: Cannot create material with invalid texture handles. Skipping.");
@@ -630,22 +666,65 @@ material_handle_t graphics_create_material(
         return (material_handle_t){.id = GRAPHICS_INVALID_HANDLE};
     }
 
-    vk_texture_t* a_tex = &r->assets.textures[albedo.id];
-    vk_texture_t* n_tex = &r->assets.textures[normal.id];
+    vk_texture_t* albedo_texture                = NULL;
+    vk_texture_t* normal_texture                = NULL;
+    vk_texture_t* ao_metallic_roughness_texture = NULL;
+
+    if (albedo.id != GRAPHICS_INVALID_HANDLE && albedo.id < VK_MAX_TEXTURES) {
+        vk_texture_t* candidate = &r->assets.textures[albedo.id];
+        if (candidate->is_active && candidate->view != VK_NULL_HANDLE)
+            albedo_texture = candidate;
+    }
+    if (!albedo_texture)
+        albedo_texture = &r->assets.textures[r->assets.default_albedo.id];
+
+    if (normal.id != GRAPHICS_INVALID_HANDLE && normal.id < VK_MAX_TEXTURES) {
+        vk_texture_t* candidate = &r->assets.textures[normal.id];
+        if (candidate->is_active && candidate->view != VK_NULL_HANDLE)
+            normal_texture = candidate;
+    }
+    if (!normal_texture)
+        normal_texture = &r->assets.textures[r->assets.default_normal.id];
+
+    if (metallic_roughness.id != GRAPHICS_INVALID_HANDLE &&
+        metallic_roughness.id < VK_MAX_TEXTURES) {
+        vk_texture_t* candidate = &r->assets.textures[metallic_roughness.id];
+        if (candidate->is_active && candidate->view != VK_NULL_HANDLE) {
+            ao_metallic_roughness_texture = candidate;
+        }
+    }
+    if (!ao_metallic_roughness_texture) {
+        ao_metallic_roughness_texture =
+            &r->assets.textures[r->assets.default_ao_metallic_roughness.id];
+    }
+
+    if (albedo_texture->view == VK_NULL_HANDLE || normal_texture->view == VK_NULL_HANDLE ||
+        ao_metallic_roughness_texture->view == VK_NULL_HANDLE) {
+        log_error(
+            "CRITICAL: Material attempted to bind a NULL image view! Default fallback failed."
+        );
+        return (material_handle_t){.id = GRAPHICS_INVALID_HANDLE};
+    }
 
     VkDescriptorImageInfo albedo_info = {
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        .imageView   = a_tex->view,
-        .sampler     = a_tex->sampler
+        .imageView   = albedo_texture->view,
+        .sampler     = albedo_texture->sampler
     };
 
     VkDescriptorImageInfo normal_info = {
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        .imageView   = n_tex->view,
-        .sampler     = n_tex->sampler
+        .imageView   = normal_texture->view,
+        .sampler     = normal_texture->sampler
     };
 
-    VkWriteDescriptorSet writes[2] = {0};
+    VkDescriptorImageInfo ao_metallic_roughness_info = {
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        .imageView   = ao_metallic_roughness_texture->view,
+        .sampler     = ao_metallic_roughness_texture->sampler
+    };
+
+    VkWriteDescriptorSet writes[3] = {0};
 
     writes[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     writes[0].dstSet          = mat->descriptor_set;
@@ -661,66 +740,77 @@ material_handle_t graphics_create_material(
     writes[1].descriptorCount = 1;
     writes[1].pImageInfo      = &normal_info;
 
-    vkUpdateDescriptorSets(r->core.device, 2, writes, 0, NULL);
+    writes[2].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writes[2].dstSet          = mat->descriptor_set;
+    writes[2].dstBinding      = 2;
+    writes[2].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    writes[2].descriptorCount = 1;
+    writes[2].pImageInfo      = &ao_metallic_roughness_info;
 
-    mat->is_active       = true;
-    mat->is_alpha_masked = is_alpha_masked;
+    vkUpdateDescriptorSets(r->core.device, 3, writes, 0, NULL);
+
+    mat->is_active        = true;
+    mat->is_alpha_masked  = is_alpha_masked;
+    mat->metallic_factor  = metallic_factor;
+    mat->roughness_factor = roughness_factor;
     return (material_handle_t){.id = id};
 }
 
 static VkPipeline get_draw_mode_pipeline(vk_pipelines_t* pipelines, draw_mode_t draw_mode) {
     switch (draw_mode) {
-    case DRAW_MODE_LIT:
-        return pipelines->graphics;
+    case DRAW_MODE_FORWARD_LIT:
+        return pipelines->forward_lit;
     case DRAW_MODE_DEBUG_WIREFRAME:
         return pipelines->debug_wireframe;
-    case DRAW_MODE_DEBUG_LIGHTING:
-        return pipelines->debug_lighting;
     case DRAW_MODE_DEBUG_ALBEDO:
-        return pipelines->debug_albedo;
+    case DRAW_MODE_DEBUG_LIGHTING:
     case DRAW_MODE_DEBUG_GEOMETRY_NORMAL:
-        return pipelines->debug_geometry_normal;
     case DRAW_MODE_DEBUG_TEXTURE_NORMAL:
-        return pipelines->debug_texture_normal;
     case DRAW_MODE_DEBUG_NORMAL:
-        return pipelines->debug_normal;
     case DRAW_MODE_DEBUG_TANGENT:
-        return pipelines->debug_tangent;
     case DRAW_MODE_DEBUG_BITANGENT:
-        return pipelines->debug_bitangent;
     case DRAW_MODE_DEBUG_VERTEX_COLOR:
-        return pipelines->debug_vertex_color;
     case DRAW_MODE_DEBUG_MIPMAPS:
-        return pipelines->debug_mipmaps;
+    case DRAW_MODE_DEBUG_SPECULAR:
     default:
-        return pipelines->graphics;
+        return pipelines->debug_forward_lit;
     }
 }
 
-typedef struct {
-    mat4_t   transform;
-    uint32_t is_alpha_masked;
-} push_constants_t;
+static bool is_matrix_valid(mat4_t* m) {
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            if (isnan(m->m[i][j]) || isinf(m->m[i][j]))
+                return false;
+        }
+    }
+    return true;
+}
+
+#include <assert.h>
 
 void graphics_draw(
     graphics_t*      r,
     platform_t*      platform,
     mat4_t           view,
+    vec3_t           camera_pos,
     mat4_t           culling_view_proj,
     bool             is_culling_frozen,
     draw_mode_t      draw_mode,
     render_object_t* objects,
     uint32_t         object_count
 ) {
-    int32_t image_index = begin_frame(r, platform, view);
+    assert(is_matrix_valid(&view) && "CRASH: NaN detected in View Matrix entering graphics_draw!");
+    assert(is_matrix_valid(&culling_view_proj) && "CRASH: NaN detected in Culling Matrix!");
+
+    int32_t image_index = begin_frame(r, platform, view, camera_pos);
     if (image_index < 0) {
         return;
     }
-    float  aspect    = (float)r->display.extent.width / (float)r->display.extent.height;
-    mat4_t proj      = mat4_perspective(0.785f, aspect, 0.1f, 100.0f);
-    mat4_t view_proj = mat4_mul(proj, view);
-    // frustum_t frustum   = frustum_extract(view_proj);
-    frustum_t frustum = frustum_extract(culling_view_proj);
+    float     aspect    = (float)r->display.extent.width / (float)r->display.extent.height;
+    mat4_t    proj      = mat4_perspective(0.785f, aspect, 0.1f, 100.0f);
+    mat4_t    view_proj = mat4_mul(proj, view);
+    frustum_t frustum   = frustum_extract(culling_view_proj);
 
     VkPipeline current_pipeline = get_draw_mode_pipeline(&r->pipelines, draw_mode);
 
@@ -764,13 +854,20 @@ void graphics_draw(
 
         if (!frustum_test_sphere(&frustum, obj_pos, bounding_radius)) {
             culled_count++;
-            continue; // SKIP THE DRAW CALL!
+            continue;
         }
 
         push_constants_t push_constants = {
-            .transform       = obj->transform,
-            .is_alpha_masked = vk_mat->is_alpha_masked ? 1 : 0,
+            .transform        = obj->transform,
+            .is_alpha_masked  = vk_mat->is_alpha_masked ? 1 : 0,
+            .debug_mode       = draw_mode,
+            .metallic_factor  = vk_mat->metallic_factor,
+            .roughness_factor = vk_mat->roughness_factor,
         };
+
+        assert(is_matrix_valid(&push_constants.transform) && "CRASH: NaN in Object Transform!");
+        assert(!isnan(push_constants.metallic_factor) && "CRASH: NaN in Metallic Factor!");
+        assert(!isnan(push_constants.roughness_factor) && "CRASH: NaN in Roughness Factor!");
 
         vkCmdPushConstants(
             r->command_buffer,
@@ -803,6 +900,21 @@ void graphics_draw(
     }
 
     // log_info("Rendered: %d | Culled: %d", object_count - culled_count, culled_count);
+
+    vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, r->pipelines.skybox);
+
+    vkCmdBindDescriptorSets(
+        r->command_buffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        r->pipelines.layout,
+        0,
+        1,
+        &r->frames[r->current_frame].global_descriptor_set,
+        0,
+        NULL
+    );
+
+    vkCmdDraw(r->command_buffer, 36, 1, 0, 0);
 
     vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, r->pipelines.line);
 

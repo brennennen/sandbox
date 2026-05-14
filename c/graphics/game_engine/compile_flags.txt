@@ -17,5 +17,6 @@
 -I.vendor/Vulkan-Headers/include/vulkan
 -I.vendor/SDL3-3.4.0/x86_64-w64-mingw32/include
 -I.vendor\SDL3-3.4.0\x86_64-w64-mingw32\include\SDL3
+-I.vendor/cgltf.h
 -DVK_USE_PLATFORM_WIN32_KHR
 -DDEBUG

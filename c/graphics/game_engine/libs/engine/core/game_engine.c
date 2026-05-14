@@ -11,7 +11,6 @@
 #include "engine/core/math/mat4.h"
 #include "engine/core/vfs.h"
 #include "engine/core/world.h"
-#include "engine/modules/assets/gltf.h"
 #include "engine/modules/assets/obj.h"
 #include "engine/modules/graphics/graphics.h"
 #include "engine/platform/platform.h"
@@ -70,9 +69,24 @@ bool game_engine_init(game_engine_t* game_engine) {
         game_engine->graphics, &dummy_normal_img, PAK_TEX_FORMAT_R8_UNORM
     );
 
-    if (!vfs_mount_archive("./../../.assets/sponza.pak")) {
+    static uint8_t flat_mr_pixel[4]                = {255, 128, 0, 255};
+    image_t        dummy_ao_metallic_roughness_img = {
+               .width    = 1,
+               .height   = 1,
+               .channels = 4,
+               .size     = 4,
+               .pixels   = flat_mr_pixel,
+    };
+    texture_handle_t default_ao_metallic_roughness_tex = graphics_upload_texture(
+        game_engine->graphics, &dummy_ao_metallic_roughness_img, PAK_TEX_FORMAT_RGBA8_UNORM
+    );
+
+    if (!vfs_mount_archive("./../../.assets/render_tests.pak")) {
         log_error("Failed to mount base game archive!");
     }
+    // if (!vfs_mount_archive("./../../.assets/sponza.pak")) {
+    //     log_error("Failed to mount base game archive!");
+    // }
 
     if (world_load_chunk(0)) {
         log_info("Uploading raw PAK data to Vulkan...");
@@ -114,17 +128,19 @@ bool game_engine_init(game_engine_t* game_engine) {
                 mesh_def->base_color_texture_id < (int32_t)loaded_texture_count) {
                 mesh_tex = gpu_textures[mesh_def->base_color_texture_id];
             }
+
             texture_handle_t norm_tex = default_normal_tex;
             if (mesh_def->normal_texture_id >= 0 &&
                 mesh_def->normal_texture_id < (int32_t)loaded_texture_count) {
                 norm_tex = gpu_textures[mesh_def->normal_texture_id];
             }
-
-            if (mesh_def->base_color_texture_id >= 0 &&
-                mesh_def->base_color_texture_id < (int32_t)loaded_texture_count) {
-                mesh_tex = gpu_textures[mesh_def->base_color_texture_id];
+            texture_handle_t ao_metallic_roughness_tex = default_ao_metallic_roughness_tex;
+            if (mesh_def->ao_roughness_metallic_texture_id != -1) {
+                ao_metallic_roughness_tex =
+                    gpu_textures[mesh_def->ao_roughness_metallic_texture_id];
             }
 
+            // Find the transform in the entities list
             mat4_t final_transform = mat4_identity();
             for (uint32_t e = 0; e < loaded_entity_count; e++) {
                 if (loaded_entities[e].model_id == mesh_def->model_id) {
@@ -137,7 +153,13 @@ bool game_engine_init(game_engine_t* game_engine) {
 
             game_engine->main_scene.objects[obj_idx].mesh     = vram_handle;
             game_engine->main_scene.objects[obj_idx].material = graphics_create_material(
-                game_engine->graphics, mesh_tex, norm_tex, mesh_def->is_alpha_masked
+                game_engine->graphics,
+                mesh_tex,
+                norm_tex,
+                ao_metallic_roughness_tex,
+                mesh_def->is_alpha_masked,
+                mesh_def->metallic_factor,
+                mesh_def->roughness_factor
             );
             game_engine->main_scene.objects[obj_idx].transform = final_transform;
         }
@@ -291,10 +313,18 @@ bool game_engine_tick(game_engine_t* game_engine) {
         game_engine->culling_view_proj = current_view_proj;
     }
 
+    // log_info(
+    //     "camera_pos: (%f, %f, %f)",
+    //     game_engine->main_camera->pos.x,
+    //     game_engine->main_camera->pos.y,
+    //     game_engine->main_camera->pos.z
+    // );
+
     graphics_draw(
         game_engine->graphics,
         game_engine->platform,
         view,
+        game_engine->main_camera->pos,
         game_engine->culling_view_proj,
         game_engine->debug_freeze_culling,
         game_engine->draw_mode,

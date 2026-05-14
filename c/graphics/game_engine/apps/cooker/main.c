@@ -116,6 +116,13 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    uint32_t meshes_with_orm_maps = 0;
+    for (uint32_t i = 0; i < flattened_scene->mesh_count; i++) {
+        if (flattened_scene->meshes[i].ao_roughness_metallic_texture_id != -1) {
+            meshes_with_orm_maps++;
+        }
+    }
+
     clock_t end_time         = clock();
     double  duration_seconds = (double)(end_time - start_time) / CLOCKS_PER_SEC;
     double  pak_size_mb      = (double)pak_size_bytes / (1024.0 * 1024.0);
@@ -130,6 +137,8 @@ int main(int argc, char** argv) {
     log_info("Textures Baked:  %u", flattened_scene->texture_count);
     log_info("Total Vertices:  %u", flattened_scene->vertex_count);
     log_info("Total Indices:   %u", flattened_scene->index_count);
+    log_info("----------------------------------------");
+    log_info("ORM Maps Applied: %u / %u meshes", meshes_with_orm_maps, flattened_scene->mesh_count);
     log_info("========================================");
 
     free(flattened_scene);

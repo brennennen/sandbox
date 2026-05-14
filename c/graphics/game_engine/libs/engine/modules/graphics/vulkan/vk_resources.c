@@ -65,7 +65,7 @@ bool vk_create_texture(
     vk_texture_t*        out_tex,
     pak_texture_format_t format
 ) {
-    log_info("Vulkan: Creating image with %d mips", img->mip_levels);
+    log_debug("Vulkan: Creating image with %d mips", img->mip_levels);
     size_t scratch_offset = r->assets.vertex_heap->offset;
 
     VkBuffer         staging_buffer;

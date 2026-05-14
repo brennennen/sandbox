@@ -1,0 +1,1 @@
+Each directory uses the same layout, if a new layout is needed, make a new directory.

@@ -51,11 +51,14 @@ typedef struct {
     // int32_t  texture_id;
     int32_t base_color_texture_id;
     int32_t normal_texture_id;
-    int32_t metallic_roughness_texture_id;
+    int32_t ao_roughness_metallic_texture_id;
     bool    is_alpha_masked;
 
     vec3_t bounding_center;
     float  bounding_radius;
+
+    float metallic_factor;
+    float roughness_factor;
 
 } pak_mesh_t;
 

@@ -82,7 +82,6 @@ pub fn build(b: *std.Build) void {
         "libs/engine/modules/graphics/vulkan/vk_commands.c",
         "libs/engine/modules/assets/image.c",
         "libs/engine/modules/assets/obj.c",
-        "libs/engine/modules/assets/gltf.c",
         "libs/engine/platform/sdl/sdl_backend.c",
     };
 
@@ -298,20 +297,14 @@ pub fn build(b: *std.Build) void {
     // MARK: Shaders
     //
     const shaders = [_][2][]const u8{
-        .{ "shaders/triangle.vert", "shaders/triangle.vert.spv" },
-        .{ "shaders/triangle.frag", "shaders/triangle.frag.spv" },
-        .{ "shaders/debug_wireframe.frag", "shaders/debug_wireframe.frag.spv" },
-        .{ "shaders/debug_lighting_only.frag", "shaders/debug_lighting_only.frag.spv" },
-        .{ "shaders/debug_albedo.frag", "shaders/debug_albedo.frag.spv" },
-        .{ "shaders/debug_geometry_normals.frag", "shaders/debug_geometry_normals.frag.spv" },
-        .{ "shaders/debug_texture_normals.frag", "shaders/debug_texture_normals.frag.spv" },
-        .{ "shaders/debug_normals.frag", "shaders/debug_normals.frag.spv" },
-        .{ "shaders/debug_tangent.frag", "shaders/debug_tangent.frag.spv" },
-        .{ "shaders/debug_bitangent.frag", "shaders/debug_bitangent.frag.spv" },
-        .{ "shaders/debug_vertex_color.frag", "shaders/debug_vertex_color.frag.spv" },
-        .{ "shaders/debug_mipmaps.frag", "shaders/debug_mipmaps.frag.spv" },
-        .{ "shaders/unlit.vert", "shaders/unlit.vert.spv" },
-        .{ "shaders/unlit.frag", "shaders/unlit.frag.spv" },
+        .{ "shaders/core/mesh.vert", "shaders/core/mesh.vert.spv" },
+        .{ "shaders/core/pbr.frag", "shaders/core/pbr.frag.spv" },
+        .{ "shaders/core/skybox.vert", "shaders/core/skybox.vert.spv" },
+        .{ "shaders/core/skybox.frag", "shaders/core/skybox.frag.spv" },
+        .{ "shaders/core/debug_pbr.frag", "shaders/core/debug_pbr.frag.spv" },
+        .{ "shaders/core/debug_wireframe.frag", "shaders/core/debug_wireframe.frag.spv" },
+        .{ "shaders/core/line.vert", "shaders/core/line.vert.spv" },
+        .{ "shaders/core/line.frag", "shaders/core/line.frag.spv" },
     };
     for (shaders) |s| {
         const cmd = b.addSystemCommand(&.{"glslc"});

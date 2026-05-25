@@ -72,4 +72,20 @@ typedef struct {
     mat4_t            transform;
 } render_object_t;
 
+typedef struct {
+    uint32_t id;
+} render_target_handle_t;
+
+typedef enum {
+    RT_FORMAT_STANDARD, // Maps to 8-bit UNORM (Standard Color)
+    RT_FORMAT_HDR,      // Maps to 16-bit SFLOAT (High Dynamic Range)
+} render_target_format_t;
+
+typedef struct {
+    uint32_t               width;
+    uint32_t               height;
+    render_target_format_t format;
+    bool                   requires_depth; // True if drawing 3D geometry to this target
+} render_target_config_t;
+
 #endif

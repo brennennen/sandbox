@@ -40,22 +40,39 @@ static bool is_device_suitable(VkPhysicalDevice device, VkSurfaceKHR surface) {
            device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
 }
 
-bool vk_create_instance(graphics_t* r, platform_t* platform) {
+bool vk_create_instance(graphics_t* graphics, platform_t* platform) {
     if (volkInitialize() != VK_SUCCESS) {
         log_error("vulkan: could not find a Vulkan loader");
         return false;
     }
 
-    uint32_t           extensions_count = 0;
-    const char* const* extensions = platform_get_vulkan_extensions(platform, &extensions_count);
+    uint32_t           sdl_ext_count = 0;
+    const char* const* sdl_exts      = platform_get_vulkan_extensions(platform, &sdl_ext_count);
+
+    // uint32_t           extensions_count = 0;
+    // const char* const* extensions = platform_get_vulkan_extensions(platform, &extensions_count);
+
+    const char* extensions[32];
+    uint32_t    extensions_count = 0;
+
+    for (uint32_t i = 0; i < sdl_ext_count; i++) {
+        extensions[extensions_count++] = sdl_exts[i];
+    }
+
+#ifdef DEBUG
+    extensions[extensions_count++] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
+    const char* layers[]           = {"VK_LAYER_KHRONOS_validation"};
+    uint32_t    layer_count        = 1;
+#else
+    const char** layers      = NULL;
+    uint32_t     layer_count = 0;
+#endif
 
     VkApplicationInfo app_info = {
         .sType            = VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .pApplicationName = "C23 Game Engine",
         .apiVersion       = VK_API_VERSION_1_3,
     };
-
-    const char* layers[] = {"VK_LAYER_KHRONOS_validation"};
 
     VkInstanceCreateInfo create_info = {
         .sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
@@ -70,12 +87,12 @@ bool vk_create_instance(graphics_t* r, platform_t* platform) {
 #endif
     };
 
-    if (vkCreateInstance(&create_info, NULL, &r->core.instance) != VK_SUCCESS) {
+    if (vkCreateInstance(&create_info, NULL, &graphics->core.instance) != VK_SUCCESS) {
         log_error("vulkan: failed to create instance");
         return false;
     }
 
-    volkLoadInstance(r->core.instance);
+    volkLoadInstance(graphics->core.instance);
     log_info("vulkan: instance created");
     return true;
 }
@@ -120,6 +137,7 @@ bool vk_create_logical_device(graphics_t* r) {
     VkPhysicalDeviceFeatures core_features = {
         .textureCompressionBC = VK_TRUE,
         .samplerAnisotropy    = VK_TRUE,
+        .fillModeNonSolid     = VK_TRUE,
     };
 
     VkPhysicalDeviceVulkan13Features features13 = {

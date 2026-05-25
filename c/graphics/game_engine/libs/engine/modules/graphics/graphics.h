@@ -45,6 +45,7 @@ typedef enum {
     DRAW_MODE_DEBUG_AO,
     DRAW_MODE_DEBUG_ROUGHNESS,
     DRAW_MODE_DEBUG_METALLIC,
+    DRAW_MODE_DEBUG_SDR,
 
     DRAW_MODE_COUNT,
 } draw_mode_t;
@@ -77,20 +78,30 @@ material_handle_t graphics_create_material(
     float            roughness_factor
 );
 
+render_target_handle_t graphics_create_render_target(
+    graphics_t*                   graphics,
+    const render_target_config_t* render_target_config
+);
+
+void graphics_destroy_render_target(graphics_t* graphics, render_target_handle_t handle);
+
 void graphics_draw(
-    graphics_t*      graphics,
-    platform_t*      platform,
-    mat4_t           view,
-    vec3_t           camera_pos,
-    mat4_t           culling_view_proj,
-    bool             is_culling_frozen,
-    draw_mode_t      draw_mode,
-    render_object_t* objects,
-    uint32_t         object_count
+    graphics_t*            graphics,
+    platform_t*            platform,
+    render_target_handle_t target,
+    mat4_t                 view,
+    vec3_t                 camera_pos,
+    mat4_t                 culling_view_proj,
+    bool                   is_culling_frozen,
+    draw_mode_t            draw_mode,
+    render_object_t*       objects,
+    uint32_t               object_count
 );
 
 void graphics_destroy(graphics_t* graphics);
 
 void graphics_update_debug_frustum(graphics_t* r, mat4_t inv_vp);
+
+void graphics_wait_idle(graphics_t* graphics);
 
 #endif

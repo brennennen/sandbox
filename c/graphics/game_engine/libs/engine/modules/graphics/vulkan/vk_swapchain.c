@@ -259,12 +259,22 @@ void vk_recreate_swapchain(graphics_t* graphics, int width, int height) {
     free(graphics->display.images);
     free(graphics->display.image_views);
 
+    // graphics_destroy_render_target(graphics, &graphics->main_scene_target);
     graphics->assets.display_heap->used = 0;
 
     vk_create_swapchain(
         graphics, width, height, graphics->display.abstract_present_mode, old_swapchain
     );
     vk_setup_depth_buffer(graphics, width, height);
+
+    // graphics_create_render_target(
+    //     graphics,
+    //     &graphics->main_scene_target,
+    //     width,
+    //     height,
+    //     VK_FORMAT_R16G16B16A16_SFLOAT,
+    //     true // Assuming you want a depth attachment here eventually
+    // );
 
     vkDestroySwapchainKHR(graphics->core.device, old_swapchain, NULL);
     log_info("vulkan: swapchain and depth buffer recreated for %dx%d", width, height);

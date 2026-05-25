@@ -163,6 +163,18 @@ typedef struct {
     gpu_allocation_t depth_alloc;
 } vk_display_t;
 
+typedef struct {
+    vk_texture_t color_attachment;
+    bool         has_depth;
+    vk_texture_t depth_attachment;
+
+    uint32_t width;
+    uint32_t height;
+    bool     is_active;
+} vk_render_target_t;
+
+#define VK_MAX_RENDER_TARGETS 16
+
 /**
  * @brief Asset Management context.
  * Holds the giant memory heaps and the arrays for data-oriented handle lookups.
@@ -181,6 +193,9 @@ typedef struct {
     vk_material_t materials[VK_MAX_MATERIALS];
     uint32_t      material_count;
 
+    vk_render_target_t render_targets[VK_MAX_RENDER_TARGETS];
+    uint32_t           render_target_count;
+
     texture_handle_t default_albedo;
     texture_handle_t default_normal;
     texture_handle_t default_ao_metallic_roughness;
@@ -196,14 +211,19 @@ typedef struct {
     VkDescriptorPool      pool;
     VkDescriptorSetLayout global_set_layout;
     VkDescriptorSetLayout object_set_layout;
+    VkDescriptorSetLayout post_process_set_layout;
 
     VkPipelineLayout layout;
-    VkPipeline       forward_lit;
-    VkPipeline       transparent;
-    VkPipeline       skybox;
-    VkPipeline       line;
-    VkPipeline       debug_forward_lit;
-    VkPipeline       debug_wireframe;
+    VkPipelineLayout post_process_layout;
+
+    VkPipeline forward_lit;
+    VkPipeline transparent;
+    VkPipeline skybox;
+    VkPipeline post_process;
+    VkPipeline line;
+    VkPipeline debug_forward_lit;
+    VkPipeline debug_wireframe;
+    VkPipeline debug_sdr; // skip render target and display straight to swap chain
 } vk_pipelines_t;
 
 typedef struct {
@@ -243,6 +263,8 @@ struct graphics_t {
 
     vk_frame_data_t frames[FRAMES_IN_FLIGHT];
     uint32_t        current_frame; // Toggles between 0 and 1
+
+    VkSemaphore swapchain_render_sems[3];
 
     gpu_buffer_t grid_buffer;
     uint32_t     grid_vertex_count;

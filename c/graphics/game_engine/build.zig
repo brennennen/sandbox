@@ -6,10 +6,9 @@ pub fn build(b: *std.Build) void {
 
     //b.install_path = ".build";
 
-    const c_flags = &.{
-        "-std=c23",
-        "-fno-sanitize=alignment", // needed for stb_image_resize2
-    };
+    const release_c_flags = [_][]const u8{ "-std=c23", "-fno-sanitize=alignment" };
+    const debug_c_flags = release_c_flags ++ [_][]const u8{"-DDEBUG"};
+    const c_flags = if (optimize == .Debug) &debug_c_flags else &release_c_flags;
 
     //
     // MARK: Core
@@ -73,13 +72,16 @@ pub fn build(b: *std.Build) void {
         "libs/engine/core/logger.c",
         "libs/engine/modules/graphics/graphics.c",
         "libs/engine/modules/graphics/debug/debug_grid.c",
+        "libs/engine/modules/graphics/vulkan/vk_core.c",
         "libs/engine/modules/graphics/vulkan/vk_devices.c",
         "libs/engine/modules/graphics/vulkan/vk_backend.c",
+        "libs/engine/modules/graphics/vulkan/vk_render_target.c",
         "libs/engine/modules/graphics/vulkan/vk_resources.c",
         "libs/engine/modules/graphics/vulkan/vk_swapchain.c",
         "libs/engine/modules/graphics/vulkan/vk_gpu_allocator.c",
         "libs/engine/modules/graphics/vulkan/vk_pipeline.c",
         "libs/engine/modules/graphics/vulkan/vk_commands.c",
+
         "libs/engine/modules/assets/image.c",
         "libs/engine/modules/assets/obj.c",
         "libs/engine/platform/sdl/sdl_backend.c",
@@ -301,6 +303,8 @@ pub fn build(b: *std.Build) void {
         .{ "shaders/core/pbr.frag", "shaders/core/pbr.frag.spv" },
         .{ "shaders/core/skybox.vert", "shaders/core/skybox.vert.spv" },
         .{ "shaders/core/skybox.frag", "shaders/core/skybox.frag.spv" },
+        .{ "shaders/post_process/fullscreen.vert", "shaders/post_process/fullscreen.vert.spv" },
+        .{ "shaders/post_process/post_process.frag", "shaders/post_process/post_process.frag.spv" },
         .{ "shaders/core/debug_pbr.frag", "shaders/core/debug_pbr.frag.spv" },
         .{ "shaders/core/debug_wireframe.frag", "shaders/core/debug_wireframe.frag.spv" },
         .{ "shaders/core/line.vert", "shaders/core/line.vert.spv" },

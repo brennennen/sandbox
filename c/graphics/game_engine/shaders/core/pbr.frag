@@ -26,6 +26,8 @@ layout(push_constant) uniform PushConstants {
     float roughness_factor;
 } pc;
 
+const float roughness_strength = 1.0;
+
 const float PI = 3.14159265359;
 
 void main() {
@@ -38,7 +40,7 @@ void main() {
 
     vec4 ao_roughness_metallic_sample = texture(ao_roughness_metallic_sampler, fragUV);
     float ao = ao_roughness_metallic_sample.r;
-    float roughness = max(ao_roughness_metallic_sample.g * pc.roughness_factor, 0.04);
+    float roughness = max(ao_roughness_metallic_sample.g * pc.roughness_factor, 0.04) * roughness_strength;
     float metallic = ao_roughness_metallic_sample.b * pc.metallic_factor;
 
     if (fragTangent.w == 0.0) {

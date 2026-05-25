@@ -3,13 +3,14 @@
  * https://docs.vulkan.org/spec/latest/chapters/pipelines.html
  */
 
-#include "vk_pipeline.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "engine/core/logger.h"
 #include "engine/modules/graphics/graphics_types.h"
+
+#include "vk_core.h"
+#include "vk_pipeline.h"
 
 VkShaderModule vk_create_shader_module(VkDevice device, const char* path) {
     FILE* file = fopen(path, "rb");
@@ -42,7 +43,7 @@ VkShaderModule vk_create_shader_module(VkDevice device, const char* path) {
     return shader_module;
 }
 
-static VkPipeline create_skybox_pipeline(graphics_t* graphics) {
+static VkPipeline create_skybox_pipeline(graphics_t* graphics, VkFormat color_format) {
     VkShaderModule vert_mod = vk_create_shader_module(
         graphics->core.device, "shaders/skybox.vert.spv"
     );
@@ -117,7 +118,7 @@ static VkPipeline create_skybox_pipeline(graphics_t* graphics) {
     VkPipelineRenderingCreateInfo rendering_info = {
         .sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
         .colorAttachmentCount    = 1,
-        .pColorAttachmentFormats = &graphics->display.format,
+        .pColorAttachmentFormats = &color_format, //&graphics->display.format,
         .depthAttachmentFormat   = VK_FORMAT_D32_SFLOAT,
     };
 
@@ -170,8 +171,12 @@ static VkPipeline create_pipeline_internal(
     VkPrimitiveTopology topology,
     VkPolygonMode       polygon_mode,
     VkCullModeFlags     cull_mode,
+    bool                depth_test,
+    VkPipelineLayout    layout,
     const char*         vert_path,
-    const char*         frag_path
+    const char*         frag_path,
+    VkFormat            color_format,
+    const char*         debug_name
 ) {
 
     VkShaderModule vert_mod = vk_create_shader_module(graphics->core.device, vert_path);
@@ -247,15 +252,15 @@ static VkPipeline create_pipeline_internal(
 
     VkPipelineDepthStencilStateCreateInfo depth_stencil = {
         .sType            = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-        .depthTestEnable  = VK_TRUE,
-        .depthWriteEnable = VK_TRUE,
+        .depthTestEnable  = depth_test ? VK_TRUE : VK_FALSE,
+        .depthWriteEnable = depth_test ? VK_TRUE : VK_FALSE,
         .depthCompareOp   = VK_COMPARE_OP_LESS,
     };
 
     VkPipelineRenderingCreateInfo rendering_info = {
         .sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
         .colorAttachmentCount    = 1,
-        .pColorAttachmentFormats = &graphics->display.format,
+        .pColorAttachmentFormats = &color_format,
         .depthAttachmentFormat   = VK_FORMAT_D32_SFLOAT,
     };
 
@@ -284,7 +289,7 @@ static VkPipeline create_pipeline_internal(
         .pDepthStencilState  = &depth_stencil,
         .pColorBlendState    = &color_blending,
         .pDynamicState       = &dynamic_info,
-        .layout              = graphics->pipelines.layout,
+        .layout              = layout, // graphics->pipelines.layout
     };
 
     VkPipeline pipeline;
@@ -294,6 +299,10 @@ static VkPipeline create_pipeline_internal(
         log_error("vulkan: failed to create pipeline with topology %d", topology);
         return VK_NULL_HANDLE;
     }
+
+    vk_set_debug_name(
+        graphics->core.device, (uint64_t)pipeline, VK_OBJECT_TYPE_PIPELINE, debug_name
+    );
 
     vkDestroyShaderModule(graphics->core.device, vert_mod, NULL);
     vkDestroyShaderModule(graphics->core.device, frag_mod, NULL);
@@ -383,6 +392,46 @@ static bool init_pipeline_layouts(graphics_t* graphics) {
         return false;
     }
 
+    VkDescriptorSetLayoutBinding post_process_binding = {
+        .binding         = 0,
+        .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT,
+    };
+
+    VkDescriptorSetLayoutCreateInfo post_process_set_info = {
+        .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .bindingCount = 1,
+        .pBindings    = &post_process_binding,
+    };
+
+    if (vkCreateDescriptorSetLayout(
+            graphics->core.device,
+            &post_process_set_info,
+            NULL,
+            &graphics->pipelines.post_process_set_layout
+        ) != VK_SUCCESS) {
+        log_error("vulkan: failed to create post process pipeline layout");
+        return false;
+    }
+
+    VkPipelineLayoutCreateInfo post_process_pipeline_layout_info = {
+        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount         = 1,
+        .pSetLayouts            = &graphics->pipelines.post_process_set_layout,
+        .pushConstantRangeCount = 0,
+    };
+
+    if (vkCreatePipelineLayout(
+            graphics->core.device,
+            &post_process_pipeline_layout_info,
+            NULL,
+            &graphics->pipelines.post_process_layout
+        ) != VK_SUCCESS) {
+        log_error("vulkan: failed to create post process pipeline layout");
+        return false;
+    }
+
     return true;
 }
 
@@ -396,38 +445,85 @@ bool vk_create_graphics_pipeline(graphics_t* graphics) {
         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
         VK_POLYGON_MODE_FILL,
         VK_CULL_MODE_BACK_BIT,
+        true,
+        graphics->pipelines.layout,
         "shaders/core/mesh.vert.spv",
-        "shaders/core/pbr.frag.spv"
+        "shaders/core/pbr.frag.spv",
+        VK_FORMAT_R16G16B16A16_SFLOAT,
+        "graphics->pipelines.forward_lit"
     );
-    graphics->pipelines.skybox = create_skybox_pipeline(graphics);
-    graphics->pipelines.line   = create_pipeline_internal(
+    graphics->pipelines.skybox = create_skybox_pipeline(graphics, VK_FORMAT_R16G16B16A16_SFLOAT);
+    vk_set_debug_name(
+        graphics->core.device,
+        (uint64_t)graphics->pipelines.skybox,
+        VK_OBJECT_TYPE_PIPELINE,
+        "graphics->pipelines.skybox"
+    );
+    graphics->pipelines.post_process = create_pipeline_internal(
+        graphics,
+        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        VK_POLYGON_MODE_FILL,
+        VK_CULL_MODE_NONE,
+        false,
+        graphics->pipelines.post_process_layout,
+        "shaders/post_process/fullscreen.vert.spv",
+        "shaders/post_process/post_process.frag.spv",
+        graphics->display.format,
+        "graphics->pipelines.post_process"
+    );
+    graphics->pipelines.line = create_pipeline_internal(
         graphics,
         VK_PRIMITIVE_TOPOLOGY_LINE_LIST,
         VK_POLYGON_MODE_FILL,
         VK_CULL_MODE_BACK_BIT,
+        true,
+        graphics->pipelines.layout,
         "shaders/core/line.vert.spv",
-        "shaders/core/line.frag.spv"
+        "shaders/core/line.frag.spv",
+        VK_FORMAT_R16G16B16A16_SFLOAT,
+        "graphics->pipelines.line"
     );
     graphics->pipelines.debug_forward_lit = create_pipeline_internal(
         graphics,
         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
         VK_POLYGON_MODE_FILL,
         VK_CULL_MODE_NONE,
+        true,
+        graphics->pipelines.layout,
         "shaders/core/mesh.vert.spv",
-        "shaders/core/debug_pbr.frag.spv"
+        "shaders/core/debug_pbr.frag.spv",
+        VK_FORMAT_R16G16B16A16_SFLOAT,
+        "graphics->pipelines.debug_forward_lit"
     );
     graphics->pipelines.debug_wireframe = create_pipeline_internal(
         graphics,
         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
         VK_POLYGON_MODE_LINE,
         VK_CULL_MODE_NONE,
+        true,
+        graphics->pipelines.layout,
         "shaders/core/mesh.vert.spv",
-        "shaders/core/debug_wireframe.frag.spv"
+        "shaders/core/debug_wireframe.frag.spv",
+        VK_FORMAT_R16G16B16A16_SFLOAT,
+        "graphics->pipelines.debug_wireframe"
+    );
+    graphics->pipelines.debug_sdr = create_pipeline_internal(
+        graphics,
+        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        VK_POLYGON_MODE_FILL,
+        VK_CULL_MODE_BACK_BIT,
+        true,
+        graphics->pipelines.layout,
+        "shaders/core/mesh.vert.spv",
+        "shaders/core/pbr.frag.spv",
+        graphics->display.format,
+        "graphics->pipelines.debug_sdr"
     );
 
     return (
         graphics->pipelines.forward_lit != VK_NULL_HANDLE &&
         graphics->pipelines.skybox != VK_NULL_HANDLE &&
+        graphics->pipelines.post_process != VK_NULL_HANDLE &&
         graphics->pipelines.debug_wireframe != VK_NULL_HANDLE &&
         graphics->pipelines.debug_forward_lit != VK_NULL_HANDLE &&
         graphics->pipelines.line != VK_NULL_HANDLE
@@ -444,6 +540,9 @@ void vk_destroy_graphics_pipeline(graphics_t* graphics) {
     if (graphics->pipelines.skybox) {
         vkDestroyPipeline(graphics->core.device, graphics->pipelines.skybox, NULL);
     }
+    if (graphics->pipelines.post_process) {
+        vkDestroyPipeline(graphics->core.device, graphics->pipelines.post_process, NULL);
+    }
     if (graphics->pipelines.line) {
         vkDestroyPipeline(graphics->core.device, graphics->pipelines.line, NULL);
     }
@@ -453,9 +552,17 @@ void vk_destroy_graphics_pipeline(graphics_t* graphics) {
     if (graphics->pipelines.debug_wireframe) {
         vkDestroyPipeline(graphics->core.device, graphics->pipelines.debug_wireframe, NULL);
     }
+    if (graphics->pipelines.debug_sdr) {
+        vkDestroyPipeline(graphics->core.device, graphics->pipelines.debug_sdr, NULL);
+    }
 
     if (graphics->pipelines.layout) {
         vkDestroyPipelineLayout(graphics->core.device, graphics->pipelines.layout, NULL);
+    }
+    if (graphics->pipelines.post_process_layout) {
+        vkDestroyPipelineLayout(
+            graphics->core.device, graphics->pipelines.post_process_layout, NULL
+        );
     }
     if (graphics->pipelines.global_set_layout) {
         vkDestroyDescriptorSetLayout(
@@ -465,6 +572,11 @@ void vk_destroy_graphics_pipeline(graphics_t* graphics) {
     if (graphics->pipelines.object_set_layout) {
         vkDestroyDescriptorSetLayout(
             graphics->core.device, graphics->pipelines.object_set_layout, NULL
+        );
+    }
+    if (graphics->pipelines.post_process_set_layout) {
+        vkDestroyDescriptorSetLayout(
+            graphics->core.device, graphics->pipelines.post_process_set_layout, NULL
         );
     }
 }

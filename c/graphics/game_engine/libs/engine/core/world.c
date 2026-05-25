@@ -90,6 +90,7 @@ bool world_load_texture_image(uint32_t tex_idx, image_t* out_img) {
     out_img->height     = info->height;
     out_img->channels   = info->channels;
     out_img->mip_levels = info->mip_levels;
+    out_img->size       = info->byte_size;
 
     if (info->format == PAK_TEX_FORMAT_RGBA8_UNORM || info->format == PAK_TEX_FORMAT_RGBA8_SRGB ||
         info->format == PAK_TEX_FORMAT_R8_UNORM || info->format == PAK_TEX_FORMAT_BC7_UNORM ||
@@ -103,9 +104,12 @@ bool world_load_texture_image(uint32_t tex_idx, image_t* out_img) {
                info->format == PAK_TEX_FORMAT_PNG_SRGB) {
         uint8_t* compressed_buffer = malloc(info->byte_size);
         fread(compressed_buffer, 1, info->byte_size, file);
-        bool success = image_load_from_memory(compressed_buffer, info->byte_size, out_img);
+        bool success  = image_load_from_memory(compressed_buffer, info->byte_size, out_img);
+        out_img->size = info->byte_size;
         if (success) {
-            out_img->size = out_img->width * out_img->height * 4;
+            // out_img->size = out_img->width * out_img->height * 4;
+            out_img->size = (size_t)out_img->width * (size_t)out_img->height *
+                            (size_t)out_img->channels;
         }
         free(compressed_buffer);
         return success;

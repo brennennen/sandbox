@@ -20,6 +20,7 @@
 #include "vk_commands.h"
 #include "vk_devices.h"
 #include "vk_pipeline.h"
+#include "vk_render_target.h"
 #include "vk_resources.h"
 #include "vk_swapchain.h"
 #include "vk_types.h"
@@ -28,16 +29,34 @@
 #include "vk_gpu_allocator.h"
 
 static bool init_default_textures(graphics_t* r) {
-    uint8_t white_pixels[4]  = {255, 255, 255, 255};
-    image_t albedo_img       = {.width = 1, .height = 1, .channels = 4, .pixels = white_pixels};
+    uint8_t white_pixels[4] = {255, 255, 255, 255};
+    image_t albedo_img      = {
+             .width    = 1,
+             .height   = 1,
+             .channels = 4,
+             .pixels   = white_pixels,
+             .size     = 4,
+    };
     r->assets.default_albedo = graphics_upload_texture(r, &albedo_img, PAK_TEX_FORMAT_RGBA8_SRGB);
 
     uint8_t flat_normal_pixels[4] = {128, 128, 255, 255};
-    image_t normal_img = {.width = 1, .height = 1, .channels = 4, .pixels = flat_normal_pixels};
+    image_t normal_img            = {
+                   .width    = 1,
+                   .height   = 1,
+                   .channels = 4,
+                   .pixels   = flat_normal_pixels,
+                   .size     = 4,
+    };
     r->assets.default_normal = graphics_upload_texture(r, &normal_img, PAK_TEX_FORMAT_RGBA8_UNORM);
 
     uint8_t arm_pixels[4] = {255, 255, 255, 255};
-    image_t mr_img        = {.width = 1, .height = 1, .channels = 4, .pixels = arm_pixels};
+    image_t mr_img        = {
+               .width    = 1,
+               .height   = 1,
+               .channels = 4,
+               .pixels   = arm_pixels,
+               .size     = 4,
+    };
     r->assets.default_ao_metallic_roughness = graphics_upload_texture(
         r, &mr_img, PAK_TEX_FORMAT_RGBA8_UNORM
     );
@@ -68,6 +87,7 @@ static void init_debug_grid(graphics_t* r) {
         .usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE
     };
+    // log_info("vkCreateBuffer - grid_buffer: %d", buffer_info.size);
     vkCreateBuffer(r->core.device, &buffer_info, NULL, &r->grid_buffer.buffer);
     vkBindBufferMemory(
         r->core.device,
@@ -90,6 +110,7 @@ void init_debug_frustum_buffer(graphics_t* r) {
         .usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE
     };
+    // log_info("vkCreateBuffer - frustum_buffer: %d", buffer_info.size);
     vkCreateBuffer(r->core.device, &buffer_info, NULL, &r->frustum_buffer.buffer);
     vkBindBufferMemory(
         r->core.device,
@@ -186,6 +207,7 @@ static bool init_uniform_buffer(graphics_t* r) {
             .usage       = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
         };
+        log_info("vkCreateBuffer - uniform_buffer: %d", ubo_info.size);
         vkCreateBuffer(r->core.device, &ubo_info, NULL, &r->frames[i].uniform_buffer);
 
         VkMemoryRequirements mem_reqs;
@@ -310,6 +332,14 @@ graphics_t* graphics_create(platform_t* platform, graphics_config_t* config) {
         goto init_failed;
     }
 
+    VkSemaphoreCreateInfo sem_info = {.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+    for (int i = 0; i < 3; i++) {
+        if (vkCreateSemaphore(r->core.device, &sem_info, NULL, &r->swapchain_render_sems[i]) !=
+            VK_SUCCESS) {
+            log_error("Failed to create swapchain render semaphores!");
+        }
+    }
+
     if (!init_sync_objects(r)) {
         goto init_failed;
     }
@@ -329,66 +359,139 @@ init_failed:
     return NULL;
 }
 
-void graphics_destroy(graphics_t* r) {
-    if (r == NULL)
+void graphics_wait_idle(graphics_t* graphics) {
+    if (graphics != NULL && graphics->core.device != VK_NULL_HANDLE) {
+        vkDeviceWaitIdle(graphics->core.device);
+    }
+}
+
+void graphics_destroy(graphics_t* graphics) {
+    if (graphics == NULL) {
         return;
+    }
 
-    if (r->core.device != VK_NULL_HANDLE) {
-        vkDeviceWaitIdle(r->core.device);
+    if (graphics->core.device != VK_NULL_HANDLE) {
+        vkDeviceWaitIdle(graphics->core.device);
 
-        if (r->assets.vertex_heap) {
-            vkFreeMemory(r->core.device, r->assets.vertex_heap->memory, NULL);
-            free(r->assets.vertex_heap);
-        }
-        if (r->assets.device_heap) {
-            vkFreeMemory(r->core.device, r->assets.device_heap->memory, NULL);
-            free(r->assets.device_heap);
-        }
-
-        if (r->grid_buffer.buffer) {
-            vkDestroyBuffer(r->core.device, r->grid_buffer.buffer, NULL);
-        }
-        if (r->frustum_buffer.buffer) {
-            vkDestroyBuffer(r->core.device, r->frustum_buffer.buffer, NULL);
+        for (uint32_t i = 0; i < VK_MAX_MESHES; i++) {
+            vk_mesh_t* mesh = &graphics->assets.meshes[i];
+            if (mesh->is_active) {
+                if (mesh->vertex_buffer)
+                    vkDestroyBuffer(graphics->core.device, mesh->vertex_buffer, NULL);
+                if (mesh->index_count > 0 && mesh->index_buffer) {
+                    vkDestroyBuffer(graphics->core.device, mesh->index_buffer, NULL);
+                }
+            }
         }
 
-        vk_destroy_graphics_pipeline(r);
-        vk_destroy_commands(r);
+        for (uint32_t i = 0; i < VK_MAX_TEXTURES; i++) {
+            vk_texture_t* tex = &graphics->assets.textures[i];
+            if (tex->is_active) {
+                if (tex->sampler)
+                    vkDestroySampler(graphics->core.device, tex->sampler, NULL);
+                if (tex->view)
+                    vkDestroyImageView(graphics->core.device, tex->view, NULL);
+                if (tex->image)
+                    vkDestroyImage(graphics->core.device, tex->image, NULL);
+            }
+        }
 
-        if (r->descriptor_pool) {
-            vkDestroyDescriptorPool(r->core.device, r->descriptor_pool, NULL);
+        for (uint32_t i = 0; i < VK_MAX_RENDER_TARGETS; i++) {
+            vk_render_target_t* rt = &graphics->assets.render_targets[i];
+            if (rt->is_active) {
+                if (rt->color_attachment.view) {
+                    vkDestroySampler(graphics->core.device, rt->color_attachment.sampler, NULL);
+                    vkDestroyImageView(graphics->core.device, rt->color_attachment.view, NULL);
+                    vkDestroyImage(graphics->core.device, rt->color_attachment.image, NULL);
+                }
+                if (rt->has_depth && rt->depth_attachment.view) {
+                    vkDestroySampler(graphics->core.device, rt->depth_attachment.sampler, NULL);
+                    vkDestroyImageView(graphics->core.device, rt->depth_attachment.view, NULL);
+                    vkDestroyImage(graphics->core.device, rt->depth_attachment.image, NULL);
+                }
+            }
+        }
+
+        if (graphics->assets.vertex_heap) {
+            vkFreeMemory(graphics->core.device, graphics->assets.vertex_heap->memory, NULL);
+            free(graphics->assets.vertex_heap);
+        }
+        if (graphics->assets.device_heap) {
+            vkFreeMemory(graphics->core.device, graphics->assets.device_heap->memory, NULL);
+            free(graphics->assets.device_heap);
+        }
+        if (graphics->assets.display_heap) {
+            vkFreeMemory(graphics->core.device, graphics->assets.display_heap->memory, NULL);
+            free(graphics->assets.display_heap);
+        }
+
+        if (graphics->grid_buffer.buffer) {
+            vkDestroyBuffer(graphics->core.device, graphics->grid_buffer.buffer, NULL);
+        }
+        if (graphics->frustum_buffer.buffer) {
+            vkDestroyBuffer(graphics->core.device, graphics->frustum_buffer.buffer, NULL);
+        }
+
+        vk_destroy_graphics_pipeline(graphics);
+        vk_destroy_commands(graphics); // NOTE: Ensure this calls vkDestroyCommandPool()!
+
+        if (graphics->descriptor_pool) {
+            vkDestroyDescriptorPool(graphics->core.device, graphics->descriptor_pool, NULL);
         }
 
         for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
-            if (r->frames[i].image_available_sem)
-                vkDestroySemaphore(r->core.device, r->frames[i].image_available_sem, NULL);
-            if (r->frames[i].render_finished_sem)
-                vkDestroySemaphore(r->core.device, r->frames[i].render_finished_sem, NULL);
-            if (r->frames[i].in_flight_fence)
-                vkDestroyFence(r->core.device, r->frames[i].in_flight_fence, NULL);
-            if (r->frames[i].uniform_buffer)
-                vkDestroyBuffer(r->core.device, r->frames[i].uniform_buffer, NULL);
+            if (graphics->frames[i].image_available_sem) {
+                vkDestroySemaphore(
+                    graphics->core.device, graphics->frames[i].image_available_sem, NULL
+                );
+            }
+            if (graphics->frames[i].render_finished_sem) {
+                vkDestroySemaphore(
+                    graphics->core.device, graphics->frames[i].render_finished_sem, NULL
+                );
+            }
+            if (graphics->frames[i].in_flight_fence) {
+                vkDestroyFence(graphics->core.device, graphics->frames[i].in_flight_fence, NULL);
+            }
+            if (graphics->frames[i].uniform_buffer) {
+                vkDestroyBuffer(graphics->core.device, graphics->frames[i].uniform_buffer, NULL);
+            }
         }
 
-        if (r->display.depth_view) {
-            vkDestroyImageView(r->core.device, r->display.depth_view, NULL);
-        }
-        if (r->display.depth_image) {
-            vkDestroyImage(r->core.device, r->display.depth_image, NULL);
+        for (int i = 0; i < 3; i++) {
+            if (graphics->swapchain_render_sems[i]) {
+                vkDestroySemaphore(graphics->core.device, graphics->swapchain_render_sems[i], NULL);
+            }
         }
 
-        vk_destroy_swapchain(r);
-        vkDestroyDevice(r->core.device, NULL);
+        if (graphics->display.depth_view) {
+            vkDestroyImageView(graphics->core.device, graphics->display.depth_view, NULL);
+        }
+        if (graphics->display.depth_image) {
+            vkDestroyImage(graphics->core.device, graphics->display.depth_image, NULL);
+        }
+
+        // Clean up the transfer module's resources
+        if (graphics->transfer.command_pool) {
+            vkDestroyCommandPool(graphics->core.device, graphics->transfer.command_pool, NULL);
+        }
+        // Note: check what you named your transfer fence (e.g., 'fence', 'upload_fence', etc.)
+        if (graphics->transfer.fence) {
+            vkDestroyFence(graphics->core.device, graphics->transfer.fence, NULL);
+        }
+
+        vk_destroy_swapchain(graphics);
+        vkDestroyDevice(graphics->core.device, NULL);
     }
 
-    if (r->core.instance != VK_NULL_HANDLE) {
-        if (r->core.surface != VK_NULL_HANDLE) {
-            vkDestroySurfaceKHR(r->core.instance, r->core.surface, NULL);
+    if (graphics->core.instance != VK_NULL_HANDLE) {
+        if (graphics->core.surface != VK_NULL_HANDLE) {
+            vkDestroySurfaceKHR(graphics->core.instance, graphics->core.surface, NULL);
         }
-        vkDestroyInstance(r->core.instance, NULL);
+        vkDestroyInstance(graphics->core.instance, NULL);
     }
 
-    free(r);
+    free(graphics);
     log_info("vulkan: renderer destroyed cleanly");
 }
 
@@ -404,12 +507,20 @@ void graphics_set_present_mode(graphics_t* r, present_mode_t mode) {
     vk_recreate_swapchain(r, r->display.extent.width, r->display.extent.height);
 }
 
-static int32_t begin_frame(graphics_t* r, platform_t* platform, mat4_t view, vec3_t cam_pos) {
+static int32_t begin_frame(
+    graphics_t*         r,
+    platform_t*         platform,
+    mat4_t              view,
+    vec3_t              cam_pos,
+    vk_render_target_t* render_target,
+    draw_mode_t         draw_mode
+) {
     int w;
     int h;
     platform_get_window_size(platform, &w, &h);
-    if (w == 0 || h == 0)
+    if (w == 0 || h == 0) {
         return -1;
+    }
 
     vkWaitForFences(
         r->core.device, 1, &r->frames[r->current_frame].in_flight_fence, VK_TRUE, UINT64_MAX
@@ -427,6 +538,10 @@ static int32_t begin_frame(graphics_t* r, platform_t* platform, mat4_t view, vec
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
         vk_recreate_swapchain(r, w, h);
+
+        if (render_target != NULL) {
+            vk_resize_render_target(r, render_target, w, h);
+        }
         return -1;
     }
 
@@ -438,31 +553,68 @@ static int32_t begin_frame(graphics_t* r, platform_t* platform, mat4_t view, vec
     VkCommandBufferBeginInfo begin_info = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     vkBeginCommandBuffer(r->command_buffer, &begin_info);
 
-    VkImageMemoryBarrier barrier = {
+    uint32_t    render_width  = r->display.extent.width;
+    uint32_t    render_height = r->display.extent.height;
+    VkImage     color_image   = r->display.images[image_index];
+    VkImageView color_view    = r->display.image_views[image_index];
+    VkImageView depth_view    = r->display.depth_view;
+
+    if (draw_mode != DRAW_MODE_DEBUG_SDR) {
+        render_width  = render_target->width;
+        render_height = render_target->height;
+        color_image   = render_target->color_attachment.image;
+        color_view    = render_target->color_attachment.view;
+        if (render_target->has_depth) {
+            depth_view = render_target->depth_attachment.view;
+        }
+    }
+
+    VkImage current_depth_image = r->display.depth_image;
+    if (draw_mode != DRAW_MODE_DEBUG_SDR && render_target->has_depth) {
+        current_depth_image = render_target->depth_attachment.image;
+    }
+
+    VkImageMemoryBarrier barriers[2]   = {0};
+    uint32_t             barrier_count = 0;
+
+    barriers[barrier_count++] = (VkImageMemoryBarrier){
         .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
         .oldLayout        = VK_IMAGE_LAYOUT_UNDEFINED,
         .newLayout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .image            = r->display.images[image_index],
+        .image            = color_image,
         .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1},
         .srcAccessMask    = 0,
         .dstAccessMask    = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
     };
+
+    if (current_depth_image != VK_NULL_HANDLE) {
+        barriers[barrier_count++] = (VkImageMemoryBarrier){
+            .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .oldLayout        = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout        = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+            .image            = current_depth_image,
+            .subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1},
+            .srcAccessMask    = 0,
+            .dstAccessMask    = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+        };
+    }
+
     vkCmdPipelineBarrier(
         r->command_buffer,
         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
         0,
         0,
         NULL,
         0,
         NULL,
-        1,
-        &barrier
+        barrier_count,
+        barriers
     );
 
     VkRenderingAttachmentInfo color_attachment = {
         .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-        .imageView   = r->display.image_views[image_index],
+        .imageView   = color_view,
         .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .loadOp      = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp     = VK_ATTACHMENT_STORE_OP_STORE,
@@ -471,7 +623,7 @@ static int32_t begin_frame(graphics_t* r, platform_t* platform, mat4_t view, vec
 
     VkRenderingAttachmentInfo depth_attachment = {
         .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-        .imageView   = r->display.depth_view,
+        .imageView   = depth_view,
         .imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
         .loadOp      = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp     = VK_ATTACHMENT_STORE_OP_DONT_CARE,
@@ -480,7 +632,7 @@ static int32_t begin_frame(graphics_t* r, platform_t* platform, mat4_t view, vec
 
     VkRenderingInfo rendering_info = {
         .sType                = VK_STRUCTURE_TYPE_RENDERING_INFO,
-        .renderArea           = {{0, 0}, {r->display.extent.width, r->display.extent.height}},
+        .renderArea           = {{0, 0}, {render_width, render_height}},
         .layerCount           = 1,
         .colorAttachmentCount = 1,
         .pColorAttachments    = &color_attachment,
@@ -491,13 +643,13 @@ static int32_t begin_frame(graphics_t* r, platform_t* platform, mat4_t view, vec
 
     VkViewport viewport = {
         .x        = 0.0f,
-        .y        = (float)r->display.extent.height,
-        .width    = (float)r->display.extent.width,
-        .height   = -(float)r->display.extent.height,
+        .y        = (float)render_height,
+        .width    = (float)render_width,
+        .height   = -(float)render_height,
         .minDepth = 0.0f,
         .maxDepth = 1.0f
     };
-    VkRect2D scissor = {{0, 0}, r->display.extent};
+    VkRect2D scissor = {{0, 0}, {render_width, render_height}};
     vkCmdSetViewport(r->command_buffer, 0, 1, &viewport);
     vkCmdSetScissor(r->command_buffer, 0, 1, &scissor);
 
@@ -533,14 +685,16 @@ static void end_frame(graphics_t* r, uint32_t image_index) {
 
     VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
     VkSubmitInfo         submit_info   = {
-                  .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-                  .waitSemaphoreCount   = 1,
-                  .pWaitSemaphores      = &r->frames[r->current_frame].image_available_sem,
-                  .pWaitDstStageMask    = wait_stages,
-                  .commandBufferCount   = 1,
-                  .pCommandBuffers      = &r->command_buffer,
+                  .sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                  .waitSemaphoreCount = 1,
+                  .pWaitSemaphores    = &r->frames[r->current_frame].image_available_sem,
+                  .pWaitDstStageMask  = wait_stages,
+                  .commandBufferCount = 1,
+                  .pCommandBuffers    = &r->command_buffer,
+        //   .signalSemaphoreCount = 1,
+        //   .pSignalSemaphores    = &r->frames[r->current_frame].render_finished_sem,
                   .signalSemaphoreCount = 1,
-                  .pSignalSemaphores    = &r->frames[r->current_frame].render_finished_sem,
+                  .pSignalSemaphores    = &r->swapchain_render_sems[image_index],
     };
     vkQueueSubmit(
         r->core.graphics_queue, 1, &submit_info, r->frames[r->current_frame].in_flight_fence
@@ -549,10 +703,11 @@ static void end_frame(graphics_t* r, uint32_t image_index) {
     VkPresentInfoKHR present_info = {
         .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores    = &r->frames[r->current_frame].render_finished_sem,
-        .swapchainCount     = 1,
-        .pSwapchains        = &r->display.swapchain,
-        .pImageIndices      = &image_index,
+        //.pWaitSemaphores    = &r->frames[r->current_frame].render_finished_sem,
+        .pWaitSemaphores = &r->swapchain_render_sems[image_index],
+        .swapchainCount  = 1,
+        .pSwapchains     = &r->display.swapchain,
+        .pImageIndices   = &image_index,
     };
     vkQueuePresentKHR(r->core.graphics_queue, &present_info);
 
@@ -620,6 +775,10 @@ texture_handle_t graphics_upload_texture(graphics_t* r, image_t* img, pak_textur
 
     uint32_t      id  = r->assets.texture_count++;
     vk_texture_t* tex = &r->assets.textures[id];
+
+    if (img->size == 0) {
+        log_error("graphics_upload_texture - img->size = 0!");
+    }
 
     if (!vk_create_texture(r, img, tex, format)) {
         log_error("vulkan: failed to create texture for pool slot %d", id);
@@ -762,6 +921,8 @@ static VkPipeline get_draw_mode_pipeline(vk_pipelines_t* pipelines, draw_mode_t 
         return pipelines->forward_lit;
     case DRAW_MODE_DEBUG_WIREFRAME:
         return pipelines->debug_wireframe;
+    case DRAW_MODE_DEBUG_SDR:
+        return pipelines->debug_sdr;
     case DRAW_MODE_DEBUG_ALBEDO:
     case DRAW_MODE_DEBUG_LIGHTING:
     case DRAW_MODE_DEBUG_GEOMETRY_NORMAL:
@@ -787,42 +948,148 @@ static bool is_matrix_valid(mat4_t* m) {
     return true;
 }
 
+static void execute_post_process_pass(
+    graphics_t*         graphics,
+    vk_render_target_t* render_target,
+    uint32_t            image_index
+) {
+    vkCmdEndRendering(graphics->command_buffer);
+
+    VkImageMemoryBarrier barriers[2] = {
+        {
+            .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .oldLayout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .newLayout        = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            .image            = render_target->color_attachment.image,
+            .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1},
+            .srcAccessMask    = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            .dstAccessMask    = VK_ACCESS_SHADER_READ_BIT,
+        },
+        {
+            .sType     = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .image     = graphics->display.images[image_index],
+            .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1},
+            .srcAccessMask    = 0,
+            .dstAccessMask    = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        }
+    };
+
+    vkCmdPipelineBarrier(
+        graphics->command_buffer,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        0,
+        0,
+        NULL,
+        0,
+        NULL,
+        2,
+        barriers
+    );
+
+    VkRenderingAttachmentInfo swap_attachment = {
+        .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+        .imageView   = graphics->display.image_views[image_index],
+        .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .loadOp      = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .storeOp     = VK_ATTACHMENT_STORE_OP_STORE,
+    };
+
+    VkRenderingInfo pp_rendering_info = {
+        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+        .renderArea =
+            {
+                {0, 0},
+                {graphics->display.extent.width, graphics->display.extent.height},
+            },
+        .layerCount           = 1,
+        .colorAttachmentCount = 1,
+        .pColorAttachments    = &swap_attachment,
+        .pDepthAttachment     = NULL
+    };
+
+    vkCmdBeginRendering(graphics->command_buffer, &pp_rendering_info);
+
+    VkViewport viewport = {
+        .x        = 0.0f,
+        .y        = (float)graphics->display.extent.height,
+        .width    = (float)graphics->display.extent.width,
+        .height   = -(float)graphics->display.extent.height,
+        .minDepth = 0.0f,
+        .maxDepth = 1.0f
+    };
+    VkRect2D scissor = {{0, 0}, graphics->display.extent};
+
+    vkCmdSetViewport(graphics->command_buffer, 0, 1, &viewport);
+    vkCmdSetScissor(graphics->command_buffer, 0, 1, &scissor);
+
+    vkCmdBindPipeline(
+        graphics->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics->pipelines.post_process
+    );
+    vkCmdBindDescriptorSets(
+        graphics->command_buffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        graphics->pipelines.post_process_layout,
+        0,
+        1,
+        &render_target->color_attachment.descriptor_set,
+        0,
+        NULL
+    );
+    vkCmdDraw(graphics->command_buffer, 3, 1, 0, 0);
+}
+
 #include <assert.h>
 
 void graphics_draw(
-    graphics_t*      r,
-    platform_t*      platform,
-    mat4_t           view,
-    vec3_t           camera_pos,
-    mat4_t           culling_view_proj,
-    bool             is_culling_frozen,
-    draw_mode_t      draw_mode,
-    render_object_t* objects,
-    uint32_t         object_count
+    graphics_t*            graphics,
+    platform_t*            platform,
+    render_target_handle_t target,
+    mat4_t                 view,
+    vec3_t                 camera_pos,
+    mat4_t                 culling_view_proj,
+    bool                   is_culling_frozen,
+    draw_mode_t            draw_mode,
+    render_object_t*       objects,
+    uint32_t               object_count
 ) {
     assert(is_matrix_valid(&view) && "CRASH: NaN detected in View Matrix entering graphics_draw!");
     assert(is_matrix_valid(&culling_view_proj) && "CRASH: NaN detected in Culling Matrix!");
 
-    int32_t image_index = begin_frame(r, platform, view, camera_pos);
+    vk_render_target_t* render_target = NULL;
+    if (target.id != GRAPHICS_INVALID_HANDLE) {
+        render_target = &graphics->assets.render_targets[target.id];
+    }
+
+    vk_render_target_t* active_target = render_target;
+    if (draw_mode == DRAW_MODE_DEBUG_SDR) {
+        // active_target = &graphics->assets.render_targets[target.id];
+    }
+
+    int32_t image_index = begin_frame(
+        graphics, platform, view, camera_pos, render_target, draw_mode
+    );
     if (image_index < 0) {
         return;
     }
-    float     aspect    = (float)r->display.extent.width / (float)r->display.extent.height;
-    mat4_t    proj      = mat4_perspective(0.785f, aspect, 0.1f, 100.0f);
-    mat4_t    view_proj = mat4_mul(proj, view);
-    frustum_t frustum   = frustum_extract(culling_view_proj);
+    float  aspect = (float)graphics->display.extent.width / (float)graphics->display.extent.height;
+    mat4_t proj   = mat4_perspective(0.785f, aspect, 0.1f, 100.0f);
+    mat4_t view_proj  = mat4_mul(proj, view);
+    frustum_t frustum = frustum_extract(culling_view_proj);
 
-    VkPipeline current_pipeline = get_draw_mode_pipeline(&r->pipelines, draw_mode);
+    VkPipeline current_pipeline = get_draw_mode_pipeline(&graphics->pipelines, draw_mode);
 
-    vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, current_pipeline);
+    vkCmdBindPipeline(graphics->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, current_pipeline);
 
     vkCmdBindDescriptorSets(
-        r->command_buffer,
+        graphics->command_buffer,
         VK_PIPELINE_BIND_POINT_GRAPHICS,
-        r->pipelines.layout,
+        graphics->pipelines.layout,
         0,
         1,
-        &r->frames[r->current_frame].global_descriptor_set,
+        &graphics->frames[graphics->current_frame].global_descriptor_set,
         0,
         NULL
     );
@@ -838,8 +1105,8 @@ void graphics_draw(
             continue;
         }
 
-        vk_mesh_t*     vk_mesh = &r->assets.meshes[obj->mesh.id];
-        vk_material_t* vk_mat  = &r->assets.materials[obj->material.id];
+        vk_mesh_t*     vk_mesh = &graphics->assets.meshes[obj->mesh.id];
+        vk_material_t* vk_mat  = &graphics->assets.materials[obj->material.id];
 
         if (!vk_mesh->is_active || !vk_mat->is_active)
             continue;
@@ -870,8 +1137,8 @@ void graphics_draw(
         assert(!isnan(push_constants.roughness_factor) && "CRASH: NaN in Roughness Factor!");
 
         vkCmdPushConstants(
-            r->command_buffer,
-            r->pipelines.layout,
+            graphics->command_buffer,
+            graphics->pipelines.layout,
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
             0,
             sizeof(push_constants_t),
@@ -879,9 +1146,9 @@ void graphics_draw(
         );
 
         vkCmdBindDescriptorSets(
-            r->command_buffer,
+            graphics->command_buffer,
             VK_PIPELINE_BIND_POINT_GRAPHICS,
-            r->pipelines.layout,
+            graphics->pipelines.layout,
             1,
             1,
             &vk_mat->descriptor_set,
@@ -889,51 +1156,62 @@ void graphics_draw(
             NULL
         );
 
-        vkCmdBindVertexBuffers(r->command_buffer, 0, 1, &vk_mesh->vertex_buffer, offsets);
+        vkCmdBindVertexBuffers(graphics->command_buffer, 0, 1, &vk_mesh->vertex_buffer, offsets);
 
         if (vk_mesh->index_count > 0) {
-            vkCmdBindIndexBuffer(r->command_buffer, vk_mesh->index_buffer, 0, VK_INDEX_TYPE_UINT32);
-            vkCmdDrawIndexed(r->command_buffer, vk_mesh->index_count, 1, 0, 0, 0);
+            vkCmdBindIndexBuffer(
+                graphics->command_buffer, vk_mesh->index_buffer, 0, VK_INDEX_TYPE_UINT32
+            );
+            vkCmdDrawIndexed(graphics->command_buffer, vk_mesh->index_count, 1, 0, 0, 0);
         } else {
-            vkCmdDraw(r->command_buffer, vk_mesh->vertex_count, 1, 0, 0);
+            vkCmdDraw(graphics->command_buffer, vk_mesh->vertex_count, 1, 0, 0);
         }
     }
 
     // log_info("Rendered: %d | Culled: %d", object_count - culled_count, culled_count);
-
-    vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, r->pipelines.skybox);
+    if (draw_mode != DRAW_MODE_DEBUG_SDR) {
+        vkCmdBindPipeline(
+            graphics->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics->pipelines.skybox
+        );
+    }
 
     vkCmdBindDescriptorSets(
-        r->command_buffer,
+        graphics->command_buffer,
         VK_PIPELINE_BIND_POINT_GRAPHICS,
-        r->pipelines.layout,
+        graphics->pipelines.layout,
         0,
         1,
-        &r->frames[r->current_frame].global_descriptor_set,
+        &graphics->frames[graphics->current_frame].global_descriptor_set,
         0,
         NULL
     );
 
-    vkCmdDraw(r->command_buffer, 36, 1, 0, 0);
+    vkCmdDraw(graphics->command_buffer, 36, 1, 0, 0);
 
-    vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, r->pipelines.line);
+    if (draw_mode != DRAW_MODE_DEBUG_SDR) {
+        vkCmdBindPipeline(
+            graphics->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics->pipelines.line
+        );
 
-    push_constants_t grid_pc = {
-        .transform       = mat4_identity(),
-        .is_alpha_masked = 0,
-    };
-    mat4_t identity = mat4_identity();
-    vkCmdPushConstants(
-        r->command_buffer,
-        r->pipelines.layout,
-        VK_SHADER_STAGE_VERTEX_BIT,
-        0,
-        sizeof(push_constants_t),
-        &grid_pc
-    );
+        push_constants_t grid_pc = {
+            .transform       = mat4_identity(),
+            .is_alpha_masked = 0,
+        };
+        mat4_t identity = mat4_identity();
+        vkCmdPushConstants(
+            graphics->command_buffer,
+            graphics->pipelines.layout,
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+            0,
+            sizeof(push_constants_t),
+            &grid_pc
+        );
 
-    vkCmdBindVertexBuffers(r->command_buffer, 0, 1, &r->grid_buffer.buffer, offsets);
-    vkCmdDraw(r->command_buffer, r->grid_vertex_count, 1, 0, 0);
+        vkCmdBindVertexBuffers(
+            graphics->command_buffer, 0, 1, &graphics->grid_buffer.buffer, offsets
+        );
+        vkCmdDraw(graphics->command_buffer, graphics->grid_vertex_count, 1, 0, 0);
+    }
 
     if (is_culling_frozen) {
         push_constants_t frustum_pc = {
@@ -942,17 +1220,31 @@ void graphics_draw(
         };
 
         vkCmdPushConstants(
-            r->command_buffer,
-            r->pipelines.layout,
+            graphics->command_buffer,
+            graphics->pipelines.layout,
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
             0,
             sizeof(push_constants_t),
             &frustum_pc
         );
 
-        vkCmdBindVertexBuffers(r->command_buffer, 0, 1, &r->frustum_buffer.buffer, offsets);
-        vkCmdDraw(r->command_buffer, 24, 1, 0, 0);
+        vkCmdBindVertexBuffers(
+            graphics->command_buffer, 0, 1, &graphics->frustum_buffer.buffer, offsets
+        );
+        vkCmdDraw(graphics->command_buffer, 24, 1, 0, 0);
     }
 
-    end_frame(r, (uint32_t)image_index);
+    if (draw_mode != DRAW_MODE_DEBUG_SDR) {
+        execute_post_process_pass(graphics, render_target, (uint32_t)image_index);
+
+        vk_render_target_t* render_target = NULL;
+        if (target.id != GRAPHICS_INVALID_HANDLE) {
+            render_target = &graphics->assets.render_targets[target.id];
+        }
+    }
+    // log_info(
+    //     "Target ID: %u | Executing Bypass: %s", target.id, (render_target != NULL) ? "YES" : "NO"
+    // );
+
+    end_frame(graphics, (uint32_t)image_index);
 }

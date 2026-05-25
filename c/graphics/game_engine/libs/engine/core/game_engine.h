@@ -35,10 +35,14 @@ typedef struct {
 
     texture_handle_t test_texture;
 
+    bool use_post_processing;
+
     draw_mode_t draw_mode;
 
     bool   debug_freeze_culling;
     mat4_t culling_view_proj;
+
+    render_target_handle_t main_scene_target;
 
 } game_engine_t;
 

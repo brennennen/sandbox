@@ -21,25 +21,39 @@ static texture_handle_t default_tex;
 bool game_engine_init(game_engine_t* game_engine) {
     log_info("Initializing engine...");
 
+    game_engine->use_post_processing = false;
+    game_engine->draw_mode           = DRAW_MODE_DEBUG_SDR;
+
     game_engine->platform = platform_create("Game Engine", 800, 600);
     if (!game_engine->platform) {
         return false;
     }
 
-    int w;
-    int h;
-    platform_get_window_size(game_engine->platform, &w, &h);
+    int window_width;
+    int window_height;
+    platform_get_window_size(game_engine->platform, &window_width, &window_height);
 
     graphics_config_t graphics_config = {
-        .width        = w,
-        .height       = h,
+        .width        = window_width,
+        .height       = window_height,
         .app_name     = "Game Engine",
         .present_mode = PRESENT_MODE_IMMEDIATE,
     };
 
     game_engine->graphics = graphics_create(game_engine->platform, &graphics_config);
-    if (!game_engine->graphics)
+    if (!game_engine->graphics) {
         return false;
+    }
+
+    render_target_config_t render_target_config = {
+        .width          = window_width,
+        .height         = window_height,
+        .format         = RT_FORMAT_HDR,
+        .requires_depth = true
+    };
+    game_engine->main_scene_target = graphics_create_render_target(
+        game_engine->graphics, &render_target_config
+    );
 
     platform_set_relative_mouse(game_engine->platform, true);
 
@@ -53,6 +67,9 @@ bool game_engine_init(game_engine_t* game_engine) {
         .size     = 4,
         .pixels   = white_pixel,
     };
+    if (dummy_white_img.size == 0) {
+        log_error("size 0 image - albedo!");
+    }
     default_tex = graphics_upload_texture(
         game_engine->graphics, &dummy_white_img, PAK_TEX_FORMAT_RGBA8_SRGB
     );
@@ -65,6 +82,9 @@ bool game_engine_init(game_engine_t* game_engine) {
                    .size     = 4,
                    .pixels   = flat_normal_pixel,
     };
+    if (dummy_normal_img.size == 0) {
+        log_error("size 0 image - norm!");
+    }
     texture_handle_t default_normal_tex = graphics_upload_texture(
         game_engine->graphics, &dummy_normal_img, PAK_TEX_FORMAT_R8_UNORM
     );
@@ -77,6 +97,9 @@ bool game_engine_init(game_engine_t* game_engine) {
                .size     = 4,
                .pixels   = flat_mr_pixel,
     };
+    if (dummy_ao_metallic_roughness_img.size == 0) {
+        log_error("size 0 image - aor!");
+    }
     texture_handle_t default_ao_metallic_roughness_tex = graphics_upload_texture(
         game_engine->graphics, &dummy_ao_metallic_roughness_img, PAK_TEX_FORMAT_RGBA8_UNORM
     );
@@ -99,6 +122,9 @@ bool game_engine_init(game_engine_t* game_engine) {
             pak_texture_format_t pak_format = loaded_textures[t].format;
 
             if (world_load_texture_image(t, &img)) {
+                if (img.size == 0) {
+                    log_error("size 0 image!");
+                }
                 gpu_textures[t] = graphics_upload_texture(game_engine->graphics, &img, pak_format);
                 image_free(&img);
             } else {
@@ -252,6 +278,11 @@ bool game_engine_tick(game_engine_t* game_engine) {
             log_info("Frustum Culling: UNFREEZE");
         }
     }
+    if (platform_get_key_pressed(game_engine->platform, KEY_F7)) {
+        game_engine->use_post_processing = !game_engine->use_post_processing;
+        // log_info("Post-Processing: %s", game_engine->use_post_processing ? "ENABLED" :
+        // "DISABLED");
+    }
     if (platform_get_key_pressed(game_engine->platform, KEY_ESCAPE)) {
         game_engine->is_paused = !game_engine->is_paused;
         if (game_engine->is_paused) {
@@ -320,9 +351,17 @@ bool game_engine_tick(game_engine_t* game_engine) {
     //     game_engine->main_camera->pos.z
     // );
 
+    // render_target_handle_t render_target;
+    // if (game_engine->use_post_processing) {
+    //     render_target = game_engine->main_scene_target;
+    // } else {
+    //     render_target = (render_target_handle_t){.id = GRAPHICS_INVALID_HANDLE};
+    // }
+
     graphics_draw(
         game_engine->graphics,
         game_engine->platform,
+        game_engine->main_scene_target,
         view,
         game_engine->main_camera->pos,
         game_engine->culling_view_proj,
@@ -338,8 +377,17 @@ bool game_engine_tick(game_engine_t* game_engine) {
 void game_engine_shutdown(game_engine_t* game_engine) {
     log_info("Shutting down engine...");
     if (game_engine->graphics) {
+        graphics_wait_idle(game_engine->graphics);
+    }
+
+    if (game_engine->main_scene_target.id != GRAPHICS_INVALID_HANDLE) {
+        graphics_destroy_render_target(game_engine->graphics, game_engine->main_scene_target);
+    }
+
+    if (game_engine->graphics) {
         graphics_destroy(game_engine->graphics);
     }
+
     if (game_engine->platform) {
         platform_destroy(game_engine->platform);
     }

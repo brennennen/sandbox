@@ -21,9 +21,7 @@ gpu_allocation_t vk_create_staging_buffer(
         .usage       = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
     };
-
     vkCreateBuffer(r->core.device, &buffer_info, NULL, out_buffer);
-
     VkMemoryRequirements mem_reqs;
     vkGetBufferMemoryRequirements(r->core.device, *out_buffer, &mem_reqs);
 
@@ -66,6 +64,17 @@ bool vk_create_texture(
     pak_texture_format_t format
 ) {
     log_debug("Vulkan: Creating image with %d mips", img->mip_levels);
+
+    size_t calculated_size = (size_t)img->width * (size_t)img->height * (size_t)img->channels;
+    if (calculated_size == 0 || img->size == 0) {
+        log_error(
+            "CRITICAL: Calculated size is 0! (W:%u, H:%u, CH:%u)",
+            img->width,
+            img->height,
+            img->channels
+        );
+    }
+
     size_t scratch_offset = r->assets.vertex_heap->offset;
 
     VkBuffer         staging_buffer;
@@ -342,6 +351,7 @@ VkBuffer vk_create_static_buffer(
         .size  = size,
         .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
     };
+    // log_info("vkCreateBuffer - staging_buffer: %d", s_info.size);
     vkCreateBuffer(r->core.device, &s_info, NULL, &staging_buffer);
 
     VkMemoryRequirements s_reqs;
@@ -368,6 +378,7 @@ VkBuffer vk_create_static_buffer(
         .size  = size,
         .usage = usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
     };
+    // log_info("vkCreateBuffer - device_buffer: %d", d_info.size);
     vkCreateBuffer(r->core.device, &d_info, NULL, &device_buffer);
 
     VkMemoryRequirements d_reqs;

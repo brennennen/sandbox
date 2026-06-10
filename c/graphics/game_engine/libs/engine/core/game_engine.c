@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "libs/core/resources/image.h"
+
 #include "engine/core/game_engine.h"
 #include "engine/core/logger.h"
 #include "engine/core/math/mat4.h"
@@ -17,21 +19,17 @@
 #include "shared/math_types.h"
 
 static texture_handle_t default_tex;
+static texture_handle_t default_normal_tex;
+static texture_handle_t default_ao_metallic_roughness_tex;
 
-bool game_engine_init(game_engine_t* game_engine) {
-    log_info("Initializing engine...");
-
-    game_engine->use_post_processing = false;
-    game_engine->draw_mode           = DRAW_MODE_DEBUG_SDR;
-
-    game_engine->platform = platform_create("Game Engine", 800, 600);
-    if (!game_engine->platform) {
+static bool init_core_subsystems(game_engine_t* engine) {
+    engine->platform = platform_create("Game Engine", 800, 600);
+    if (!engine->platform) {
         return false;
     }
 
-    int window_width;
-    int window_height;
-    platform_get_window_size(game_engine->platform, &window_width, &window_height);
+    int window_width, window_height;
+    platform_get_window_size(engine->platform, &window_width, &window_height);
 
     graphics_config_t graphics_config = {
         .width        = window_width,
@@ -40,8 +38,8 @@ bool game_engine_init(game_engine_t* game_engine) {
         .present_mode = PRESENT_MODE_IMMEDIATE,
     };
 
-    game_engine->graphics = graphics_create(game_engine->platform, &graphics_config);
-    if (!game_engine->graphics) {
+    engine->graphics = graphics_create(engine->platform, &graphics_config);
+    if (!engine->graphics) {
         return false;
     }
 
@@ -51,27 +49,25 @@ bool game_engine_init(game_engine_t* game_engine) {
         .format         = RT_FORMAT_HDR,
         .requires_depth = true
     };
-    game_engine->main_scene_target = graphics_create_render_target(
-        game_engine->graphics, &render_target_config
+    engine->main_scene_target = graphics_create_render_target(
+        engine->graphics, &render_target_config
     );
 
-    platform_set_relative_mouse(game_engine->platform, true);
+    platform_set_relative_mouse(engine->platform, true);
+    return true;
+}
 
-    // TODO: go back to pink/black checkerboard default texture?
-    static uint8_t white_pixel[4] = {255, 255, 255, 255};
-
-    image_t dummy_white_img = {
-        .width    = 1,
-        .height   = 1,
-        .channels = 4,
-        .size     = 4,
-        .pixels   = white_pixel,
+static void init_default_textures(game_engine_t* engine) {
+    static uint8_t white_pixel[4]  = {255, 255, 255, 255};
+    image_t        dummy_white_img = {
+               .width    = 1,
+               .height   = 1,
+               .channels = 4,
+               .size     = 4,
+               .pixels   = white_pixel,
     };
-    if (dummy_white_img.size == 0) {
-        log_error("size 0 image - albedo!");
-    }
     default_tex = graphics_upload_texture(
-        game_engine->graphics, &dummy_white_img, PAK_TEX_FORMAT_RGBA8_SRGB
+        engine->graphics, &dummy_white_img, PAK_TEX_FORMAT_RGBA8_SRGB
     );
 
     static uint8_t flat_normal_pixel[4] = {128, 128, 255, 255};
@@ -82,11 +78,8 @@ bool game_engine_init(game_engine_t* game_engine) {
                    .size     = 4,
                    .pixels   = flat_normal_pixel,
     };
-    if (dummy_normal_img.size == 0) {
-        log_error("size 0 image - norm!");
-    }
-    texture_handle_t default_normal_tex = graphics_upload_texture(
-        game_engine->graphics, &dummy_normal_img, PAK_TEX_FORMAT_R8_UNORM
+    default_normal_tex = graphics_upload_texture(
+        engine->graphics, &dummy_normal_img, PAK_TEX_FORMAT_R8_UNORM
     );
 
     static uint8_t flat_mr_pixel[4]                = {255, 128, 0, 255};
@@ -97,97 +90,173 @@ bool game_engine_init(game_engine_t* game_engine) {
                .size     = 4,
                .pixels   = flat_mr_pixel,
     };
-    if (dummy_ao_metallic_roughness_img.size == 0) {
-        log_error("size 0 image - aor!");
-    }
-    texture_handle_t default_ao_metallic_roughness_tex = graphics_upload_texture(
-        game_engine->graphics, &dummy_ao_metallic_roughness_img, PAK_TEX_FORMAT_RGBA8_UNORM
+    default_ao_metallic_roughness_tex = graphics_upload_texture(
+        engine->graphics, &dummy_ao_metallic_roughness_img, PAK_TEX_FORMAT_RGBA8_UNORM
     );
+}
 
-    if (!vfs_mount_archive("./../../.assets/render_tests.pak")) {
-        log_error("Failed to mount base game archive!");
+static void load_geometry_from_pak(game_engine_t* engine, world_pak_t* header, void* raw_pak_data) {
+    log_info("Uploading raw PAK data to Vulkan...");
+
+    pak_vertex_t* loaded_vertices = (pak_vertex_t*)((uint8_t*)raw_pak_data + header->vertex_offset);
+    uint32_t*     loaded_indices  = (uint32_t*)((uint8_t*)raw_pak_data + header->index_offset);
+    pak_mesh_t*   loaded_meshes   = (pak_mesh_t*)((uint8_t*)raw_pak_data + header->mesh_offset);
+    pak_entity_t* loaded_entities = (pak_entity_t*)((uint8_t*)raw_pak_data + header->entity_offset);
+    pak_texture_t* loaded_textures = (pak_texture_t*)((uint8_t*)raw_pak_data +
+                                                      header->texture_offset);
+
+    texture_handle_t gpu_textures[256];
+    for (uint32_t t = 0; t < header->texture_count; t++) {
+        pak_texture_t* tex_def = &loaded_textures[t];
+        image_t        img     = {
+                       .width      = tex_def->width,
+                       .height     = tex_def->height,
+                       .channels   = tex_def->channels,
+                       .size       = tex_def->byte_size,
+                       .pixels     = (uint8_t*)raw_pak_data + tex_def->byte_offset,
+                       .mip_levels = tex_def->mip_levels,
+                       .is_cubemap = false
+        };
+
+        if (img.size == 0) {
+            gpu_textures[t] = default_tex;
+            continue;
+        }
+        gpu_textures[t] = graphics_upload_texture(engine->graphics, &img, tex_def->format);
     }
-    // if (!vfs_mount_archive("./../../.assets/sponza.pak")) {
-    //     log_error("Failed to mount base game archive!");
-    // }
 
-    if (world_load_chunk(0)) {
-        log_info("Uploading raw PAK data to Vulkan...");
+    for (uint32_t i = 0; i < header->mesh_count; i++) {
+        pak_mesh_t* mesh_def = &loaded_meshes[i];
 
-        texture_handle_t gpu_textures[MAX_LOADED_TEXTURES];
+        mesh_data_t raw_mesh_data = {
+            .vertices        = (vertex_t*)&loaded_vertices[mesh_def->vertex_offset],
+            .vertex_count    = mesh_def->vertex_count,
+            .indices         = &loaded_indices[mesh_def->index_offset],
+            .index_count     = mesh_def->index_count,
+            .bounding_center = mesh_def->bounding_center,
+            .bounding_radius = mesh_def->bounding_radius,
+        };
 
-        for (uint32_t t = 0; t < loaded_texture_count; t++) {
-            image_t img = {0};
+        mesh_handle_t vram_handle = graphics_upload_mesh(engine->graphics, &raw_mesh_data);
 
-            pak_texture_format_t pak_format = loaded_textures[t].format;
+        texture_handle_t mesh_tex = (mesh_def->base_color_texture_id >= 0)
+                                        ? gpu_textures[mesh_def->base_color_texture_id]
+                                        : default_tex;
 
-            if (world_load_texture_image(t, &img)) {
-                if (img.size == 0) {
-                    log_error("size 0 image!");
-                }
-                gpu_textures[t] = graphics_upload_texture(game_engine->graphics, &img, pak_format);
-                image_free(&img);
-            } else {
-                gpu_textures[t] = default_tex;
+        texture_handle_t norm_tex = (mesh_def->normal_texture_id >= 0)
+                                        ? gpu_textures[mesh_def->normal_texture_id]
+                                        : default_normal_tex;
+
+        texture_handle_t ao_mr_tex = (mesh_def->ao_roughness_metallic_texture_id >= 0)
+                                         ? gpu_textures[mesh_def->ao_roughness_metallic_texture_id]
+                                         : default_ao_metallic_roughness_tex;
+
+        mat4_t final_transform = mat4_identity();
+        for (uint32_t e = 0; e < header->entity_count; e++) {
+            if (loaded_entities[e].model_id == mesh_def->model_id) {
+                final_transform = loaded_entities[e].transform;
+                break;
             }
         }
 
-        for (uint32_t i = 0; i < loaded_mesh_count; i++) {
-            pak_mesh_t* mesh_def = &loaded_meshes[i];
+        uint32_t obj_idx                              = engine->main_scene.object_count++;
+        engine->main_scene.objects[obj_idx].mesh      = vram_handle;
+        engine->main_scene.objects[obj_idx].transform = final_transform;
+        engine->main_scene.objects[obj_idx].material  = graphics_create_material(
+            engine->graphics,
+            mesh_tex,
+            norm_tex,
+            ao_mr_tex,
+            mesh_def->is_alpha_masked,
+            mesh_def->metallic_factor,
+            mesh_def->roughness_factor
+        );
+    }
+}
 
-            vertex_t* vertex_start = (vertex_t*)&loaded_vertices[mesh_def->vertex_offset];
-            uint32_t* index_start  = &loaded_indices[mesh_def->index_offset];
+bool game_engine_init(game_engine_t* game_engine) {
+    log_info("Initializing engine...");
+    if (!init_core_subsystems(game_engine)) {
+        log_error("Failed to initialize core subsystems.");
+        return false;
+    }
+    init_default_textures(game_engine);
 
-            mesh_data_t raw_mesh_data = {
-                .vertices        = vertex_start,
-                .vertex_count    = mesh_def->vertex_count,
-                .indices         = index_start,
-                .index_count     = mesh_def->index_count,
-                .bounding_center = mesh_def->bounding_center,
-                .bounding_radius = mesh_def->bounding_radius,
+    // if (!vfs_mount_archive("./../../.assets/render_tests.pak")) {
+    //     log_error("Failed to mount base game archive!");
+    // }
+    // if (!vfs_mount_archive("./../../.assets/sponza.pak")) {
+    //     log_error("Failed to mount base game archive!");
+    // }
+    if (!vfs_mount_archive("./../../.assets/test_zone.pak")) {
+        log_error("Failed to mount base game archive!");
+    }
+    // if (!vfs_mount_archive("./../../.assets/test_skybox_zone.pak")) {
+    //     log_error("Failed to mount base game archive!");
+    // }
+    game_engine->active_scene_type = SCENE_STATIC_LEVEL;
+
+    void* raw_pak_data = vfs_get_mounted_archive_pointer("./../../.assets/test_zone.pak");
+    // void* raw_pak_data = vfs_get_mounted_archive_pointer("./../../.assets/test_skybox_zone.pak");
+    if (raw_pak_data) {
+        world_pak_t*   header     = (world_pak_t*)raw_pak_data;
+        texture_pak_t* skybox_def = &header->environment.skybox_cubemap;
+
+        if (skybox_def->data_size > 0) {
+            void*   pixel_data = (uint8_t*)raw_pak_data + skybox_def->data_offset;
+            image_t skybox_img = {
+                .width      = skybox_def->width,
+                .height     = skybox_def->height,
+                .channels   = skybox_def->channels,
+                .size       = skybox_def->data_size,
+                .pixels     = pixel_data,
+                .is_cubemap = true,
             };
-
-            mesh_handle_t vram_handle = graphics_upload_mesh(game_engine->graphics, &raw_mesh_data);
-
-            texture_handle_t mesh_tex = default_tex;
-            if (mesh_def->base_color_texture_id >= 0 &&
-                mesh_def->base_color_texture_id < (int32_t)loaded_texture_count) {
-                mesh_tex = gpu_textures[mesh_def->base_color_texture_id];
-            }
-
-            texture_handle_t norm_tex = default_normal_tex;
-            if (mesh_def->normal_texture_id >= 0 &&
-                mesh_def->normal_texture_id < (int32_t)loaded_texture_count) {
-                norm_tex = gpu_textures[mesh_def->normal_texture_id];
-            }
-            texture_handle_t ao_metallic_roughness_tex = default_ao_metallic_roughness_tex;
-            if (mesh_def->ao_roughness_metallic_texture_id != -1) {
-                ao_metallic_roughness_tex =
-                    gpu_textures[mesh_def->ao_roughness_metallic_texture_id];
-            }
-
-            // Find the transform in the entities list
-            mat4_t final_transform = mat4_identity();
-            for (uint32_t e = 0; e < loaded_entity_count; e++) {
-                if (loaded_entities[e].model_id == mesh_def->model_id) {
-                    final_transform = loaded_entities[e].transform;
-                    break;
-                }
-            }
-
-            uint32_t obj_idx = game_engine->main_scene.object_count++;
-
-            game_engine->main_scene.objects[obj_idx].mesh     = vram_handle;
-            game_engine->main_scene.objects[obj_idx].material = graphics_create_material(
-                game_engine->graphics,
-                mesh_tex,
-                norm_tex,
-                ao_metallic_roughness_tex,
-                mesh_def->is_alpha_masked,
-                mesh_def->metallic_factor,
-                mesh_def->roughness_factor
+            game_engine->skybox_texture = graphics_upload_texture(
+                game_engine->graphics, &skybox_img, PAK_TEX_FORMAT_RGBA32F
             );
-            game_engine->main_scene.objects[obj_idx].transform = final_transform;
+
+            texture_pak_t* irr_def = &header->environment.irradiance_map;
+            image_t        irr_img = {
+                       .width      = irr_def->width,
+                       .height     = irr_def->height,
+                       .channels   = irr_def->channels,
+                       .size       = irr_def->data_size,
+                       .pixels     = (uint8_t*)raw_pak_data + irr_def->data_offset,
+                       .is_cubemap = true,
+            };
+            texture_handle_t irr_tex = graphics_upload_texture(
+                game_engine->graphics, &irr_img, PAK_TEX_FORMAT_RGBA32F
+            );
+
+            texture_pak_t* pref_def = &header->environment.prefiltered_env_map;
+            image_t        pref_img = {
+                       .width      = pref_def->width,
+                       .height     = pref_def->height,
+                       .channels   = pref_def->channels,
+                       .size       = pref_def->data_size,
+                       .pixels     = (uint8_t*)raw_pak_data + pref_def->data_offset,
+                       .mip_levels = 5,
+                       .is_cubemap = true,
+            };
+            texture_handle_t pref_tex = graphics_upload_texture(
+                game_engine->graphics, &pref_img, PAK_TEX_FORMAT_RGBA32F
+            );
+
+            // graphics_update_global_environment(
+            //     game_engine->graphics, game_engine->skybox_texture, irr_tex, pref_tex
+            // );
+            graphics_update_global_environment(
+                game_engine->graphics,
+                game_engine->skybox_texture,
+                game_engine->skybox_texture, // irr_tex
+                game_engine->skybox_texture  // pref_tex
+            );
+            log_info("Successfully uploaded HDRI Skybox to GPU!");
+
+            load_geometry_from_pak(game_engine, header, raw_pak_data);
+        } else {
+            game_engine->skybox_texture = default_tex; // Fallback
         }
     }
 
@@ -257,6 +326,35 @@ static void game_engine_handle_inputs(game_engine_t* game_engine, float delta_ti
         camera->pos.z -= cam_speed;
 }
 
+// Define a simple struct for grid coordinates if you don't have one
+typedef struct {
+    int x;
+    int y;
+} grid_coord_t;
+
+static void static_level_update(game_engine_t* engine, float delta_time) {
+    // todo: callback functions to game logic?
+}
+
+static void update_world_streaming(game_engine_t* engine, vec3_t player_pos) {
+    // grid cell = 1000.0f world units
+    int current_cell_x = (int)floorf(player_pos.x / 1000.0f);
+    int current_cell_y = (int)floorf(player_pos.y / 1000.0f);
+
+    // 3x3 grid of cells around the player
+    grid_coord_t active_cells[9];
+    int          idx = 0;
+    for (int y = -1; y <= 1; y++) {
+        for (int x = -1; x <= 1; x++) {
+            active_cells[idx++] = (grid_coord_t){current_cell_x + x, current_cell_y + y};
+        }
+    }
+
+    // TODO: unload old cells
+
+    // TODO: mount new cells
+}
+
 bool game_engine_tick(game_engine_t* game_engine) {
     if (!platform_update(game_engine->platform)) {
         return false;
@@ -277,11 +375,6 @@ bool game_engine_tick(game_engine_t* game_engine) {
         } else {
             log_info("Frustum Culling: UNFREEZE");
         }
-    }
-    if (platform_get_key_pressed(game_engine->platform, KEY_F7)) {
-        game_engine->use_post_processing = !game_engine->use_post_processing;
-        // log_info("Post-Processing: %s", game_engine->use_post_processing ? "ENABLED" :
-        // "DISABLED");
     }
     if (platform_get_key_pressed(game_engine->platform, KEY_ESCAPE)) {
         game_engine->is_paused = !game_engine->is_paused;
@@ -310,7 +403,6 @@ bool game_engine_tick(game_engine_t* game_engine) {
     }
 
     game_engine->frame_count++;
-
     if (current_time - game_engine->fps_last_time >= 1000) {
         char title[128];
         snprintf(
@@ -330,6 +422,25 @@ bool game_engine_tick(game_engine_t* game_engine) {
         game_engine_handle_inputs(game_engine, delta_time);
     }
 
+    // TODO: add conditional support for levels, quad/cube worlds, or non-standard/custom worlds
+    // (cylindrical?)
+    switch (game_engine->active_scene_type) {
+    case SCENE_MAIN_MENU: {
+        // main_menu_update(game_engine, delta_time);
+        log_error("not implemented");
+        break;
+    }
+    case SCENE_STATIC_LEVEL: {
+        static_level_update(game_engine, delta_time);
+        break;
+    }
+    case SCENE_OPEN_WORLD: {
+        // update_world_streaming(game_engine, game_engine->main_camera->pos);
+        log_error("not implemented");
+        break;
+    }
+    }
+
     mat4_t view = camera_get_view_matrix(game_engine->main_camera);
 
     int w;
@@ -344,20 +455,6 @@ bool game_engine_tick(game_engine_t* game_engine) {
         game_engine->culling_view_proj = current_view_proj;
     }
 
-    // log_info(
-    //     "camera_pos: (%f, %f, %f)",
-    //     game_engine->main_camera->pos.x,
-    //     game_engine->main_camera->pos.y,
-    //     game_engine->main_camera->pos.z
-    // );
-
-    // render_target_handle_t render_target;
-    // if (game_engine->use_post_processing) {
-    //     render_target = game_engine->main_scene_target;
-    // } else {
-    //     render_target = (render_target_handle_t){.id = GRAPHICS_INVALID_HANDLE};
-    // }
-
     graphics_draw(
         game_engine->graphics,
         game_engine->platform,
@@ -368,7 +465,8 @@ bool game_engine_tick(game_engine_t* game_engine) {
         game_engine->debug_freeze_culling,
         game_engine->draw_mode,
         game_engine->main_scene.objects,
-        game_engine->main_scene.object_count
+        game_engine->main_scene.object_count,
+        game_engine->skybox_texture
     );
 
     return true;

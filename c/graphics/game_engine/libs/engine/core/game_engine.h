@@ -1,5 +1,4 @@
-#ifndef GAME_ENGINE_H
-#define GAME_ENGINE_H
+#pragma once
 
 #include <stdbool.h>
 
@@ -10,6 +9,12 @@
 
 typedef struct platform_t platform_t;
 typedef struct graphics_t graphics_t;
+
+typedef enum {
+    SCENE_MAIN_MENU,
+    SCENE_STATIC_LEVEL,
+    SCENE_OPEN_WORLD,
+} scene_type_t;
 
 typedef struct {
     bool is_running;
@@ -35,8 +40,6 @@ typedef struct {
 
     texture_handle_t test_texture;
 
-    bool use_post_processing;
-
     draw_mode_t draw_mode;
 
     bool   debug_freeze_culling;
@@ -44,10 +47,14 @@ typedef struct {
 
     render_target_handle_t main_scene_target;
 
+    scene_type_t active_scene_type;
+
+    texture_handle_t skybox_texture;
+    texture_handle_t skybox_irradiance_texture;
+    texture_handle_t skybox_prefiltered_texture;
+
 } game_engine_t;
 
 bool game_engine_init(game_engine_t* game_engine);
 bool game_engine_tick(game_engine_t* game_engine);
 void game_engine_shutdown(game_engine_t* game_engine);
-
-#endif // GAME_ENGINE_H

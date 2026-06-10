@@ -23,8 +23,11 @@ const vec3 cube_verts[36] = vec3[](
 );
 
 void main() {
-    v_direction = cube_verts[gl_VertexIndex];
+    vec3 dir = cube_verts[gl_VertexIndex];
+    v_direction = dir;
+    vec3 swizzled_pos = vec3(-dir.x, dir.z, -dir.y);
+
     mat4 view_no_translation = mat4(mat3(ubo.view));
-    vec4 clip_pos = ubo.proj * view_no_translation * vec4(cube_verts[gl_VertexIndex], 1.0);
+    vec4 clip_pos = ubo.proj * view_no_translation * vec4(swizzled_pos, 1.0);
     gl_Position = clip_pos.xyww;
 }

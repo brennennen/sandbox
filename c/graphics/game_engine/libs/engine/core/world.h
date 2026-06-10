@@ -1,11 +1,9 @@
-#ifndef WORLD_H
-#define WORLD_H
+#pragma once
 
 #include <stdbool.h>
 
-#include "engine/modules/assets/image.h"
+#include "libs/core/resources/image.h"
 #include "shared/pak_format.h"
-
 
 #define MAX_LOADED_ENTITIES 1024
 #define MAX_LOADED_MESHES 1024
@@ -31,5 +29,3 @@ extern uint32_t      loaded_texture_count;
 
 bool world_load_chunk(uint32_t chunk_id);
 bool world_load_texture_image(uint32_t tex_idx, image_t* out_img);
-
-#endif

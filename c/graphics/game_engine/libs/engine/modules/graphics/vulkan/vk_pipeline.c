@@ -45,10 +45,10 @@ VkShaderModule vk_create_shader_module(VkDevice device, const char* path) {
 
 static VkPipeline create_skybox_pipeline(graphics_t* graphics, VkFormat color_format) {
     VkShaderModule vert_mod = vk_create_shader_module(
-        graphics->core.device, "shaders/skybox.vert.spv"
+        graphics->core.device, "shaders/core/skybox.vert.spv"
     );
     VkShaderModule frag_mod = vk_create_shader_module(
-        graphics->core.device, "shaders/skybox.frag.spv"
+        graphics->core.device, "shaders/core/skybox.frag.spv"
     );
 
     VkPipelineShaderStageCreateInfo stages[2] = {
@@ -309,17 +309,57 @@ static VkPipeline create_pipeline_internal(
     return pipeline;
 }
 
-static bool init_pipeline_layouts(graphics_t* graphics) {
-    VkDescriptorSetLayoutBinding global_binding = {
+/**
+ * Creates the Descriptor Set Layout for global, per-frame data (Set 0).
+ * This layout dictates how environment and camera data is bound to the GPU.
+ * It is expected to be bound once at the start of the frame.
+ *
+ * Bindings:
+ * - 0: Uniform Buffer (Camera matrices, time, etc.)
+ * - 1: Combined Image Sampler (HDRI Skybox)
+ * - 2: Combined Image Sampler (IBL Irradiance Map)
+ * - 3: Combined Image Sampler (IBL Prefiltered Specular Map)
+ */
+static bool init_global_descriptor_layout(graphics_t* graphics) {
+    VkDescriptorSetLayoutBinding global_ubo_binding = {
         .binding         = 0,
         .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         .descriptorCount = 1,
         .stageFlags      = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
     };
+
+    VkDescriptorSetLayoutBinding skybox_binding = {
+        .binding         = 1,
+        .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT,
+    };
+
+    VkDescriptorSetLayoutBinding irradiance_binding = {
+        .binding         = 2,
+        .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT,
+    };
+
+    VkDescriptorSetLayoutBinding prefilter_binding = {
+        .binding         = 3,
+        .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT,
+    };
+
+    VkDescriptorSetLayoutBinding global_bindings[] = {
+        global_ubo_binding,
+        skybox_binding,
+        irradiance_binding,
+        prefilter_binding,
+    };
+
     VkDescriptorSetLayoutCreateInfo global_info = {
         .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .bindingCount = 1,
-        .pBindings    = &global_binding,
+        .bindingCount = 4,
+        .pBindings    = global_bindings,
     };
     if (vkCreateDescriptorSetLayout(
             graphics->core.device, &global_info, NULL, &graphics->pipelines.global_set_layout
@@ -327,7 +367,20 @@ static bool init_pipeline_layouts(graphics_t* graphics) {
         log_error("vulkan: failed to create global descriptor set layout");
         return false;
     }
+    return true;
+}
 
+/**
+ * Creates the Descriptor Set Layout for per-object material data (Set 1).
+ * This layout defines the texture inputs required for the PBR shader.
+ * It is expected to be bound before each draw call if the material changes.
+ *
+ * Bindings:
+ * - 0: Combined Image Sampler (Albedo/Base Color)
+ * - 1: Combined Image Sampler (Normal Map)
+ * - 2: Combined Image Sampler (Packed AO/Roughness/Metallic)
+ */
+static bool init_object_descriptor_layout(graphics_t* graphics) {
     VkDescriptorSetLayoutBinding albedo_binding = {
         .binding         = 0,
         .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -349,23 +402,33 @@ static bool init_pipeline_layouts(graphics_t* graphics) {
         .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT,
     };
 
-    VkDescriptorSetLayoutBinding object_bindings[] = {
-        albedo_binding, normal_binding, ao_metallic_roughness_binding
+    VkDescriptorSetLayoutBinding bindings[] = {
+        albedo_binding,
+        normal_binding,
+        ao_metallic_roughness_binding,
     };
 
-    VkDescriptorSetLayoutCreateInfo object_info = {
+    VkDescriptorSetLayoutCreateInfo info = {
         .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
         .bindingCount = 3,
-        .pBindings    = object_bindings,
+        .pBindings    = bindings,
     };
 
     if (vkCreateDescriptorSetLayout(
-            graphics->core.device, &object_info, NULL, &graphics->pipelines.object_set_layout
+            graphics->core.device, &info, NULL, &graphics->pipelines.object_set_layout
         ) != VK_SUCCESS) {
         log_error("vulkan: failed to create object descriptor set layout");
         return false;
     }
+    return true;
+}
 
+/**
+ * Constructs the Pipeline Layout for the main forward/PBR rendering pass.
+ * Merges the Global (Set 0) and Object (Set 1) descriptor layouts, and defines
+ * the push constant range used for per-object transforms and materials.
+ */
+static bool init_main_pipeline_layout(graphics_t* graphics) {
     VkDescriptorSetLayout layouts[] = {
         graphics->pipelines.global_set_layout,
         graphics->pipelines.object_set_layout,
@@ -377,7 +440,7 @@ static bool init_pipeline_layouts(graphics_t* graphics) {
         .size       = sizeof(push_constants_t),
     };
 
-    VkPipelineLayoutCreateInfo pipeline_layout_info = {
+    VkPipelineLayoutCreateInfo info = {
         .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .setLayoutCount         = 2,
         .pSetLayouts            = layouts,
@@ -385,37 +448,43 @@ static bool init_pipeline_layouts(graphics_t* graphics) {
         .pPushConstantRanges    = &push_constant,
     };
 
-    if (vkCreatePipelineLayout(
-            graphics->core.device, &pipeline_layout_info, NULL, &graphics->pipelines.layout
-        ) != VK_SUCCESS) {
-        log_error("vulkan: failed to create pipeline layout");
+    if (vkCreatePipelineLayout(graphics->core.device, &info, NULL, &graphics->pipelines.layout) !=
+        VK_SUCCESS) {
+        log_error("vulkan: failed to create main pipeline layout");
         return false;
     }
+    return true;
+}
 
-    VkDescriptorSetLayoutBinding post_process_binding = {
+/**
+ * Initializes both the descriptor set and pipeline layouts for post-processing.
+ * Sets up a minimalist pipeline meant for fullscreen quad drawing.
+ *
+ * Bindings (Set 0):
+ * - 0: Combined Image Sampler (The resolved main scene HDR render target)
+ */
+static bool init_post_process_layouts(graphics_t* graphics) {
+    VkDescriptorSetLayoutBinding binding = {
         .binding         = 0,
         .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .descriptorCount = 1,
         .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT,
     };
 
-    VkDescriptorSetLayoutCreateInfo post_process_set_info = {
+    VkDescriptorSetLayoutCreateInfo set_info = {
         .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
         .bindingCount = 1,
-        .pBindings    = &post_process_binding,
+        .pBindings    = &binding,
     };
 
     if (vkCreateDescriptorSetLayout(
-            graphics->core.device,
-            &post_process_set_info,
-            NULL,
-            &graphics->pipelines.post_process_set_layout
+            graphics->core.device, &set_info, NULL, &graphics->pipelines.post_process_set_layout
         ) != VK_SUCCESS) {
-        log_error("vulkan: failed to create post process pipeline layout");
+        log_error("vulkan: failed to create post process descriptor set layout");
         return false;
     }
 
-    VkPipelineLayoutCreateInfo post_process_pipeline_layout_info = {
+    VkPipelineLayoutCreateInfo pipeline_info = {
         .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .setLayoutCount         = 1,
         .pSetLayouts            = &graphics->pipelines.post_process_set_layout,
@@ -423,15 +492,32 @@ static bool init_pipeline_layouts(graphics_t* graphics) {
     };
 
     if (vkCreatePipelineLayout(
-            graphics->core.device,
-            &post_process_pipeline_layout_info,
-            NULL,
-            &graphics->pipelines.post_process_layout
+            graphics->core.device, &pipeline_info, NULL, &graphics->pipelines.post_process_layout
         ) != VK_SUCCESS) {
         log_error("vulkan: failed to create post process pipeline layout");
         return false;
     }
+    return true;
+}
 
+/**
+ * Master initialization routine for all Vulkan pipeline and descriptor layouts.
+ * Orchestrates the creation of the memory contracts between the CPU and the shaders.
+ * Must be called before graphics pipelines are compiled.
+ */
+static bool init_pipeline_layouts(graphics_t* graphics) {
+    if (!init_global_descriptor_layout(graphics)) {
+        return false;
+    }
+    if (!init_object_descriptor_layout(graphics)) {
+        return false;
+    }
+    if (!init_main_pipeline_layout(graphics)) {
+        return false;
+    }
+    if (!init_post_process_layouts(graphics)) {
+        return false;
+    }
     return true;
 }
 

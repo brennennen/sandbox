@@ -13,30 +13,36 @@ pub fn build(b: *std.Build) void {
     //
     // MARK: Core
     //
-    // const core_include_paths = [_][]const u8{
-    //     "libs",
-    // };
-    // const core_module = b.createModule(.{
-    //     .target = target,
-    //     .optimize = optimize,
-    //     .link_libc = true,
-    // });
-    // const core_sources = [_][]const u8{
-    //     "core/logger.c",
-    // };
-    // for (core_sources) |file| {
-    //     core_module.addCSourceFile(.{ .file = b.path(file), .flags = c_flags });
-    // }
+    const core_include_paths = [_][]const u8{
+        ".",
+        "libs",
+        ".vendor",
+        ".vendor/stb",
+        ".vendor/bc7",
+    };
+    const core_module = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    const core_sources = [_][]const u8{
+        "libs/core/arena.c",
+        "libs/core/string_span.c",
+        "libs/core/resources/image.c",
+    };
+    for (core_sources) |file| {
+        core_module.addCSourceFile(.{ .file = b.path(file), .flags = c_flags });
+    }
 
-    // for (core_include_paths) |path| {
-    //     core_module.addIncludePath(b.path(path));
-    // }
-    // const core_lib = b.addLibrary(.{
-    //     .linkage = .static,
-    //     .name = "engine",
-    //     .root_module = core_module,
-    // });
-    // b.installArtifact(core_lib);
+    for (core_include_paths) |path| {
+        core_module.addIncludePath(b.path(path));
+    }
+    const core_lib = b.addLibrary(.{
+        .linkage = .static,
+        .name = "core",
+        .root_module = core_module,
+    });
+    b.installArtifact(core_lib);
 
     //
     // MARK: Engine
@@ -81,8 +87,6 @@ pub fn build(b: *std.Build) void {
         "libs/engine/modules/graphics/vulkan/vk_gpu_allocator.c",
         "libs/engine/modules/graphics/vulkan/vk_pipeline.c",
         "libs/engine/modules/graphics/vulkan/vk_commands.c",
-
-        "libs/engine/modules/assets/image.c",
         "libs/engine/modules/assets/obj.c",
         "libs/engine/platform/sdl/sdl_backend.c",
     };
@@ -147,6 +151,11 @@ pub fn build(b: *std.Build) void {
         "libs/tools/parsers/asset_parser.c",
         "libs/tools/parsers/scene_parser.c",
         "libs/tools/importers/gltf_extract.c",
+        "libs/tools/cooker/parsers/common_source_parser.c",
+        "libs/tools/cooker/world_src.c",
+        "libs/tools/cooker/parsers/layer_source_parser.c",
+        "libs/tools/cooker/cooker.c",
+        "libs/tools/cooker/ibl_processor.c",
     };
 
     for (tools_sources) |file| {
@@ -203,6 +212,7 @@ pub fn build(b: *std.Build) void {
         game_mod.addObjectFile(b.path(sdl_path ++ "/lib/libSDL3.dll.a"));
     }
 
+    game_mod.linkLibrary(core_lib);
     game_mod.linkLibrary(engine_lib);
     b.installArtifact(game_exe);
 
@@ -281,6 +291,7 @@ pub fn build(b: *std.Build) void {
         cooker_mod.addObjectFile(b.path(sdl_path ++ "/lib/libSDL3.dll.a"));
     }
 
+    cooker_mod.linkLibrary(core_lib);
     cooker_mod.linkLibrary(engine_lib);
     cooker_mod.linkLibrary(tools_lib);
     b.installArtifact(cooker_exe);

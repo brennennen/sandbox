@@ -4,15 +4,12 @@
 #include "bc7/bc7enc.h"
 #define CGLTF_IMPLEMENTATION
 #include "cgltf.h"
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-#define STB_IMAGE_RESIZE_IMPLEMENTATION
-#include "stb_image_resize2.h"
 
 #include "engine/core/logger.h"
 #include "engine/core/math/mat4.h"
 #include "engine/platform/platform.h"
 #include "gltf_baker.h"
+#include "libs/core/resources/image.h"
 #include "shared/scene_types.h"
 #include "tools/core/mesh_utilities.h"
 
@@ -406,7 +403,7 @@ static bool try_load_from_cache(
     int w;
     int h;
     int channels;
-    stbi_info_from_memory(src_data, compressed_size, &w, &h, &channels);
+    image_info_from_memory(src_data, compressed_size, &w, &h, &channels);
 
     uint32_t max_dim    = (w > h) ? w : h;
     uint32_t mip_levels = (uint32_t)(floorf(log2f((float)max_dim))) + 1;
@@ -436,7 +433,7 @@ static void build_and_cache_texture(
     uint32_t      tex_idx
 ) {
     int      w, h, channels;
-    stbi_uc* raw_pixels = stbi_load_from_memory(src_data, compressed_size, &w, &h, &channels, 4);
+    uint8_t* raw_pixels = image_load_from_memory(src_data, compressed_size, &w, &h, &channels, 4);
     if (!raw_pixels) {
         log_error("Failed to decode raw image data for texture %d", tex_idx);
         return;
@@ -504,8 +501,8 @@ static void build_and_cache_texture(
             uint32_t next_h          = (mip_h > 1) ? mip_h / 2 : 1;
             uint8_t* next_mip_pixels = malloc(next_w * next_h * 4);
 
-            stbir_resize_uint8_linear(
-                current_mip_pixels, mip_w, mip_h, 0, next_mip_pixels, next_w, next_h, 0, STBIR_RGBA
+            image_resize_uint8_linear(
+                current_mip_pixels, mip_w, mip_h, 0, next_mip_pixels, next_w, next_h, 0, IMAGE_RGBA
             );
 
             if (current_mip_pixels != raw_pixels)
@@ -519,7 +516,7 @@ static void build_and_cache_texture(
 
     if (current_mip_pixels != raw_pixels)
         free(current_mip_pixels);
-    stbi_image_free(raw_pixels);
+    image_free(raw_pixels);
 
     FILE* write_cache = fopen(cache_path, "wb");
     if (write_cache) {

@@ -8,26 +8,11 @@
 #include "engine/core/math/mat4.h"
 
 #include "gltf_baker.h"
+#include "parser_source_types.h"
 #include "scene_parser.h"
 
-typedef enum {
-    TOK_EOF,
-    TOK_ERROR,
-    TOK_LBRACE,
-    TOK_RBRACE,
-    TOK_IDENTIFIER,
-    TOK_STRING,
-    TOK_NUMBER
-} token_type_t;
-
-typedef struct {
-    token_type_t type;
-    char         string_value[256];
-    float        float_value;
-} token_t;
-
-static token_t get_next_token(const char** cursor) {
-    token_t token = {0};
+static token_old_t get_next_token(const char** cursor) {
+    token_old_t token = {0};
 
     while (true) {
         while (isspace(**cursor))
@@ -42,22 +27,22 @@ static token_t get_next_token(const char** cursor) {
     }
 
     if (**cursor == '\0') {
-        token.type = TOK_EOF;
+        token.type = TOK_OLD_EOF;
         return token;
     }
     if (**cursor == '{') {
-        token.type = TOK_LBRACE;
+        token.type = TOK_OLD_LBRACE;
         (*cursor)++;
         return token;
     }
     if (**cursor == '}') {
-        token.type = TOK_RBRACE;
+        token.type = TOK_OLD_RBRACE;
         (*cursor)++;
         return token;
     }
 
     if (**cursor == '"') {
-        token.type = TOK_STRING;
+        token.type = TOK_OLD_STRING;
         (*cursor)++;
         int i = 0;
         while (**cursor != '"' && **cursor != '\0' && i < 255) {
@@ -70,7 +55,7 @@ static token_t get_next_token(const char** cursor) {
     }
 
     if (isalpha(**cursor) || **cursor == '_') {
-        token.type = TOK_IDENTIFIER;
+        token.type = TOK_OLD_IDENTIFIER;
         int i      = 0;
         while ((isalnum(**cursor) || **cursor == '_') && i < 255) {
             token.string_value[i++] = *(*cursor)++;
@@ -80,7 +65,7 @@ static token_t get_next_token(const char** cursor) {
     }
 
     if (isdigit(**cursor) || **cursor == '-' || **cursor == '.') {
-        token.type = TOK_NUMBER;
+        token.type = TOK_OLD_NUMBER;
         char num_str[64];
         int  i = 0;
         while ((isdigit(**cursor) || **cursor == '-' || **cursor == '.') && i < 63) {
@@ -91,11 +76,11 @@ static token_t get_next_token(const char** cursor) {
         return token;
     }
 
-    token.type = TOK_ERROR;
+    token.type = TOK_OLD_ERROR;
     return token;
 }
 
-char* read_file_to_string(const char* filepath) {
+static char* read_file_to_string(const char* filepath) {
     FILE* f = fopen(filepath, "rb");
     if (!f)
         return NULL;
@@ -114,8 +99,8 @@ static void parse_include_statement(
     const char*   base_dir,
     scene_desc_t* out_scene
 ) {
-    token_t path_tok = get_next_token(cursor);
-    if (path_tok.type != TOK_STRING) {
+    token_old_t path_tok = get_next_token(cursor);
+    if (path_tok.type != TOK_OLD_STRING) {
         log_error("Expected string after 'Include'");
         return;
     }
@@ -133,13 +118,42 @@ static void parse_include_statement(
     }
 }
 
+static void parse_environment_statement_old(
+    const char**  cursor,
+    const char*   base_dir,
+    scene_desc_t* out_scene
+) {
+    token_old_t name_tok = get_next_token(cursor); // Gets "main env"
+    get_next_token(cursor);                        // Consumes the '{'
+
+    char full_hdri_path[512] = {0};
+
+    while (true) {
+        token_old_t inner_tok = get_next_token(cursor);
+        if (inner_tok.type == TOK_OLD_RBRACE)
+            break;
+
+        if (inner_tok.type == TOK_OLD_IDENTIFIER) {
+            if (strcmp(inner_tok.string_value, "Skybox") == 0) {
+                token_old_t path_tok = get_next_token(cursor);
+                snprintf(
+                    full_hdri_path, sizeof(full_hdri_path), "%s/%s", base_dir, path_tok.string_value
+                );
+            }
+            // else if (strcmp(inner_tok.string_value, "AmbientTint") == 0) { ... }
+        }
+    }
+
+    log_info("Baked Environment: %s (Skybox: %s)", name_tok.string_value, full_hdri_path);
+}
+
 static void parse_model_statement(
     const char**  cursor,
     const char*   base_dir,
     scene_desc_t* out_scene
 ) {
-    uint32_t model_id = (uint32_t)get_next_token(cursor).float_value;
-    token_t  path_tok = get_next_token(cursor);
+    uint32_t    model_id = (uint32_t)get_next_token(cursor).float_value;
+    token_old_t path_tok = get_next_token(cursor);
 
     char full_path[512];
     snprintf(full_path, sizeof(full_path), "%s/%s", base_dir, path_tok.string_value);
@@ -148,15 +162,15 @@ static void parse_model_statement(
     bool opt_z_up          = true;
 
     const char* saved_cursor = *cursor;
-    token_t     peek_tok     = get_next_token(cursor);
+    token_old_t peek_tok     = get_next_token(cursor);
 
-    if (peek_tok.type == TOK_LBRACE) {
+    if (peek_tok.type == TOK_OLD_LBRACE) {
         while (true) {
-            token_t inner_tok = get_next_token(cursor);
-            if (inner_tok.type == TOK_RBRACE)
+            token_old_t inner_tok = get_next_token(cursor);
+            if (inner_tok.type == TOK_OLD_RBRACE)
                 break;
 
-            if (inner_tok.type == TOK_IDENTIFIER) {
+            if (inner_tok.type == TOK_OLD_IDENTIFIER) {
                 if (strcmp(inner_tok.string_value, "UseFastTextures") == 0) {
                     opt_fast_textures = (strcmp(get_next_token(cursor).string_value, "true") == 0);
                 } else if (strcmp(inner_tok.string_value, "ZUp") == 0) {
@@ -180,7 +194,7 @@ static void parse_model_statement(
 }
 
 static void parse_entity_statement(const char** cursor, scene_desc_t* out_scene) {
-    token_t name_tok = get_next_token(cursor);
+    token_old_t name_tok = get_next_token(cursor);
     get_next_token(cursor); // Consume '{'
 
     pak_entity_t new_entity = {0};
@@ -191,11 +205,11 @@ static void parse_entity_statement(const char** cursor, scene_desc_t* out_scene)
     vec3_t scale = {1.0f, 1.0f, 1.0f};
 
     while (true) {
-        token_t inner_tok = get_next_token(cursor);
-        if (inner_tok.type == TOK_RBRACE)
+        token_old_t inner_tok = get_next_token(cursor);
+        if (inner_tok.type == TOK_OLD_RBRACE)
             break;
 
-        if (inner_tok.type == TOK_IDENTIFIER) {
+        if (inner_tok.type == TOK_OLD_IDENTIFIER) {
             if (strcmp(inner_tok.string_value, "ModelID") == 0) {
                 new_entity.model_id = (uint32_t)get_next_token(cursor).float_value;
             } else if (strcmp(inner_tok.string_value, "Position") == 0) {
@@ -240,21 +254,23 @@ bool parse_scene_file(const char* text, const char* base_dir, scene_desc_t* out_
     const char* cursor = text;
 
     while (true) {
-        token_t next = get_next_token(&cursor);
-        if (next.type == TOK_EOF) {
+        token_old_t next = get_next_token(&cursor);
+        if (next.type == TOK_OLD_EOF) {
             break;
         }
-        if (next.type == TOK_ERROR) {
+        if (next.type == TOK_OLD_ERROR) {
             log_error("LEXER ERROR: Unexpected character near '%.10s'", cursor);
             return false;
         }
-        if (next.type == TOK_IDENTIFIER) {
+        if (next.type == TOK_OLD_IDENTIFIER) {
             if (strcmp(next.string_value, "Include") == 0) {
                 parse_include_statement(&cursor, base_dir, out_scene);
             } else if (strcmp(next.string_value, "Model") == 0) {
                 parse_model_statement(&cursor, base_dir, out_scene);
             } else if (strcmp(next.string_value, "Entity") == 0) {
                 parse_entity_statement(&cursor, out_scene);
+            } else if (strcmp(next.string_value, "Environment") == 0) {
+                parse_environment_statement_old(&cursor, base_dir, out_scene);
             }
         }
     }

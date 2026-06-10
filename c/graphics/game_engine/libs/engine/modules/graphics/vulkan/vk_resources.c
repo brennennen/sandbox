@@ -3,7 +3,6 @@
 #include <string.h>
 
 #include "engine/core/logger.h"
-#include "engine/modules/assets/image.h"
 #include "math.h"
 #include "shared/scene_types.h"
 #include "vk_gpu_allocator.h"
@@ -51,6 +50,8 @@ static VkFormat get_vk_format(pak_texture_format_t pak_format) {
         return VK_FORMAT_BC7_UNORM_BLOCK;
     case PAK_TEX_FORMAT_BC7_SRGB:
         return VK_FORMAT_BC7_SRGB_BLOCK;
+    case PAK_TEX_FORMAT_RGBA32F:
+        return VK_FORMAT_R32G32B32A32_SFLOAT;
     default:
         log_warn("vulkan: Unknown pak texture format, defaulting to UNORM");
         return VK_FORMAT_R8G8B8A8_UNORM;
@@ -85,11 +86,17 @@ bool vk_create_texture(
     VkFormat tex_format = get_vk_format(format);
 
     uint32_t mips = (img->mip_levels > 0) ? img->mip_levels : 1;
+    // uint32_t mips = 1; // DEBUG hardcode all mips to 1
 
     VkImageCreateInfo image_info = {
-        .sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-        .imageType     = VK_IMAGE_TYPE_2D,
-        .extent        = {img->width, img->height, 1},
+        .sType     = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .imageType = VK_IMAGE_TYPE_2D,
+        .extent =
+            {
+                img->width,
+                img->height,
+                1,
+            },
         .mipLevels     = mips,
         .arrayLayers   = 1,
         .format        = tex_format,
@@ -99,6 +106,15 @@ bool vk_create_texture(
         .sharingMode   = VK_SHARING_MODE_EXCLUSIVE,
         .samples       = VK_SAMPLE_COUNT_1_BIT,
     };
+
+    if (img->is_cubemap) {
+        image_info.flags       = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+        image_info.arrayLayers = 6; // 6 faces of the cube
+    } else {
+        image_info.flags       = 0;
+        image_info.arrayLayers = 1;
+    }
+
     vkCreateImage(r->core.device, &image_info, NULL, &out_tex->image);
 
     VkMemoryRequirements mem_reqs;
@@ -118,30 +134,36 @@ bool vk_create_texture(
     );
 
     vk_transition_image_layout(
-        r, out_tex->image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mips
+        r,
+        out_tex->image,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        mips,
+        img->is_cubemap
     );
     vk_copy_buffer_to_image(
-        r, staging_buffer, out_tex->image, img->width, img->height, mips, format
+        r, staging_buffer, out_tex->image, img->width, img->height, mips, format, img->is_cubemap
     );
     vk_transition_image_layout(
         r,
         out_tex->image,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        mips
+        mips,
+        img->is_cubemap
     );
 
     VkImageViewCreateInfo view_info = {
         .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         .image            = out_tex->image,
-        .viewType         = VK_IMAGE_VIEW_TYPE_2D,
+        .viewType         = img->is_cubemap ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D,
         .format           = tex_format,
         .subresourceRange = {
-            VK_IMAGE_ASPECT_COLOR_BIT,
-            0,
-            mips,
-            0,
-            1,
+            .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel   = 0,
+            .levelCount     = mips,
+            .baseArrayLayer = 0,
+            .layerCount     = img->is_cubemap ? 6 : 1,
         }
     };
     if (vkCreateImageView(r->core.device, &view_info, NULL, &out_tex->view) != VK_SUCCESS)
@@ -149,12 +171,12 @@ bool vk_create_texture(
 
     VkSamplerCreateInfo sampler_info = {
         .sType        = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-        .magFilter    = VK_FILTER_LINEAR,
-        .minFilter    = VK_FILTER_LINEAR,
-        .mipmapMode   = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-        .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-        .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-        .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        .magFilter    = VK_FILTER_LINEAR,                      // VK_FILTER_NEAREST,
+        .minFilter    = VK_FILTER_LINEAR,                      // VK_FILTER_NEAREST,
+        .mipmapMode   = VK_SAMPLER_MIPMAP_MODE_LINEAR,         // VK_SAMPLER_MIPMAP_MODE_NEAREST,
+        .addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, // VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        .addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, // VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        .addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, // VK_SAMPLER_ADDRESS_MODE_REPEAT,
         .borderColor  = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
         .maxLod       = (float)mips,
         .mipLodBias   = 0.0f,
@@ -171,7 +193,8 @@ void vk_transition_image_layout(
     VkImage       image,
     VkImageLayout old_layout,
     VkImageLayout new_layout,
-    uint32_t      mip_levels
+    uint32_t      mip_levels,
+    bool          is_cubemap
 ) {
     VkCommandBufferAllocateInfo alloc_info = {
         .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -198,11 +221,11 @@ void vk_transition_image_layout(
         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .image               = image,
         .subresourceRange    = {
-            VK_IMAGE_ASPECT_COLOR_BIT,
-            0,
-            mip_levels,
-            0,
-            1,
+               .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+               .baseMipLevel   = 0,
+               .levelCount     = mip_levels,
+               .baseArrayLayer = 0,
+               .layerCount     = is_cubemap ? 6 : 1,
         },
     };
 
@@ -273,7 +296,8 @@ void vk_copy_buffer_to_image(
     uint32_t             width,
     uint32_t             height,
     uint32_t             mip_levels,
-    pak_texture_format_t format
+    pak_texture_format_t format,
+    bool                 is_cubemap
 ) {
     VkCommandBufferAllocateInfo alloc_info = {
         .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -294,6 +318,14 @@ void vk_copy_buffer_to_image(
 
     bool is_bc7 = (format == PAK_TEX_FORMAT_BC7_UNORM || format == PAK_TEX_FORMAT_BC7_SRGB);
 
+    uint32_t layer_count     = is_cubemap ? 6 : 1;
+    uint32_t bytes_per_pixel = 4; // Default to RGBA8
+    if (format == PAK_TEX_FORMAT_RGBA32F) {
+        bytes_per_pixel = 16;
+    } else if (format == PAK_TEX_FORMAT_R8_UNORM) {
+        bytes_per_pixel = 1;
+    }
+
     VkBufferImageCopy regions[16];
     uint32_t          current_offset = 0;
     uint32_t          mip_w          = width;
@@ -304,18 +336,35 @@ void vk_copy_buffer_to_image(
             .bufferOffset      = current_offset,
             .bufferRowLength   = 0,
             .bufferImageHeight = 0,
-            .imageSubresource  = {VK_IMAGE_ASPECT_COLOR_BIT, i, 0, 1},
-            .imageOffset       = {0, 0, 0},
-            .imageExtent       = {mip_w, mip_h, 1},
+            .imageSubresource =
+                {
+                    .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+                    .mipLevel       = i,
+                    .baseArrayLayer = 0,
+                    .layerCount     = layer_count,
+                },
+            .imageOffset =
+                {
+                    0,
+                    0,
+                    0,
+                },
+            .imageExtent = {
+                mip_w,
+                mip_h,
+                1,
+            },
         };
 
+        uint32_t mip_layer_size = 0;
         if (is_bc7) {
             uint32_t blocks_x = (mip_w + 3) / 4;
             uint32_t blocks_y = (mip_h + 3) / 4;
             current_offset += blocks_x * blocks_y * 16;
         } else {
-            current_offset += mip_w * mip_h * 4;
+            mip_layer_size = mip_w * mip_h * bytes_per_pixel;
         }
+        current_offset += mip_layer_size * layer_count;
 
         mip_w = (mip_w > 1) ? mip_w / 2 : 1;
         mip_h = (mip_h > 1) ? mip_h / 2 : 1;

@@ -1,8 +1,8 @@
-#ifndef GRAPHICS_H
-#define GRAPHICS_H
+#pragma once
+
+#include "libs/core/resources/image.h"
 
 #include "engine/core/camera.h"
-#include "engine/modules/assets/image.h"
 #include "engine/modules/graphics/graphics_types.h"
 #include "engine/platform/platform.h"
 #include "shared/math_types.h"
@@ -95,7 +95,8 @@ void graphics_draw(
     bool                   is_culling_frozen,
     draw_mode_t            draw_mode,
     render_object_t*       objects,
-    uint32_t               object_count
+    uint32_t               object_count,
+    texture_handle_t       skybox_texture
 );
 
 void graphics_destroy(graphics_t* graphics);
@@ -104,4 +105,9 @@ void graphics_update_debug_frustum(graphics_t* r, mat4_t inv_vp);
 
 void graphics_wait_idle(graphics_t* graphics);
 
-#endif
+void graphics_update_global_environment(
+    graphics_t*      graphics,
+    texture_handle_t skybox_tex,
+    texture_handle_t irradiance_tex,
+    texture_handle_t prefiltered_tex
+);

@@ -1,7 +1,7 @@
-#ifndef VK_RESOURCES_H
-#define VK_RESOURCES_H
+#pragma once
 
-#include "engine/modules/assets/image.h"
+#include "libs/core/resources/image.h"
+
 #include "shared/scene_types.h"
 
 #include "scene_types.h"
@@ -31,7 +31,8 @@ void vk_transition_image_layout(
     VkImage       image,
     VkImageLayout old_layout,
     VkImageLayout new_layout,
-    uint32_t      mip_levels
+    uint32_t      mip_levels,
+    bool          is_cubemap
 );
 
 void vk_copy_buffer_to_image(
@@ -41,7 +42,8 @@ void vk_copy_buffer_to_image(
     uint32_t             width,
     uint32_t             height,
     uint32_t             mip_levels,
-    pak_texture_format_t format
+    pak_texture_format_t format,
+    bool                 is_cubemap
 );
 
 VkBuffer vk_create_static_buffer(
@@ -50,5 +52,3 @@ VkBuffer vk_create_static_buffer(
     VkDeviceSize       size,
     VkBufferUsageFlags usage
 );
-
-#endif

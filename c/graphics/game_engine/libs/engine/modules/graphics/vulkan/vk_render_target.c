@@ -57,8 +57,8 @@ static bool create_render_target_attachment(
 
     VkSamplerCreateInfo sampler_info = {
         .sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-        .magFilter               = VK_FILTER_LINEAR,
-        .minFilter               = VK_FILTER_LINEAR,
+        .magFilter               = VK_FILTER_NEAREST, // VK_FILTER_LINEAR,
+        .minFilter               = VK_FILTER_NEAREST, // VK_FILTER_LINEAR,
         .addressModeU            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
         .addressModeV            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
         .addressModeW            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
@@ -67,7 +67,7 @@ static bool create_render_target_attachment(
         .unnormalizedCoordinates = VK_FALSE,
         .compareEnable           = VK_FALSE,
         .compareOp               = VK_COMPARE_OP_ALWAYS,
-        .mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+        .mipmapMode              = VK_SAMPLER_MIPMAP_MODE_NEAREST, // VK_SAMPLER_MIPMAP_MODE_LINEAR,
     };
 
     if (vkCreateSampler(graphics->core.device, &sampler_info, NULL, &out_tex->sampler) !=

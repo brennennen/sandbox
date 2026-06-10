@@ -17,6 +17,9 @@ layout(set = 0, binding = 0) uniform UBO {
 layout(set = 1, binding = 0) uniform sampler2D texSampler;
 layout(set = 1, binding = 1) uniform sampler2D normalMapSampler;
 layout(set = 1, binding = 2) uniform sampler2D ao_roughness_metallic_sampler; // AO = red, Roughness = green, Metallic = blue
+layout(set = 0, binding = 2) uniform samplerCube irradiance_map;
+layout(set = 0, binding = 3) uniform samplerCube prefiltered_map;
+// layout(set = 0, binding = 3) uniform sampler2D brdfLUT;
 
 layout(push_constant) uniform PushConstants {
     mat4 transform;
@@ -29,6 +32,11 @@ layout(push_constant) uniform PushConstants {
 const float roughness_strength = 1.0;
 
 const float PI = 3.14159265359;
+
+// ratio of reflected light vs refracted light
+vec3 fresnel_schlick_roughness(float cos_theta, vec3 F0, float roughness) {
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cos_theta, 0.0, 1.0), 5.0);
+}
 
 void main() {
     vec3 finalNormal;
@@ -58,32 +66,37 @@ void main() {
         finalNormal = normalize(TBN * normalTex);
     }
 
-    vec3 ambient = vec3(0.25);
-    vec3 keyDir = normalize(vec3(1.0, -1.5, 1.0));
-    vec3 keyColor = vec3(1.0, 0.95, 0.9);
-    float keyDiff = max(dot(finalNormal, keyDir), 0.0);
-
-    vec3 fillDir = normalize(vec3(-1.0, 0.5, -1.0));
-    vec3 fillColor = vec3(0.8, 0.85, 1.0);
-    float fillDiff = max(dot(finalNormal, fillDir), 0.0) * 0.4;
-
     vec3 camera_pos = ubo.camera_pos.xyz;
-    vec3 view_dir = normalize(camera_pos - fragPos); // direction from the pixel to the camera lens
-    vec3 halfwayDir = normalize(keyDir + view_dir); // halfway vector between light and camera
+    vec3 V = normalize(camera_pos - fragPos); // View vector
+    vec3 N = finalNormal;                     // Normal vector
+    vec3 R = reflect(-V, N);                  // Reflection vector
 
-    float shininess = exp2(10.0 * (1.0 - roughness) + 1.0); // map roughness to shininess
-    float specular = pow(max(dot(finalNormal, halfwayDir), 0.0), shininess); // how much light bounces off normal surface into camera
-    float energy_conservation = (shininess + 8.0) / (8.0 * PI); // smaller highlights become brighter
+    // base reflectivity
+    vec3 F0 = vec3(0.04);
+    F0 = mix(F0, texColor.rgb, metallic);
+    float NdotV = max(dot(N, V), 0.0001); // Prevent division by zero later
 
-    vec3 raw_diffuse_light = ambient + (keyColor * keyDiff) + (fillColor * fillDiff);
-    vec3 final_diffuse = texColor.rgb * raw_diffuse_light * (1.0 - metallic);
-    vec3 specular_tint = mix(vec3(0.04), texColor.rgb, metallic);
-    vec3 final_specular = keyColor * specular * specular_tint * energy_conservation;
-    vec3 ambient_specular = ambient * specular_tint; // fake environment reflection so metals aren't black
+    // irradiance
+    vec3 irradiance = texture(irradiance_map, N).rgb;
+    vec3 F = fresnel_schlick_roughness(NdotV, F0, roughness);
 
-    vec3 ambientLight = vec3(0.03) * texColor.rgb * ao;
+    // refraction
+    vec3 kS = F;
+    vec3 kD = 1.0 - kS;
+    kD *= 1.0 - metallic; // Metals absorb all refracted light
+    vec3 diffuse = irradiance * texColor.rgb;
 
-    outColor = vec4(final_diffuse + final_specular + ambient_specular + ambientLight, texColor.a);
+    // specular ibl
+    const float MAX_REFLECTION_LOD = 4.0; // needs to match cooked mipmap levels
+    vec3 prefilteredColor = textureLod(prefiltered_map, R, roughness * MAX_REFLECTION_LOD).rgb;
+    // mock BRDF LUT
+    vec2 envBRDF = vec2(
+        pow(1.0 - max(roughness, 0.04), 4.0), // Scale
+        0.04                                  // Bias
+    );
+    vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
+    vec3 ambient = (kD * diffuse + specular) * ao;
+    outColor = vec4(ambient, texColor.a);
 
     // debug traps
     if (isnan(fragPos.x) || isnan(fragPos.y) || isnan(fragPos.z)) {
@@ -95,7 +108,7 @@ void main() {
     else if (length(camera_pos - fragPos) < 0.00001) {
         outColor = vec4(0.0, 0.0, 1.0, 1.0); // blue - under geo
     }
-    else if (isnan(view_dir.x) || isnan(view_dir.y) || isnan(view_dir.z)) {
-        outColor = vec4(1.0, 1.0, 0.0, 1.0); // yellow - misc
-    }
+    // else if (isnan(view_dir.x) || isnan(view_dir.y) || isnan(view_dir.z)) {
+    //     outColor = vec4(1.0, 1.0, 0.0, 1.0); // yellow - misc
+    // }
 }

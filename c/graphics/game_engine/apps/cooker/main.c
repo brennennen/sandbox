@@ -6,6 +6,7 @@
 
 #include "engine/core/logger.h"
 #include "shared/scene_types.h"
+#include "tools/cooker/cooker.h"
 #include "tools/core/tools_core.h"
 #include "tools/parsers/scene_parser.h"
 
@@ -30,6 +31,20 @@ static void extract_base_dir(const char* input_file, char* base_dir, size_t max_
     }
 }
 
+static char* read_file_to_string(const char* filepath) {
+    FILE* f = fopen(filepath, "rb");
+    if (!f)
+        return NULL;
+    fseek(f, 0, SEEK_END);
+    long length = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    char* buffer = malloc(length + 1);
+    fread(buffer, 1, length, f);
+    buffer[length] = '\0';
+    fclose(f);
+    return buffer;
+}
+
 static int64_t write_pak_file(const char* output_file, scene_desc_t* flattened_scene) {
     FILE* pak = fopen(output_file, "wb");
     if (!pak) {
@@ -48,8 +63,8 @@ static int64_t write_pak_file(const char* output_file, scene_desc_t* flattened_s
         .index_count   = flattened_scene->index_count,
         .texture_count = flattened_scene->texture_count
     };
-
     fwrite(&chunk, sizeof(pak_chunk_header_t), 1, pak);
+    fwrite(&flattened_scene->environment, sizeof(environment_desc_t), 1, pak);
     fwrite(flattened_scene->entities, sizeof(pak_entity_t), chunk.entity_count, pak);
     fwrite(flattened_scene->meshes, sizeof(pak_mesh_t), chunk.mesh_count, pak);
     fwrite(flattened_scene->vertices, sizeof(pak_vertex_t), chunk.vertex_count, pak);
@@ -89,58 +104,11 @@ int main(int argc, char** argv) {
     const char* input_file  = argv[1];
     const char* output_file = argv[2];
 
-    char* world_text = read_file_to_string(input_file);
-    if (!world_text) {
-        log_error("Failed to read input file.");
-        return 1;
-    }
-
-    char base_dir[512];
-    extract_base_dir(input_file, base_dir, sizeof(base_dir));
-
-    scene_desc_t* flattened_scene = calloc(1, sizeof(scene_desc_t));
-    if (!flattened_scene) {
-        log_error("Out of memory!");
-        free(world_text);
-        return 1;
-    }
-
-    parse_scene_file(world_text, base_dir, flattened_scene);
-    free(world_text);
-
-    log_info("Writing Bulk Data to %s...", output_file);
-    int64_t pak_size_bytes = write_pak_file(output_file, flattened_scene);
-
-    if (pak_size_bytes < 0) {
-        free(flattened_scene);
-        return 1;
-    }
-
-    uint32_t meshes_with_orm_maps = 0;
-    for (uint32_t i = 0; i < flattened_scene->mesh_count; i++) {
-        if (flattened_scene->meshes[i].ao_roughness_metallic_texture_id != -1) {
-            meshes_with_orm_maps++;
-        }
-    }
-
-    clock_t end_time         = clock();
-    double  duration_seconds = (double)(end_time - start_time) / CLOCKS_PER_SEC;
-    double  pak_size_mb      = (double)pak_size_bytes / (1024.0 * 1024.0);
-
-    log_info("========================================");
-    log_info("COOKING COMPLETE!");
-    log_info("Time Elapsed:    %.2f seconds", duration_seconds);
-    log_info("Final PAK Size:  %.2f MB", pak_size_mb);
-    log_info("----------------------------------------");
-    log_info("Entities Baked:  %u", flattened_scene->entity_count);
-    log_info("Meshes Baked:    %u", flattened_scene->mesh_count);
-    log_info("Textures Baked:  %u", flattened_scene->texture_count);
-    log_info("Total Vertices:  %u", flattened_scene->vertex_count);
-    log_info("Total Indices:   %u", flattened_scene->index_count);
-    log_info("----------------------------------------");
-    log_info("ORM Maps Applied: %u / %u meshes", meshes_with_orm_maps, flattened_scene->mesh_count);
-    log_info("========================================");
-
-    free(flattened_scene);
+    // new:
+    void*   build_memory = malloc(1024 * 1024 * 1024);
+    arena_t build_arena;
+    arena_init(&build_arena, build_memory, 1024 * 1024 * 1024);
+    cook_world(&build_arena, input_file, output_file);
     return 0;
+
 }

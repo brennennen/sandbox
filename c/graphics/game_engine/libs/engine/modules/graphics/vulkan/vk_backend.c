@@ -9,7 +9,6 @@
 #include "engine/core/frustum.h"
 #include "engine/core/logger.h"
 #include "engine/core/math/mat4.h"
-#include "engine/modules/assets/image.h"
 #include "engine/modules/assets/obj.h"
 #include "engine/modules/graphics/debug/debug_grid.h"
 #include "engine/modules/graphics/graphics.h"
@@ -966,10 +965,10 @@ static void execute_post_process_pass(
             .dstAccessMask    = VK_ACCESS_SHADER_READ_BIT,
         },
         {
-            .sType     = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-            .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            .image     = graphics->display.images[image_index],
+            .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .oldLayout        = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .image            = graphics->display.images[image_index],
             .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1},
             .srcAccessMask    = 0,
             .dstAccessMask    = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
@@ -1053,7 +1052,8 @@ void graphics_draw(
     bool                   is_culling_frozen,
     draw_mode_t            draw_mode,
     render_object_t*       objects,
-    uint32_t               object_count
+    uint32_t               object_count,
+    texture_handle_t       skybox_texture
 ) {
     assert(is_matrix_valid(&view) && "CRASH: NaN detected in View Matrix entering graphics_draw!");
     assert(is_matrix_valid(&culling_view_proj) && "CRASH: NaN detected in Culling Matrix!");
@@ -1247,4 +1247,70 @@ void graphics_draw(
     // );
 
     end_frame(graphics, (uint32_t)image_index);
+}
+
+void graphics_update_global_environment(
+    graphics_t*      graphics,
+    texture_handle_t skybox_tex,
+    texture_handle_t irradiance_tex,
+    texture_handle_t prefiltered_tex
+) {
+    if (skybox_tex.id == GRAPHICS_INVALID_HANDLE || irradiance_tex.id == GRAPHICS_INVALID_HANDLE ||
+        prefiltered_tex.id == GRAPHICS_INVALID_HANDLE) {
+        return;
+    }
+
+    vk_texture_t* vk_skybox = &graphics->assets.textures[skybox_tex.id];
+    vk_texture_t* vk_irr    = &graphics->assets.textures[irradiance_tex.id];
+    vk_texture_t* vk_pref   = &graphics->assets.textures[prefiltered_tex.id];
+
+    VkDescriptorImageInfo skybox_info = {
+        .sampler     = vk_skybox->sampler,
+        .imageView   = vk_skybox->view,
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+    };
+
+    VkDescriptorImageInfo irradiance_info = {
+        .sampler     = vk_irr->sampler,
+        .imageView   = vk_irr->view,
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+    };
+
+    VkDescriptorImageInfo prefilter_info = {
+        .sampler     = vk_pref->sampler,
+        .imageView   = vk_pref->view,
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+    };
+
+    for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++) {
+        VkWriteDescriptorSet descriptor_writes[3] = {0};
+
+        descriptor_writes[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptor_writes[0].dstSet          = graphics->frames[i].global_descriptor_set;
+        descriptor_writes[0].dstBinding      = 1;
+        descriptor_writes[0].dstArrayElement = 0;
+        descriptor_writes[0].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptor_writes[0].descriptorCount = 1;
+        descriptor_writes[0].pImageInfo      = &skybox_info;
+
+        descriptor_writes[1].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptor_writes[1].dstSet          = graphics->frames[i].global_descriptor_set;
+        descriptor_writes[1].dstBinding      = 2;
+        descriptor_writes[1].dstArrayElement = 0;
+        descriptor_writes[1].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptor_writes[1].descriptorCount = 1;
+        descriptor_writes[1].pImageInfo      = &irradiance_info;
+
+        descriptor_writes[2].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptor_writes[2].dstSet          = graphics->frames[i].global_descriptor_set;
+        descriptor_writes[2].dstBinding      = 3;
+        descriptor_writes[2].dstArrayElement = 0;
+        descriptor_writes[2].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptor_writes[2].descriptorCount = 1;
+        descriptor_writes[2].pImageInfo      = &prefilter_info;
+
+        vkUpdateDescriptorSets(graphics->core.device, 3, descriptor_writes, 0, NULL);
+    }
+
+    log_info("Global Environment Descriptor Updated with IBL maps.");
 }

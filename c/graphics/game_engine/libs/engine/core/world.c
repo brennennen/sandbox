@@ -2,11 +2,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "engine/core/logger.h"
 #include "engine/core/vfs.h"
 #include "engine/core/world.h"
-#include "engine/modules/assets/image.h"
 #include "shared/pak_format.h"
 #include "shared/scene_types.h"
 
@@ -73,18 +73,16 @@ bool world_load_chunk(uint32_t chunk_id) {
 }
 
 bool world_load_texture_image(uint32_t tex_idx, image_t* out_img) {
-    if (tex_idx >= loaded_texture_count)
-        return false;
-
-    pak_texture_t* info = &loaded_textures[tex_idx];
-
-    uint64_t junk_offset;
-    FILE*    file = vfs_open_chunk(0, &junk_offset);
-    if (!file) {
+    if (tex_idx >= loaded_texture_count) {
         return false;
     }
 
-    fseek(file, info->byte_offset, SEEK_SET);
+    pak_texture_t* info = &loaded_textures[tex_idx];
+
+    void* raw_pak_bytes = vfs_read_bytes(info->byte_offset, info->byte_size);
+    if (!raw_pak_bytes) {
+        return false;
+    }
 
     out_img->width      = info->width;
     out_img->height     = info->height;
@@ -95,25 +93,19 @@ bool world_load_texture_image(uint32_t tex_idx, image_t* out_img) {
     if (info->format == PAK_TEX_FORMAT_RGBA8_UNORM || info->format == PAK_TEX_FORMAT_RGBA8_SRGB ||
         info->format == PAK_TEX_FORMAT_R8_UNORM || info->format == PAK_TEX_FORMAT_BC7_UNORM ||
         info->format == PAK_TEX_FORMAT_BC7_SRGB) {
-
-        out_img->size   = info->byte_size;
-        out_img->pixels = malloc(info->byte_size);
-        fread(out_img->pixels, 1, info->byte_size, file);
+        out_img->pixels = raw_pak_bytes;
         return true;
     } else if (info->format == PAK_TEX_FORMAT_PNG_UNORM ||
                info->format == PAK_TEX_FORMAT_PNG_SRGB) {
-        uint8_t* compressed_buffer = malloc(info->byte_size);
-        fread(compressed_buffer, 1, info->byte_size, file);
-        bool success  = image_load_from_memory(compressed_buffer, info->byte_size, out_img);
-        out_img->size = info->byte_size;
+        bool success = image_load_from_memory2(raw_pak_bytes, info->byte_size, out_img);
         if (success) {
-            // out_img->size = out_img->width * out_img->height * 4;
             out_img->size = (size_t)out_img->width * (size_t)out_img->height *
                             (size_t)out_img->channels;
         }
-        free(compressed_buffer);
+        free(raw_pak_bytes);
         return success;
     }
     log_warn("world: Unrecognized texture format %d at index %d", info->format, tex_idx);
+    free(raw_pak_bytes);
     return false;
 }

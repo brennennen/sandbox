@@ -22,8 +22,15 @@ static texture_handle_t default_tex;
 static texture_handle_t default_normal_tex;
 static texture_handle_t default_ao_metallic_roughness_tex;
 
-static bool init_core_subsystems(game_engine_t* engine) {
-    engine->platform = platform_create("Game Engine", 800, 600);
+static bool init_core_subsystems(
+    game_engine_t*             engine,
+    game_engine_init_config_t* engine_init_config
+) {
+    engine->platform = platform_create(
+        engine_init_config->window_title,
+        engine_init_config->window_width,
+        engine_init_config->window_height
+    );
     if (!engine->platform) {
         return false;
     }
@@ -34,7 +41,7 @@ static bool init_core_subsystems(game_engine_t* engine) {
     graphics_config_t graphics_config = {
         .width        = window_width,
         .height       = window_height,
-        .app_name     = "Game Engine",
+        .app_name     = engine_init_config->window_title,
         .present_mode = PRESENT_MODE_IMMEDIATE,
     };
 
@@ -105,7 +112,7 @@ static void load_geometry_from_pak(game_engine_t* engine, world_pak_t* header, v
     pak_texture_t* loaded_textures = (pak_texture_t*)((uint8_t*)raw_pak_data +
                                                       header->texture_offset);
 
-    texture_handle_t gpu_textures[256];
+    texture_handle_t gpu_textures[1024];
     for (uint32_t t = 0; t < header->texture_count; t++) {
         pak_texture_t* tex_def = &loaded_textures[t];
         image_t        img     = {
@@ -174,30 +181,21 @@ static void load_geometry_from_pak(game_engine_t* engine, world_pak_t* header, v
     }
 }
 
-bool game_engine_init(game_engine_t* game_engine) {
+bool game_engine_init(game_engine_t* game_engine, game_engine_init_config_t* engine_init_config) {
     log_info("Initializing engine...");
-    if (!init_core_subsystems(game_engine)) {
+    if (!init_core_subsystems(game_engine, engine_init_config)) {
         log_error("Failed to initialize core subsystems.");
         return false;
     }
     init_default_textures(game_engine);
 
-    // if (!vfs_mount_archive("./../../.assets/render_tests.pak")) {
-    //     log_error("Failed to mount base game archive!");
-    // }
-    // if (!vfs_mount_archive("./../../.assets/sponza.pak")) {
-    //     log_error("Failed to mount base game archive!");
-    // }
-    if (!vfs_mount_archive("./../../.assets/test_zone.pak")) {
+    if (!vfs_mount_archive(engine_init_config->initial_pak_path)) {
         log_error("Failed to mount base game archive!");
     }
-    // if (!vfs_mount_archive("./../../.assets/test_skybox_zone.pak")) {
-    //     log_error("Failed to mount base game archive!");
-    // }
+
     game_engine->active_scene_type = SCENE_STATIC_LEVEL;
 
-    void* raw_pak_data = vfs_get_mounted_archive_pointer("./../../.assets/test_zone.pak");
-    // void* raw_pak_data = vfs_get_mounted_archive_pointer("./../../.assets/test_skybox_zone.pak");
+    void* raw_pak_data = vfs_get_mounted_archive_pointer(engine_init_config->initial_pak_path);
     if (raw_pak_data) {
         world_pak_t*   header     = (world_pak_t*)raw_pak_data;
         texture_pak_t* skybox_def = &header->environment.skybox_cubemap;

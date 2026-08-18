@@ -29,6 +29,7 @@ pub fn build(b: *std.Build) void {
         "libs/core/arena.c",
         "libs/core/string_span.c",
         "libs/core/resources/image.c",
+        "libs/core/resources/compressed_texture.c",
     };
     for (core_sources) |file| {
         core_module.addCSourceFile(.{ .file = b.path(file), .flags = c_flags });
@@ -305,6 +306,48 @@ pub fn build(b: *std.Build) void {
 
     const cook_step = b.step("cook", "Run the level cooker");
     cook_step.dependOn(&run_cooker_cmd.step);
+
+    //
+    // MARK: PAK Validator
+    //
+    const pak_validator_mod = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+
+    pak_validator_mod.addCSourceFile(.{ .file = b.path("apps/pak_validator/main.c"), .flags = c_flags });
+
+    for (include_paths) |path| {
+        pak_validator_mod.addIncludePath(b.path(path));
+    }
+
+    const pak_validator_exe = b.addExecutable(.{
+        .name = "cooker",
+        .root_module = pak_validator_mod,
+    });
+
+    if (target.result.os.tag == .windows) {
+        pak_validator_mod.addIncludePath(b.path(".vendor/Vulkan/include"));
+        const sdl_path = ".vendor/SDL3-3.4.0/x86_64-w64-mingw32";
+        pak_validator_mod.addIncludePath(b.path(sdl_path ++ "/include"));
+        pak_validator_mod.addObjectFile(b.path(sdl_path ++ "/lib/libSDL3.dll.a"));
+    }
+
+    pak_validator_mod.linkLibrary(core_lib);
+    pak_validator_mod.linkLibrary(engine_lib);
+    pak_validator_mod.linkLibrary(tools_lib);
+    b.installArtifact(pak_validator_exe);
+
+    const run_pak_validator_cmd = b.addRunArtifact(pak_validator_exe);
+    run_pak_validator_cmd.step.dependOn(b.getInstallStep());
+
+    if (b.args) |args| {
+        run_pak_validator_cmd.addArgs(args);
+    }
+
+    const pak_validate_step = b.step("pak_validate", "Validate a pak file.");
+    pak_validate_step.dependOn(&run_pak_validator_cmd.step);
 
     //
     // MARK: Shaders

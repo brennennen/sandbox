@@ -48,6 +48,7 @@ void main() {
 
     vec4 ao_roughness_metallic_sample = texture(ao_roughness_metallic_sampler, fragUV);
     float ao = ao_roughness_metallic_sample.r;
+    //float ao = 1.0;
     float roughness = max(ao_roughness_metallic_sample.g * pc.roughness_factor, 0.04) * roughness_strength;
     float metallic = ao_roughness_metallic_sample.b * pc.metallic_factor;
 

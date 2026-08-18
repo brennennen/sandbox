@@ -159,11 +159,11 @@ bool process_ibl_textures(
         log_error("CRITICAL: Cubemap generation resulted in an all-black texture!");
     }
 
-    log_info("Dumping Face 0 to debug_face_0.hdr...");
+    // log_info("Dumping Face 0 to debug_face_0.hdr...");
     // stbi_write_hdr("debug_face_0.hdr", cube_size, cube_size, 4, temp_cubemap);
 
-    log_info("Dumping Face 1 to debug_face_1.hdr...");
-    float* face_1_ptr = temp_cubemap + (cube_size * cube_size * 4);
+    // log_info("Dumping Face 1 to debug_face_1.hdr...");
+    // float* face_1_ptr = temp_cubemap + (cube_size * cube_size * 4);
     // stbi_write_hdr("debug_face_1.hdr", cube_size, cube_size, 4, face_1_ptr);
 
     void* skybox_dest                       = arena_push_aligned(pak_arena, cube_byte_size, 16);

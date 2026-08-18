@@ -203,6 +203,159 @@ void platform_thread_wait(platform_thread_t thread) {
     }
 }
 
+// MARK: Files/Directories/Paths
+void platform_create_directory(string_span_t path) {
+    if (path.length == 0 || path.length >= 512) {
+        return;
+    }
+
+    char c_path[512];
+    memcpy(c_path, path.data, path.length);
+    c_path[path.length] = '\0';
+
+    if (!SDL_CreateDirectory(c_path)) {
+        log_warn("Failed to create directory: %s (SDL Error: %s)", c_path, SDL_GetError());
+    }
+}
+
+platform_file_t platform_file_open_read(const char* filepath) {
+    return (platform_file_t)SDL_IOFromFile(filepath, "rb");
+}
+
+platform_file_t platform_file_open_write(const char* filepath) {
+    return (platform_file_t)SDL_IOFromFile(filepath, "wb");
+}
+
+void platform_file_close(platform_file_t file) {
+    if (file) {
+        SDL_CloseIO((SDL_IOStream*)file);
+    }
+}
+
+uint64_t platform_file_size(platform_file_t file) {
+    if (!file)
+        return 0;
+    return (uint64_t)SDL_GetIOSize((SDL_IOStream*)file);
+}
+
+uint64_t platform_file_read(platform_file_t file, void* buffer, uint64_t bytes_to_read) {
+    if (!file)
+        return 0;
+    return (uint64_t)SDL_ReadIO((SDL_IOStream*)file, buffer, (size_t)bytes_to_read);
+}
+
+uint64_t platform_file_write(platform_file_t file, const void* buffer, uint64_t bytes_to_write) {
+    if (!file)
+        return 0;
+    return (uint64_t)SDL_WriteIO((SDL_IOStream*)file, buffer, (size_t)bytes_to_write);
+}
+
+bool platform_file_seek(platform_file_t file, uint64_t offset) {
+    if (!file)
+        return false;
+    // SDL_IO_SEEK_SET is 0
+    return SDL_SeekIO((SDL_IOStream*)file, (Sint64)offset, SDL_IO_SEEK_SET) >= 0;
+}
+
+uint64_t platform_file_tell(platform_file_t file) {
+    if (!file)
+        return 0;
+    return (uint64_t)SDL_TellIO((SDL_IOStream*)file);
+}
+
+// ==============================================================================
+// MARK: OS-Specific Memory Mapping (Windows & POSIX)
+// ==============================================================================
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+
+bool platform_file_map_read(const char* filepath, platform_file_mapping_t* out_mapping) {
+    HANDLE hFile = CreateFileA(
+        filepath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL
+    );
+    if (hFile == INVALID_HANDLE_VALUE)
+        return false;
+
+    LARGE_INTEGER size;
+    GetFileSizeEx(hFile, &size);
+
+    HANDLE hMap = CreateFileMappingA(hFile, NULL, PAGE_READONLY, 0, 0, NULL);
+    if (!hMap) {
+        CloseHandle(hFile);
+        return false;
+    }
+
+    void* data = MapViewOfFile(hMap, FILE_MAP_READ, 0, 0, 0);
+    if (!data) {
+        CloseHandle(hMap);
+        CloseHandle(hFile);
+        return false;
+    }
+
+    out_mapping->data       = data;
+    out_mapping->size       = (uint64_t)size.QuadPart;
+    out_mapping->_os_handle = hMap;
+    out_mapping->_file      = hFile;
+    return true;
+}
+
+void platform_file_unmap(platform_file_mapping_t* mapping) {
+    if (mapping->data) {
+        UnmapViewOfFile(mapping->data);
+        CloseHandle((HANDLE)mapping->_os_handle);
+        CloseHandle((HANDLE)mapping->_file);
+        mapping->data = NULL;
+    }
+}
+
+#else
+// POSIX Implementation (Linux / macOS)
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+
+bool platform_file_map_read(const char* filepath, platform_file_mapping_t* out_mapping) {
+    int fd = open(filepath, O_RDONLY);
+    if (fd == -1)
+        return false;
+
+    struct stat sb;
+    if (fstat(fd, &sb) == -1) {
+        close(fd);
+        return false;
+    }
+
+    void* data = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (data == MAP_FAILED) {
+        close(fd);
+        return false;
+    }
+
+    out_mapping->data       = data;
+    out_mapping->size       = (uint64_t)sb.st_size;
+    out_mapping->_os_handle = NULL; // Not used in POSIX
+
+    // Store the fd in _file pointer by casting it
+    out_mapping->_file = (void*)(intptr_t)fd;
+    return true;
+}
+
+void platform_file_unmap(platform_file_mapping_t* mapping) {
+    if (mapping->data) {
+        munmap(mapping->data, mapping->size);
+        int fd = (int)(intptr_t)mapping->_file;
+        if (fd != -1) {
+            close(fd);
+        }
+        mapping->data = NULL;
+    }
+}
+#endif
+
 // MARK: gpu api specific
 
 // #ifdef RENDERER_VULKAN

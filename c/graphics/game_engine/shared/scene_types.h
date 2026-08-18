@@ -9,7 +9,7 @@
 #define PAK_MAX_MESHES 1024
 #define PAK_MAX_VERTICES 5000000
 #define PAK_MAX_INDICES 15000000
-#define PAK_MAX_TEXTURES 256
+#define PAK_MAX_TEXTURES 512
 
 #define GRAPHICS_INVALID_HANDLE UINT32_MAX
 
@@ -27,14 +27,14 @@ typedef struct {
 } environment_desc_t;
 
 typedef struct {
-    bool  is_active;
-    char  skybox_path[256];
-    float exposure;
+    bool   is_active;
+    char   skybox_path[256];
+    float  exposure;
     vec3_t ambient_tint;
     vec3_t sun_direction;
     vec3_t sun_colo;
-    float sun_intensity;
-    float fog_density;
+    float  sun_intensity;
+    float  fog_density;
     vec3_t fog_color;
     vec3_t gravity;
 } environment_t;
@@ -57,4 +57,7 @@ typedef struct {
     pak_texture_t textures[PAK_MAX_TEXTURES];
     uint8_t*      raw_texture_bytes[PAK_MAX_TEXTURES];
     uint32_t      texture_count;
+
+    char texture_cache_paths[PAK_MAX_TEXTURES][256];
+
 } scene_desc_t;

@@ -37,12 +37,12 @@ bool parse_world_source(
 
 void print_world_source(const world_src_t* world_src);
 
-bool process_world_source(
+scene_desc_t* process_world_source(
     arena_t*      pak_arena,
     arena_t*      scratch_arena,
-    world_src_t*  world_src,
-    string_span_t base_dir,
-    world_pak_t*  out_pak_world
+    world_src_t*  world_source,
+    string_span_t base_dir_span,
+    world_pak_t*  out_world_pak
 );
 
-bool write_world_pak(arena_t* pak_arena, const char* output_file);
+bool write_world_pak(arena_t* pak_arena, scene_desc_t* staged_scene, const char* output_file);

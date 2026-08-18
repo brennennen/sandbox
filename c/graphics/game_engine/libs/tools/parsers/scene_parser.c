@@ -8,6 +8,7 @@
 #include "engine/core/math/mat4.h"
 
 #include "gltf_baker.h"
+#include "libs/core/arena.h"
 #include "parser_source_types.h"
 #include "scene_parser.h"
 
@@ -190,7 +191,7 @@ static void parse_model_statement(
         opt_fast_textures,
         opt_z_up
     );
-    bake_model(full_path, out_scene, model_id, opt_fast_textures, opt_z_up);
+    // bake_model(scratch_arena, full_path, out_scene, model_id, opt_fast_textures, opt_z_up);
 }
 
 static void parse_entity_statement(const char** cursor, scene_desc_t* out_scene) {

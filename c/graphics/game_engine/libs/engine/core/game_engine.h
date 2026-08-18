@@ -17,6 +17,20 @@ typedef enum {
 } scene_type_t;
 
 typedef struct {
+    const char* window_title;
+    int         window_width;
+    int         window_height;
+    const char* initial_pak_path;
+} game_engine_init_config_t;
+
+typedef struct {
+    int   resolution_x;
+    int   resolution_y;
+    bool  vsync_enabled;
+    float fov;
+} graphic_settings_t;
+
+typedef struct {
     bool is_running;
     bool is_paused;
 
@@ -55,6 +69,6 @@ typedef struct {
 
 } game_engine_t;
 
-bool game_engine_init(game_engine_t* game_engine);
+bool game_engine_init(game_engine_t* game_engine, game_engine_init_config_t* engine_init_config);
 bool game_engine_tick(game_engine_t* game_engine);
 void game_engine_shutdown(game_engine_t* game_engine);

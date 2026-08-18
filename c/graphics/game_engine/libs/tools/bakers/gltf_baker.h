@@ -5,10 +5,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "libs/core/arena.h"
 #include "scene_types.h"
 
 // A clean public API for the parser to use
 bool bake_model(
+    arena_t*      scratch_arena,
     const char*   full_path,
     scene_desc_t* out_scene,
     uint32_t      model_id,

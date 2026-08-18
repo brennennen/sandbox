@@ -171,12 +171,12 @@ bool vk_create_texture(
 
     VkSamplerCreateInfo sampler_info = {
         .sType        = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-        .magFilter    = VK_FILTER_LINEAR,                      // VK_FILTER_NEAREST,
-        .minFilter    = VK_FILTER_LINEAR,                      // VK_FILTER_NEAREST,
-        .mipmapMode   = VK_SAMPLER_MIPMAP_MODE_LINEAR,         // VK_SAMPLER_MIPMAP_MODE_NEAREST,
-        .addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, // VK_SAMPLER_ADDRESS_MODE_REPEAT,
-        .addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, // VK_SAMPLER_ADDRESS_MODE_REPEAT,
-        .addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, // VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        .magFilter    = VK_FILTER_LINEAR,               // VK_FILTER_NEAREST,
+        .minFilter    = VK_FILTER_LINEAR,               // VK_FILTER_NEAREST,
+        .mipmapMode   = VK_SAMPLER_MIPMAP_MODE_LINEAR,  // VK_SAMPLER_MIPMAP_MODE_NEAREST,
+        .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT, // VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT, // VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT, // VK_SAMPLER_ADDRESS_MODE_REPEAT,
         .borderColor  = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
         .maxLod       = (float)mips,
         .mipLodBias   = 0.0f,

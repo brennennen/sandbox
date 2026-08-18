@@ -185,7 +185,7 @@ static bool init_memory_heaps(graphics_t* r) {
     );
     // TODO: check out AMD VMA
     r->assets.device_heap = gpu_heap_create(
-        r, 8ULL * 1024 * 1024 * 1024, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+        r, 12ULL * 1024 * 1024 * 1024, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
     );
     r->assets.display_heap = gpu_heap_create(
         r, 1024 * 1024 * 32, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT

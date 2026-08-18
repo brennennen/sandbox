@@ -52,7 +52,11 @@ static int64_t write_pak_file(const char* output_file, scene_desc_t* flattened_s
         return -1;
     }
 
-    pak_header_t header = {.magic = PAK_MAGIC, .version = 1, .chunk_count = 1};
+    pak_header_t header = {
+        .magic        = PAK_MAGIC,
+        .version      = 1,
+        .payload_type = PAK_TYPE_WORLD,
+    };
     fwrite(&header, sizeof(pak_header_t), 1, pak);
 
     pak_chunk_header_t chunk = {
@@ -105,10 +109,9 @@ int main(int argc, char** argv) {
     const char* output_file = argv[2];
 
     // new:
-    void*   build_memory = malloc(1024 * 1024 * 1024);
+    void*   build_memory = malloc(2UL * 1024 * 1024 * 1024);
     arena_t build_arena;
     arena_init(&build_arena, build_memory, 1024 * 1024 * 1024);
     cook_world(&build_arena, input_file, output_file);
     return 0;
-
 }

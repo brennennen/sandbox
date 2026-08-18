@@ -8,6 +8,25 @@
 #define PAK_MAGIC 0x4B415057 // "WPAK"
 
 typedef enum {
+    PAK_TYPE_WORLD     = 0,
+    PAK_TYPE_MENU      = 1,
+    PAK_TYPE_CHARACTER = 2,
+} pak_type_t;
+
+typedef struct {
+    uint32_t magic;
+    uint32_t version;
+    uint32_t payload_type;
+    uint32_t _pad_master;
+} pak_header_t;
+
+typedef enum {
+    PAK_SCENE_TYPE_MAIN_MENU = 0,
+    PAK_SCENE_TYPE_LEVEL     = 1,
+    PAK_SCENE_TYPE_WORLD     = 2
+} pak_scene_type_t;
+
+typedef enum {
     PAK_TEX_FORMAT_UNKNOWN = 0,
     PAK_TEX_FORMAT_RGBA8_UNORM,
     PAK_TEX_FORMAT_RGBA8_SRGB,
@@ -40,8 +59,11 @@ typedef struct {
 } environment_pak_t;
 
 typedef struct {
-    uint32_t          magic; // 'WPAK'
-    uint32_t          version;
+    uint32_t magic; // 'WPAK'
+    uint32_t version;
+    uint32_t scene_type;
+    uint32_t _pad_scene;
+
     environment_pak_t environment;
 
     uint64_t vertex_offset;
@@ -66,10 +88,25 @@ typedef struct {
 } world_pak_t;
 
 typedef struct {
-    uint32_t magic;
-    uint32_t version;
-    uint32_t chunk_count;
-} pak_header_t;
+    uint32_t          world_type; // e.g., STATIC_LEVEL vs CHUNK
+    uint32_t          _pad_world;
+    environment_pak_t environment;
+
+} world_payload_t;
+
+typedef struct {
+    uint64_t layout_offset; // Path to UI JSON/XML
+    uint32_t layout_size;
+    uint32_t _pad1;
+
+    uint64_t texture_offset; // UI Buttons, backgrounds
+    uint32_t texture_count;
+    uint32_t _pad2;
+
+    uint64_t font_offset; // TTF fonts
+    uint32_t font_count;
+    uint32_t _pad3;
+} ui_payload_t;
 
 typedef union {
     float data[2];

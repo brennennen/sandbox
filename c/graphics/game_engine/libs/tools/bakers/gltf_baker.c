@@ -23,7 +23,83 @@ static uint64_t hash_data(const void* data, size_t length) {
     return hash;
 }
 
+typedef struct {
+    uint8_t* pixels;
+    int      width, height, channels;
+} raw_image_t;
+
+raw_image_t pack_orm_texture(raw_image_t* ao_map, raw_image_t* mr_map) {
+    // Determine the final maximum resolution
+    int width  = 1;
+    int height = 1;
+    if (mr_map && mr_map->width > width)
+        width = mr_map->width;
+    if (ao_map && ao_map->width > width)
+        width = ao_map->width;
+    if (mr_map && mr_map->height > height)
+        height = mr_map->height;
+    if (ao_map && ao_map->height > height)
+        height = ao_map->height;
+
+    raw_image_t packed;
+    packed.width    = width;
+    packed.height   = height;
+    packed.channels = 4;
+
+    // Allocate directly on the OS heap!
+    packed.pixels = malloc(width * height * 4);
+
+    if (packed.pixels == NULL) {
+        log_error(
+            "CRITICAL: System Out of Memory! Failed to allocate %d bytes for ORM map.",
+            width * height * 4
+        );
+        return packed; // Return the struct with NULL pixels to avoid crashing
+    }
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            float u = (float)x / (float)width;
+            float v = (float)y / (float)height;
+
+            // OCCLUSION (Target: RED)
+            uint8_t ao = 255; // Default to 1.0 (No shadow)
+            if (ao_map && ao_map->pixels) {
+                int src_x   = (int)(u * ao_map->width);
+                int src_y   = (int)(v * ao_map->height);
+                int src_idx = (src_y * ao_map->width + src_x) * ao_map->channels;
+                ao          = ao_map->pixels[src_idx + 0]; // glTF AO is in Red channel
+            }
+
+            // ROUGHNESS & METALLIC (Target: GREEN & BLUE)
+            uint8_t r = 255; // Default to 1.0 (Fully rough)
+            uint8_t m = 0;   // Default to 0.0 (Non-metal)
+            if (mr_map && mr_map->pixels) {
+                int src_x   = (int)(u * mr_map->width);
+                int src_y   = (int)(v * mr_map->height);
+                int src_idx = (src_y * mr_map->width + src_x) * mr_map->channels;
+
+                // glTF Roughness is Green, Metallic is Blue
+                // Ensure the map actually has 3 or 4 channels before reading Green/Blue
+                if (mr_map->channels >= 3) {
+                    r = mr_map->pixels[src_idx + 1];
+                    m = mr_map->pixels[src_idx + 2];
+                }
+            }
+            // WRITE OUT
+            int out_idx                = (y * width + x) * 4;
+            packed.pixels[out_idx + 0] = ao;
+            packed.pixels[out_idx + 1] = r;
+            packed.pixels[out_idx + 2] = m;
+            packed.pixels[out_idx + 3] = 255;
+        }
+    }
+
+    return packed;
+}
+
 static void parse_primitive_material(
+    arena_t*         scratch_arena,
     cgltf_primitive* primitive,
     cgltf_data*      data,
     int32_t*         img_map,
@@ -104,19 +180,108 @@ static void parse_primitive_material(
             );
         }
 
-        cgltf_texture_view* ao_metallic_roughness_view =
+        cgltf_texture_view* mr_view =
             &primitive->material->pbr_metallic_roughness.metallic_roughness_texture;
-        if (ao_metallic_roughness_view->texture && ao_metallic_roughness_view->texture->image) {
-            size_t img_idx = ao_metallic_roughness_view->texture->image - data->images;
-            current_mesh->ao_roughness_metallic_texture_id = img_map[img_idx];
+        cgltf_texture_view* ao_view = &primitive->material->occlusion_texture;
 
-            log_info(
-                "  - MR Map Texture -> PAK ID %d (Left as UNORM)",
-                current_mesh->ao_roughness_metallic_texture_id
-            );
+        int32_t mr_id = (mr_view->texture && mr_view->texture->image)
+                            ? img_map[mr_view->texture->image - data->images]
+                            : -1;
+
+        int32_t ao_id = (ao_view->texture && ao_view->texture->image)
+                            ? img_map[ao_view->texture->image - data->images]
+                            : -1;
+
+        // Evaluate and Pack
+        if (mr_id == -1 && ao_id == -1) {
+            current_mesh->ao_roughness_metallic_texture_id = -1;
+            log_warn("  ! WARNING: Material '%s' has NO MR or AO maps.", mat_name);
+
+        } else if (mr_id == ao_id && mr_id != -1) {
+            // The artist already combined them into a single file!
+            current_mesh->ao_roughness_metallic_texture_id = mr_id;
+            log_info("  - ORM Map -> PAK ID %d (Already Packed)", mr_id);
+
         } else {
-            log_warn("  ! WARNING: Material '%s' has NO Metallic/Roughness Map.", mat_name);
+            log_info("  - Separated AO/MR maps detected. Synthesizing packed ORM...");
+
+            // Extract raw data from your staging scene
+            raw_image_t ao_raw = {0};
+            if (ao_id != -1) {
+                ao_raw.width    = out_scene->textures[ao_id].width;
+                ao_raw.height   = out_scene->textures[ao_id].height;
+                ao_raw.channels = out_scene->textures[ao_id].channels;
+                // ao_raw.pixels   = out_scene->textures[ao_id].pixel_data;
+                ao_raw.pixels = out_scene->raw_texture_bytes[ao_id];
+            }
+
+            raw_image_t mr_raw = {0};
+            if (mr_id != -1) {
+                mr_raw.width    = out_scene->textures[mr_id].width;
+                mr_raw.height   = out_scene->textures[mr_id].height;
+                mr_raw.channels = out_scene->textures[mr_id].channels;
+                // mr_raw.pixels   = out_scene->textures[mr_id].pixel_data;
+                mr_raw.pixels = out_scene->raw_texture_bytes[mr_id];
+            }
+
+            log_info("  - Debug ORM: mr_id=%d, ao_id=%d", mr_id, ao_id);
+
+            if (ao_id != -1 && out_scene->raw_texture_bytes[ao_id] == NULL) {
+                log_error(
+                    "CRITICAL: AO Texture ID %d has a NULL pointer! Did the cache skip CPU "
+                    "loading?",
+                    ao_id
+                );
+                return; // Prevent the crash
+            }
+            if (mr_id != -1 && out_scene->raw_texture_bytes[mr_id] == NULL) {
+                log_error(
+                    "CRITICAL: MR Texture ID %d has a NULL pointer! Did the cache skip CPU "
+                    "loading?",
+                    mr_id
+                );
+                return; // Prevent the crash
+            }
+
+            // raw_image_t packed = pack_orm_texture(
+            //     scratch_arena, (ao_id != -1) ? &ao_raw : NULL, (mr_id != -1) ? &mr_raw : NULL
+            // );
+            raw_image_t packed = pack_orm_texture(
+                (ao_id != -1) ? &ao_raw : NULL, (mr_id != -1) ? &mr_raw : NULL
+            );
+
+            // Append the new synthesized texture to the scene's texture array
+            uint32_t new_tex_idx = out_scene->texture_count++;
+
+            out_scene->textures[new_tex_idx].width    = packed.width;
+            out_scene->textures[new_tex_idx].height   = packed.height;
+            out_scene->textures[new_tex_idx].channels = packed.channels;
+            // out_scene->textures[new_tex_idx].pixel_data = packed.pixels;
+            out_scene->textures[new_tex_idx].byte_size = packed.width * packed.height *
+                                                         packed.channels;
+            out_scene->textures[new_tex_idx].mip_levels = 1;
+            out_scene->textures[new_tex_idx].format     = PAK_TEX_FORMAT_RGBA8_UNORM;
+
+            out_scene->raw_texture_bytes[new_tex_idx] = packed.pixels;
+
+            // Bind the newly created texture to the mesh
+            current_mesh->ao_roughness_metallic_texture_id = new_tex_idx;
+            log_info("  - Synthesized ORM Map -> PAK ID %d", new_tex_idx);
         }
+
+        // cgltf_texture_view* ao_metallic_roughness_view =
+        //     &primitive->material->pbr_metallic_roughness.metallic_roughness_texture;
+        // if (ao_metallic_roughness_view->texture && ao_metallic_roughness_view->texture->image) {
+        //     size_t img_idx = ao_metallic_roughness_view->texture->image - data->images;
+        //     current_mesh->ao_roughness_metallic_texture_id = img_map[img_idx];
+
+        //     log_info(
+        //         "  - MR Map Texture -> PAK ID %d (Left as UNORM)",
+        //         current_mesh->ao_roughness_metallic_texture_id
+        //     );
+        // } else {
+        //     log_warn("  ! WARNING: Material '%s' has NO Metallic/Roughness Map.", mat_name);
+        // }
     } else {
         // Fallback for meshes that completely lack a PBR material definition
         current_mesh->metallic_factor  = 0.0f; // Default to non-metal
@@ -223,6 +388,7 @@ static void parse_primitive_indices(
 }
 
 static void bake_gltf_mesh(
+    arena_t*      scratch_arena,
     cgltf_node*   node,
     mat4_t        global_transform,
     scene_desc_t* out_scene,
@@ -262,6 +428,7 @@ static void bake_gltf_mesh(
         bool      has_normal_map;
         bool      is_alpha_masked;
         parse_primitive_material(
+            scratch_arena,
             primitive,
             data,
             img_map,
@@ -311,6 +478,7 @@ static void bake_gltf_mesh(
 }
 
 static void bake_gltf_node(
+    arena_t*      scratch_arena,
     cgltf_node*   node,
     mat4_t        parent_transform,
     scene_desc_t* out_scene,
@@ -326,9 +494,11 @@ static void bake_gltf_node(
     }
     // mat4_t global_transform = mat4_mul(local_transform, parent_transform);
     mat4_t global_transform = mat4_mul(parent_transform, local_transform);
-    bake_gltf_mesh(node, global_transform, out_scene, model_id, data, img_map);
+    bake_gltf_mesh(scratch_arena, node, global_transform, out_scene, model_id, data, img_map);
     for (size_t i = 0; i < node->children_count; i++) {
-        bake_gltf_node(node->children[i], global_transform, out_scene, model_id, data, img_map);
+        bake_gltf_node(
+            scratch_arena, node->children[i], global_transform, out_scene, model_id, data, img_map
+        );
     }
 }
 
@@ -548,19 +718,53 @@ static void process_texture_job(bake_context_t* ctx, uint32_t gltf_idx, uint32_t
     build_and_cache_texture(cache_path, src_data, comp_size, ctx->out_scene, tex_idx);
 }
 
-static int texture_worker_thread(void* thread_data) {
-    bake_context_t* ctx = (bake_context_t*)thread_data;
+
+int texture_worker_thread(void* user_data) {
+    bake_context_t* ctx = (bake_context_t*)user_data;
 
     while (true) {
+        // Safely grab the next image index to process
         int i = platform_atomic_int_add(&ctx->next_job_idx, 1);
-
         if (i >= ctx->total_images) {
-            break;
+            break; // No more images to process
         }
 
-        int32_t tex_idx = ctx->img_map[i];
-        if (tex_idx != -1) {
-            process_texture_job(ctx, i, (uint32_t)tex_idx);
+        int tex_idx = ctx->img_map[i];
+        if (tex_idx == -1) {
+            continue; // Skipped texture
+        }
+
+        cgltf_image* gltf_img = &ctx->data->images[i];
+
+        // Ensure the image has a valid buffer view (embedded GLB texture)
+        if (gltf_img->buffer_view && gltf_img->buffer_view->buffer->data) {
+
+            // Calculate where this specific image's bytes start in the GLB file
+            uint8_t* buffer_start    = (uint8_t*)gltf_img->buffer_view->buffer->data;
+            uint8_t* image_data_ptr  = buffer_start + gltf_img->buffer_view->offset;
+            size_t   image_data_size = gltf_img->buffer_view->size;
+
+            int w, h, channels;
+
+            // Decode the embedded PNG/JPG directly into raw RAM
+            uint8_t* raw_pixels = image_load_from_memory(
+                image_data_ptr, (uint32_t)image_data_size, &w, &h, &channels, 4
+            );
+
+            if (!raw_pixels) {
+                log_error("Worker failed to decode raw image %d", i);
+                continue;
+            }
+
+            // Assign to the parallel array
+            ctx->out_scene->raw_texture_bytes[tex_idx] = raw_pixels;
+    
+            ctx->out_scene->textures[tex_idx].width      = w;
+            ctx->out_scene->textures[tex_idx].height     = h;
+            ctx->out_scene->textures[tex_idx].channels   = 4;
+            ctx->out_scene->textures[tex_idx].byte_size  = w * h * 4;
+            ctx->out_scene->textures[tex_idx].format     = PAK_TEX_FORMAT_RGBA8_UNORM;
+            ctx->out_scene->textures[tex_idx].mip_levels = 1;
         }
     }
 
@@ -568,6 +772,7 @@ static int texture_worker_thread(void* thread_data) {
 }
 
 bool bake_model(
+    arena_t*      scratch_arena,
     const char*   full_path,
     scene_desc_t* out_scene,
     uint32_t      model_id,
@@ -638,7 +843,9 @@ bool bake_model(
     }
 
     for (size_t i = 0; i < gltf_scene->nodes_count; i++) {
-        bake_gltf_node(gltf_scene->nodes[i], root_transform, out_scene, model_id, data, img_map);
+        bake_gltf_node(
+            scratch_arena, gltf_scene->nodes[i], root_transform, out_scene, model_id, data, img_map
+        );
     }
 
     free(img_map);

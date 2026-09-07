@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "shared/vec3_math.h"
+
 #include "libs/core/resources/image.h"
 
 #include "engine/core/game_engine.h"
@@ -59,6 +61,16 @@ static bool init_core_subsystems(
     engine->main_scene_target = graphics_create_render_target(
         engine->graphics, &render_target_config
     );
+
+    render_target_config_t shadow_config = {
+        .width          = 4096,
+        .height         = 4096,
+        .format         = RT_FORMAT_DEPTH_ONLY,
+        .requires_depth = true,
+    };
+    engine->shadow_target = graphics_create_render_target(engine->graphics, &shadow_config);
+
+    graphics_update_shadow_map_descriptor(engine->graphics, engine->shadow_target);
 
     platform_set_relative_mouse(engine->platform, true);
     return true;
@@ -197,7 +209,10 @@ bool game_engine_init(game_engine_t* game_engine, game_engine_init_config_t* eng
 
     void* raw_pak_data = vfs_get_mounted_archive_pointer(engine_init_config->initial_pak_path);
     if (raw_pak_data) {
-        world_pak_t*   header     = (world_pak_t*)raw_pak_data;
+        world_pak_t* header = (world_pak_t*)raw_pak_data;
+
+        game_engine->sun_direction = header->environment.sun_direction;
+
         texture_pak_t* skybox_def = &header->environment.skybox_cubemap;
 
         if (skybox_def->data_size > 0) {
@@ -446,8 +461,17 @@ bool game_engine_tick(game_engine_t* game_engine) {
     platform_get_window_size(game_engine->platform, &w, &h);
     float aspect = (float)w / (float)h;
 
-    mat4_t proj              = mat4_perspective(0.785f, aspect, 0.1f, 5000.0f);
+    mat4_t proj = mat4_perspective(0.785f, aspect, 0.1f, 5000.0f);
     mat4_t current_view_proj = mat4_mul(proj, view);
+    vec3_t light_pos         = {20.0f, -20.0f, 50.0f};
+    vec3_t target     = {0.0f, 0.0f, 0.0f};
+    vec3_t up         = {0.0f, 0.0f, 1.0f};
+    mat4_t light_view = mat4_look_at(light_pos, target, up);
+    float  ortho_size = 50.0f;
+    mat4_t light_proj = mat4_ortho(-ortho_size, ortho_size, -ortho_size, ortho_size, 1.0f, 400.0f);
+    mat4_t light_space_matrix  = mat4_mul(light_proj, light_view);
+    game_engine->sun_direction = vec3_normalize(vec3_sub(target, light_pos));
+    game_engine->sun_color     = (vec3_t){1.0f, 1.0f, 1.0f};
 
     if (!game_engine->debug_freeze_culling) {
         game_engine->culling_view_proj = current_view_proj;
@@ -457,6 +481,7 @@ bool game_engine_tick(game_engine_t* game_engine) {
         game_engine->graphics,
         game_engine->platform,
         game_engine->main_scene_target,
+        game_engine->shadow_target,
         view,
         game_engine->main_camera->pos,
         game_engine->culling_view_proj,
@@ -464,7 +489,10 @@ bool game_engine_tick(game_engine_t* game_engine) {
         game_engine->draw_mode,
         game_engine->main_scene.objects,
         game_engine->main_scene.object_count,
-        game_engine->skybox_texture
+        game_engine->skybox_texture,
+        light_space_matrix,
+        game_engine->sun_direction,
+        game_engine->sun_color
     );
 
     return true;
@@ -478,6 +506,10 @@ void game_engine_shutdown(game_engine_t* game_engine) {
 
     if (game_engine->main_scene_target.id != GRAPHICS_INVALID_HANDLE) {
         graphics_destroy_render_target(game_engine->graphics, game_engine->main_scene_target);
+    }
+
+    if (game_engine->shadow_target.id != GRAPHICS_INVALID_HANDLE) {
+        graphics_destroy_render_target(game_engine->graphics, game_engine->shadow_target);
     }
 
     if (game_engine->graphics) {

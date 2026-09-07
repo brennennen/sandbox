@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "shared/vec3_math.h"
+
 #include "engine/platform/platform.h"
 
 #include "core/resources/compressed_texture.h"
@@ -45,7 +47,8 @@ static bool parse_environment_statement(
         }
         if (next.type == TOK_IDENTIFIER) {
             string_span_t token_span = span_init(next.start, next.length);
-            if (span_equals_cstr(token_span, "Skybox")) {
+            if (span_equals_cstr(token_span, "skybox")) {
+                token_t equal_tok  = get_next_token(cursor); // =
                 token_t skybox_tok = get_next_token(cursor);
                 int     len        = skybox_tok.length < 255 ? skybox_tok.length : 255;
                 out_environment_src->skybox_path = span_init(skybox_tok.start, skybox_tok.length);
@@ -54,19 +57,98 @@ static bool parse_environment_statement(
                     (int)out_environment_src->skybox_path.length,
                     out_environment_src->skybox_path.data
                 );
-            } else if (span_equals_cstr(token_span, "AmbientTint")) {
-                token_t r = get_next_token(cursor);
-                token_t g = get_next_token(cursor);
-                token_t b = get_next_token(cursor);
+                token_t comma_tok = get_next_token(cursor); // ,
+            } else if (span_equals_cstr(token_span, "ambient_tint")) {
+                token_t equal_tok      = get_next_token(cursor); // =
+                token_t open_brace_tok = get_next_token(cursor); // {
+
+                token_t r           = get_next_token(cursor);
+                token_t r_comma_tok = get_next_token(cursor); // ,
+                token_t g           = get_next_token(cursor);
+                token_t g_comma_tok = get_next_token(cursor); // ,
+                token_t b           = get_next_token(cursor);
+                // token_t b_comma_tok = get_next_token(cursor); // ,
+
+                token_t close_brace_tok = get_next_token(cursor); // }
+                token_t end_comma_tok   = get_next_token(cursor); // ,
 
                 out_environment_src->ambient_tint.x = r.float_value;
                 out_environment_src->ambient_tint.y = g.float_value;
                 out_environment_src->ambient_tint.z = b.float_value;
-                log_info("AmbientTint: %f, %f, %f", r.float_value, g.float_value, b.float_value);
-            } else if (span_equals_cstr(token_span, "FogDensity")) {
+                log_info("ambient_tint: %f, %f, %f", r.float_value, g.float_value, b.float_value);
+            } else if (span_equals_cstr(token_span, "ambient_intensity")) {
+                token_t equal_tok                      = get_next_token(cursor); // =
+                token_t ambient_intensity_tok          = get_next_token(cursor);
+                out_environment_src->ambient_intensity = ambient_intensity_tok.float_value;
+                log_info("ambient_intensity: %f", ambient_intensity_tok.float_value);
+                token_t comma_tok = get_next_token(cursor); // ,
+            } else if (span_equals_cstr(token_span, "fog_density")) {
+                token_t equal_tok                = get_next_token(cursor); // =
                 token_t fog_tok                  = get_next_token(cursor);
                 out_environment_src->fog_density = fog_tok.float_value;
-                log_info("FogDensity: %f", fog_tok.float_value);
+                log_info("fog_density: %f", fog_tok.float_value);
+                token_t comma_tok = get_next_token(cursor); // ,
+            } else if (span_equals_cstr(token_span, "fog_color")) {
+                token_t equal_tok      = get_next_token(cursor); // =
+                token_t open_brace_tok = get_next_token(cursor); // {
+
+                token_t r           = get_next_token(cursor);
+                token_t r_comma_tok = get_next_token(cursor); // ,
+                token_t g           = get_next_token(cursor);
+                token_t g_comma_tok = get_next_token(cursor); // ,
+                token_t b           = get_next_token(cursor);
+                // token_t b_comma_tok = get_next_token(cursor); // ,
+
+                token_t close_brace_tok = get_next_token(cursor); // }
+                token_t end_comma_tok   = get_next_token(cursor); // ,
+
+                out_environment_src->fog_color = (vec3_t){r.float_value,
+                                                          g.float_value,
+                                                          b.float_value};
+                log_info("fog_color: %f, %f, %f", r.float_value, g.float_value, b.float_value);
+            } else if (span_equals_cstr(token_span, "sun_direction")) {
+                token_t equal_tok      = get_next_token(cursor); // =
+                token_t open_brace_tok = get_next_token(cursor); // {
+
+                token_t x           = get_next_token(cursor);
+                token_t x_comma_tok = get_next_token(cursor); // ,
+                token_t y           = get_next_token(cursor);
+                token_t y_comma_tok = get_next_token(cursor); // ,
+                token_t z           = get_next_token(cursor);
+                // token_t z_comma_tok = get_next_token(cursor); // ,
+
+                token_t close_brace_tok = get_next_token(cursor); // }
+                token_t end_comma_tok   = get_next_token(cursor); // ,
+
+                // Normalize this vector immediately so the engine doesn't have to do it every frame
+                vec3_t dir                         = {x.float_value, y.float_value, z.float_value};
+                out_environment_src->sun_direction = vec3_normalize(dir);
+
+                log_info("sun_direction: %f, %f, %f", dir.x, dir.y, dir.z);
+            } else if (span_equals_cstr(token_span, "sun_color")) {
+                token_t equal_tok      = get_next_token(cursor); // =
+                token_t open_brace_tok = get_next_token(cursor); // {
+
+                token_t r           = get_next_token(cursor);
+                token_t r_comma_tok = get_next_token(cursor); // ,
+                token_t g           = get_next_token(cursor);
+                token_t g_comma_tok = get_next_token(cursor); // ,
+                token_t b           = get_next_token(cursor);
+                // token_t b_comma_tok = get_next_token(cursor); // ,
+
+                token_t close_brace_tok = get_next_token(cursor); // }
+                token_t end_comma_tok   = get_next_token(cursor); // ,
+
+                out_environment_src->sun_color = (vec3_t){r.float_value,
+                                                          g.float_value,
+                                                          b.float_value};
+                log_info("sun_color: %f, %f, %f", r.float_value, g.float_value, b.float_value);
+            } else if (span_equals_cstr(token_span, "sun_intensity")) {
+                token_t equal_tok                  = get_next_token(cursor); // =
+                token_t sun_intensity_tok          = get_next_token(cursor);
+                out_environment_src->sun_intensity = sun_intensity_tok.float_value;
+                log_info("sun_intensity: %f", sun_intensity_tok.float_value);
+                token_t comma_tok = get_next_token(cursor); // ,
             }
         } else if (next.type == TOK_RBRACE) {
             log_info("parse_environment_statement: end");
@@ -172,25 +254,29 @@ bool parse_world_source(
         }
         if (next.type == TOK_IDENTIFIER) {
             string_span_t token_span = span_init(next.start, next.length);
-            if (span_equals_cstr(token_span, "World")) {
+            if (span_equals_cstr(token_span, "world_t")) {
                 log_info("Parsing World block...");
                 token_t name_tok    = get_next_token(&cursor);
                 out_world_src->name = span_init(name_tok.start, name_tok.length);
                 log_info(
                     "  -> name: '%.*s'", (int)out_world_src->name.length, out_world_src->name.data
                 );
+                token_t equal_tok = get_next_token(&cursor); // =
                 token_t brace_tok = get_next_token(&cursor); // {
                 continue;
-            } else if (span_equals_cstr(token_span, "Version")) {
+            } else if (span_equals_cstr(token_span, "version")) {
+                token_t equal_tok   = get_next_token(&cursor); // =
                 token_t version_tok = get_next_token(&cursor);
                 memcpy(out_world_src->version, version_tok.start, version_tok.length);
                 log_info("  -> version: %f", version_tok.float_value);
-            } else if (span_equals_cstr(token_span, "Environment")) {
-                token_t env_name_tok            = get_next_token(&cursor);
-                token_t env_brace_tok           = get_next_token(&cursor);
-                out_world_src->environment.name = span_init(
-                    env_name_tok.start, env_name_tok.length
-                );
+                token_t comma_tok = get_next_token(&cursor); // ,
+            } else if (span_equals_cstr(token_span, "environment")) {
+                token_t equal_tok = get_next_token(&cursor); // =
+                // token_t env_name_tok            = get_next_token(&cursor);
+                token_t env_brace_tok = get_next_token(&cursor);
+                // out_world_src->environment.name = span_init(
+                //     env_name_tok.start, env_name_tok.length
+                // );
                 log_info(
                     "  -> environment: '%.*s'",
                     out_world_src->environment.name.length,
@@ -262,6 +348,9 @@ static bool process_environment(
     log_info("Processing environment...");
     out_pak_env->ambient_tint = env_src->ambient_tint;
     out_pak_env->fog_density  = env_src->fog_density;
+
+    out_pak_env->sun_direction = env_src->sun_direction;
+    out_pak_env->sun_color     = env_src->sun_color;
 
     if (env_src->skybox_path.length == 0) {
         log_warn("No skybox path provided.");

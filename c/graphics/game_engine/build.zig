@@ -355,6 +355,7 @@ pub fn build(b: *std.Build) void {
     const shaders = [_][2][]const u8{
         .{ "shaders/core/mesh.vert", "shaders/core/mesh.vert.spv" },
         .{ "shaders/core/pbr.frag", "shaders/core/pbr.frag.spv" },
+        .{ "shaders/core/shadow.vert", "shaders/core/shadow.vert.spv" },
         .{ "shaders/core/skybox.vert", "shaders/core/skybox.vert.spv" },
         .{ "shaders/core/skybox.frag", "shaders/core/skybox.frag.spv" },
         .{ "shaders/post_process/fullscreen.vert", "shaders/post_process/fullscreen.vert.spv" },

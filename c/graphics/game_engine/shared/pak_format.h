@@ -56,6 +56,9 @@ typedef struct {
     texture_pak_t irradiance_map;      // diffuse ambient light
     texture_pak_t prefiltered_env_map; // specular reflections (mipmapped)
 
+    vec3_t sun_direction;
+    vec3_t sun_color;
+
 } environment_pak_t;
 
 typedef struct {

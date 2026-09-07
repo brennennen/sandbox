@@ -1,6 +1,8 @@
 #ifndef FRUSTUM_H
 #define FRUSTUM_H
 
+#include "shared/vec3_math.h"
+
 #include "engine/core/math/mat4.h"
 
 typedef struct {

@@ -61,6 +61,11 @@ typedef struct {
 
     render_target_handle_t main_scene_target;
 
+    render_target_handle_t shadow_target;
+
+    vec3_t sun_direction;
+    vec3_t sun_color;
+
     scene_type_t active_scene_type;
 
     texture_handle_t skybox_texture;

@@ -11,7 +11,10 @@ layout(location = 0) out vec4 outColor;
 layout(set = 0, binding = 0) uniform UBO {
     mat4 view;
     mat4 proj;
+    mat4 light_space_matrix;
     vec4 camera_pos;
+    vec4 sun_direction;
+    vec4 sun_color;
 } ubo;
 
 layout(set = 1, binding = 0) uniform sampler2D texSampler;
@@ -19,6 +22,7 @@ layout(set = 1, binding = 1) uniform sampler2D normalMapSampler;
 layout(set = 1, binding = 2) uniform sampler2D ao_roughness_metallic_sampler; // AO = red, Roughness = green, Metallic = blue
 layout(set = 0, binding = 2) uniform samplerCube irradiance_map;
 layout(set = 0, binding = 3) uniform samplerCube prefiltered_map;
+layout(set = 0, binding = 4) uniform sampler2D shadow_map;
 // layout(set = 0, binding = 3) uniform sampler2D brdfLUT;
 
 layout(push_constant) uniform PushConstants {
@@ -36,6 +40,26 @@ const float PI = 3.14159265359;
 // ratio of reflected light vs refracted light
 vec3 fresnel_schlick_roughness(float cos_theta, vec3 F0, float roughness) {
     return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cos_theta, 0.0, 1.0), 5.0);
+}
+
+float calculate_shadow(vec3 fragPosWorldSpace) {
+    vec4 fragPosLightSpace = ubo.light_space_matrix * vec4(fragPosWorldSpace, 1.0);
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+
+    // Convert NDC to UVs [0, 1]
+    projCoords.xy = projCoords.xy * 0.5 + 0.5;
+    projCoords.y = 1.0 - projCoords.y;
+
+    // If outside the spotlight's cone, it is in shadow
+    if(projCoords.z > 1.0 || projCoords.z < 0.0 || projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0) {
+        return 0.0;
+    }
+
+    float closestDepth = texture(shadow_map, projCoords.xy).r;
+
+    // Basic static bias
+    float shadow = (projCoords.z - 0.005) > closestDepth ? 1.0 : 0.0;
+    return shadow;
 }
 
 void main() {
@@ -96,8 +120,36 @@ void main() {
         0.04                                  // Bias
     );
     vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
-    vec3 ambient = (kD * diffuse + specular) * ao;
-    outColor = vec4(ambient, texColor.a);
+
+    // Direct sun lighting
+    vec3 L = normalize(-ubo.sun_direction.xyz);
+    float NdotL = max(dot(N, L), 0.0);
+
+    // Basic Lambertian diffuse for the sun
+    vec3 direct_diffuse = (kD * texColor.rgb / PI) * ubo.sun_color.xyz * NdotL;
+
+    // Add a simple Specular highlight for the sun so metallic objects gleam
+    vec3 H = normalize(V + L);
+    float NdotH = max(dot(N, H), 0.0);
+    float spec_power = pow(NdotH, max(1.0 - roughness, 0.001) * 128.0);
+    vec3 direct_specular = F0 * spec_power * ubo.sun_color.xyz * NdotL;
+
+    vec3 direct_light = (direct_diffuse + direct_specular) * 5.0; // Multiplied by 5.0 to boost sun intensity
+
+    float shadow = calculate_shadow(fragPos);
+
+    float ambient_intensity = 0.2;
+    vec3 ambient = (kD * diffuse + specular) * ao * ambient_intensity;
+    vec3 final_color = ambient + (direct_light * (1.0 - shadow));
+    outColor = vec4(final_color, texColor.a);
+
+    vec2 screen_uv = gl_FragCoord.xy / vec2(1920.0, 1080.0);
+    float raw_shadow_depth = texture(shadow_map, screen_uv).r;
+    float visual_shadow_depth = (1.0 - raw_shadow_depth) * 100.0;
+
+    //outColor = vec4(vec3(visual_shadow_depth), 1.0);
+    //outColor = vec4(vec3(1.0 - shadow), 1.0);
+
 
     // debug traps
     if (isnan(fragPos.x) || isnan(fragPos.y) || isnan(fragPos.z)) {

@@ -77,8 +77,9 @@ typedef struct {
 } render_target_handle_t;
 
 typedef enum {
-    RT_FORMAT_STANDARD, // Maps to 8-bit UNORM (Standard Color)
-    RT_FORMAT_HDR,      // Maps to 16-bit SFLOAT (High Dynamic Range)
+    RT_FORMAT_DEPTH_ONLY, // Depth only
+    RT_FORMAT_STANDARD,   // Maps to 8-bit UNORM (Standard Color)
+    RT_FORMAT_HDR,        // Maps to 16-bit SFLOAT (High Dynamic Range)
 } render_target_format_t;
 
 typedef struct {

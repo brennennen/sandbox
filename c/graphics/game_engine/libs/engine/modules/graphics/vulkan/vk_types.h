@@ -108,9 +108,10 @@ typedef struct {
     // mat4_t model;
     mat4_t view;
     mat4_t proj;
-    // vec4_t sun_direction;
-    // vec4_t sun_color;
+    mat4_t light_space_matrix;
     vec4_t camera_pos;
+    vec4_t sun_direction;
+    vec4_t sun_color;
 } ubo_t;
 
 /**
@@ -164,13 +165,16 @@ typedef struct {
 } vk_display_t;
 
 typedef struct {
-    vk_texture_t color_attachment;
-    bool         has_depth;
-    vk_texture_t depth_attachment;
-
     uint32_t width;
     uint32_t height;
-    bool     is_active;
+
+    bool                   has_depth;
+    bool                   is_active;
+    render_target_format_t format;
+
+    vk_texture_t color_attachment;
+    vk_texture_t depth_attachment;
+
 } vk_render_target_t;
 
 #define VK_MAX_RENDER_TARGETS 16
@@ -220,6 +224,7 @@ typedef struct {
     VkPipeline transparent;
     VkPipeline skybox;
     VkPipeline post_process;
+    VkPipeline shadow;
     VkPipeline line;
     VkPipeline debug_forward_lit;
     VkPipeline debug_wireframe;

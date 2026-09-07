@@ -1,4 +1,6 @@
 
+#include <string.h>
+
 #include "engine/core/logger.h"
 #include "engine/modules/graphics/graphics.h"
 #include "engine/modules/graphics/graphics_types.h"
@@ -114,21 +116,26 @@ render_target_handle_t graphics_create_render_target(
     render_target->width     = render_target_config->width;
     render_target->height    = render_target_config->height;
     render_target->has_depth = render_target_config->requires_depth;
+    render_target->format    = render_target_config->format;
 
-    VkFormat color_format = (render_target_config->format == RT_FORMAT_HDR)
-                                ? VK_FORMAT_R16G16B16A16_SFLOAT
-                                : VK_FORMAT_R8G8B8A8_UNORM;
+    if (render_target->format != RT_FORMAT_DEPTH_ONLY) {
+        VkFormat color_format = (render_target_config->format == RT_FORMAT_HDR)
+                                    ? VK_FORMAT_R16G16B16A16_SFLOAT
+                                    : VK_FORMAT_R8G8B8A8_UNORM;
 
-    if (!create_render_target_attachment(
-            graphics,
-            render_target_config->width,
-            render_target_config->height,
-            color_format,
-            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-            VK_IMAGE_ASPECT_COLOR_BIT,
-            &render_target->color_attachment
-        )) {
-        return (render_target_handle_t){.id = GRAPHICS_INVALID_HANDLE};
+        if (!create_render_target_attachment(
+                graphics,
+                render_target_config->width,
+                render_target_config->height,
+                color_format,
+                VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                VK_IMAGE_ASPECT_COLOR_BIT,
+                &render_target->color_attachment
+            )) {
+            return (render_target_handle_t){.id = GRAPHICS_INVALID_HANDLE};
+        }
+    } else {
+        memset(&render_target->color_attachment, 0, sizeof(vk_texture_t));
     }
 
     if (render_target_config->requires_depth) {
@@ -155,41 +162,36 @@ render_target_handle_t graphics_create_render_target(
         render_target_config->height
     );
 
-    VkDescriptorSetAllocateInfo alloc_info = {
-        .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-        .descriptorPool     = graphics->descriptor_pool,
-        .descriptorSetCount = 1,
-        .pSetLayouts        = &graphics->pipelines.post_process_set_layout,
-    };
+    if (render_target->format != RT_FORMAT_DEPTH_ONLY) {
+        VkDescriptorSetAllocateInfo alloc_info = {
+            .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            .descriptorPool     = graphics->descriptor_pool,
+            .descriptorSetCount = 1,
+            .pSetLayouts        = &graphics->pipelines.post_process_set_layout,
+        };
 
-    if (vkAllocateDescriptorSets(
-            graphics->core.device, &alloc_info, &render_target->color_attachment.descriptor_set
-        ) != VK_SUCCESS) {
-        log_error("vulkan: fialed to allocate post process descriptor set");
-        return (render_target_handle_t){.id = GRAPHICS_INVALID_HANDLE};
-    }
+        if (vkAllocateDescriptorSets(
+                graphics->core.device, &alloc_info, &render_target->color_attachment.descriptor_set
+            ) != VK_SUCCESS) {
+            log_error("vulkan: failed to allocate post process descriptor set");
+            return (render_target_handle_t){.id = GRAPHICS_INVALID_HANDLE};
+        }
 
-    if (render_target->color_attachment.view == VK_NULL_HANDLE) {
-        log_error("CRITICAL: render_target->color_attachment.view == VK_NULL_HANDLE");
+        VkDescriptorImageInfo image_info = {
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            .imageView   = render_target->color_attachment.view,
+            .sampler     = render_target->color_attachment.sampler,
+        };
+        VkWriteDescriptorSet descriptor_write = {
+            .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet          = render_target->color_attachment.descriptor_set,
+            .dstBinding      = 0,
+            .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .descriptorCount = 1,
+            .pImageInfo      = &image_info,
+        };
+        vkUpdateDescriptorSets(graphics->core.device, 1, &descriptor_write, 0, NULL);
     }
-    if (render_target->color_attachment.sampler == VK_NULL_HANDLE) {
-        log_error("CRITICAL: render_target->color_attachment.sampler == VK_NULL_HANDLE");
-    }
-
-    VkDescriptorImageInfo image_info = {
-        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        .imageView   = render_target->color_attachment.view,
-        .sampler     = render_target->color_attachment.sampler,
-    };
-    VkWriteDescriptorSet descriptor_write = {
-        .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstSet          = render_target->color_attachment.descriptor_set,
-        .dstBinding      = 0,
-        .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        .descriptorCount = 1,
-        .pImageInfo      = &image_info,
-    };
-    vkUpdateDescriptorSets(graphics->core.device, 1, &descriptor_write, 0, NULL);
 
     return (render_target_handle_t){.id = id};
 }
@@ -238,16 +240,17 @@ void vk_resize_render_target(
     uint32_t            width,
     uint32_t            height
 ) {
-    if (!rt || !rt->is_active) {
+    if (!rt || !rt->is_active)
         return;
-    }
-    if (rt->width == width && rt->height == height) {
+    if (rt->width == width && rt->height == height)
         return;
-    }
 
-    vkDestroyImageView(graphics->core.device, rt->color_attachment.view, NULL);
-    vkDestroyImage(graphics->core.device, rt->color_attachment.image, NULL);
-    vkDestroySampler(graphics->core.device, rt->color_attachment.sampler, NULL);
+    // Destroy
+    if (rt->format != RT_FORMAT_DEPTH_ONLY) {
+        vkDestroyImageView(graphics->core.device, rt->color_attachment.view, NULL);
+        vkDestroyImage(graphics->core.device, rt->color_attachment.image, NULL);
+        vkDestroySampler(graphics->core.device, rt->color_attachment.sampler, NULL);
+    }
 
     if (rt->has_depth) {
         vkDestroyImageView(graphics->core.device, rt->depth_attachment.view, NULL);
@@ -258,15 +261,20 @@ void vk_resize_render_target(
     rt->width  = width;
     rt->height = height;
 
-    create_render_target_attachment(
-        graphics,
-        width,
-        height,
-        VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-        VK_IMAGE_ASPECT_COLOR_BIT,
-        &rt->color_attachment
-    );
+    // Recreate
+    if (rt->format != RT_FORMAT_DEPTH_ONLY) {
+        VkFormat color_format = (rt->format == RT_FORMAT_HDR) ? VK_FORMAT_R16G16B16A16_SFLOAT
+                                                              : VK_FORMAT_R8G8B8A8_UNORM;
+        create_render_target_attachment(
+            graphics,
+            width,
+            height,
+            color_format,
+            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            &rt->color_attachment
+        );
+    }
 
     if (rt->has_depth) {
         create_render_target_attachment(
@@ -280,18 +288,21 @@ void vk_resize_render_target(
         );
     }
 
-    VkDescriptorImageInfo image_info = {
-        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        .imageView   = rt->color_attachment.view,
-        .sampler     = rt->color_attachment.sampler,
-    };
-    VkWriteDescriptorSet descriptor_write = {
-        .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstSet          = rt->color_attachment.descriptor_set,
-        .dstBinding      = 0,
-        .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        .descriptorCount = 1,
-        .pImageInfo      = &image_info,
-    };
-    vkUpdateDescriptorSets(graphics->core.device, 1, &descriptor_write, 0, NULL);
+    // Re-link descriptor
+    if (rt->format != RT_FORMAT_DEPTH_ONLY) {
+        VkDescriptorImageInfo image_info = {
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            .imageView   = rt->color_attachment.view,
+            .sampler     = rt->color_attachment.sampler,
+        };
+        VkWriteDescriptorSet descriptor_write = {
+            .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet          = rt->color_attachment.descriptor_set,
+            .dstBinding      = 0,
+            .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .descriptorCount = 1,
+            .pImageInfo      = &image_info,
+        };
+        vkUpdateDescriptorSets(graphics->core.device, 1, &descriptor_write, 0, NULL);
+    }
 }

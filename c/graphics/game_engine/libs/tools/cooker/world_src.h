@@ -10,8 +10,19 @@ typedef struct {
     string_span_t name;
     bool          is_active;
     string_span_t skybox_path;
-    vec3_t        ambient_tint;
-    float         fog_density;
+
+    vec3_t ambient_tint;
+    vec3_t ambient_color;
+    float  ambient_intensity;
+
+    float  fog_density;
+    vec3_t fog_color;
+
+    float  sun_intensity;
+    vec3_t sun_direction;
+    vec3_t sun_color;
+
+    float exposure;
 } environment_src_t;
 
 typedef struct {

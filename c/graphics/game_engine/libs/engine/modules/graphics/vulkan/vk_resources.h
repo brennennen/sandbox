@@ -7,11 +7,6 @@
 #include "scene_types.h"
 #include "vk_types.h"
 
-mat4_t mat4_identity();
-mat4_t mat4_ortho(float left, float right, float bottom, float top, float near, float far);
-mat4_t mat4_perspective(float fov_y, float aspect, float near, float far);
-mat4_t mat4_mul(mat4_t a, mat4_t b);
-
 gpu_allocation_t vk_create_staging_buffer(
     graphics_t*  r,
     void*        data,

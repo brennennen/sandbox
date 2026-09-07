@@ -21,9 +21,10 @@ int main(int argc, char* argv[]) {
     // TODO: validate graphic settings
 
     game_engine_init_config_t engine_init_config = {
-        .window_title     = "Game",
-        .window_width     = graphic_settings.resolution_x,
-        .window_height    = graphic_settings.resolution_y,
+        .window_title  = "Game",
+        .window_width  = graphic_settings.resolution_x,
+        .window_height = graphic_settings.resolution_y,
+
         .initial_pak_path = "./../../.assets/sponza.pak",
         //.initial_pak_path = "./../../.assets/test_zone.pak",
         // .initial_pak_path = "./../../.assets/test_skybox_zone.pak",

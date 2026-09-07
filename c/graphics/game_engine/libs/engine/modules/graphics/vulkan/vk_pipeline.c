@@ -349,16 +349,24 @@ static bool init_global_descriptor_layout(graphics_t* graphics) {
         .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT,
     };
 
+    VkDescriptorSetLayoutBinding shadow_binding = {
+        .binding         = 4,
+        .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags      = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+    };
+
     VkDescriptorSetLayoutBinding global_bindings[] = {
         global_ubo_binding,
         skybox_binding,
         irradiance_binding,
         prefilter_binding,
+        shadow_binding,
     };
 
     VkDescriptorSetLayoutCreateInfo global_info = {
         .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .bindingCount = 4,
+        .bindingCount = 5,
         .pBindings    = global_bindings,
     };
     if (vkCreateDescriptorSetLayout(
@@ -521,10 +529,130 @@ static bool init_pipeline_layouts(graphics_t* graphics) {
     return true;
 }
 
+static VkPipeline create_shadow_pipeline(graphics_t* graphics) {
+    VkShaderModule vert_mod = vk_create_shader_module(
+        graphics->core.device, "shaders/core/shadow.vert.spv"
+    );
+
+    VkPipelineShaderStageCreateInfo stage = {
+        .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .stage  = VK_SHADER_STAGE_VERTEX_BIT,
+        .module = vert_mod,
+        .pName  = "main",
+    };
+
+    VkVertexInputBindingDescription binding_desc = {
+        .binding = 0, .stride = sizeof(vertex_t), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX
+    };
+
+    VkVertexInputAttributeDescription attribute_description = {
+        .location = 0,
+        .binding  = 0,
+        .format   = VK_FORMAT_R32G32B32_SFLOAT,
+        .offset   = offsetof(vertex_t, pos)
+    };
+
+    VkPipelineVertexInputStateCreateInfo vertex_input = {
+        .sType                         = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .vertexBindingDescriptionCount = 1,
+        .pVertexBindingDescriptions    = &binding_desc,
+        .vertexAttributeDescriptionCount = 1,
+        .pVertexAttributeDescriptions    = &attribute_description
+    };
+
+    VkPipelineInputAssemblyStateCreateInfo input_assembly = {
+        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+        .topology               = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        .primitiveRestartEnable = VK_FALSE
+    };
+
+    VkPipelineRasterizationStateCreateInfo rasterizer = {
+        .sType       = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+        .polygonMode = VK_POLYGON_MODE_FILL,
+        .lineWidth   = 1.0f,
+        .cullMode = VK_CULL_MODE_NONE,
+        //.cullMode        = VK_CULL_MODE_FRONT_BIT, // Culling front faces helps prevent shadow acne
+        .frontFace       = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+        .depthBiasEnable = VK_TRUE, // Push depth slightly to avoid self-shadowing
+        .depthBiasConstantFactor = 1.25f,
+        .depthBiasClamp          = 0.0f,
+        .depthBiasSlopeFactor    = 1.75f,
+    };
+
+    VkPipelineMultisampleStateCreateInfo multisampling = {
+        .sType                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+        .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+    };
+
+    // Note: colorWriteMask and blend attachments are completely omitted
+
+    VkPipelineDepthStencilStateCreateInfo depth_stencil = {
+        .sType            = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+        .depthTestEnable  = VK_TRUE,
+        .depthWriteEnable = VK_TRUE,
+        .depthCompareOp   = VK_COMPARE_OP_LESS,
+        //.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL,
+    };
+
+    VkPipelineRenderingCreateInfo rendering_info = {
+        .sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+        .colorAttachmentCount    = 0,
+        .pColorAttachmentFormats = NULL,
+        .depthAttachmentFormat   = VK_FORMAT_D32_SFLOAT,
+    };
+
+    VkDynamicState dynamic_states[] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+    VkPipelineDynamicStateCreateInfo dynamic_info = {
+        .sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .dynamicStateCount = 2,
+        .pDynamicStates    = dynamic_states,
+    };
+
+    VkGraphicsPipelineCreateInfo pipeline_info = {
+        .sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        .pNext               = &rendering_info,
+        .stageCount          = 1, // Only 1 stage (Vertex)
+        .pStages             = &stage,
+        .pVertexInputState   = &vertex_input,
+        .pInputAssemblyState = &input_assembly,
+        .pViewportState =
+            &(VkPipelineViewportStateCreateInfo){
+                .sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+                .viewportCount = 1,
+                .scissorCount  = 1,
+            },
+        .pRasterizationState = &rasterizer,
+        .pMultisampleState   = &multisampling,
+        .pDepthStencilState  = &depth_stencil,
+        .pColorBlendState    = NULL, // No color blend state!
+        .pDynamicState       = &dynamic_info,
+        .layout              = graphics->pipelines.layout,
+    };
+
+    VkPipeline pipeline;
+    if (vkCreateGraphicsPipelines(
+            graphics->core.device, VK_NULL_HANDLE, 1, &pipeline_info, NULL, &pipeline
+        ) != VK_SUCCESS) {
+        log_error("vulkan: failed to create shadow pipeline");
+        return VK_NULL_HANDLE;
+    }
+
+    vkDestroyShaderModule(graphics->core.device, vert_mod, NULL);
+    return pipeline;
+}
+
 bool vk_create_graphics_pipeline(graphics_t* graphics) {
     if (!init_pipeline_layouts(graphics)) {
         return false;
     }
+
+    graphics->pipelines.shadow = create_shadow_pipeline(graphics);
+    vk_set_debug_name(
+        graphics->core.device,
+        (uint64_t)graphics->pipelines.shadow,
+        VK_OBJECT_TYPE_PIPELINE,
+        "graphics->pipelines.shadow"
+    );
 
     graphics->pipelines.forward_lit = create_pipeline_internal(
         graphics,
@@ -608,6 +736,7 @@ bool vk_create_graphics_pipeline(graphics_t* graphics) {
 
     return (
         graphics->pipelines.forward_lit != VK_NULL_HANDLE &&
+        graphics->pipelines.shadow != VK_NULL_HANDLE &&
         graphics->pipelines.skybox != VK_NULL_HANDLE &&
         graphics->pipelines.post_process != VK_NULL_HANDLE &&
         graphics->pipelines.debug_wireframe != VK_NULL_HANDLE &&
@@ -617,6 +746,9 @@ bool vk_create_graphics_pipeline(graphics_t* graphics) {
 }
 
 void vk_destroy_graphics_pipeline(graphics_t* graphics) {
+    if (graphics->pipelines.shadow) {
+        vkDestroyPipeline(graphics->core.device, graphics->pipelines.shadow, NULL);
+    }
     if (graphics->pipelines.forward_lit) {
         vkDestroyPipeline(graphics->core.device, graphics->pipelines.forward_lit, NULL);
     }

@@ -166,14 +166,27 @@ void graphics_update_debug_frustum(graphics_t* r, mat4_t inv_vp) {
     memcpy(r->frustum_buffer.allocation.mapped_ptr, lines, sizeof(lines));
 }
 
-void update_uniform_buffer(graphics_t* r, mat4_t view, vec3_t cam_pos, uint32_t current_frame) {
+void update_uniform_buffer(
+    graphics_t* r,
+    mat4_t      view,
+    vec3_t      cam_pos,
+    mat4_t      light_space_matrix,
+    vec3_t      sun_direction,
+    vec3_t      sun_color,
+    uint32_t    current_frame
+) {
     float  aspect = (float)r->display.extent.width / (float)r->display.extent.height;
     mat4_t proj   = mat4_perspective(0.785f, aspect, 0.1f, 100.0f);
-    ubo_t  ubo    = {
-            .view       = view,
-            .proj       = proj,
-            .camera_pos = {cam_pos.x, cam_pos.y, cam_pos.z, 1.0f},
+
+    ubo_t ubo = {
+        .view               = view,
+        .proj               = proj,
+        .light_space_matrix = light_space_matrix,
+        .camera_pos         = {cam_pos.x, cam_pos.y, cam_pos.z, 1.0f},
+        .sun_direction      = {sun_direction.x, sun_direction.y, sun_direction.z, 0.0f},
+        .sun_color          = {sun_color.x, sun_color.y, sun_color.z, 1.0f},
     };
+
     memcpy(r->frames[current_frame].uniform_alloc.mapped_ptr, &ubo, sizeof(ubo));
 }
 
@@ -511,6 +524,9 @@ static int32_t begin_frame(
     platform_t*         platform,
     mat4_t              view,
     vec3_t              cam_pos,
+    mat4_t              light_space_matrix,
+    vec3_t              sun_direction,
+    vec3_t              sun_color,
     vk_render_target_t* render_target,
     draw_mode_t         draw_mode
 ) {
@@ -537,120 +553,22 @@ static int32_t begin_frame(
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
         vk_recreate_swapchain(r, w, h);
-
         if (render_target != NULL) {
             vk_resize_render_target(r, render_target, w, h);
         }
         return -1;
     }
 
-    update_uniform_buffer(r, view, cam_pos, r->current_frame);
+    update_uniform_buffer(
+        r, view, cam_pos, light_space_matrix, sun_direction, sun_color, r->current_frame
+    );
+
     vkResetFences(r->core.device, 1, &r->frames[r->current_frame].in_flight_fence);
     r->command_buffer = r->frames[r->current_frame].command_buffer;
     vkResetCommandBuffer(r->command_buffer, 0);
 
     VkCommandBufferBeginInfo begin_info = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     vkBeginCommandBuffer(r->command_buffer, &begin_info);
-
-    uint32_t    render_width  = r->display.extent.width;
-    uint32_t    render_height = r->display.extent.height;
-    VkImage     color_image   = r->display.images[image_index];
-    VkImageView color_view    = r->display.image_views[image_index];
-    VkImageView depth_view    = r->display.depth_view;
-
-    if (draw_mode != DRAW_MODE_DEBUG_SDR) {
-        render_width  = render_target->width;
-        render_height = render_target->height;
-        color_image   = render_target->color_attachment.image;
-        color_view    = render_target->color_attachment.view;
-        if (render_target->has_depth) {
-            depth_view = render_target->depth_attachment.view;
-        }
-    }
-
-    VkImage current_depth_image = r->display.depth_image;
-    if (draw_mode != DRAW_MODE_DEBUG_SDR && render_target->has_depth) {
-        current_depth_image = render_target->depth_attachment.image;
-    }
-
-    VkImageMemoryBarrier barriers[2]   = {0};
-    uint32_t             barrier_count = 0;
-
-    barriers[barrier_count++] = (VkImageMemoryBarrier){
-        .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-        .oldLayout        = VK_IMAGE_LAYOUT_UNDEFINED,
-        .newLayout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .image            = color_image,
-        .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1},
-        .srcAccessMask    = 0,
-        .dstAccessMask    = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
-    };
-
-    if (current_depth_image != VK_NULL_HANDLE) {
-        barriers[barrier_count++] = (VkImageMemoryBarrier){
-            .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .oldLayout        = VK_IMAGE_LAYOUT_UNDEFINED,
-            .newLayout        = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-            .image            = current_depth_image,
-            .subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1},
-            .srcAccessMask    = 0,
-            .dstAccessMask    = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
-        };
-    }
-
-    vkCmdPipelineBarrier(
-        r->command_buffer,
-        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-        0,
-        0,
-        NULL,
-        0,
-        NULL,
-        barrier_count,
-        barriers
-    );
-
-    VkRenderingAttachmentInfo color_attachment = {
-        .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-        .imageView   = color_view,
-        .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .loadOp      = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp     = VK_ATTACHMENT_STORE_OP_STORE,
-        .clearValue  = {{{0.1f, 0.1f, 0.2f, 1.0f}}}
-    };
-
-    VkRenderingAttachmentInfo depth_attachment = {
-        .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-        .imageView   = depth_view,
-        .imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-        .loadOp      = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp     = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .clearValue  = {.depthStencil = {1.0f, 0}}
-    };
-
-    VkRenderingInfo rendering_info = {
-        .sType                = VK_STRUCTURE_TYPE_RENDERING_INFO,
-        .renderArea           = {{0, 0}, {render_width, render_height}},
-        .layerCount           = 1,
-        .colorAttachmentCount = 1,
-        .pColorAttachments    = &color_attachment,
-        .pDepthAttachment     = &depth_attachment
-    };
-
-    vkCmdBeginRendering(r->command_buffer, &rendering_info);
-
-    VkViewport viewport = {
-        .x        = 0.0f,
-        .y        = (float)render_height,
-        .width    = (float)render_width,
-        .height   = -(float)render_height,
-        .minDepth = 0.0f,
-        .maxDepth = 1.0f
-    };
-    VkRect2D scissor = {{0, 0}, {render_width, render_height}};
-    vkCmdSetViewport(r->command_buffer, 0, 1, &viewport);
-    vkCmdSetScissor(r->command_buffer, 0, 1, &scissor);
 
     return (int32_t)image_index;
 }
@@ -1040,12 +958,43 @@ static void execute_post_process_pass(
     vkCmdDraw(graphics->command_buffer, 3, 1, 0, 0);
 }
 
+void graphics_update_shadow_map_descriptor(
+    graphics_t*            graphics,
+    render_target_handle_t shadow_target
+) {
+    if (shadow_target.id == GRAPHICS_INVALID_HANDLE)
+        return;
+
+    vk_render_target_t* rt = &graphics->assets.render_targets[shadow_target.id];
+
+    VkDescriptorImageInfo shadow_info = {
+        .sampler     = rt->depth_attachment.sampler,
+        .imageView   = rt->depth_attachment.view,
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+    };
+
+    for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++) {
+        VkWriteDescriptorSet write = {
+            .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet          = graphics->frames[i].global_descriptor_set,
+            .dstBinding      = 4, // <-- Must match the layout binding index!
+            .dstArrayElement = 0,
+            .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .descriptorCount = 1,
+            .pImageInfo      = &shadow_info
+        };
+        vkUpdateDescriptorSets(graphics->core.device, 1, &write, 0, NULL);
+    }
+    log_info("vulkan: Shadow map descriptor bound to Set 0, Binding 4.");
+}
+
 #include <assert.h>
 
 void graphics_draw(
     graphics_t*            graphics,
     platform_t*            platform,
     render_target_handle_t target,
+    render_target_handle_t shadow_target,
     mat4_t                 view,
     vec3_t                 camera_pos,
     mat4_t                 culling_view_proj,
@@ -1053,7 +1002,10 @@ void graphics_draw(
     draw_mode_t            draw_mode,
     render_object_t*       objects,
     uint32_t               object_count,
-    texture_handle_t       skybox_texture
+    texture_handle_t       skybox_texture,
+    mat4_t                 light_space_matrix,
+    vec3_t                 sun_direction,
+    vec3_t                 sun_color
 ) {
     assert(is_matrix_valid(&view) && "CRASH: NaN detected in View Matrix entering graphics_draw!");
     assert(is_matrix_valid(&culling_view_proj) && "CRASH: NaN detected in Culling Matrix!");
@@ -1063,17 +1015,255 @@ void graphics_draw(
         render_target = &graphics->assets.render_targets[target.id];
     }
 
+    vk_render_target_t* shadow_render_target = NULL;
+    if (shadow_target.id != GRAPHICS_INVALID_HANDLE) {
+        shadow_render_target = &graphics->assets.render_targets[shadow_target.id];
+    }
+
     vk_render_target_t* active_target = render_target;
     if (draw_mode == DRAW_MODE_DEBUG_SDR) {
         // active_target = &graphics->assets.render_targets[target.id];
     }
 
     int32_t image_index = begin_frame(
-        graphics, platform, view, camera_pos, render_target, draw_mode
+        graphics,
+        platform,
+        view,
+        camera_pos,
+        light_space_matrix,
+        sun_direction,
+        sun_color,
+        render_target,
+        draw_mode
     );
     if (image_index < 0) {
         return;
     }
+
+    // shadow pass here
+    if (shadow_render_target != NULL && shadow_render_target->has_depth) {
+        VkCommandBuffer cmd = graphics->command_buffer;
+
+        // 1. Transition Shadow Map to Writable
+        VkImageMemoryBarrier shadow_write_barrier = {
+            .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .oldLayout        = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout        = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+            .image            = shadow_render_target->depth_attachment.image,
+            .subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1},
+            .srcAccessMask    = 0,
+            .dstAccessMask    = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+        };
+        vkCmdPipelineBarrier(
+            cmd,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+            0,
+            0,
+            NULL,
+            0,
+            NULL,
+            1,
+            &shadow_write_barrier
+        );
+
+        VkRenderingAttachmentInfo shadow_depth_att = {
+            .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            .imageView   = shadow_render_target->depth_attachment.view,
+            .imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+            .loadOp      = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp     = VK_ATTACHMENT_STORE_OP_STORE,
+            .clearValue  = {.depthStencil = {1.0f, 0}}
+        };
+        VkRenderingInfo shadow_info = {
+            .sType      = VK_STRUCTURE_TYPE_RENDERING_INFO,
+            .renderArea = {{0, 0}, {shadow_render_target->width, shadow_render_target->height}},
+            .layerCount = 1,
+            .pDepthAttachment = &shadow_depth_att
+        };
+        vkCmdBeginRendering(cmd, &shadow_info);
+
+        VkViewport shadow_vp = {
+            .x        = 0.0f,
+            .y        = (float)shadow_render_target->height,
+            .width    = (float)shadow_render_target->width,
+            .height   = -(float)shadow_render_target->height,
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f
+        };
+        VkRect2D shadow_sc = {{0, 0}, {shadow_render_target->width, shadow_render_target->height}};
+        vkCmdSetViewport(cmd, 0, 1, &shadow_vp);
+        vkCmdSetScissor(cmd, 0, 1, &shadow_sc);
+
+        // 3. Bind Pipeline and Globals
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics->pipelines.shadow);
+        vkCmdBindDescriptorSets(
+            cmd,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            graphics->pipelines.layout,
+            0,
+            1,
+            &graphics->frames[graphics->current_frame].global_descriptor_set,
+            0,
+            NULL
+        );
+
+        // 4. Draw Geometry (No materials, no culling, just pure vertices!)
+        VkDeviceSize offsets[] = {0};
+        for (uint32_t i = 0; i < object_count; i++) {
+            render_object_t* obj = &objects[i];
+
+            if (obj->mesh.id == GRAPHICS_INVALID_HANDLE)
+                continue;
+
+            vk_mesh_t* vk_mesh = &graphics->assets.meshes[obj->mesh.id];
+            if (!vk_mesh->is_active)
+                continue;
+
+            push_constants_t push = {.transform = obj->transform};
+
+            vkCmdPushConstants(
+                cmd,
+                graphics->pipelines.layout,
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                0,
+                sizeof(push_constants_t),
+                &push
+            );
+
+            vkCmdBindVertexBuffers(cmd, 0, 1, &vk_mesh->vertex_buffer, offsets);
+
+            if (vk_mesh->index_count > 0) {
+                vkCmdBindIndexBuffer(cmd, vk_mesh->index_buffer, 0, VK_INDEX_TYPE_UINT32);
+                vkCmdDrawIndexed(cmd, vk_mesh->index_count, 1, 0, 0, 0);
+            } else {
+                vkCmdDraw(cmd, vk_mesh->vertex_count, 1, 0, 0);
+            }
+        }
+
+        vkCmdEndRendering(cmd);
+
+        // 5. Transition Shadow Map to Readable by the Fragment Shader
+        VkImageMemoryBarrier shadow_read_barrier = {
+            .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .oldLayout        = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+            .newLayout        = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            .image            = shadow_render_target->depth_attachment.image,
+            .subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1},
+            .srcAccessMask    = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            .dstAccessMask    = VK_ACCESS_SHADER_READ_BIT
+        };
+        vkCmdPipelineBarrier(
+            cmd,
+            VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            0,
+            0,
+            NULL,
+            0,
+            NULL,
+            1,
+            &shadow_read_barrier
+        );
+    }
+
+    uint32_t    render_width        = graphics->display.extent.width;
+    uint32_t    render_height       = graphics->display.extent.height;
+    VkImage     color_image         = graphics->display.images[image_index];
+    VkImageView color_view          = graphics->display.image_views[image_index];
+    VkImageView depth_view          = graphics->display.depth_view;
+    VkImage     current_depth_image = graphics->display.depth_image;
+
+    if (draw_mode != DRAW_MODE_DEBUG_SDR && render_target != NULL) {
+        render_width  = render_target->width;
+        render_height = render_target->height;
+        color_image   = render_target->color_attachment.image;
+        color_view    = render_target->color_attachment.view;
+        if (render_target->has_depth) {
+            depth_view          = render_target->depth_attachment.view;
+            current_depth_image = render_target->depth_attachment.image;
+        }
+    }
+
+    VkImageMemoryBarrier barriers[2]   = {0};
+    uint32_t             barrier_count = 0;
+
+    barriers[barrier_count++] = (VkImageMemoryBarrier){
+        .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .oldLayout        = VK_IMAGE_LAYOUT_UNDEFINED,
+        .newLayout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .image            = color_image,
+        .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1},
+        .srcAccessMask    = 0,
+        .dstAccessMask    = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+    };
+
+    if (current_depth_image != VK_NULL_HANDLE) {
+        barriers[barrier_count++] = (VkImageMemoryBarrier){
+            .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .oldLayout        = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout        = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+            .image            = current_depth_image,
+            .subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1},
+            .srcAccessMask    = 0,
+            .dstAccessMask    = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+        };
+    }
+
+    vkCmdPipelineBarrier(
+        graphics->command_buffer,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+        0,
+        0,
+        NULL,
+        0,
+        NULL,
+        barrier_count,
+        barriers
+    );
+
+    VkRenderingAttachmentInfo color_attachment = {
+        .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+        .imageView   = color_view,
+        .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .loadOp      = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp     = VK_ATTACHMENT_STORE_OP_STORE,
+        .clearValue  = {{{0.1f, 0.1f, 0.2f, 1.0f}}}
+    };
+
+    VkRenderingAttachmentInfo depth_attachment = {
+        .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+        .imageView   = depth_view,
+        .imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+        .loadOp      = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp     = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .clearValue  = {.depthStencil = {1.0f, 0}}
+    };
+
+    VkRenderingInfo rendering_info = {
+        .sType                = VK_STRUCTURE_TYPE_RENDERING_INFO,
+        .renderArea           = {{0, 0}, {render_width, render_height}},
+        .layerCount           = 1,
+        .colorAttachmentCount = 1,
+        .pColorAttachments    = &color_attachment,
+        .pDepthAttachment     = (current_depth_image != VK_NULL_HANDLE) ? &depth_attachment : NULL
+    };
+
+    vkCmdBeginRendering(graphics->command_buffer, &rendering_info);
+
+    VkViewport viewport = {
+        .x        = 0.0f,
+        .y        = (float)render_height,
+        .width    = (float)render_width,
+        .height   = -(float)render_height,
+        .minDepth = 0.0f,
+        .maxDepth = 1.0f
+    };
+    VkRect2D scissor = {{0, 0}, {render_width, render_height}};
+    vkCmdSetViewport(graphics->command_buffer, 0, 1, &viewport);
+    vkCmdSetScissor(graphics->command_buffer, 0, 1, &scissor);
+
     float  aspect = (float)graphics->display.extent.width / (float)graphics->display.extent.height;
     mat4_t proj   = mat4_perspective(0.785f, aspect, 0.1f, 100.0f);
     mat4_t view_proj  = mat4_mul(proj, view);

@@ -36,6 +36,7 @@ mat4_t mat4_mul(mat4_t a, mat4_t b);
 // mat4_t mat4_view(camera_t* cam);
 mat4_t mat4_scale(vec3_t s);
 void   mat4_print(const char* label, mat4_t m);
+mat4_t mat4_ortho(float left, float right, float bottom, float top, float near, float far);
 
 /**
  * Finds the determinant of a 2x2 matrix.
@@ -144,11 +145,6 @@ static inline vec4_t mat4_transform_tangent(mat4_t m, vec4_t tangent) {
  * @return The inverted 4x4 matrix, or an Identity matrix if the input cannot be inverted.
  */
 mat4_t mat4_inverse(mat4_t mat);
-
-
-static inline float vec3_dot(vec3_t a, vec3_t b) {
-    return (a.x * b.x) + (a.y * b.y) + (a.z * b.z);
-}
 
 static inline float vec4_dot(vec4_t a, vec4_t b) {
     return (a.x * b.x) + (a.y * b.y) + (a.z * b.z) + (a.w * b.w);

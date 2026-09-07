@@ -85,10 +85,16 @@ render_target_handle_t graphics_create_render_target(
 
 void graphics_destroy_render_target(graphics_t* graphics, render_target_handle_t handle);
 
+void graphics_update_shadow_map_descriptor(
+    graphics_t*            graphics,
+    render_target_handle_t shadow_target
+);
+
 void graphics_draw(
     graphics_t*            graphics,
     platform_t*            platform,
     render_target_handle_t target,
+    render_target_handle_t shadow_target,
     mat4_t                 view,
     vec3_t                 camera_pos,
     mat4_t                 culling_view_proj,
@@ -96,7 +102,10 @@ void graphics_draw(
     draw_mode_t            draw_mode,
     render_object_t*       objects,
     uint32_t               object_count,
-    texture_handle_t       skybox_texture
+    texture_handle_t       skybox_texture,
+    mat4_t                 light_space_matrix,
+    vec3_t                 sun_direction,
+    vec3_t                 sun_color
 );
 
 void graphics_destroy(graphics_t* graphics);

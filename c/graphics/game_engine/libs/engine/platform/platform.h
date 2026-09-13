@@ -118,6 +118,9 @@ uint64_t platform_file_write(platform_file_t file, const void* buffer, uint64_t 
 bool     platform_file_seek(platform_file_t file, uint64_t offset);
 uint64_t platform_file_tell(platform_file_t file);
 
+typedef bool (*platform_event_callback_t)(const void* native_event);
+void platform_set_event_callback(platform_t* p, platform_event_callback_t cb);
+
 // MARK: misc
 
 // TODO: wrap this in #ifdef RENDERER_VULKAN?

@@ -5,6 +5,7 @@ import zipfile
 import shutil
 import tarfile
 import platform
+import subprocess
 
 VENDOR_DIR = ".vendor"
 
@@ -94,7 +95,23 @@ def download_bc7enc():
     urllib.request.urlretrieve(bc7enc_c_url, os.path.join(bc7_dir, "bc7enc.c"))
     urllib.request.urlretrieve(bc7enc_h_url, os.path.join(bc7_dir, "bc7enc.h"))
 
-if __name__ == "__main__":
+def download_cimgui():
+    cimgui_dir = os.path.join(VENDOR_DIR, "cimgui")
+    if os.path.exists(cimgui_dir):
+        return
+
+    print("Cloning cimgui (docking branch) and submodules...")
+    # The docking branch contains multi-viewport support and the latest backend bindings
+    subprocess.run([
+        "git", "clone", "--recursive", "-b", "docking_inter",
+        "https://github.com/cimgui/cimgui.git", cimgui_dir
+    ], check=True)
+
+def parse_arguments():
+    # TODO: add arg parsing
+    pass
+
+def main():
     os.makedirs(VENDOR_DIR, exist_ok=True)
     download_sdl()
     download_volk()
@@ -102,3 +119,7 @@ if __name__ == "__main__":
     download_stb_image()
     download_cgltf()
     download_bc7enc()
+    download_cimgui()
+
+if __name__ == "__main__":
+    main()

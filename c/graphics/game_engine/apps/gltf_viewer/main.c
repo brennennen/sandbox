@@ -144,6 +144,10 @@ bool game_engine_tick(game_engine_t* game_engine) {
     }
     if (platform_get_key_pressed(game_engine->platform, KEY_F5)) {
         game_engine->draw_mode = (game_engine->draw_mode + 1) % DRAW_MODE_COUNT;
+        // Skip SDR, doesn't work currently.
+        if (game_engine->draw_mode == DRAW_MODE_DEBUG_SDR) {
+            game_engine->draw_mode = (game_engine->draw_mode + 1) % DRAW_MODE_COUNT;
+        }
         log_info("draw mode: %s", draw_mode_names[game_engine->draw_mode]);
     }
     if (platform_get_key_pressed(game_engine->platform, KEY_ESCAPE)) {

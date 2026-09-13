@@ -10,6 +10,7 @@
 #include "engine/core/logger.h"
 #include "engine/core/math/mat4.h"
 #include "engine/modules/assets/obj.h"
+#include "engine/modules/debug_imgui/debug_imgui.h"
 #include "engine/modules/graphics/debug/debug_grid.h"
 #include "engine/modules/graphics/graphics.h"
 #include "engine/modules/graphics/graphics_types.h"
@@ -1435,6 +1436,8 @@ void graphics_draw(
     // log_info(
     //     "Target ID: %u | Executing Bypass: %s", target.id, (render_target != NULL) ? "YES" : "NO"
     // );
+
+    debug_imgui_render(graphics);
 
     end_frame(graphics, (uint32_t)image_index);
 }

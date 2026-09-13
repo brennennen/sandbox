@@ -18,6 +18,9 @@
 #include "engine/modules/assets/obj.h"
 #include "engine/modules/graphics/graphics.h"
 #include "engine/platform/platform.h"
+
+#include "engine/modules/debug_imgui/debug_imgui.h"
+
 #include "shared/math_types.h"
 
 static texture_handle_t default_tex;
@@ -284,6 +287,11 @@ bool game_engine_init(game_engine_t* game_engine, game_engine_init_config_t* eng
     game_engine->frame_count   = 0;
 
     game_engine->is_running = true;
+
+    debug_imgui_init(game_engine);
+
+    platform_set_event_callback(game_engine->platform, debug_imgui_process_event);
+
     return true;
 }
 
@@ -368,133 +376,170 @@ static void update_world_streaming(game_engine_t* engine, vec3_t player_pos) {
     // TODO: mount new cells
 }
 
-bool game_engine_tick(game_engine_t* game_engine) {
-    if (!platform_update(game_engine->platform)) {
+static bool engine_process_events(game_engine_t* engine) {
+    if (!platform_update(engine->platform)) {
         return false;
     }
-    if (platform_get_key_pressed(game_engine->platform, KEY_F4)) {
+
+    if (platform_get_key_pressed(engine->platform, KEY_F4)) {
         return false;
     }
-    if (platform_get_key_pressed(game_engine->platform, KEY_F5)) {
-        game_engine->draw_mode = (game_engine->draw_mode + 1) % DRAW_MODE_COUNT;
-        log_info("draw mode: %s", draw_mode_names[game_engine->draw_mode]);
+
+    if (platform_get_key_pressed(engine->platform, KEY_F5)) {
+        engine->draw_mode = (engine->draw_mode + 1) % DRAW_MODE_COUNT;
+        // Skip SDR, doesn't work currently.
+        if (engine->draw_mode == DRAW_MODE_DEBUG_SDR) {
+            engine->draw_mode = (engine->draw_mode + 1) % DRAW_MODE_COUNT;
+        }
+        log_info("draw mode: %s", draw_mode_names[engine->draw_mode]);
     }
-    if (platform_get_key_pressed(game_engine->platform, KEY_F6)) {
-        game_engine->debug_freeze_culling = !game_engine->debug_freeze_culling;
-        if (game_engine->debug_freeze_culling) {
+
+    if (platform_get_key_pressed(engine->platform, KEY_F6)) {
+        engine->debug_freeze_culling = !engine->debug_freeze_culling;
+        if (engine->debug_freeze_culling) {
             log_info("Frustum Culling: FROZEN");
-            mat4_t inv_culling = mat4_inverse(game_engine->culling_view_proj);
-            graphics_update_debug_frustum(game_engine->graphics, inv_culling);
+            mat4_t inv_culling = mat4_inverse(engine->culling_view_proj);
+            graphics_update_debug_frustum(engine->graphics, inv_culling);
         } else {
             log_info("Frustum Culling: UNFREEZE");
         }
     }
-    if (platform_get_key_pressed(game_engine->platform, KEY_ESCAPE)) {
-        game_engine->is_paused = !game_engine->is_paused;
-        if (game_engine->is_paused) {
-            platform_set_relative_mouse(game_engine->platform, false);
+
+    if (platform_get_key_pressed(engine->platform, KEY_ESCAPE)) {
+        engine->is_paused = !engine->is_paused;
+        if (engine->is_paused) {
+            platform_set_relative_mouse(engine->platform, false);
             log_info("paused");
         } else {
-            platform_set_relative_mouse(game_engine->platform, true);
+            platform_set_relative_mouse(engine->platform, true);
             log_info("unpaused");
         }
     }
-    if (platform_get_key_pressed(game_engine->platform, KEY_F12)) {
-        present_mode_t current_mode = graphics_get_present_mode(game_engine->graphics);
+
+    if (platform_get_key_pressed(engine->platform, KEY_F12)) {
+        present_mode_t current_mode = graphics_get_present_mode(engine->graphics);
         present_mode_t next_mode    = (current_mode == PRESENT_MODE_VSYNC) ? PRESENT_MODE_IMMEDIATE
                                                                            : PRESENT_MODE_VSYNC;
-        graphics_set_present_mode(game_engine->graphics, next_mode);
+        graphics_set_present_mode(engine->graphics, next_mode);
         log_info("Toggled Present Mode to: %d", next_mode);
     }
 
-    uint64_t current_time  = platform_get_ticks(game_engine->platform);
-    float    delta_time    = (current_time - game_engine->last_time) / 1000.0f;
-    game_engine->last_time = current_time;
+    return true;
+}
+
+static float engine_update_time(game_engine_t* engine) {
+    uint64_t current_time = platform_get_ticks(engine->platform);
+    float    delta_time   = (current_time - engine->last_time) / 1000.0f;
+    engine->last_time     = current_time;
 
     if (delta_time > 0.1f) {
         delta_time = 0.1f;
     }
 
-    game_engine->frame_count++;
-    if (current_time - game_engine->fps_last_time >= 1000) {
+    engine->frame_count++;
+    if (current_time - engine->fps_last_time >= 1000) {
         char title[128];
         snprintf(
             title,
             sizeof(title),
             "Game Engine | FPS: %d | dt: %.4fs",
-            game_engine->frame_count,
+            engine->frame_count,
             delta_time
         );
-        platform_set_title(game_engine->platform, title);
+        platform_set_title(engine->platform, title);
 
-        game_engine->frame_count   = 0;
-        game_engine->fps_last_time = current_time;
+        engine->frame_count   = 0;
+        engine->fps_last_time = current_time;
+    }
+    return delta_time;
+}
+
+static void engine_update_simulation(game_engine_t* engine, float delta_time) {
+    if (engine->is_paused) {
+        return;
     }
 
-    if (!game_engine->is_paused) {
-        game_engine_handle_inputs(game_engine, delta_time);
-    }
+    game_engine_handle_inputs(engine, delta_time);
 
     // TODO: add conditional support for levels, quad/cube worlds, or non-standard/custom worlds
     // (cylindrical?)
-    switch (game_engine->active_scene_type) {
+    switch (engine->active_scene_type) {
     case SCENE_MAIN_MENU: {
-        // main_menu_update(game_engine, delta_time);
+        // main_menu_update(engine, delta_time);
         log_error("not implemented");
         break;
     }
     case SCENE_STATIC_LEVEL: {
-        static_level_update(game_engine, delta_time);
+        static_level_update(engine, delta_time);
         break;
     }
     case SCENE_OPEN_WORLD: {
-        // update_world_streaming(game_engine, game_engine->main_camera->pos);
+        // update_world_streaming(engine, engine->main_camera->pos);
         log_error("not implemented");
         break;
     }
     }
+}
 
-    mat4_t view = camera_get_view_matrix(game_engine->main_camera);
+static void engine_render_frame(game_engine_t* engine) {
+    mat4_t view = camera_get_view_matrix(engine->main_camera);
 
     int w;
     int h;
-    platform_get_window_size(game_engine->platform, &w, &h);
+    platform_get_window_size(engine->platform, &w, &h);
     float aspect = (float)w / (float)h;
 
-    mat4_t proj = mat4_perspective(0.785f, aspect, 0.1f, 5000.0f);
+    mat4_t proj              = mat4_perspective(0.785f, aspect, 0.1f, 5000.0f);
     mat4_t current_view_proj = mat4_mul(proj, view);
     vec3_t light_pos         = {20.0f, -20.0f, 50.0f};
-    vec3_t target     = {0.0f, 0.0f, 0.0f};
-    vec3_t up         = {0.0f, 0.0f, 1.0f};
-    mat4_t light_view = mat4_look_at(light_pos, target, up);
-    float  ortho_size = 50.0f;
+    vec3_t target            = {0.0f, 0.0f, 0.0f};
+    vec3_t up                = {0.0f, 0.0f, 1.0f};
+    mat4_t light_view        = mat4_look_at(light_pos, target, up);
+    float  ortho_size        = 50.0f;
     mat4_t light_proj = mat4_ortho(-ortho_size, ortho_size, -ortho_size, ortho_size, 1.0f, 400.0f);
-    mat4_t light_space_matrix  = mat4_mul(light_proj, light_view);
-    game_engine->sun_direction = vec3_normalize(vec3_sub(target, light_pos));
-    game_engine->sun_color     = (vec3_t){1.0f, 1.0f, 1.0f};
+    mat4_t light_space_matrix = mat4_mul(light_proj, light_view);
+    engine->sun_direction     = vec3_normalize(vec3_sub(target, light_pos));
+    engine->sun_color         = (vec3_t){1.0f, 1.0f, 1.0f};
 
-    if (!game_engine->debug_freeze_culling) {
-        game_engine->culling_view_proj = current_view_proj;
+    if (!engine->debug_freeze_culling) {
+        engine->culling_view_proj = current_view_proj;
     }
 
     graphics_draw(
-        game_engine->graphics,
-        game_engine->platform,
-        game_engine->main_scene_target,
-        game_engine->shadow_target,
+        engine->graphics,
+        engine->platform,
+        engine->main_scene_target,
+        engine->shadow_target,
         view,
-        game_engine->main_camera->pos,
-        game_engine->culling_view_proj,
-        game_engine->debug_freeze_culling,
-        game_engine->draw_mode,
-        game_engine->main_scene.objects,
-        game_engine->main_scene.object_count,
-        game_engine->skybox_texture,
+        engine->main_camera->pos,
+        engine->culling_view_proj,
+        engine->debug_freeze_culling,
+        engine->draw_mode,
+        engine->main_scene.objects,
+        engine->main_scene.object_count,
+        engine->skybox_texture,
         light_space_matrix,
-        game_engine->sun_direction,
-        game_engine->sun_color
+        engine->sun_direction,
+        engine->sun_color
     );
+}
 
+bool game_engine_tick(game_engine_t* game_engine) {
+    if (!engine_process_events(game_engine)) {
+        return false;
+    }
+    float delta_time = engine_update_time(game_engine);
+    engine_update_simulation(game_engine, delta_time);
+
+    debug_imgui_begin_frame();
+    igShowDemoWindow(NULL); // demo kitchen sink, useful for seeing capabilities
+
+    igBegin("engine debug", NULL, 0);
+    // igText("fps: %.1f", igGetIO_NIL()->Framerate);
+    igText("test: %d", 1);
+    igEnd();
+
+    engine_render_frame(game_engine);
     return true;
 }
 
@@ -503,6 +548,8 @@ void game_engine_shutdown(game_engine_t* game_engine) {
     if (game_engine->graphics) {
         graphics_wait_idle(game_engine->graphics);
     }
+
+    debug_imgui_shutdown(game_engine);
 
     if (game_engine->main_scene_target.id != GRAPHICS_INVALID_HANDLE) {
         graphics_destroy_render_target(game_engine->graphics, game_engine->main_scene_target);

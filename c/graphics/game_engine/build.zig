@@ -5,10 +5,66 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     //b.install_path = ".build";
-
-    const release_c_flags = [_][]const u8{ "-std=c23", "-fno-sanitize=alignment" };
+    const cimgui_backend_flags = [_][]const u8{ "-DCIMGUI_USE_SDL3", "-DCIMGUI_USE_VULKAN" };
+    const release_c_flags = [_][]const u8{ "-std=c23", "-fno-sanitize=alignment" } ++ cimgui_backend_flags;
     const debug_c_flags = release_c_flags ++ [_][]const u8{"-DDEBUG"};
     const c_flags = if (optimize == .Debug) &debug_c_flags else &release_c_flags;
+
+    //
+    // MARK: cimgui (Dear ImGui C Bindings)
+    //
+    const cimgui_mod = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+        .link_libcpp = true, // Crucial: Link C++ standard library
+    });
+
+    //const cpp_flags = [_][]const u8{ "-std=c++11", "-fno-exceptions", "-fno-rtti" };
+    const cimgui_cpp_backend_flags = [_][]const u8{
+        "-DCIMGUI_USE_SDL3",
+        "-DCIMGUI_USE_VULKAN",
+        "-DIMGUI_IMPL_API=extern \"C\"",
+        "-DIMGUI_DISABLE_OBSOLETE_FUNCTIONS",
+        "-DIMGUI_IMPL_VULKAN_USE_VOLK",
+    };
+    const release_cpp_flags = [_][]const u8{ "-std=c++11", "-fno-exceptions", "-fno-rtti" } ++ cimgui_backend_flags ++ cimgui_cpp_backend_flags;
+    const debug_cpp_flags = release_cpp_flags ++ [_][]const u8{"-DDEBUG"};
+    const cpp_flags = if (optimize == .Debug) &debug_cpp_flags else &release_cpp_flags;
+
+    const cimgui_sources = [_][]const u8{
+        ".vendor/cimgui/cimgui.cpp",
+        ".vendor/cimgui/imgui/imgui.cpp",
+        ".vendor/cimgui/imgui/imgui_draw.cpp",
+        ".vendor/cimgui/imgui/imgui_demo.cpp",
+        ".vendor/cimgui/imgui/imgui_tables.cpp",
+        ".vendor/cimgui/imgui/imgui_widgets.cpp",
+        // Include the backends you are using
+        ".vendor/cimgui/imgui/backends/imgui_impl_sdl3.cpp",
+        ".vendor/cimgui/imgui/backends/imgui_impl_vulkan.cpp",
+    };
+
+    for (cimgui_sources) |file| {
+        cimgui_mod.addCSourceFile(.{ .file = b.path(file), .flags = cpp_flags });
+    }
+
+    cimgui_mod.addIncludePath(b.path(".vendor/cimgui"));
+    cimgui_mod.addIncludePath(b.path(".vendor/cimgui/imgui"));
+    cimgui_mod.addIncludePath(b.path(".vendor/Vulkan-Headers/include"));
+    cimgui_mod.addIncludePath(b.path(".vendor/volk"));
+
+    if (target.result.os.tag == .windows) {
+        cimgui_mod.addIncludePath(b.path(".vendor/Vulkan/include"));
+        const sdl_path = ".vendor/SDL3-3.4.0/x86_64-w64-mingw32";
+        cimgui_mod.addIncludePath(b.path(sdl_path ++ "/include"));
+    }
+
+    const cimgui_lib = b.addLibrary(.{
+        .linkage = .static,
+        .name = "cimgui",
+        .root_module = cimgui_mod,
+    });
+    b.installArtifact(cimgui_lib);
 
     //
     // MARK: Core
@@ -48,12 +104,13 @@ pub fn build(b: *std.Build) void {
     //
     // MARK: Engine
     //
-
     const include_paths = [_][]const u8{
         ".vendor/volk",
         ".vendor/Vulkan-Headers/include",
         ".vendor/VulkanMemoryAllocator/include",
         ".vendor/stb",
+        ".vendor/cimgui",
+        ".vendor/cimgui/generator/output",
         ".vendor",
         ".",
         "shared",
@@ -67,6 +124,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
         .link_libc = true,
+        .link_libcpp = true,
     });
 
     const engine_sources = [_][]const u8{
@@ -88,6 +146,7 @@ pub fn build(b: *std.Build) void {
         "libs/engine/modules/graphics/vulkan/vk_gpu_allocator.c",
         "libs/engine/modules/graphics/vulkan/vk_pipeline.c",
         "libs/engine/modules/graphics/vulkan/vk_commands.c",
+        "libs/engine/modules/debug_imgui/debug_imgui.c",
         "libs/engine/modules/assets/obj.c",
         "libs/engine/platform/sdl/sdl_backend.c",
     };
@@ -106,11 +165,14 @@ pub fn build(b: *std.Build) void {
         engine_mod.addIncludePath(b.path(sdl_path ++ "/include"));
     }
 
+    engine_mod.linkLibrary(cimgui_lib);
+
     const engine_lib = b.addLibrary(.{
         .linkage = .static,
         .name = "engine",
         .root_module = engine_mod,
     });
+
     b.installArtifact(engine_lib);
 
     if (target.result.os.tag == .windows) {

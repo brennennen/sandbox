@@ -17,6 +17,8 @@ struct platform_t {
 
     const bool* current_keys;
     bool        previous_keys[MAX_KEYS];
+
+    platform_event_callback_t event_callback;
 };
 
 // clang-format off
@@ -89,6 +91,10 @@ void platform_destroy(platform_t* p) {
     log_info("platform: cleaned up");
 }
 
+void platform_set_event_callback(platform_t* p, platform_event_callback_t cb) {
+    p->event_callback = cb;
+}
+
 bool platform_update(platform_t* platform) {
     memcpy(platform->previous_keys, platform->current_keys, sizeof(platform->previous_keys));
     platform->mouse_dx = 0.0f;
@@ -96,6 +102,9 @@ bool platform_update(platform_t* platform) {
 
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
+        if (platform->event_callback) {
+            platform->event_callback(&event);
+        }
         if (event.type == SDL_EVENT_QUIT) {
             return false;
         }
@@ -316,7 +325,6 @@ void platform_file_unmap(platform_file_mapping_t* mapping) {
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
 
 bool platform_file_map_read(const char* filepath, platform_file_mapping_t* out_mapping) {
     int fd = open(filepath, O_RDONLY);

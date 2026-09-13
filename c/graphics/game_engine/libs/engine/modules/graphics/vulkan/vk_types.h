@@ -140,6 +140,7 @@ typedef struct {
     VkSurfaceKHR             surface;
     VkPhysicalDevice         physical_device;
     VkDevice                 device;
+    uint32_t                 graphics_queue_family;
     VkQueue                  graphics_queue;
 } vk_core_t;
 

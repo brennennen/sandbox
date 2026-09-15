@@ -15,11 +15,13 @@
 #include "engine/core/math/mat4.h"
 #include "engine/core/vfs.h"
 #include "engine/core/world.h"
+#include "engine/debug/engine_diagnostics.h"
+#include "engine/debug/freefly_camera.h"
 #include "engine/modules/assets/obj.h"
+#include "engine/modules/assets/pak_loader.h"
+#include "engine/modules/debug_imgui/debug_imgui.h"
 #include "engine/modules/graphics/graphics.h"
 #include "engine/platform/platform.h"
-
-#include "engine/modules/debug_imgui/debug_imgui.h"
 
 #include "shared/math_types.h"
 
@@ -72,6 +74,8 @@ static bool init_core_subsystems(
         .requires_depth = true,
     };
     engine->shadow_target = graphics_create_render_target(engine->graphics, &shadow_config);
+
+    engine->environment.sun_color = (vec3_t){1.0f, 1.0f, 1.0f};
 
     graphics_update_shadow_map_descriptor(engine->graphics, engine->shadow_target);
 
@@ -196,25 +200,14 @@ static void load_geometry_from_pak(game_engine_t* engine, world_pak_t* header, v
     }
 }
 
-bool game_engine_init(game_engine_t* game_engine, game_engine_init_config_t* engine_init_config) {
-    log_info("Initializing engine...");
-    if (!init_core_subsystems(game_engine, engine_init_config)) {
-        log_error("Failed to initialize core subsystems.");
-        return false;
-    }
-    init_default_textures(game_engine);
-
-    if (!vfs_mount_archive(engine_init_config->initial_pak_path)) {
-        log_error("Failed to mount base game archive!");
-    }
-
-    game_engine->active_scene_type = SCENE_STATIC_LEVEL;
-
+void load_pak_file(game_engine_t* game_engine, game_engine_init_config_t* engine_init_config) {
     void* raw_pak_data = vfs_get_mounted_archive_pointer(engine_init_config->initial_pak_path);
     if (raw_pak_data) {
         world_pak_t* header = (world_pak_t*)raw_pak_data;
 
-        game_engine->sun_direction = header->environment.sun_direction;
+        game_engine->environment.sun_direction = header->environment.sun_direction;
+        game_engine->environment.sun_color     = header->environment.sun_color;
+        game_engine->environment.sun_intensity = header->environment.sun_intensity;
 
         texture_pak_t* skybox_def = &header->environment.skybox_cubemap;
 
@@ -228,7 +221,7 @@ bool game_engine_init(game_engine_t* game_engine, game_engine_init_config_t* eng
                 .pixels     = pixel_data,
                 .is_cubemap = true,
             };
-            game_engine->skybox_texture = graphics_upload_texture(
+            game_engine->environment.skybox_texture = graphics_upload_texture(
                 game_engine->graphics, &skybox_img, PAK_TEX_FORMAT_RGBA32F
             );
 
@@ -260,21 +253,44 @@ bool game_engine_init(game_engine_t* game_engine, game_engine_init_config_t* eng
             );
 
             // graphics_update_global_environment(
-            //     game_engine->graphics, game_engine->skybox_texture, irr_tex, pref_tex
+            //     game_engine->graphics,
+            //     game_engine->environment.skybox_texture, irr_tex, pref_tex
             // );
+
             graphics_update_global_environment(
                 game_engine->graphics,
-                game_engine->skybox_texture,
-                game_engine->skybox_texture, // irr_tex
-                game_engine->skybox_texture  // pref_tex
+                game_engine->environment.skybox_texture,
+                game_engine->environment.skybox_texture, // irr_tex
+                game_engine->environment.skybox_texture  // pref_tex
             );
             log_info("Successfully uploaded HDRI Skybox to GPU!");
 
             load_geometry_from_pak(game_engine, header, raw_pak_data);
         } else {
-            game_engine->skybox_texture = default_tex; // Fallback
+            game_engine->environment.skybox_texture = default_tex; // Fallback
         }
     }
+}
+
+bool game_engine_init(game_engine_t* game_engine, game_engine_init_config_t* engine_init_config) {
+    log_info("Initializing engine...");
+    if (!init_core_subsystems(game_engine, engine_init_config)) {
+        log_error("Failed to initialize core subsystems.");
+        return false;
+    }
+
+    debug_imgui_init(game_engine);
+    platform_set_event_callback(game_engine->platform, debug_imgui_process_event);
+
+    init_default_textures(game_engine);
+
+    if (!vfs_mount_archive(engine_init_config->initial_pak_path)) {
+        log_error("Failed to mount base game archive!");
+    }
+
+    game_engine->active_scene_type = SCENE_STATIC_LEVEL;
+
+    load_pak_file(game_engine, engine_init_config);
 
     // TODO: malloc for now, camera will be part of scene, this is a debug camera
     game_engine->main_camera        = malloc(sizeof(camera_t));
@@ -282,69 +298,13 @@ bool game_engine_init(game_engine_t* game_engine, game_engine_init_config_t* eng
     game_engine->main_camera->pitch = -20.0f;
     game_engine->main_camera->yaw   = 0.0f;
 
-    game_engine->last_time     = platform_get_ticks(game_engine->platform);
-    game_engine->fps_last_time = game_engine->last_time;
-    game_engine->frame_count   = 0;
+    game_engine->last_time       = platform_get_ticks(game_engine->platform);
+    game_engine->fps_last_time   = game_engine->last_time;
+    game_engine->fps_frame_count = 0;
 
     game_engine->is_running = true;
 
-    debug_imgui_init(game_engine);
-
-    platform_set_event_callback(game_engine->platform, debug_imgui_process_event);
-
     return true;
-}
-
-static void game_engine_handle_inputs(game_engine_t* game_engine, float delta_time) {
-    camera_t*   camera   = game_engine->main_camera;
-    platform_t* platform = game_engine->platform;
-
-    float dx;
-    float dy;
-
-    platform_get_mouse_delta(platform, &dx, &dy);
-
-    float sensitivity = 0.1f;
-    camera->yaw += dx * sensitivity;
-    camera->pitch -= dy * sensitivity;
-
-    if (camera->pitch > 89.0f) {
-        camera->pitch = 89.0f;
-    }
-    if (camera->pitch < -89.0f) {
-        camera->pitch = -89.0f;
-    }
-
-    const float base_cam_speed = 5.0f;
-    float       cam_speed      = base_cam_speed * delta_time;
-
-    float yaw_rad   = camera->yaw * (M_PI / 180.0f);
-    float forward_x = sinf(yaw_rad);
-    float forward_y = cosf(yaw_rad);
-    float right_x   = cosf(yaw_rad);
-    float right_y   = -sinf(yaw_rad);
-
-    if (platform_get_key(platform, KEY_W)) {
-        camera->pos.x += forward_x * cam_speed;
-        camera->pos.y += forward_y * cam_speed;
-    }
-    if (platform_get_key(platform, KEY_S)) {
-        camera->pos.x -= forward_x * cam_speed;
-        camera->pos.y -= forward_y * cam_speed;
-    }
-    if (platform_get_key(platform, KEY_A)) {
-        camera->pos.x -= right_x * cam_speed;
-        camera->pos.y -= right_y * cam_speed;
-    }
-    if (platform_get_key(platform, KEY_D)) {
-        camera->pos.x += right_x * cam_speed;
-        camera->pos.y += right_y * cam_speed;
-    }
-
-    if (platform_get_key(platform, KEY_SPACE))
-        camera->pos.z += cam_speed;
-    if (platform_get_key(platform, KEY_LSHIFT))
-        camera->pos.z -= cam_speed;
 }
 
 // Define a simple struct for grid coordinates if you don't have one
@@ -429,29 +389,20 @@ static bool engine_process_events(game_engine_t* engine) {
 
 static float engine_update_time(game_engine_t* engine) {
     uint64_t current_time = platform_get_ticks(engine->platform);
-    float    delta_time   = (current_time - engine->last_time) / 1000.0f;
+    engine->delta_time    = (current_time - engine->last_time) / 1000.0f;
     engine->last_time     = current_time;
 
-    if (delta_time > 0.1f) {
-        delta_time = 0.1f;
+    if (engine->delta_time > 0.1f) {
+        engine->delta_time = 0.1f;
     }
 
-    engine->frame_count++;
+    engine->fps_frame_count++;
     if (current_time - engine->fps_last_time >= 1000) {
-        char title[128];
-        snprintf(
-            title,
-            sizeof(title),
-            "Game Engine | FPS: %d | dt: %.4fs",
-            engine->frame_count,
-            delta_time
-        );
-        platform_set_title(engine->platform, title);
-
-        engine->frame_count   = 0;
-        engine->fps_last_time = current_time;
+        engine->fps_last_1s_avg = engine->fps_frame_count;
+        engine->fps_frame_count = 0;
+        engine->fps_last_time   = current_time;
     }
-    return delta_time;
+    return engine->delta_time;
 }
 
 static void engine_update_simulation(game_engine_t* engine, float delta_time) {
@@ -459,7 +410,7 @@ static void engine_update_simulation(game_engine_t* engine, float delta_time) {
         return;
     }
 
-    game_engine_handle_inputs(engine, delta_time);
+    freefly_camera_update(engine->main_camera, engine->platform, delta_time);
 
     // TODO: add conditional support for levels, quad/cube worlds, or non-standard/custom worlds
     // (cylindrical?)
@@ -497,31 +448,27 @@ static void engine_render_frame(game_engine_t* engine) {
     mat4_t light_view        = mat4_look_at(light_pos, target, up);
     float  ortho_size        = 50.0f;
     mat4_t light_proj = mat4_ortho(-ortho_size, ortho_size, -ortho_size, ortho_size, 1.0f, 400.0f);
-    mat4_t light_space_matrix = mat4_mul(light_proj, light_view);
-    engine->sun_direction     = vec3_normalize(vec3_sub(target, light_pos));
-    engine->sun_color         = (vec3_t){1.0f, 1.0f, 1.0f};
+    mat4_t light_space_matrix         = mat4_mul(light_proj, light_view);
+    engine->environment.sun_direction = vec3_normalize(vec3_sub(target, light_pos));
 
     if (!engine->debug_freeze_culling) {
         engine->culling_view_proj = current_view_proj;
     }
 
-    graphics_draw(
-        engine->graphics,
-        engine->platform,
-        engine->main_scene_target,
-        engine->shadow_target,
-        view,
-        engine->main_camera->pos,
-        engine->culling_view_proj,
-        engine->debug_freeze_culling,
-        engine->draw_mode,
-        engine->main_scene.objects,
-        engine->main_scene.object_count,
-        engine->skybox_texture,
-        light_space_matrix,
-        engine->sun_direction,
-        engine->sun_color
-    );
+    graphics_frame_input_t gfx_frame_input = {
+        .target             = engine->main_scene_target,
+        .shadow_target      = engine->shadow_target,
+        .view               = view,
+        .camera_pos         = engine->main_camera->pos,
+        .culling_view_proj  = engine->culling_view_proj,
+        .is_culling_frozen  = engine->debug_freeze_culling,
+        .light_space_matrix = light_space_matrix,
+        .draw_mode          = engine->draw_mode,
+        .environment        = &engine->environment,
+        .scene              = &engine->main_scene
+    };
+
+    graphics_draw(engine->graphics, engine->platform, &gfx_frame_input);
 }
 
 bool game_engine_tick(game_engine_t* game_engine) {
@@ -532,12 +479,8 @@ bool game_engine_tick(game_engine_t* game_engine) {
     engine_update_simulation(game_engine, delta_time);
 
     debug_imgui_begin_frame();
-    igShowDemoWindow(NULL); // demo kitchen sink, useful for seeing capabilities
 
-    igBegin("engine debug", NULL, 0);
-    // igText("fps: %.1f", igGetIO_NIL()->Framerate);
-    igText("test: %d", 1);
-    igEnd();
+    engine_diagnostics_draw_panel(game_engine);
 
     engine_render_frame(game_engine);
     return true;

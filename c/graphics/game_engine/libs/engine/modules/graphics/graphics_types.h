@@ -3,9 +3,40 @@
 
 #include <stdint.h>
 
+// #include "engine/core/game_engine.h"
 #include "engine/core/math/mat4.h"
+// #include "engine/core/scene.h"
 
 #include "shared/math_types.h"
+
+/**
+ * What pipeline and shaders to use.
+ */
+typedef enum {
+    DRAW_MODE_FORWARD_LIT,           // standard rendering
+    DRAW_MODE_DEBUG_WIREFRAME,       // only render edges, no faces
+    DRAW_MODE_DEBUG_ALBEDO,          // render faces unlit with albedo
+    DRAW_MODE_DEBUG_LIGHTING,        // render faces with lighting information, but no albedo
+    DRAW_MODE_DEBUG_GEOMETRY_NORMAL, // render faces with geometry normal as face color
+    DRAW_MODE_DEBUG_TEXTURE_NORMAL,  // render faces with texture normal as face color
+    DRAW_MODE_DEBUG_NORMAL,          // combined normal
+    DRAW_MODE_DEBUG_TANGENT,
+    DRAW_MODE_DEBUG_BITANGENT,
+    DRAW_MODE_DEBUG_VERTEX_COLOR, // render the vertex color
+    DRAW_MODE_DEBUG_MIPMAPS,
+    DRAW_MODE_DEBUG_SPECULAR,
+    DRAW_MODE_DEBUG_AO,
+    DRAW_MODE_DEBUG_ROUGHNESS,
+    DRAW_MODE_DEBUG_METALLIC,
+    DRAW_MODE_DEBUG_SDR,
+
+    DRAW_MODE_COUNT,
+} draw_mode_t;
+extern const char* const draw_mode_names[];
+
+// typedef struct scenes        scene_t;
+typedef struct environment_s environment_t;
+typedef struct scene_s       scene_t;
 
 typedef struct {
     float u;
@@ -88,5 +119,25 @@ typedef struct {
     render_target_format_t format;
     bool                   requires_depth; // True if drawing 3D geometry to this target
 } render_target_config_t;
+
+typedef struct {
+    // Render Targets
+    render_target_handle_t target;
+    render_target_handle_t shadow_target;
+
+    // Camera & Culling
+    mat4_t view;
+    vec3_t camera_pos;
+    mat4_t culling_view_proj;
+    bool   is_culling_frozen;
+
+    // Scene & Environment
+    scene_t*       scene;
+    environment_t* environment;
+    mat4_t         light_space_matrix;
+
+    // Render State
+    draw_mode_t draw_mode;
+} graphics_frame_input_t;
 
 #endif

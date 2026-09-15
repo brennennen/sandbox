@@ -134,7 +134,8 @@ void main() {
     float spec_power = pow(NdotH, max(1.0 - roughness, 0.001) * 128.0);
     vec3 direct_specular = F0 * spec_power * ubo.sun_color.xyz * NdotL;
 
-    vec3 direct_light = (direct_diffuse + direct_specular) * 5.0; // Multiplied by 5.0 to boost sun intensity
+    float sun_intensity = ubo.sun_color.w;
+    vec3 direct_light = (direct_diffuse + direct_specular) * sun_intensity; // Multiplied by 5.0 to boost sun intensity
 
     float shadow = calculate_shadow(fragPos);
 
@@ -149,7 +150,6 @@ void main() {
 
     //outColor = vec4(vec3(visual_shadow_depth), 1.0);
     //outColor = vec4(vec3(1.0 - shadow), 1.0);
-
 
     // debug traps
     if (isnan(fragPos.x) || isnan(fragPos.y) || isnan(fragPos.z)) {

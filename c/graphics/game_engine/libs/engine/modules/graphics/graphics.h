@@ -26,31 +26,6 @@ typedef enum {
     PRESENT_MODE_VSYNC,
 } present_mode_t;
 
-/**
- * What pipeline and shaders to use.
- */
-typedef enum {
-    DRAW_MODE_FORWARD_LIT,           // standard rendering
-    DRAW_MODE_DEBUG_WIREFRAME,       // only render edges, no faces
-    DRAW_MODE_DEBUG_ALBEDO,          // render faces unlit with albedo
-    DRAW_MODE_DEBUG_LIGHTING,        // render faces with lighting information, but no albedo
-    DRAW_MODE_DEBUG_GEOMETRY_NORMAL, // render faces with geometry normal as face color
-    DRAW_MODE_DEBUG_TEXTURE_NORMAL,  // render faces with texture normal as face color
-    DRAW_MODE_DEBUG_NORMAL,          // combined normal
-    DRAW_MODE_DEBUG_TANGENT,
-    DRAW_MODE_DEBUG_BITANGENT,
-    DRAW_MODE_DEBUG_VERTEX_COLOR, // render the vertex color
-    DRAW_MODE_DEBUG_MIPMAPS,
-    DRAW_MODE_DEBUG_SPECULAR,
-    DRAW_MODE_DEBUG_AO,
-    DRAW_MODE_DEBUG_ROUGHNESS,
-    DRAW_MODE_DEBUG_METALLIC,
-    DRAW_MODE_DEBUG_SDR,
-
-    DRAW_MODE_COUNT,
-} draw_mode_t;
-extern const char* const draw_mode_names[];
-
 typedef struct {
     int            width;
     int            height;
@@ -91,21 +66,9 @@ void graphics_update_shadow_map_descriptor(
 );
 
 void graphics_draw(
-    graphics_t*            graphics,
-    platform_t*            platform,
-    render_target_handle_t target,
-    render_target_handle_t shadow_target,
-    mat4_t                 view,
-    vec3_t                 camera_pos,
-    mat4_t                 culling_view_proj,
-    bool                   is_culling_frozen,
-    draw_mode_t            draw_mode,
-    render_object_t*       objects,
-    uint32_t               object_count,
-    texture_handle_t       skybox_texture,
-    mat4_t                 light_space_matrix,
-    vec3_t                 sun_direction,
-    vec3_t                 sun_color
+    graphics_t*             graphics,
+    platform_t*             platform,
+    graphics_frame_input_t* gfx_frame_input
 );
 
 void graphics_destroy(graphics_t* graphics);

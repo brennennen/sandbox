@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GAME_ENGINE_H
+#define GAME_ENGINE_H
 
 #include <stdbool.h>
 
@@ -30,6 +31,15 @@ typedef struct {
     float fov;
 } graphic_settings_t;
 
+typedef struct environment_s {
+    vec3_t           sun_direction;
+    vec3_t           sun_color;
+    float            sun_intensity;
+    texture_handle_t skybox_texture;
+    texture_handle_t irradiance_texture;
+    texture_handle_t prefiltered_texture;
+} environment_t;
+
 typedef struct {
     bool is_running;
     bool is_paused;
@@ -45,8 +55,12 @@ typedef struct {
 
     uint64_t last_time;
 
-    int      frame_count;
+    int      fps_frame_count;
     uint64_t fps_last_time;
+    int      fps_last_1s_avg;
+
+    float delta_time;
+    float elapsed_time;
 
     scene_t main_scene;
 
@@ -63,17 +77,20 @@ typedef struct {
 
     render_target_handle_t shadow_target;
 
-    vec3_t sun_direction;
-    vec3_t sun_color;
+    // vec3_t sun_direction;
+    // vec3_t sun_color;
+    environment_t environment;
 
     scene_type_t active_scene_type;
 
-    texture_handle_t skybox_texture;
-    texture_handle_t skybox_irradiance_texture;
-    texture_handle_t skybox_prefiltered_texture;
+    // texture_handle_t skybox_texture;
+    // texture_handle_t skybox_irradiance_texture;
+    // texture_handle_t skybox_prefiltered_texture;
 
 } game_engine_t;
 
 bool game_engine_init(game_engine_t* game_engine, game_engine_init_config_t* engine_init_config);
 bool game_engine_tick(game_engine_t* game_engine);
 void game_engine_shutdown(game_engine_t* game_engine);
+
+#endif // GAME_ENGINE_H

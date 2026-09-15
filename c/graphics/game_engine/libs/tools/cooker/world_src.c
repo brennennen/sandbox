@@ -121,8 +121,17 @@ static bool parse_environment_statement(
                 token_t end_comma_tok   = get_next_token(cursor); // ,
 
                 // Normalize this vector immediately so the engine doesn't have to do it every frame
-                vec3_t dir                         = {x.float_value, y.float_value, z.float_value};
-                out_environment_src->sun_direction = vec3_normalize(dir);
+                vec3_t dir = {x.float_value, y.float_value, z.float_value};
+
+                float length = sqrtf(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+                if (length > 0.0001f) {
+                    out_environment_src->sun_direction = vec3_normalize(dir);
+                } else {
+                    log_warn(
+                        "Failed to parse sun_direction (Lexer error on negatives?). Using fallback."
+                    );
+                    out_environment_src->sun_direction = (vec3_t){0.0f, 0.0f, -1.0f};
+                }
 
                 log_info("sun_direction: %f, %f, %f", dir.x, dir.y, dir.z);
             } else if (span_equals_cstr(token_span, "sun_color")) {
@@ -351,6 +360,7 @@ static bool process_environment(
 
     out_pak_env->sun_direction = env_src->sun_direction;
     out_pak_env->sun_color     = env_src->sun_color;
+    out_pak_env->sun_intensity = env_src->sun_intensity;
 
     if (env_src->skybox_path.length == 0) {
         log_warn("No skybox path provided.");
@@ -675,6 +685,10 @@ scene_desc_t* process_world_source(
     pak_header->scene_type               = 1; // 1 = PAK_SCENE_TYPE_STATIC_LEVEL
     pak_header->environment.ambient_tint = world_source->environment.ambient_tint;
     pak_header->environment.fog_density  = world_source->environment.fog_density;
+
+    pak_header->environment.sun_direction = world_source->environment.sun_direction;
+    pak_header->environment.sun_color     = world_source->environment.sun_color;
+    pak_header->environment.sun_intensity = world_source->environment.sun_intensity;
 
     char base_dir_cstr[512];
     snprintf(

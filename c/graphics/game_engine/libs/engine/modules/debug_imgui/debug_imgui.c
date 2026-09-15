@@ -72,21 +72,18 @@ static bool debug_imgui_sdl3_vulkan_init(game_engine_t* engine) {
     init_info.ImageCount                = 3;
     init_info.UseDynamicRendering       = true;
 
-    VkFormat swapchain_format = engine->graphics->display.format;
-
     init_info.PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
     init_info.PipelineInfoMain.PipelineRenderingCreateInfo.sType =
         VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
     init_info.PipelineInfoMain.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
     init_info.PipelineInfoMain.PipelineRenderingCreateInfo.pColorAttachmentFormats =
-        &swapchain_format;
-
+        &engine->graphics->display.format;
     init_info.PipelineInfoForViewports.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
     init_info.PipelineInfoForViewports.PipelineRenderingCreateInfo.sType =
         VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
     init_info.PipelineInfoForViewports.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
     init_info.PipelineInfoForViewports.PipelineRenderingCreateInfo.pColorAttachmentFormats =
-        &swapchain_format;
+        &engine->graphics->display.format;
 
     ImGui_ImplVulkan_Init(&init_info);
 
@@ -128,6 +125,7 @@ void debug_imgui_sdl3_vulkan_shutdown(game_engine_t* engine) {
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplSDL3_Shutdown();
     igDestroyContext(NULL);
+    // TODO: cleanup vk pools
     if (g_imgui_pool != VK_NULL_HANDLE) {
         vkDestroyDescriptorPool(engine->graphics->core.device, g_imgui_pool, NULL);
         g_imgui_pool = VK_NULL_HANDLE;

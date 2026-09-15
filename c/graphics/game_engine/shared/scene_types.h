@@ -26,18 +26,18 @@ typedef struct {
     alignas(16) vec3_t gravity;
 } environment_desc_t;
 
-typedef struct {
-    bool   is_active;
-    char   skybox_path[256];
-    float  exposure;
-    vec3_t ambient_tint;
-    vec3_t sun_direction;
-    vec3_t sun_colo;
-    float  sun_intensity;
-    float  fog_density;
-    vec3_t fog_color;
-    vec3_t gravity;
-} environment_t;
+// typedef struct {
+//     bool   is_active;
+//     char   skybox_path[256];
+//     float  exposure;
+//     vec3_t ambient_tint;
+//     vec3_t sun_direction;
+//     vec3_t sun_colo;
+//     float  sun_intensity;
+//     float  fog_density;
+//     vec3_t fog_color;
+//     vec3_t gravity;
+// } environment_t;
 
 typedef struct {
     environment_desc_t environment;

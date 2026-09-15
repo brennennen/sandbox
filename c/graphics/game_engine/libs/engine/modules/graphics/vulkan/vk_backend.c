@@ -174,6 +174,7 @@ void update_uniform_buffer(
     mat4_t      light_space_matrix,
     vec3_t      sun_direction,
     vec3_t      sun_color,
+    float       sun_intensity,
     uint32_t    current_frame
 ) {
     float  aspect = (float)r->display.extent.width / (float)r->display.extent.height;
@@ -185,7 +186,7 @@ void update_uniform_buffer(
         .light_space_matrix = light_space_matrix,
         .camera_pos         = {cam_pos.x, cam_pos.y, cam_pos.z, 1.0f},
         .sun_direction      = {sun_direction.x, sun_direction.y, sun_direction.z, 0.0f},
-        .sun_color          = {sun_color.x, sun_color.y, sun_color.z, 1.0f},
+        .sun_color          = {sun_color.x, sun_color.y, sun_color.z, sun_intensity},
     };
 
     memcpy(r->frames[current_frame].uniform_alloc.mapped_ptr, &ubo, sizeof(ubo));
@@ -521,15 +522,16 @@ void graphics_set_present_mode(graphics_t* r, present_mode_t mode) {
 }
 
 static int32_t begin_frame(
-    graphics_t*         r,
-    platform_t*         platform,
-    mat4_t              view,
-    vec3_t              cam_pos,
-    mat4_t              light_space_matrix,
-    vec3_t              sun_direction,
-    vec3_t              sun_color,
-    vk_render_target_t* render_target,
-    draw_mode_t         draw_mode
+    graphics_t*             r,
+    platform_t*             platform,
+    mat4_t                  view,
+    vec3_t                  cam_pos,
+    vec3_t                  sun_direction,
+    vec3_t                  sun_color,
+    float                   sun_intensity,
+    vk_render_target_t*     render_target,
+    draw_mode_t             draw_mode,
+    graphics_frame_input_t* gfx_frame_input
 ) {
     int w;
     int h;
@@ -561,7 +563,14 @@ static int32_t begin_frame(
     }
 
     update_uniform_buffer(
-        r, view, cam_pos, light_space_matrix, sun_direction, sun_color, r->current_frame
+        r,
+        view,
+        cam_pos,
+        gfx_frame_input->light_space_matrix,
+        sun_direction,
+        sun_color,
+        sun_intensity,
+        r->current_frame
     );
 
     vkResetFences(r->core.device, 1, &r->frames[r->current_frame].in_flight_fence);
@@ -992,60 +1001,54 @@ void graphics_update_shadow_map_descriptor(
 #include <assert.h>
 
 void graphics_draw(
-    graphics_t*            graphics,
-    platform_t*            platform,
-    render_target_handle_t target,
-    render_target_handle_t shadow_target,
-    mat4_t                 view,
-    vec3_t                 camera_pos,
-    mat4_t                 culling_view_proj,
-    bool                   is_culling_frozen,
-    draw_mode_t            draw_mode,
-    render_object_t*       objects,
-    uint32_t               object_count,
-    texture_handle_t       skybox_texture,
-    mat4_t                 light_space_matrix,
-    vec3_t                 sun_direction,
-    vec3_t                 sun_color
+    graphics_t*             graphics,
+    platform_t*             platform,
+    graphics_frame_input_t* gfx_frame_input
 ) {
-    assert(is_matrix_valid(&view) && "CRASH: NaN detected in View Matrix entering graphics_draw!");
-    assert(is_matrix_valid(&culling_view_proj) && "CRASH: NaN detected in Culling Matrix!");
+    assert(
+        is_matrix_valid(&gfx_frame_input->view) &&
+        "CRASH: NaN detected in View Matrix entering graphics_draw!"
+    );
+    assert(
+        is_matrix_valid(&gfx_frame_input->culling_view_proj) &&
+        "CRASH: NaN detected in Culling Matrix!"
+    );
 
     vk_render_target_t* render_target = NULL;
-    if (target.id != GRAPHICS_INVALID_HANDLE) {
-        render_target = &graphics->assets.render_targets[target.id];
+    if (gfx_frame_input->target.id != GRAPHICS_INVALID_HANDLE) {
+        render_target = &graphics->assets.render_targets[gfx_frame_input->target.id];
     }
 
     vk_render_target_t* shadow_render_target = NULL;
-    if (shadow_target.id != GRAPHICS_INVALID_HANDLE) {
-        shadow_render_target = &graphics->assets.render_targets[shadow_target.id];
+    if (gfx_frame_input->shadow_target.id != GRAPHICS_INVALID_HANDLE) {
+        shadow_render_target = &graphics->assets.render_targets[gfx_frame_input->shadow_target.id];
     }
 
     vk_render_target_t* active_target = render_target;
-    if (draw_mode == DRAW_MODE_DEBUG_SDR) {
+    if (gfx_frame_input->draw_mode == DRAW_MODE_DEBUG_SDR) {
         // active_target = &graphics->assets.render_targets[target.id];
     }
 
     int32_t image_index = begin_frame(
         graphics,
         platform,
-        view,
-        camera_pos,
-        light_space_matrix,
-        sun_direction,
-        sun_color,
+        gfx_frame_input->view,
+        gfx_frame_input->camera_pos,
+        gfx_frame_input->environment->sun_direction,
+        gfx_frame_input->environment->sun_color,
+        gfx_frame_input->environment->sun_intensity,
         render_target,
-        draw_mode
+        gfx_frame_input->draw_mode,
+        gfx_frame_input
     );
     if (image_index < 0) {
         return;
     }
 
-    // shadow pass here
+    // shadow pass
     if (shadow_render_target != NULL && shadow_render_target->has_depth) {
         VkCommandBuffer cmd = graphics->command_buffer;
 
-        // 1. Transition Shadow Map to Writable
         VkImageMemoryBarrier shadow_write_barrier = {
             .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
             .oldLayout        = VK_IMAGE_LAYOUT_UNDEFINED,
@@ -1111,8 +1114,8 @@ void graphics_draw(
 
         // 4. Draw Geometry (No materials, no culling, just pure vertices!)
         VkDeviceSize offsets[] = {0};
-        for (uint32_t i = 0; i < object_count; i++) {
-            render_object_t* obj = &objects[i];
+        for (uint32_t i = 0; i < gfx_frame_input->scene->object_count; i++) {
+            render_object_t* obj = &gfx_frame_input->scene->objects[i];
 
             if (obj->mesh.id == GRAPHICS_INVALID_HANDLE)
                 continue;
@@ -1175,7 +1178,7 @@ void graphics_draw(
     VkImageView depth_view          = graphics->display.depth_view;
     VkImage     current_depth_image = graphics->display.depth_image;
 
-    if (draw_mode != DRAW_MODE_DEBUG_SDR && render_target != NULL) {
+    if (gfx_frame_input->draw_mode != DRAW_MODE_DEBUG_SDR && render_target != NULL) {
         render_width  = render_target->width;
         render_height = render_target->height;
         color_image   = render_target->color_attachment.image;
@@ -1267,10 +1270,12 @@ void graphics_draw(
 
     float  aspect = (float)graphics->display.extent.width / (float)graphics->display.extent.height;
     mat4_t proj   = mat4_perspective(0.785f, aspect, 0.1f, 100.0f);
-    mat4_t view_proj  = mat4_mul(proj, view);
-    frustum_t frustum = frustum_extract(culling_view_proj);
+    mat4_t view_proj  = mat4_mul(proj, gfx_frame_input->view);
+    frustum_t frustum = frustum_extract(gfx_frame_input->culling_view_proj);
 
-    VkPipeline current_pipeline = get_draw_mode_pipeline(&graphics->pipelines, draw_mode);
+    VkPipeline current_pipeline = get_draw_mode_pipeline(
+        &graphics->pipelines, gfx_frame_input->draw_mode
+    );
 
     vkCmdBindPipeline(graphics->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, current_pipeline);
 
@@ -1288,8 +1293,8 @@ void graphics_draw(
     int culled_count = 0;
 
     VkDeviceSize offsets[] = {0};
-    for (uint32_t i = 0; i < object_count; i++) {
-        render_object_t* obj = &objects[i];
+    for (uint32_t i = 0; i < gfx_frame_input->scene->object_count; i++) {
+        render_object_t* obj = &gfx_frame_input->scene->objects[i];
 
         if (obj->mesh.id == GRAPHICS_INVALID_HANDLE ||
             obj->material.id == GRAPHICS_INVALID_HANDLE) {
@@ -1318,7 +1323,7 @@ void graphics_draw(
         push_constants_t push_constants = {
             .transform        = obj->transform,
             .is_alpha_masked  = vk_mat->is_alpha_masked ? 1 : 0,
-            .debug_mode       = draw_mode,
+            .debug_mode       = gfx_frame_input->draw_mode,
             .metallic_factor  = vk_mat->metallic_factor,
             .roughness_factor = vk_mat->roughness_factor,
         };
@@ -1360,7 +1365,7 @@ void graphics_draw(
     }
 
     // log_info("Rendered: %d | Culled: %d", object_count - culled_count, culled_count);
-    if (draw_mode != DRAW_MODE_DEBUG_SDR) {
+    if (gfx_frame_input->draw_mode != DRAW_MODE_DEBUG_SDR) {
         vkCmdBindPipeline(
             graphics->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics->pipelines.skybox
         );
@@ -1379,7 +1384,7 @@ void graphics_draw(
 
     vkCmdDraw(graphics->command_buffer, 36, 1, 0, 0);
 
-    if (draw_mode != DRAW_MODE_DEBUG_SDR) {
+    if (gfx_frame_input->draw_mode != DRAW_MODE_DEBUG_SDR) {
         vkCmdBindPipeline(
             graphics->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics->pipelines.line
         );
@@ -1404,7 +1409,7 @@ void graphics_draw(
         vkCmdDraw(graphics->command_buffer, graphics->grid_vertex_count, 1, 0, 0);
     }
 
-    if (is_culling_frozen) {
+    if (gfx_frame_input->is_culling_frozen) {
         push_constants_t frustum_pc = {
             .transform       = mat4_identity(),
             .is_alpha_masked = 0,
@@ -1425,12 +1430,12 @@ void graphics_draw(
         vkCmdDraw(graphics->command_buffer, 24, 1, 0, 0);
     }
 
-    if (draw_mode != DRAW_MODE_DEBUG_SDR) {
+    if (gfx_frame_input->draw_mode != DRAW_MODE_DEBUG_SDR) {
         execute_post_process_pass(graphics, render_target, (uint32_t)image_index);
 
         vk_render_target_t* render_target = NULL;
-        if (target.id != GRAPHICS_INVALID_HANDLE) {
-            render_target = &graphics->assets.render_targets[target.id];
+        if (gfx_frame_input->target.id != GRAPHICS_INVALID_HANDLE) {
+            render_target = &graphics->assets.render_targets[gfx_frame_input->target.id];
         }
     }
     // log_info(

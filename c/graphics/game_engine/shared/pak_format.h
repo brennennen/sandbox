@@ -58,6 +58,7 @@ typedef struct {
 
     vec3_t sun_direction;
     vec3_t sun_color;
+    float  sun_intensity;
 
 } environment_pak_t;
 

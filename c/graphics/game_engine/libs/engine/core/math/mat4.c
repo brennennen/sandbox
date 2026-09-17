@@ -5,8 +5,18 @@
 #include "engine/core/camera.h"
 #include "engine/core/math/mat4.h"
 
+bool is_matrix_valid(mat4_t* m) {
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            if (isnan(m->m[i][j]) || isinf(m->m[i][j]))
+                return false;
+        }
+    }
+    return true;
+}
+
 mat4_t mat4_ortho(float left, float right, float bottom, float top, float near, float far) {
-    mat4_t res = {0};
+    mat4_t res  = {0};
     res.m[0][0] = 2.0f / (right - left);
     res.m[1][1] = 2.0f / (top - bottom);
     res.m[2][2] = 1.0f / (near - far);

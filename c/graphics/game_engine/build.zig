@@ -138,6 +138,7 @@ pub fn build(b: *std.Build) void {
         "libs/engine/modules/graphics/graphics.c",
         "libs/engine/modules/graphics/debug/debug_grid.c",
         "libs/engine/modules/graphics/vulkan/vk_core.c",
+        "libs/engine/modules/graphics/vulkan/vk_debug.c",
         "libs/engine/modules/graphics/vulkan/vk_devices.c",
         "libs/engine/modules/graphics/vulkan/vk_backend.c",
         "libs/engine/modules/graphics/vulkan/vk_render_target.c",
@@ -151,6 +152,7 @@ pub fn build(b: *std.Build) void {
         "libs/engine/debug/engine_diagnostics.c",
         "libs/engine/modules/assets/obj.c",
         "libs/engine/platform/sdl/sdl_backend.c",
+        "libs/engine/modules/assets/pak_loader.c",
     };
 
     for (engine_sources) |file| {

@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "shared/math_types.h"
+#include "engine/modules/graphics/graphics_types.h"
 
 typedef struct {
     vec3_t pos;

@@ -41,6 +41,16 @@ void engine_diagnostics_draw_panel(game_engine_t* game_engine) {
             );
             igText("Yaw: %.2f", game_engine->main_camera->yaw);
             igText("Pitch: %.2f", game_engine->main_camera->pitch);
+            float fov_deg = game_engine->main_camera->fov * (180.0f / M_PI);
+            if (igSliderFloat("FOV (Degrees)", &fov_deg, 10.0f, 150.0f, "%.1f", 0)) {
+                game_engine->main_camera->fov = fov_deg * (M_PI / 180.0f);
+            }
+            igDragFloat(
+                "Near Plane", &game_engine->main_camera->near_plane, 0.01f, 0.001f, 10.0f, "%.3f", 0
+            );
+            igDragFloat(
+                "Far Plane", &game_engine->main_camera->far_plane, 10.0f, 10.0f, 20000.0f, "%.1f", 0
+            );
         }
     }
 
@@ -59,11 +69,14 @@ void engine_diagnostics_draw_panel(game_engine_t* game_engine) {
 
     if (igCollapsingHeader_TreeNodeFlags("Environment", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (igCollapsingHeader_TreeNodeFlags("Sun", ImGuiTreeNodeFlags_DefaultOpen)) {
-            igText(
-                "Direction: %.2f, %.2f, %.2f",
-                game_engine->environment.sun_direction.x,
-                game_engine->environment.sun_direction.y,
-                game_engine->environment.sun_direction.z
+            igDragFloat3(
+                "Direction",
+                (float*)&game_engine->environment.sun_direction.data,
+                0.1f,
+                0.0f,
+                0.0f,
+                "%.2f",
+                0
             );
             igColorEdit3("Color", (float*)&game_engine->environment.sun_color.data, 0);
             igDragFloat(

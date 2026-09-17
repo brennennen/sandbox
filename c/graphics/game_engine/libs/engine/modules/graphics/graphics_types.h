@@ -127,6 +127,7 @@ typedef struct {
 
     // Camera & Culling
     mat4_t view;
+    mat4_t proj;
     vec3_t camera_pos;
     mat4_t culling_view_proj;
     bool   is_culling_frozen;

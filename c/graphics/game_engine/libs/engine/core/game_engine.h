@@ -32,9 +32,11 @@ typedef struct {
 } graphic_settings_t;
 
 typedef struct environment_s {
-    vec3_t           sun_direction;
-    vec3_t           sun_color;
-    float            sun_intensity;
+    vec3_t sun_direction;
+    vec3_t sun_color;
+    float  sun_intensity;
+    vec3_t ambient_tint;
+
     texture_handle_t skybox_texture;
     texture_handle_t irradiance_texture;
     texture_handle_t prefiltered_texture;
@@ -86,6 +88,10 @@ typedef struct {
     // texture_handle_t skybox_texture;
     // texture_handle_t skybox_irradiance_texture;
     // texture_handle_t skybox_prefiltered_texture;
+
+    texture_handle_t default_tex;
+    texture_handle_t default_normal_tex;
+    texture_handle_t default_ao_metallic_roughness_tex;
 
 } game_engine_t;
 

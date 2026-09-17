@@ -1,4 +1,5 @@
 
+#include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,6 +19,7 @@
 #include "shared/scene_types.h"
 
 #include "vk_commands.h"
+#include "vk_debug.h"
 #include "vk_devices.h"
 #include "vk_pipeline.h"
 #include "vk_render_target.h"
@@ -72,104 +74,10 @@ static bool init_default_textures(graphics_t* r) {
     return true;
 }
 
-static void init_debug_grid(graphics_t* r) {
-    int   grid_size = 10;
-    float grid_step = 1.0f;
-
-    r->grid_vertex_count = debug_grid_vertex_count(grid_size);
-    size_t buffer_size   = r->grid_vertex_count * sizeof(vertex_t);
-
-    r->grid_buffer.allocation = gpu_heap_alloc(r->assets.vertex_heap, buffer_size, 16);
-
-    VkBufferCreateInfo buffer_info = {
-        .sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .size        = buffer_size,
-        .usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-        .sharingMode = VK_SHARING_MODE_EXCLUSIVE
-    };
-    // log_info("vkCreateBuffer - grid_buffer: %d", buffer_info.size);
-    vkCreateBuffer(r->core.device, &buffer_info, NULL, &r->grid_buffer.buffer);
-    vkBindBufferMemory(
-        r->core.device,
-        r->grid_buffer.buffer,
-        r->assets.vertex_heap->memory,
-        r->grid_buffer.allocation.offset
-    );
-
-    vertex_t* mapped_data = (vertex_t*)r->grid_buffer.allocation.mapped_ptr;
-    generate_grid(mapped_data, grid_size, grid_step);
-}
-
-void init_debug_frustum_buffer(graphics_t* r) {
-    size_t buffer_size           = 24 * sizeof(vertex_t);
-    r->frustum_buffer.allocation = gpu_heap_alloc(r->assets.vertex_heap, buffer_size, 16);
-
-    VkBufferCreateInfo buffer_info = {
-        .sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .size        = buffer_size,
-        .usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-        .sharingMode = VK_SHARING_MODE_EXCLUSIVE
-    };
-    // log_info("vkCreateBuffer - frustum_buffer: %d", buffer_info.size);
-    vkCreateBuffer(r->core.device, &buffer_info, NULL, &r->frustum_buffer.buffer);
-    vkBindBufferMemory(
-        r->core.device,
-        r->frustum_buffer.buffer,
-        r->assets.vertex_heap->memory,
-        r->frustum_buffer.allocation.offset
-    );
-}
-
-void graphics_update_debug_frustum(graphics_t* r, mat4_t inv_vp) {
-    // 8 corners of Vulkan's NDC space
-    vec4_t ndc[8] = {
-        {-1, -1, 0, 1},
-        {1, -1, 0, 1},
-        {1, 1, 0, 1},
-        {-1, 1, 0, 1}, // Near
-        {-1, -1, 1, 1},
-        {1, -1, 1, 1},
-        {1, 1, 1, 1},
-        {-1, 1, 1, 1} // Far
-    };
-
-    vec3_t corners[8];
-    for (int i = 0; i < 8; i++) {
-        vec4_t world_pos = mat4_mul_vec4(inv_vp, ndc[i]);
-        corners[i]       = (vec3_t){
-            world_pos.x / world_pos.w,
-            world_pos.y / world_pos.w,
-            world_pos.z / world_pos.w,
-        };
-    }
-
-    vec4_t c = {1.0f, 1.0f, 0.0f, 1.0f}; // yellow
-    // clang-format off
-    vertex_t lines[24] = {
-        // near face
-        {.pos = corners[0], .color = c}, {.pos = corners[1], .color = c},
-        {.pos = corners[1], .color = c}, {.pos = corners[2], .color = c},
-        {.pos = corners[2], .color = c}, {.pos = corners[3], .color = c},
-        {.pos = corners[3], .color = c}, {.pos = corners[0], .color = c},
-        // far face
-        {.pos = corners[4], .color = c}, {.pos = corners[5], .color = c},
-        {.pos = corners[5], .color = c}, {.pos = corners[6], .color = c},
-        {.pos = corners[6], .color = c}, {.pos = corners[7], .color = c},
-        {.pos = corners[7], .color = c}, {.pos = corners[4], .color = c},
-        // edges
-        {.pos = corners[0], .color = c}, {.pos = corners[4], .color = c},
-        {.pos = corners[1], .color = c}, {.pos = corners[5], .color = c},
-        {.pos = corners[2], .color = c}, {.pos = corners[6], .color = c},
-        {.pos = corners[3], .color = c}, {.pos = corners[7], .color = c},
-    };
-    // clang-format on
-
-    memcpy(r->frustum_buffer.allocation.mapped_ptr, lines, sizeof(lines));
-}
-
 void update_uniform_buffer(
     graphics_t* r,
     mat4_t      view,
+    mat4_t      proj,
     vec3_t      cam_pos,
     mat4_t      light_space_matrix,
     vec3_t      sun_direction,
@@ -177,9 +85,6 @@ void update_uniform_buffer(
     float       sun_intensity,
     uint32_t    current_frame
 ) {
-    float  aspect = (float)r->display.extent.width / (float)r->display.extent.height;
-    mat4_t proj   = mat4_perspective(0.785f, aspect, 0.1f, 100.0f);
-
     ubo_t ubo = {
         .view               = view,
         .proj               = proj,
@@ -447,7 +352,7 @@ void graphics_destroy(graphics_t* graphics) {
         }
 
         vk_destroy_graphics_pipeline(graphics);
-        vk_destroy_commands(graphics); // NOTE: Ensure this calls vkDestroyCommandPool()!
+        vk_destroy_commands(graphics);
 
         if (graphics->descriptor_pool) {
             vkDestroyDescriptorPool(graphics->core.device, graphics->descriptor_pool, NULL);
@@ -485,11 +390,10 @@ void graphics_destroy(graphics_t* graphics) {
             vkDestroyImage(graphics->core.device, graphics->display.depth_image, NULL);
         }
 
-        // Clean up the transfer module's resources
         if (graphics->transfer.command_pool) {
             vkDestroyCommandPool(graphics->core.device, graphics->transfer.command_pool, NULL);
         }
-        // Note: check what you named your transfer fence (e.g., 'fence', 'upload_fence', etc.)
+
         if (graphics->transfer.fence) {
             vkDestroyFence(graphics->core.device, graphics->transfer.fence, NULL);
         }
@@ -565,6 +469,7 @@ static int32_t begin_frame(
     update_uniform_buffer(
         r,
         view,
+        gfx_frame_input->proj,
         cam_pos,
         gfx_frame_input->light_space_matrix,
         sun_direction,
@@ -612,14 +517,12 @@ static void end_frame(graphics_t* r, uint32_t image_index) {
 
     VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
     VkSubmitInfo         submit_info   = {
-                  .sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-                  .waitSemaphoreCount = 1,
-                  .pWaitSemaphores    = &r->frames[r->current_frame].image_available_sem,
-                  .pWaitDstStageMask  = wait_stages,
-                  .commandBufferCount = 1,
-                  .pCommandBuffers    = &r->command_buffer,
-        //   .signalSemaphoreCount = 1,
-        //   .pSignalSemaphores    = &r->frames[r->current_frame].render_finished_sem,
+                  .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                  .waitSemaphoreCount   = 1,
+                  .pWaitSemaphores      = &r->frames[r->current_frame].image_available_sem,
+                  .pWaitDstStageMask    = wait_stages,
+                  .commandBufferCount   = 1,
+                  .pCommandBuffers      = &r->command_buffer,
                   .signalSemaphoreCount = 1,
                   .pSignalSemaphores    = &r->swapchain_render_sems[image_index],
     };
@@ -630,11 +533,10 @@ static void end_frame(graphics_t* r, uint32_t image_index) {
     VkPresentInfoKHR present_info = {
         .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .waitSemaphoreCount = 1,
-        //.pWaitSemaphores    = &r->frames[r->current_frame].render_finished_sem,
-        .pWaitSemaphores = &r->swapchain_render_sems[image_index],
-        .swapchainCount  = 1,
-        .pSwapchains     = &r->display.swapchain,
-        .pImageIndices   = &image_index,
+        .pWaitSemaphores    = &r->swapchain_render_sems[image_index],
+        .swapchainCount     = 1,
+        .pSwapchains        = &r->display.swapchain,
+        .pImageIndices      = &image_index,
     };
     vkQueuePresentKHR(r->core.graphics_queue, &present_info);
 
@@ -865,16 +767,6 @@ static VkPipeline get_draw_mode_pipeline(vk_pipelines_t* pipelines, draw_mode_t 
     }
 }
 
-static bool is_matrix_valid(mat4_t* m) {
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            if (isnan(m->m[i][j]) || isinf(m->m[i][j]))
-                return false;
-        }
-    }
-    return true;
-}
-
 static void execute_post_process_pass(
     graphics_t*         graphics,
     vk_render_target_t* render_target,
@@ -987,7 +879,7 @@ void graphics_update_shadow_map_descriptor(
         VkWriteDescriptorSet write = {
             .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
             .dstSet          = graphics->frames[i].global_descriptor_set,
-            .dstBinding      = 4, // <-- Must match the layout binding index!
+            .dstBinding      = 4, // match the layout binding index
             .dstArrayElement = 0,
             .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
             .descriptorCount = 1,
@@ -998,179 +890,145 @@ void graphics_update_shadow_map_descriptor(
     log_info("vulkan: Shadow map descriptor bound to Set 0, Binding 4.");
 }
 
-#include <assert.h>
-
-void graphics_draw(
+static void shadow_pass(
     graphics_t*             graphics,
-    platform_t*             platform,
-    graphics_frame_input_t* gfx_frame_input
+    graphics_frame_input_t* gfx_frame_input,
+    vk_render_target_t*     shadow_render_target
 ) {
-    assert(
-        is_matrix_valid(&gfx_frame_input->view) &&
-        "CRASH: NaN detected in View Matrix entering graphics_draw!"
-    );
-    assert(
-        is_matrix_valid(&gfx_frame_input->culling_view_proj) &&
-        "CRASH: NaN detected in Culling Matrix!"
-    );
-
-    vk_render_target_t* render_target = NULL;
-    if (gfx_frame_input->target.id != GRAPHICS_INVALID_HANDLE) {
-        render_target = &graphics->assets.render_targets[gfx_frame_input->target.id];
-    }
-
-    vk_render_target_t* shadow_render_target = NULL;
-    if (gfx_frame_input->shadow_target.id != GRAPHICS_INVALID_HANDLE) {
-        shadow_render_target = &graphics->assets.render_targets[gfx_frame_input->shadow_target.id];
-    }
-
-    vk_render_target_t* active_target = render_target;
-    if (gfx_frame_input->draw_mode == DRAW_MODE_DEBUG_SDR) {
-        // active_target = &graphics->assets.render_targets[target.id];
-    }
-
-    int32_t image_index = begin_frame(
-        graphics,
-        platform,
-        gfx_frame_input->view,
-        gfx_frame_input->camera_pos,
-        gfx_frame_input->environment->sun_direction,
-        gfx_frame_input->environment->sun_color,
-        gfx_frame_input->environment->sun_intensity,
-        render_target,
-        gfx_frame_input->draw_mode,
-        gfx_frame_input
-    );
-    if (image_index < 0) {
+    if (shadow_render_target == NULL || !shadow_render_target->has_depth) {
         return;
     }
 
-    // shadow pass
-    if (shadow_render_target != NULL && shadow_render_target->has_depth) {
-        VkCommandBuffer cmd = graphics->command_buffer;
+    VkCommandBuffer cmd = graphics->command_buffer;
 
-        VkImageMemoryBarrier shadow_write_barrier = {
-            .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .oldLayout        = VK_IMAGE_LAYOUT_UNDEFINED,
-            .newLayout        = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-            .image            = shadow_render_target->depth_attachment.image,
-            .subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1},
-            .srcAccessMask    = 0,
-            .dstAccessMask    = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
-        };
-        vkCmdPipelineBarrier(
+    VkImageMemoryBarrier shadow_write_barrier = {
+        .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .oldLayout        = VK_IMAGE_LAYOUT_UNDEFINED,
+        .newLayout        = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+        .image            = shadow_render_target->depth_attachment.image,
+        .subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1},
+        .srcAccessMask    = 0,
+        .dstAccessMask    = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+    };
+    vkCmdPipelineBarrier(
+        cmd,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+        0,
+        0,
+        NULL,
+        0,
+        NULL,
+        1,
+        &shadow_write_barrier
+    );
+
+    VkRenderingAttachmentInfo shadow_depth_att = {
+        .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+        .imageView   = shadow_render_target->depth_attachment.view,
+        .imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+        .loadOp      = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp     = VK_ATTACHMENT_STORE_OP_STORE,
+        .clearValue  = {.depthStencil = {1.0f, 0}}
+    };
+    VkRenderingInfo shadow_info = {
+        .sType            = VK_STRUCTURE_TYPE_RENDERING_INFO,
+        .renderArea       = {{0, 0}, {shadow_render_target->width, shadow_render_target->height}},
+        .layerCount       = 1,
+        .pDepthAttachment = &shadow_depth_att
+    };
+    vkCmdBeginRendering(cmd, &shadow_info);
+
+    VkViewport shadow_vp = {
+        .x        = 0.0f,
+        .y        = (float)shadow_render_target->height,
+        .width    = (float)shadow_render_target->width,
+        .height   = -(float)shadow_render_target->height,
+        .minDepth = 0.0f,
+        .maxDepth = 1.0f
+    };
+    VkRect2D shadow_sc = {{0, 0}, {shadow_render_target->width, shadow_render_target->height}};
+    vkCmdSetViewport(cmd, 0, 1, &shadow_vp);
+    vkCmdSetScissor(cmd, 0, 1, &shadow_sc);
+
+    // Bind Pipeline and Globals
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics->pipelines.shadow);
+    vkCmdBindDescriptorSets(
+        cmd,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        graphics->pipelines.layout,
+        0,
+        1,
+        &graphics->frames[graphics->current_frame].global_descriptor_set,
+        0,
+        NULL
+    );
+
+    // Draw Geometry
+    VkDeviceSize offsets[] = {0};
+    for (uint32_t i = 0; i < gfx_frame_input->scene->object_count; i++) {
+        render_object_t* obj = &gfx_frame_input->scene->objects[i];
+
+        if (obj->mesh.id == GRAPHICS_INVALID_HANDLE)
+            continue;
+
+        vk_mesh_t* vk_mesh = &graphics->assets.meshes[obj->mesh.id];
+        if (!vk_mesh->is_active)
+            continue;
+
+        push_constants_t push = {.transform = obj->transform};
+
+        vkCmdPushConstants(
             cmd,
-            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-            0,
-            0,
-            NULL,
-            0,
-            NULL,
-            1,
-            &shadow_write_barrier
-        );
-
-        VkRenderingAttachmentInfo shadow_depth_att = {
-            .sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-            .imageView   = shadow_render_target->depth_attachment.view,
-            .imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-            .loadOp      = VK_ATTACHMENT_LOAD_OP_CLEAR,
-            .storeOp     = VK_ATTACHMENT_STORE_OP_STORE,
-            .clearValue  = {.depthStencil = {1.0f, 0}}
-        };
-        VkRenderingInfo shadow_info = {
-            .sType      = VK_STRUCTURE_TYPE_RENDERING_INFO,
-            .renderArea = {{0, 0}, {shadow_render_target->width, shadow_render_target->height}},
-            .layerCount = 1,
-            .pDepthAttachment = &shadow_depth_att
-        };
-        vkCmdBeginRendering(cmd, &shadow_info);
-
-        VkViewport shadow_vp = {
-            .x        = 0.0f,
-            .y        = (float)shadow_render_target->height,
-            .width    = (float)shadow_render_target->width,
-            .height   = -(float)shadow_render_target->height,
-            .minDepth = 0.0f,
-            .maxDepth = 1.0f
-        };
-        VkRect2D shadow_sc = {{0, 0}, {shadow_render_target->width, shadow_render_target->height}};
-        vkCmdSetViewport(cmd, 0, 1, &shadow_vp);
-        vkCmdSetScissor(cmd, 0, 1, &shadow_sc);
-
-        // 3. Bind Pipeline and Globals
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics->pipelines.shadow);
-        vkCmdBindDescriptorSets(
-            cmd,
-            VK_PIPELINE_BIND_POINT_GRAPHICS,
             graphics->pipelines.layout,
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
             0,
-            1,
-            &graphics->frames[graphics->current_frame].global_descriptor_set,
-            0,
-            NULL
+            sizeof(push_constants_t),
+            &push
         );
 
-        // 4. Draw Geometry (No materials, no culling, just pure vertices!)
-        VkDeviceSize offsets[] = {0};
-        for (uint32_t i = 0; i < gfx_frame_input->scene->object_count; i++) {
-            render_object_t* obj = &gfx_frame_input->scene->objects[i];
+        vkCmdBindVertexBuffers(cmd, 0, 1, &vk_mesh->vertex_buffer, offsets);
 
-            if (obj->mesh.id == GRAPHICS_INVALID_HANDLE)
-                continue;
-
-            vk_mesh_t* vk_mesh = &graphics->assets.meshes[obj->mesh.id];
-            if (!vk_mesh->is_active)
-                continue;
-
-            push_constants_t push = {.transform = obj->transform};
-
-            vkCmdPushConstants(
-                cmd,
-                graphics->pipelines.layout,
-                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                0,
-                sizeof(push_constants_t),
-                &push
-            );
-
-            vkCmdBindVertexBuffers(cmd, 0, 1, &vk_mesh->vertex_buffer, offsets);
-
-            if (vk_mesh->index_count > 0) {
-                vkCmdBindIndexBuffer(cmd, vk_mesh->index_buffer, 0, VK_INDEX_TYPE_UINT32);
-                vkCmdDrawIndexed(cmd, vk_mesh->index_count, 1, 0, 0, 0);
-            } else {
-                vkCmdDraw(cmd, vk_mesh->vertex_count, 1, 0, 0);
-            }
+        if (vk_mesh->index_count > 0) {
+            vkCmdBindIndexBuffer(cmd, vk_mesh->index_buffer, 0, VK_INDEX_TYPE_UINT32);
+            vkCmdDrawIndexed(cmd, vk_mesh->index_count, 1, 0, 0, 0);
+        } else {
+            vkCmdDraw(cmd, vk_mesh->vertex_count, 1, 0, 0);
         }
-
-        vkCmdEndRendering(cmd);
-
-        // 5. Transition Shadow Map to Readable by the Fragment Shader
-        VkImageMemoryBarrier shadow_read_barrier = {
-            .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .oldLayout        = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-            .newLayout        = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            .image            = shadow_render_target->depth_attachment.image,
-            .subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1},
-            .srcAccessMask    = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-            .dstAccessMask    = VK_ACCESS_SHADER_READ_BIT
-        };
-        vkCmdPipelineBarrier(
-            cmd,
-            VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-            0,
-            0,
-            NULL,
-            0,
-            NULL,
-            1,
-            &shadow_read_barrier
-        );
     }
 
+    vkCmdEndRendering(cmd);
+
+    // Transition Shadow Map to Readable by the Fragment Shader
+    VkImageMemoryBarrier shadow_read_barrier = {
+        .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .oldLayout        = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+        .newLayout        = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        .image            = shadow_render_target->depth_attachment.image,
+        .subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1},
+        .srcAccessMask    = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        .dstAccessMask    = VK_ACCESS_SHADER_READ_BIT
+    };
+    vkCmdPipelineBarrier(
+        cmd,
+        VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        0,
+        0,
+        NULL,
+        0,
+        NULL,
+        1,
+        &shadow_read_barrier
+    );
+}
+
+void forward_pass(
+    graphics_t*             graphics,
+    graphics_frame_input_t* gfx_frame_input,
+    vk_render_target_t*     render_target,
+    uint32_t                image_index
+) {
     uint32_t    render_width        = graphics->display.extent.width;
     uint32_t    render_height       = graphics->display.extent.height;
     VkImage     color_image         = graphics->display.images[image_index];
@@ -1233,7 +1091,12 @@ void graphics_draw(
         .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .loadOp      = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp     = VK_ATTACHMENT_STORE_OP_STORE,
-        .clearValue  = {{{0.1f, 0.1f, 0.2f, 1.0f}}}
+        .clearValue  = {{{
+            gfx_frame_input->environment->ambient_tint.x,
+            gfx_frame_input->environment->ambient_tint.y,
+            gfx_frame_input->environment->ambient_tint.z,
+            1.0f,
+        }}}
     };
 
     VkRenderingAttachmentInfo depth_attachment = {
@@ -1268,10 +1131,8 @@ void graphics_draw(
     vkCmdSetViewport(graphics->command_buffer, 0, 1, &viewport);
     vkCmdSetScissor(graphics->command_buffer, 0, 1, &scissor);
 
-    float  aspect = (float)graphics->display.extent.width / (float)graphics->display.extent.height;
-    mat4_t proj   = mat4_perspective(0.785f, aspect, 0.1f, 100.0f);
-    mat4_t view_proj  = mat4_mul(proj, gfx_frame_input->view);
-    frustum_t frustum = frustum_extract(gfx_frame_input->culling_view_proj);
+    mat4_t    view_proj = mat4_mul(gfx_frame_input->proj, gfx_frame_input->view);
+    frustum_t frustum   = frustum_extract(gfx_frame_input->culling_view_proj);
 
     VkPipeline current_pipeline = get_draw_mode_pipeline(
         &graphics->pipelines, gfx_frame_input->draw_mode
@@ -1429,11 +1290,60 @@ void graphics_draw(
         );
         vkCmdDraw(graphics->command_buffer, 24, 1, 0, 0);
     }
+}
+
+void graphics_draw(
+    graphics_t*             graphics,
+    platform_t*             platform,
+    graphics_frame_input_t* gfx_frame_input
+) {
+    assert(
+        is_matrix_valid(&gfx_frame_input->view) &&
+        "CRASH: NaN detected in View Matrix entering graphics_draw!"
+    );
+    assert(
+        is_matrix_valid(&gfx_frame_input->culling_view_proj) &&
+        "CRASH: NaN detected in Culling Matrix!"
+    );
+
+    vk_render_target_t* render_target = NULL;
+    if (gfx_frame_input->target.id != GRAPHICS_INVALID_HANDLE) {
+        render_target = &graphics->assets.render_targets[gfx_frame_input->target.id];
+    }
+
+    vk_render_target_t* shadow_render_target = NULL;
+    if (gfx_frame_input->shadow_target.id != GRAPHICS_INVALID_HANDLE) {
+        shadow_render_target = &graphics->assets.render_targets[gfx_frame_input->shadow_target.id];
+    }
+
+    vk_render_target_t* active_target = render_target;
+    if (gfx_frame_input->draw_mode == DRAW_MODE_DEBUG_SDR) {
+        // active_target = &graphics->assets.render_targets[target.id];
+    }
+
+    int32_t image_index = begin_frame(
+        graphics,
+        platform,
+        gfx_frame_input->view,
+        gfx_frame_input->camera_pos,
+        gfx_frame_input->environment->sun_direction,
+        gfx_frame_input->environment->sun_color,
+        gfx_frame_input->environment->sun_intensity,
+        render_target,
+        gfx_frame_input->draw_mode,
+        gfx_frame_input
+    );
+
+    if (image_index < 0) {
+        return;
+    }
+
+    shadow_pass(graphics, gfx_frame_input, shadow_render_target);
+
+    forward_pass(graphics, gfx_frame_input, render_target, image_index);
 
     if (gfx_frame_input->draw_mode != DRAW_MODE_DEBUG_SDR) {
         execute_post_process_pass(graphics, render_target, (uint32_t)image_index);
-
-        vk_render_target_t* render_target = NULL;
         if (gfx_frame_input->target.id != GRAPHICS_INVALID_HANDLE) {
             render_target = &graphics->assets.render_targets[gfx_frame_input->target.id];
         }

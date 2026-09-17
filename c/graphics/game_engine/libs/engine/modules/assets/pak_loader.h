@@ -11,6 +11,8 @@ typedef struct graphics_t    graphics_t;
 typedef struct scene_s       scene_t;
 typedef struct environment_s environment_t;
 
+void load_pak_file(game_engine_t* game_engine, game_engine_init_config_t* engine_init_config);
+
 bool pak_loader_load_world(
     graphics_t*    graphics,
     scene_t*       out_scene,

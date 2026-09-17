@@ -8,6 +8,8 @@
 #include "math_types.h"
 #include "shared/math_types.h"
 
+bool is_matrix_valid(mat4_t* m);
+
 static inline mat4_t mat4_identity() {
     return (mat4_t){
         {

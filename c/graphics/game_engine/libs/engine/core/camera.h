@@ -8,6 +8,8 @@ typedef struct {
     float  yaw;
     float  pitch;
     float  fov;
+    float  near_plane;
+    float  far_plane;
 } camera_t;
 
 mat4_t camera_get_view_matrix(const camera_t* camera);

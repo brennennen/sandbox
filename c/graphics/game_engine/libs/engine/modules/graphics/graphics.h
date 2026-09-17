@@ -83,3 +83,5 @@ void graphics_update_global_environment(
     texture_handle_t irradiance_tex,
     texture_handle_t prefiltered_tex
 );
+
+void graphics_update_debug_sun_line(graphics_t* graphics, vec3_t origin, vec3_t sun_direction);

@@ -134,6 +134,31 @@ static bool parse_environment_statement(
                 }
 
                 log_info("sun_direction: %f, %f, %f", dir.x, dir.y, dir.z);
+            } else if (span_equals_cstr(token_span, "sun_azimuth")) {
+                token_t equal_tok                = get_next_token(cursor); // =
+                token_t azimuth_tok              = get_next_token(cursor);
+                token_t comma_tok                = get_next_token(cursor); // ,
+                out_environment_src->sun_azimuth = azimuth_tok.float_value;
+                log_info("sun_azimuth: %f", azimuth_tok.float_value);
+            } else if (span_equals_cstr(token_span, "sun_elevation")) {
+                token_t equal_tok                  = get_next_token(cursor); // =
+                token_t elevation_tok              = get_next_token(cursor);
+                token_t comma_tok                  = get_next_token(cursor); // ,
+                out_environment_src->sun_elevation = elevation_tok.float_value;
+                log_info("sun_elevation: %f", elevation_tok.float_value);
+
+                float az_rad = out_environment_src->sun_azimuth * (M_PI / 180.0f);
+                float el_rad = out_environment_src->sun_elevation * (M_PI / 180.0f);
+
+                out_environment_src->sun_direction.x = cosf(el_rad) * cosf(az_rad);
+                out_environment_src->sun_direction.y = cosf(el_rad) * sinf(az_rad);
+                out_environment_src->sun_direction.z = -sinf(el_rad);
+                log_info(
+                    "sun_direction: %f, %f, %f",
+                    out_environment_src->sun_direction.x,
+                    out_environment_src->sun_direction.y,
+                    out_environment_src->sun_direction.z
+                );
             } else if (span_equals_cstr(token_span, "sun_color")) {
                 token_t equal_tok      = get_next_token(cursor); // =
                 token_t open_brace_tok = get_next_token(cursor); // {
@@ -682,10 +707,14 @@ scene_desc_t* process_world_source(
     pak_header->magic       = PAK_MAGIC;
     pak_header->version     = 1;
     // NOTE: Hardcode scene_type here or pull it from world_source if implemented
-    pak_header->scene_type               = 1; // 1 = PAK_SCENE_TYPE_STATIC_LEVEL
-    pak_header->environment.ambient_tint = world_source->environment.ambient_tint;
-    pak_header->environment.fog_density  = world_source->environment.fog_density;
+    pak_header->scene_type                    = 1; // 1 = PAK_SCENE_TYPE_STATIC_LEVEL
+    pak_header->environment.ambient_tint      = world_source->environment.ambient_tint;
+    pak_header->environment.ambient_intensity = world_source->environment.ambient_intensity;
+    pak_header->environment.fog_density       = world_source->environment.fog_density;
+    pak_header->environment.fog_color         = world_source->environment.fog_color;
 
+    pak_header->environment.sun_azimuth   = world_source->environment.sun_azimuth;
+    pak_header->environment.sun_elevation = world_source->environment.sun_elevation;
     pak_header->environment.sun_direction = world_source->environment.sun_direction;
     pak_header->environment.sun_color     = world_source->environment.sun_color;
     pak_header->environment.sun_intensity = world_source->environment.sun_intensity;

@@ -92,6 +92,14 @@ void load_pak_file(game_engine_t* game_engine, game_engine_init_config_t* engine
     if (raw_pak_data) {
         world_pak_t* header = (world_pak_t*)raw_pak_data;
 
+        log_info(
+            "sun: az: %0.2f, el: %0.2f, dir: %0.2f, %0.2f, %0.2f",
+            header->environment.sun_azimuth,
+            header->environment.sun_elevation,
+            header->environment.sun_direction.x,
+            header->environment.sun_direction.y,
+            header->environment.sun_direction.z
+        );
         game_engine->environment.sun_direction = header->environment.sun_direction;
         game_engine->environment.sun_color     = header->environment.sun_color;
         game_engine->environment.sun_intensity = header->environment.sun_intensity;
@@ -172,6 +180,11 @@ bool pak_loader_load_world(
     world_pak_t* header = (world_pak_t*)raw_pak_data;
 
     out_env->sun_direction = header->environment.sun_direction;
+    log_info(
+        "sun: az: %0.2f, el: %0.2f, ",
+        header->environment.sun_azimuth,
+        header->environment.sun_elevation
+    );
     out_env->sun_color     = header->environment.sun_color;
     out_env->sun_intensity = header->environment.sun_intensity;
 

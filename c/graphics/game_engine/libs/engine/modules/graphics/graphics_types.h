@@ -139,6 +139,7 @@ typedef struct {
 
     // Render State
     draw_mode_t draw_mode;
+    bool        show_debug_widgets;
 } graphics_frame_input_t;
 
 #endif

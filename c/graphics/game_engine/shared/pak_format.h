@@ -50,16 +50,19 @@ typedef struct {
 
 typedef struct {
     vec3_t ambient_tint;
+    float  ambient_intensity;
     float  fog_density;
+    vec3_t fog_color;
 
-    texture_pak_t skybox_cubemap;      // background
-    texture_pak_t irradiance_map;      // diffuse ambient light
-    texture_pak_t prefiltered_env_map; // specular reflections (mipmapped)
-
+    float  sun_azimuth;
+    float  sun_elevation;
     vec3_t sun_direction;
     vec3_t sun_color;
     float  sun_intensity;
 
+    texture_pak_t skybox_cubemap;      // background
+    texture_pak_t irradiance_map;      // diffuse ambient light
+    texture_pak_t prefiltered_env_map; // specular reflections (mipmapped)
 } environment_pak_t;
 
 typedef struct {

@@ -20,6 +20,8 @@ typedef struct {
 
     float  sun_intensity;
     vec3_t sun_direction;
+    float  sun_azimuth;
+    float  sun_elevation;
     vec3_t sun_color;
 
     float exposure;

@@ -205,76 +205,85 @@ static bool init_descriptors(graphics_t* r) {
     return true;
 }
 
-static bool init_sync_objects(graphics_t* r) {
+static bool init_sync_objects(graphics_t* graphics) {
     VkSemaphoreCreateInfo sem_info   = {.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     VkFenceCreateInfo     fence_info = {
             .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, .flags = VK_FENCE_CREATE_SIGNALED_BIT
     };
 
     for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
-        if (vkCreateSemaphore(r->core.device, &sem_info, NULL, &r->frames[i].image_available_sem) !=
-                VK_SUCCESS ||
-            vkCreateSemaphore(r->core.device, &sem_info, NULL, &r->frames[i].render_finished_sem) !=
-                VK_SUCCESS ||
-            vkCreateFence(r->core.device, &fence_info, NULL, &r->frames[i].in_flight_fence) !=
-                VK_SUCCESS) {
+        if (vkCreateSemaphore(
+                graphics->core.device, &sem_info, NULL, &graphics->frames[i].image_available_sem
+            ) != VK_SUCCESS ||
+            vkCreateSemaphore(
+                graphics->core.device, &sem_info, NULL, &graphics->frames[i].render_finished_sem
+            ) != VK_SUCCESS ||
+            vkCreateFence(
+                graphics->core.device, &fence_info, NULL, &graphics->frames[i].in_flight_fence
+            ) != VK_SUCCESS) {
             return false;
         }
     }
-    r->current_frame = 0;
+    graphics->current_frame = 0;
     return true;
 }
 
 graphics_t* graphics_create(platform_t* platform, graphics_config_t* config) {
-    graphics_t* r = calloc(1, sizeof(struct graphics_t));
-    if (!r) {
+    graphics_t* graphics = calloc(1, sizeof(struct graphics_t));
+    if (!graphics) {
         log_error("renderer: failed to allocate memory for graphics_t");
         return NULL;
     }
 
-    if (!vk_create_instance(r, platform) ||
-        !platform_create_vulkan_surface(platform, r->core.instance, &r->core.surface) ||
-        !vk_pick_physical_device(r) || !vk_create_logical_device(r)) {
-        goto init_failed;
-    }
-
-    if (!init_memory_heaps(r) || !init_uniform_buffer(r) || !vk_create_commands(r) ||
-        !vk_setup_depth_buffer(r, config->width, config->height)) {
-        goto init_failed;
-    }
-
-    r->display.abstract_present_mode = config->present_mode;
-    if (!vk_create_swapchain(
-            r, config->width, config->height, config->present_mode, VK_NULL_HANDLE
+    if (!vk_create_instance(graphics, platform) ||
+        !platform_create_vulkan_surface(
+            platform, graphics->core.instance, &graphics->core.surface
         ) ||
-        !vk_create_graphics_pipeline(r) || !init_descriptors(r)) {
+        !vk_pick_physical_device(graphics) || !vk_create_logical_device(graphics)) {
+        goto init_failed;
+    }
+
+    if (!init_memory_heaps(graphics) || !init_uniform_buffer(graphics) ||
+        !vk_create_commands(graphics) ||
+        !vk_setup_depth_buffer(graphics, config->width, config->height)) {
+        goto init_failed;
+    }
+
+    graphics->display.abstract_present_mode = config->present_mode;
+    if (!vk_create_swapchain(
+            graphics, config->width, config->height, config->present_mode, VK_NULL_HANDLE
+        ) ||
+        !vk_create_graphics_pipeline(graphics) || !init_descriptors(graphics)) {
         goto init_failed;
     }
 
     VkSemaphoreCreateInfo sem_info = {.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     for (int i = 0; i < 3; i++) {
-        if (vkCreateSemaphore(r->core.device, &sem_info, NULL, &r->swapchain_render_sems[i]) !=
-            VK_SUCCESS) {
+        if (vkCreateSemaphore(
+                graphics->core.device, &sem_info, NULL, &graphics->swapchain_render_sems[i]
+            ) != VK_SUCCESS) {
             log_error("Failed to create swapchain render semaphores!");
         }
     }
 
-    if (!init_sync_objects(r)) {
+    if (!init_sync_objects(graphics)) {
         goto init_failed;
     }
 
-    init_debug_grid(r);
-    init_debug_frustum_buffer(r);
-    if (!init_default_textures(r)) {
+    init_debug_grid(graphics);
+    init_debug_frustum_buffer(graphics);
+    init_debug_sun_line_buffer(graphics);
+
+    if (!init_default_textures(graphics)) {
         goto init_failed;
     }
 
     log_info("renderer: initialization complete");
-    return r;
+    return graphics;
 
 init_failed:
     log_error("renderer: initialization aborted due to failure");
-    graphics_destroy(r);
+    graphics_destroy(graphics);
     return NULL;
 }
 
@@ -349,6 +358,9 @@ void graphics_destroy(graphics_t* graphics) {
         }
         if (graphics->frustum_buffer.buffer) {
             vkDestroyBuffer(graphics->core.device, graphics->frustum_buffer.buffer, NULL);
+        }
+        if (graphics->sun_line_buffer.buffer) {
+            vkDestroyBuffer(graphics->core.device, graphics->sun_line_buffer.buffer, NULL);
         }
 
         vk_destroy_graphics_pipeline(graphics);
@@ -1245,50 +1257,70 @@ void forward_pass(
 
     vkCmdDraw(graphics->command_buffer, 36, 1, 0, 0);
 
-    if (gfx_frame_input->draw_mode != DRAW_MODE_DEBUG_SDR) {
-        vkCmdBindPipeline(
-            graphics->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics->pipelines.line
-        );
+    if (gfx_frame_input->show_debug_widgets) {
+        if (gfx_frame_input->draw_mode != DRAW_MODE_DEBUG_SDR) {
+            vkCmdBindPipeline(
+                graphics->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics->pipelines.line
+            );
 
-        push_constants_t grid_pc = {
-            .transform       = mat4_identity(),
-            .is_alpha_masked = 0,
-        };
-        mat4_t identity = mat4_identity();
-        vkCmdPushConstants(
-            graphics->command_buffer,
-            graphics->pipelines.layout,
-            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-            0,
-            sizeof(push_constants_t),
-            &grid_pc
-        );
+            push_constants_t grid_pc = {
+                .transform       = mat4_identity(),
+                .is_alpha_masked = 0,
+            };
+            mat4_t identity = mat4_identity();
+            vkCmdPushConstants(
+                graphics->command_buffer,
+                graphics->pipelines.layout,
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                0,
+                sizeof(push_constants_t),
+                &grid_pc
+            );
 
-        vkCmdBindVertexBuffers(
-            graphics->command_buffer, 0, 1, &graphics->grid_buffer.buffer, offsets
-        );
-        vkCmdDraw(graphics->command_buffer, graphics->grid_vertex_count, 1, 0, 0);
-    }
+            vkCmdBindVertexBuffers(
+                graphics->command_buffer, 0, 1, &graphics->grid_buffer.buffer, offsets
+            );
+            vkCmdDraw(graphics->command_buffer, graphics->grid_vertex_count, 1, 0, 0);
 
-    if (gfx_frame_input->is_culling_frozen) {
-        push_constants_t frustum_pc = {
-            .transform       = mat4_identity(),
-            .is_alpha_masked = 0,
-        };
+            push_constants_t sun_pc = {
+                .transform       = mat4_identity(),
+                .is_alpha_masked = 0,
+            };
+            vkCmdPushConstants(
+                graphics->command_buffer,
+                graphics->pipelines.layout,
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                0,
+                sizeof(push_constants_t),
+                &sun_pc
+            );
 
-        vkCmdPushConstants(
-            graphics->command_buffer,
-            graphics->pipelines.layout,
-            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-            0,
-            sizeof(push_constants_t),
-            &frustum_pc
-        );
+            vkCmdBindVertexBuffers(
+                graphics->command_buffer, 0, 1, &graphics->sun_line_buffer.buffer, offsets
+            );
+            vkCmdDraw(graphics->command_buffer, 2, 1, 0, 0);
+        }
 
-        vkCmdBindVertexBuffers(
-            graphics->command_buffer, 0, 1, &graphics->frustum_buffer.buffer, offsets
-        );
-        vkCmdDraw(graphics->command_buffer, 24, 1, 0, 0);
+        if (gfx_frame_input->is_culling_frozen) {
+            push_constants_t frustum_pc = {
+                .transform       = mat4_identity(),
+                .is_alpha_masked = 0,
+            };
+
+            vkCmdPushConstants(
+                graphics->command_buffer,
+                graphics->pipelines.layout,
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                0,
+                sizeof(push_constants_t),
+                &frustum_pc
+            );
+
+            vkCmdBindVertexBuffers(
+                graphics->command_buffer, 0, 1, &graphics->frustum_buffer.buffer, offsets
+            );
+            vkCmdDraw(graphics->command_buffer, 24, 1, 0, 0);
+        }
     }
 }
 

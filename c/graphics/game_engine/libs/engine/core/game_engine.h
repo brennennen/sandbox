@@ -93,6 +93,8 @@ typedef struct {
     texture_handle_t default_normal_tex;
     texture_handle_t default_ao_metallic_roughness_tex;
 
+    bool show_debug_widgets;
+
 } game_engine_t;
 
 bool game_engine_init(game_engine_t* game_engine, game_engine_init_config_t* engine_init_config);

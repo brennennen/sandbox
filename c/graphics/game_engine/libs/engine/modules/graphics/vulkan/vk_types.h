@@ -277,6 +277,8 @@ struct graphics_t {
 
     gpu_buffer_t frustum_buffer;
     uint32_t     frustum_vertex_count;
+
+    gpu_buffer_t sun_line_buffer;
 };
 
 #endif

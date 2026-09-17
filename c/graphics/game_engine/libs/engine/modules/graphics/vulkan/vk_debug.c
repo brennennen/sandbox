@@ -59,7 +59,7 @@ void init_debug_frustum_buffer(graphics_t* graphics) {
     );
 }
 
-void graphics_update_debug_frustum(graphics_t* r, mat4_t inv_vp) {
+void graphics_update_debug_frustum(graphics_t* graphics, mat4_t inv_vp) {
     // 8 corners of Vulkan's NDC space
     vec4_t ndc[8] = {
         {-1, -1, 0, 1},
@@ -103,5 +103,48 @@ void graphics_update_debug_frustum(graphics_t* r, mat4_t inv_vp) {
     };
     // clang-format on
 
-    memcpy(r->frustum_buffer.allocation.mapped_ptr, lines, sizeof(lines));
+    memcpy(graphics->frustum_buffer.allocation.mapped_ptr, lines, sizeof(lines));
+}
+
+void init_debug_sun_line_buffer(graphics_t* graphics) {
+    size_t buffer_size = 2 * sizeof(vertex_t);
+
+    graphics->sun_line_buffer.allocation = gpu_heap_alloc(
+        graphics->assets.vertex_heap, buffer_size, 16
+    );
+
+    VkBufferCreateInfo buffer_info = {
+        .sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size        = buffer_size,
+        .usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE
+    };
+
+    vkCreateBuffer(graphics->core.device, &buffer_info, NULL, &graphics->sun_line_buffer.buffer);
+    vkBindBufferMemory(
+        graphics->core.device,
+        graphics->sun_line_buffer.buffer,
+        graphics->assets.vertex_heap->memory,
+        graphics->sun_line_buffer.allocation.offset
+    );
+}
+
+void graphics_update_debug_sun_line(graphics_t* graphics, vec3_t origin, vec3_t sun_direction) {
+    // The line goes from the origin point towards the sun
+    // Multiply by a scalar (e.g., 50.0f) to make the line long enough to see
+    vec3_t end_point = {
+        origin.x + (sun_direction.x * 50.0f),
+        origin.y + (sun_direction.y * 50.0f),
+        origin.z + (sun_direction.z * 50.0f)
+    };
+
+    vec4_t sun_color = {1.0f, 0.5f, 0.0f, 1.0f}; // Orange to distinguish it from the yellow frustum
+
+    vertex_t line[2] = {
+        {.pos = origin, .color = sun_color},
+        {.pos = end_point, .color = sun_color},
+    };
+
+    // Copy directly into the mapped GPU memory
+    memcpy(graphics->sun_line_buffer.allocation.mapped_ptr, line, sizeof(line));
 }

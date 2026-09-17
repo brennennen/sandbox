@@ -149,7 +149,8 @@ bool game_engine_init(game_engine_t* game_engine, game_engine_init_config_t* eng
     game_engine->fps_last_time   = game_engine->last_time;
     game_engine->fps_frame_count = 0;
 
-    game_engine->is_running = true;
+    game_engine->show_debug_widgets = true;
+    game_engine->is_running         = true;
 
     return true;
 }
@@ -186,6 +187,11 @@ static void update_world_streaming(game_engine_t* engine, vec3_t player_pos) {
 static bool engine_process_events(game_engine_t* engine) {
     if (!platform_update(engine->platform)) {
         return false;
+    }
+
+    if (platform_get_key_pressed(engine->platform, KEY_F3)) {
+        engine->show_debug_widgets = !engine->show_debug_widgets;
+        log_info("show_debug_widgets: %d", engine->show_debug_widgets);
     }
 
     if (platform_get_key_pressed(engine->platform, KEY_F4)) {
@@ -294,14 +300,22 @@ static void engine_render_frame(game_engine_t* engine) {
         engine->main_camera->far_plane
     );
     mat4_t current_view_proj = mat4_mul(proj, view);
-    // vec3_t light_pos         = {20.0f, -20.0f, 50.0f};
-    vec3_t light_pos = {
-        engine->environment.sun_direction.x,
-        engine->environment.sun_direction.y,
-        engine->environment.sun_direction.z
+    vec3_t target            = engine->main_camera->pos;
+    target.z                 = 0.0f; // ignore z so the shadow box stays grounded
+    float  shadow_distance   = 200.0f;
+    vec3_t light_dir         = engine->environment.sun_direction;
+    vec3_t offset            = {
+        light_dir.x * -shadow_distance,
+        light_dir.y * -shadow_distance,
+        light_dir.z * -shadow_distance
     };
-    vec3_t target     = {0.0f, 0.0f, 0.0f};
-    vec3_t up         = {0.0f, 0.0f, 1.0f};
+    vec3_t light_pos = {target.x + offset.x, target.y + offset.y, target.z + offset.z};
+
+    vec3_t up = {0.0f, 0.0f, 1.0f};
+    // If looking almost straight down (or straight up), use Y as the up vector
+    if (fabsf(light_dir.x) < 0.001f && fabsf(light_dir.y) < 0.001f) {
+        up = (vec3_t){0.0f, 1.0f, 0.0f};
+    }
     mat4_t light_view = mat4_look_at(light_pos, target, up);
     float  ortho_size = 50.0f;
     mat4_t light_proj = mat4_ortho(-ortho_size, ortho_size, -ortho_size, ortho_size, 1.0f, 400.0f);
@@ -323,8 +337,12 @@ static void engine_render_frame(game_engine_t* engine) {
         .light_space_matrix = light_space_matrix,
         .draw_mode          = engine->draw_mode,
         .environment        = &engine->environment,
-        .scene              = &engine->main_scene
+        .scene              = &engine->main_scene,
+        .show_debug_widgets = engine->show_debug_widgets
     };
+    vec3_t origin = {0.0f, 0.0f, 1.0f};
+
+    graphics_update_debug_sun_line(engine->graphics, origin, engine->environment.sun_direction);
 
     graphics_draw(engine->graphics, engine->platform, &gfx_frame_input);
 }
@@ -337,8 +355,9 @@ bool game_engine_tick(game_engine_t* game_engine) {
     engine_update_simulation(game_engine, delta_time);
 
     debug_imgui_begin_frame();
-
-    engine_diagnostics_draw_panel(game_engine);
+    if (game_engine->show_debug_widgets) {
+        engine_diagnostics_draw_panel(game_engine);
+    }
 
     engine_render_frame(game_engine);
     return true;

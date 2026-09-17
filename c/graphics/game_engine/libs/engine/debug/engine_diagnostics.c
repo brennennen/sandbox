@@ -12,6 +12,8 @@ void engine_diagnostics_draw_panel(game_engine_t* game_engine) {
     // igShowDemoWindow(NULL); // demo kitchen sink, useful for seeing capabilities
     igBegin("Engine Debug/Diagnostics", NULL, 0);
 
+    igCheckbox("Show Debug Widgets (F3)", &game_engine->show_debug_widgets);
+
     if (igCollapsingHeader_TreeNodeFlags("Performance", ImGuiTreeNodeFlags_DefaultOpen)) {
         igText("is_paused: %d", game_engine->is_paused);
         igText("delta_time: %0.2f ms", game_engine->delta_time * 1000.0f);
@@ -69,15 +71,35 @@ void engine_diagnostics_draw_panel(game_engine_t* game_engine) {
 
     if (igCollapsingHeader_TreeNodeFlags("Environment", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (igCollapsingHeader_TreeNodeFlags("Sun", ImGuiTreeNodeFlags_DefaultOpen)) {
-            igDragFloat3(
-                "Direction",
-                (float*)&game_engine->environment.sun_direction.data,
-                0.1f,
-                0.0f,
-                0.0f,
-                "%.2f",
-                0
+            static float sun_azimuth        = 0.0f;
+            static float sun_elevation      = 80.0f;
+            static bool  angles_initialized = false;
+
+            if (!angles_initialized) {
+                vec3_t start_dir = game_engine->environment.sun_direction;
+                sun_elevation    = asinf(-start_dir.z) * (180.0f / M_PI);
+                sun_azimuth      = atan2f(start_dir.y, start_dir.x) * (180.0f / M_PI);
+                if (sun_azimuth < 0.0f)
+                    sun_azimuth += 360.0f;
+                angles_initialized = true;
+            }
+
+            bool direction_changed = false;
+            direction_changed |= igSliderFloat(
+                "Azimuth", &sun_azimuth, 0.0f, 360.0f, "%.1f deg", 0
             );
+            direction_changed |= igSliderFloat(
+                "Elevation", &sun_elevation, 1.0f, 89.0f, "%.1f deg", 0
+            );
+
+            if (direction_changed) {
+                float az_rad                             = sun_azimuth * (M_PI / 180.0f);
+                float el_rad                             = sun_elevation * (M_PI / 180.0f);
+                game_engine->environment.sun_direction.x = cosf(el_rad) * cosf(az_rad);
+                game_engine->environment.sun_direction.y = cosf(el_rad) * sinf(az_rad);
+                game_engine->environment.sun_direction.z = -sinf(el_rad);
+            }
+
             igColorEdit3("Color", (float*)&game_engine->environment.sun_color.data, 0);
             igDragFloat(
                 "Intensity", &game_engine->environment.sun_intensity, 0.1f, 0.0f, 0.0f, "%.2f", 0

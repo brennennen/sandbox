@@ -7,7 +7,7 @@
 
 #define PAK_MAX_ENTITIES 1024
 #define PAK_MAX_MESHES 1024
-#define PAK_MAX_VERTICES 5000000
+#define PAK_MAX_VERTICES 10000000
 #define PAK_MAX_INDICES 15000000
 #define PAK_MAX_TEXTURES 512
 
@@ -42,22 +42,37 @@ typedef struct {
 typedef struct {
     environment_desc_t environment;
 
-    pak_entity_t entities[PAK_MAX_ENTITIES];
-    uint32_t     entity_count;
+    pak_entity_t* entities;
+    uint32_t      entity_count;
 
-    pak_mesh_t meshes[PAK_MAX_MESHES];
-    uint32_t   mesh_count;
+    pak_mesh_t* meshes;
+    uint32_t    mesh_count;
 
-    pak_vertex_t vertices[PAK_MAX_VERTICES];
-    uint32_t     vertex_count;
+    pak_vertex_t* vertices;
+    uint32_t      vertex_count;
 
-    uint32_t indices[PAK_MAX_INDICES];
-    uint32_t index_count;
+    uint32_t* indices;
+    uint32_t  index_count;
 
-    pak_texture_t textures[PAK_MAX_TEXTURES];
-    uint8_t*      raw_texture_bytes[PAK_MAX_TEXTURES];
-    uint32_t      texture_count;
+    pak_texture_t* textures;
+    uint8_t**      raw_texture_bytes;
+    uint32_t       texture_count;
 
-    char texture_cache_paths[PAK_MAX_TEXTURES][256];
+    char (*texture_cache_paths)[256];
 
 } scene_desc_t;
+
+typedef struct {
+    uint32_t total_vertices;
+    uint32_t total_indices;
+    uint32_t total_meshes;
+    uint32_t total_entities;
+    uint32_t total_textures;
+
+    uint64_t offset_vertices;
+    uint64_t offset_indices;
+    uint64_t offset_meshes;
+    uint64_t offset_entities;
+    uint64_t offset_textures;
+    uint64_t offset_texture_payloads;
+} scene_manifest_t;

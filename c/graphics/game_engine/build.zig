@@ -86,6 +86,7 @@ pub fn build(b: *std.Build) void {
         "libs/core/string_span.c",
         "libs/core/resources/image.c",
         "libs/core/resources/compressed_texture.c",
+        "libs/core/path.c",
     };
     for (core_sources) |file| {
         core_module.addCSourceFile(.{ .file = b.path(file), .flags = c_flags });
@@ -151,6 +152,7 @@ pub fn build(b: *std.Build) void {
         "libs/engine/debug/freefly_camera.c",
         "libs/engine/debug/engine_diagnostics.c",
         "libs/engine/modules/assets/obj.c",
+        "libs/engine/modules/assets/gltf/gltf.c",
         "libs/engine/platform/sdl/sdl_backend.c",
         "libs/engine/modules/assets/pak_loader.c",
     };

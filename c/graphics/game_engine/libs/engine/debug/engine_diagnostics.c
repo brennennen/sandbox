@@ -67,6 +67,36 @@ void engine_diagnostics_draw_panel(game_engine_t* game_engine) {
                 graphics_update_debug_frustum(game_engine->graphics, inv_culling);
             }
         }
+
+        igSeparator();
+        igText("Memory (VRAM)");
+        float vram_tex_mb = (float)game_engine->vram_texture_bytes / (1024.0f * 1024.0f);
+        float vram_geo_mb = (float)game_engine->vram_geometry_bytes / (1024.0f * 1024.0f);
+        igText("Textures: %.1f MB", vram_tex_mb);
+        igText("Geometry: %.1f MB", vram_geo_mb);
+        igText("Total:    %.1f MB", vram_tex_mb + vram_geo_mb);
+
+        igSeparator();
+        igText("Texture Streaming Settings");
+        int              previous_clamp      = game_engine->texture_mip_clamp;
+        ImGuiSliderFlags mip_map_clamp_flags = 0;
+        if (igSliderInt(
+                "Mipmap Clamp",
+                &game_engine->texture_mip_clamp,
+                0,
+                4,
+                "Skip %d Mips",
+                mip_map_clamp_flags
+            )) {
+            igTextColored((ImVec4){1.0f, 1.0f, 0.0f, 1.0f}, "Requires scene reload!");
+            // TODO: hot reload
+            // if (previous_clamp != g_texture_mip_clamp) {
+            //     pak_loader_reload_scene(game_engine);
+            // }
+        }
+        if (igIsItemHovered(ImGuiHoveredFlags_None)) {
+            igSetTooltip("0 = 4K\n1 = 2K (-75%% VRAM)\n2 = 1K (-93%% VRAM)");
+        }
     }
 
     if (igCollapsingHeader_TreeNodeFlags("Environment", ImGuiTreeNodeFlags_DefaultOpen)) {

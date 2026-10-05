@@ -36,4 +36,8 @@ typedef union {
 #define M_PI 3.14159265358979323846
 #endif
 
+#ifndef DEG_TO_RAD
+#define DEG_TO_RAD(x) ((x) * (3.14159265359f / 180.0f))
+#endif
+
 #endif // MATH_TYPES_H

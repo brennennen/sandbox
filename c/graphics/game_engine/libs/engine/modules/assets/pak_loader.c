@@ -1,4 +1,5 @@
 
+#include <string.h>
 
 #include "engine/modules/assets/pak_loader.h"
 
@@ -8,27 +9,109 @@
 #include "engine/modules/graphics/graphics.h"
 #include "pak_loader.h"
 
+static bool pak_validate_section_headers(
+    game_engine_t* engine,
+    world_pak_t*   header,
+    void*          raw_pak_data
+) {
+    pak_section_header_t* pak_vertices_header = (pak_section_header_t*)((uint8_t*)raw_pak_data +
+                                                                        header->vertex_offset);
+    pak_section_header_t* pak_indices_header  = (pak_section_header_t*)((uint8_t*)raw_pak_data +
+                                                                       header->index_offset);
+    pak_section_header_t* pak_meshes_header   = (pak_section_header_t*)((uint8_t*)raw_pak_data +
+                                                                      header->mesh_offset);
+    pak_section_header_t* pak_entities_header = (pak_section_header_t*)((uint8_t*)raw_pak_data +
+                                                                        header->entity_offset);
+
+    if (strncmp(pak_vertices_header->magic, "VERTICES", sizeof("VERTICES")) != 0) {
+        log_error("CRITICAL: Corrupted PAK file. Expected 'VERTICES' section.");
+        return false;
+    }
+    if (strncmp(pak_indices_header->magic, "INDICES", sizeof("INDICES")) != 0) {
+        log_error("CRITICAL: Corrupted PAK file. Expected 'INDICES' section.");
+        return false;
+    }
+    if (strncmp(pak_meshes_header->magic, "MESHES", sizeof("MESHES")) != 0) {
+        log_error("CRITICAL: Corrupted PAK file. Expected 'MESHES' section.");
+        return false;
+    }
+    if (strncmp(pak_entities_header->magic, "ENTITIES", sizeof("ENTITIES")) != 0) {
+        log_error("CRITICAL: Corrupted PAK file. Expected 'ENTITIES' section.");
+        return false;
+    }
+    return true;
+}
+
 static void load_geometry_from_pak(game_engine_t* engine, world_pak_t* header, void* raw_pak_data) {
     log_info("Uploading raw PAK data to Vulkan...");
 
-    pak_vertex_t* loaded_vertices = (pak_vertex_t*)((uint8_t*)raw_pak_data + header->vertex_offset);
-    uint32_t*     loaded_indices  = (uint32_t*)((uint8_t*)raw_pak_data + header->index_offset);
-    pak_mesh_t*   loaded_meshes   = (pak_mesh_t*)((uint8_t*)raw_pak_data + header->mesh_offset);
-    pak_entity_t* loaded_entities = (pak_entity_t*)((uint8_t*)raw_pak_data + header->entity_offset);
+    if (!pak_validate_section_headers(engine, header, raw_pak_data)) {
+        return;
+    }
+
+    pak_vertex_t* loaded_vertices = (pak_vertex_t*)((uint8_t*)raw_pak_data + header->vertex_offset +
+                                                    sizeof(pak_section_header_t));
+    uint32_t*     loaded_indices  = (uint32_t*)((uint8_t*)raw_pak_data + header->index_offset +
+                                           sizeof(pak_section_header_t));
+    pak_mesh_t*   loaded_meshes   = (pak_mesh_t*)((uint8_t*)raw_pak_data + header->mesh_offset +
+                                              sizeof(pak_section_header_t));
+    pak_entity_t* loaded_entities = (pak_entity_t*)((uint8_t*)raw_pak_data + header->entity_offset +
+                                                    sizeof(pak_section_header_t));
     pak_texture_t* loaded_textures = (pak_texture_t*)((uint8_t*)raw_pak_data +
-                                                      header->texture_offset);
+                                                      header->texture_offset +
+                                                      sizeof(pak_section_header_t));
+
+    engine->vram_texture_bytes  = 0;
+    engine->vram_geometry_bytes = 0;
 
     texture_handle_t gpu_textures[1024];
     for (uint32_t t = 0; t < header->texture_count; t++) {
         pak_texture_t* tex_def = &loaded_textures[t];
-        image_t        img     = {
-                       .width      = tex_def->width,
-                       .height     = tex_def->height,
-                       .channels   = tex_def->channels,
-                       .size       = tex_def->byte_size,
-                       .pixels     = (uint8_t*)raw_pak_data + tex_def->byte_offset,
-                       .mip_levels = tex_def->mip_levels,
-                       .is_cubemap = false
+
+        uint32_t active_mip = (engine->texture_mip_clamp < tex_def->mip_levels)
+                                  ? engine->texture_mip_clamp
+                                  : 0;
+
+        uint32_t active_w = tex_def->width >> active_mip;
+        uint32_t active_h = tex_def->height >> active_mip;
+        if (active_w < 1)
+            active_w = 1;
+        if (active_h < 1)
+            active_h = 1;
+
+        uint64_t mip_byte_offset = 0;
+        uint32_t temp_w          = tex_def->width;
+        uint32_t temp_h          = tex_def->height;
+
+        bool is_bc7 =
+            (tex_def->format == PAK_TEX_FORMAT_BC7_UNORM ||
+             tex_def->format == PAK_TEX_FORMAT_BC7_SRGB);
+
+        for (uint32_t m = 0; m < active_mip; m++) {
+            if (is_bc7) {
+                // BC7 is 16 bytes per 4x4 block
+                uint32_t blocks_x = (temp_w + 3) / 4;
+                uint32_t blocks_y = (temp_h + 3) / 4;
+                mip_byte_offset += (uint64_t)blocks_x * blocks_y * 16;
+            } else {
+                // Uncompressed RGBA8 (4 bytes per pixel)
+                mip_byte_offset += (uint64_t)temp_w * temp_h * 4;
+            }
+
+            temp_w = (temp_w > 1) ? temp_w / 2 : 1;
+            temp_h = (temp_h > 1) ? temp_h / 2 : 1;
+        }
+
+        uint64_t remaining_size = tex_def->byte_size - mip_byte_offset;
+
+        image_t img = {
+            .width      = active_w,
+            .height     = active_h,
+            .channels   = tex_def->channels,
+            .size       = remaining_size,
+            .pixels     = (uint8_t*)raw_pak_data + tex_def->byte_offset + mip_byte_offset,
+            .mip_levels = tex_def->mip_levels - active_mip,
+            .is_cubemap = false
         };
 
         if (img.size == 0) {
@@ -36,6 +119,8 @@ static void load_geometry_from_pak(game_engine_t* engine, world_pak_t* header, v
             continue;
         }
         gpu_textures[t] = graphics_upload_texture(engine->graphics, &img, tex_def->format);
+
+        engine->vram_texture_bytes += img.size;
     }
 
     for (uint32_t i = 0; i < header->mesh_count; i++) {
@@ -51,6 +136,9 @@ static void load_geometry_from_pak(game_engine_t* engine, world_pak_t* header, v
         };
 
         mesh_handle_t vram_handle = graphics_upload_mesh(engine->graphics, &raw_mesh_data);
+
+        engine->vram_geometry_bytes += (mesh_def->vertex_count * sizeof(pak_vertex_t)) +
+                                       (mesh_def->index_count * sizeof(uint32_t));
 
         texture_handle_t mesh_tex = (mesh_def->base_color_texture_id >= 0)
                                         ? gpu_textures[mesh_def->base_color_texture_id]
@@ -159,6 +247,8 @@ void load_pak_file(game_engine_t* game_engine, game_engine_init_config_t* engine
                 game_engine->environment.skybox_texture  // pref_tex
             );
             log_info("Successfully uploaded HDRI Skybox to GPU!");
+
+            game_engine->texture_mip_clamp = 1;
 
             load_geometry_from_pak(game_engine, header, raw_pak_data);
         } else {

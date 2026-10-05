@@ -25,7 +25,8 @@ int main(int argc, char* argv[]) {
         .window_width  = graphic_settings.resolution_x,
         .window_height = graphic_settings.resolution_y,
 
-        .initial_pak_path = "./../../.assets/sponza.pak",
+        .initial_pak_path = "./../../.assets/sponza_with_curtains.pak",
+        //.initial_pak_path = "./../../.assets/sponza.pak",
         //.initial_pak_path = "./../../.assets/test_zone.pak",
         // .initial_pak_path = "./../../.assets/test_skybox_zone.pak",
         // .initial_pak_path = "./../../.assets/render_tests.pak",

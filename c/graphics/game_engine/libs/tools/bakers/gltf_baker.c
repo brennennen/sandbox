@@ -1,8 +1,10 @@
+#include <float.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "bc7/bc7enc.h"
-#define CGLTF_IMPLEMENTATION
+// #define CGLTF_IMPLEMENTATION
 #include "cgltf.h"
 
 #include "engine/core/logger.h"
@@ -169,10 +171,12 @@ static void parse_primitive_material(
             if (current_mesh->base_color_texture_id != -1) {
                 pak_texture_format_t* fmt =
                     &out_scene->textures[current_mesh->base_color_texture_id].format;
-                if (*fmt == PAK_TEX_FORMAT_PNG_UNORM)
+                if (*fmt == PAK_TEX_FORMAT_PNG_UNORM) {
                     *fmt = PAK_TEX_FORMAT_PNG_SRGB;
-                else if (*fmt == PAK_TEX_FORMAT_RGBA8_UNORM)
+                }
+                else if (*fmt == PAK_TEX_FORMAT_RGBA8_UNORM) {
                     *fmt = PAK_TEX_FORMAT_RGBA8_SRGB;
+                }
             }
             log_info(
                 "  - Base Color Texture -> PAK ID %d (Upgraded to SRGB)",
@@ -718,7 +722,6 @@ static void process_texture_job(bake_context_t* ctx, uint32_t gltf_idx, uint32_t
     build_and_cache_texture(cache_path, src_data, comp_size, ctx->out_scene, tex_idx);
 }
 
-
 int texture_worker_thread(void* user_data) {
     bake_context_t* ctx = (bake_context_t*)user_data;
 
@@ -758,7 +761,7 @@ int texture_worker_thread(void* user_data) {
 
             // Assign to the parallel array
             ctx->out_scene->raw_texture_bytes[tex_idx] = raw_pixels;
-    
+
             ctx->out_scene->textures[tex_idx].width      = w;
             ctx->out_scene->textures[tex_idx].height     = h;
             ctx->out_scene->textures[tex_idx].channels   = 4;

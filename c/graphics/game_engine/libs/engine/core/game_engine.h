@@ -95,6 +95,10 @@ typedef struct {
 
     bool show_debug_widgets;
 
+    uint32_t texture_mip_clamp;
+    uint64_t vram_texture_bytes;
+    uint64_t vram_geometry_bytes;
+
 } game_engine_t;
 
 bool game_engine_init(game_engine_t* game_engine, game_engine_init_config_t* engine_init_config);

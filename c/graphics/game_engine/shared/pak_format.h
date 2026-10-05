@@ -17,6 +17,11 @@ typedef struct {
     uint32_t magic;
     uint32_t version;
     uint32_t payload_type;
+    uint32_t vertex_count;
+    uint32_t index_count;
+    uint32_t mesh_count;
+    uint32_t texture_count;
+    uint32_t entity_count;
     uint32_t _pad_master;
 } pak_header_t;
 
@@ -38,6 +43,14 @@ typedef enum {
     PAK_TEX_FORMAT_RGBA32F,
     PAK_TEX_FORMAT_COUNT
 } pak_texture_format_t;
+
+/**
+ * String written to the beginning of chunks in the pak file for
+ * extra validation when reading pak files and for debuggability.
+ */
+typedef struct {
+    char magic[32];
+} pak_section_header_t;
 
 typedef struct {
     uint32_t width;

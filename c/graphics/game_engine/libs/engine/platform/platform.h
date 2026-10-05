@@ -102,6 +102,11 @@ typedef struct {
     platform_file_t _file;      // Internal OS file handle
 } platform_file_mapping_t;
 
+// Memory
+void* platform_virtual_memory_allocate(size_t size);
+bool  platform_virtual_memory_protect(const void* memory, size_t size);
+void  platform_virtual_memory_free(void* memory);
+
 // Memory Mapping (For the VFS)
 bool platform_file_map_read(const char* filepath, platform_file_mapping_t* out_mapping);
 void platform_file_unmap(platform_file_mapping_t* mapping);

@@ -108,7 +108,6 @@ int main(int argc, char** argv) {
     const char* input_file  = argv[1];
     const char* output_file = argv[2];
 
-    // new:
     void*   build_memory = malloc(2UL * 1024 * 1024 * 1024);
     arena_t build_arena;
     arena_init(&build_arena, build_memory, 1024 * 1024 * 1024);

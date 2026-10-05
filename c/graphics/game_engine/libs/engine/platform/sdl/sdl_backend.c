@@ -272,6 +272,36 @@ uint64_t platform_file_tell(platform_file_t file) {
     return (uint64_t)SDL_TellIO((SDL_IOStream*)file);
 }
 
+#if defined(SDL_PLATFORM_WINDOWS)
+#include <memoryapi.h>
+#include <windows.h>
+#elif defined(SDL_PLATFORM_LINUX) || defined(SDL_PLATFORM_APPLE)
+#include <sys/mman.h>
+#include <unistd.h>
+#endif
+
+// MARK: Memory
+void* platform_virtual_memory_allocate(size_t size) {
+#if defined(SDL_PLATFORM_WINDOWS)
+    return VirtualAlloc(NULL, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+#elif defined(SDL_PLATFORM_LINUX) || defined(SDL_PLATFORM_APPLE)
+    return mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+#else
+    // Fallback to SDL aligned allocation if OS is unknown
+    return SDL_aligned_alloc(4096, size);
+#endif
+}
+
+void platform_virtual_memory_free(void* memory) {
+#if defined(SDL_PLATFORM_WINDOWS)
+    VirtualFree(memory, 0, MEM_RELEASE);
+#elif defined(SDL_PLATFORM_LINUX) || defined(SDL_PLATFORM_APPLE)
+    munmap(ptr, size);
+#else
+    SDL_aligned_free(ptr);
+#endif
+}
+
 // ==============================================================================
 // MARK: OS-Specific Memory Mapping (Windows & POSIX)
 // ==============================================================================

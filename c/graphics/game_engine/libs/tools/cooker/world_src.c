@@ -744,7 +744,12 @@ scene_desc_t* process_world_source(
     }
 
     log_info("Initializing Staging Scene...");
-    scene_desc_t* staged_scene  = arena_push_struct(scratch_arena, scene_desc_t);
+    scene_desc_t* staged_scene = arena_push_struct(scratch_arena, scene_desc_t);
+    if (!staged_scene) {
+        log_error("CRITICAL: Out of memory in scratch_arena allocating scene_desc_t!");
+        return NULL;
+    }
+
     staged_scene->vertex_count  = 0;
     staged_scene->index_count   = 0;
     staged_scene->mesh_count    = 0;

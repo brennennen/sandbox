@@ -344,7 +344,9 @@ static void engine_render_frame(game_engine_t* engine) {
 
     graphics_update_debug_sun_line(engine->graphics, origin, engine->environment.sun_direction);
 
-    graphics_draw(engine->graphics, engine->platform, &gfx_frame_input);
+    graphics_draw(
+        engine->graphics, engine->platform, &gfx_frame_input, &engine->last_frame_render_stats
+    );
 }
 
 bool game_engine_tick(game_engine_t* game_engine) {

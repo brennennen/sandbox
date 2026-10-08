@@ -142,4 +142,14 @@ typedef struct {
     bool        show_debug_widgets;
 } graphics_frame_input_t;
 
+typedef struct {
+    uint32_t forward_pass_drawn_meshes;
+    uint32_t forward_pass_drawn_triangles;
+    uint32_t forward_pass_draw_calls;
+
+    uint32_t shadow_pass_drawn_meshes;
+    uint32_t shadow_pass_drawn_triangles;
+    uint32_t shadow_pass_draw_calls;
+} render_stats_t;
+
 #endif

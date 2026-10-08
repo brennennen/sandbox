@@ -911,7 +911,8 @@ void graphics_update_shadow_map_descriptor(
 static void shadow_pass(
     graphics_t*             graphics,
     graphics_frame_input_t* gfx_frame_input,
-    vk_render_target_t*     shadow_render_target
+    vk_render_target_t*     shadow_render_target,
+    render_stats_t*         out_render_stats
 ) {
     if (shadow_render_target == NULL || !shadow_render_target->has_depth) {
         return;
@@ -1007,11 +1008,22 @@ static void shadow_pass(
 
         vkCmdBindVertexBuffers(cmd, 0, 1, &vk_mesh->vertex_buffer, offsets);
 
+        uint32_t shadow_pass_drawn_triangles = 0;
         if (vk_mesh->index_count > 0) {
             vkCmdBindIndexBuffer(cmd, vk_mesh->index_buffer, 0, VK_INDEX_TYPE_UINT32);
             vkCmdDrawIndexed(cmd, vk_mesh->index_count, 1, 0, 0, 0);
+            if (out_render_stats)
+                shadow_pass_drawn_triangles = vk_mesh->index_count / 3;
         } else {
             vkCmdDraw(cmd, vk_mesh->vertex_count, 1, 0, 0);
+            if (out_render_stats)
+                shadow_pass_drawn_triangles = vk_mesh->vertex_count / 3;
+        }
+
+        if (out_render_stats) {
+            out_render_stats->shadow_pass_drawn_meshes++;
+            out_render_stats->shadow_pass_draw_calls++;
+            out_render_stats->shadow_pass_drawn_triangles += shadow_pass_drawn_triangles;
         }
     }
 
@@ -1041,11 +1053,12 @@ static void shadow_pass(
     );
 }
 
-void forward_pass(
+static void forward_pass(
     graphics_t*             graphics,
     graphics_frame_input_t* gfx_frame_input,
     vk_render_target_t*     render_target,
-    uint32_t                image_index
+    uint32_t                image_index,
+    render_stats_t*         out_render_stats
 ) {
     uint32_t    render_width        = graphics->display.extent.width;
     uint32_t    render_height       = graphics->display.extent.height;
@@ -1233,14 +1246,26 @@ void forward_pass(
 
         vkCmdBindVertexBuffers(graphics->command_buffer, 0, 1, &vk_mesh->vertex_buffer, offsets);
 
+        uint32_t forward_pass_drawn_triangles = 0;
         if (vk_mesh->index_count > 0) {
             vkCmdBindIndexBuffer(
                 graphics->command_buffer, vk_mesh->index_buffer, 0, VK_INDEX_TYPE_UINT32
             );
             vkCmdDrawIndexed(graphics->command_buffer, vk_mesh->index_count, 1, 0, 0, 0);
+
+            if (out_render_stats) {
+                forward_pass_drawn_triangles = vk_mesh->index_count / 3;
+            }
         } else {
             vkCmdDraw(graphics->command_buffer, vk_mesh->vertex_count, 1, 0, 0);
+
+            if (out_render_stats) {
+                forward_pass_drawn_triangles = vk_mesh->vertex_count / 3;
+            }
         }
+        out_render_stats->forward_pass_drawn_meshes++;
+        out_render_stats->forward_pass_draw_calls++;
+        out_render_stats->forward_pass_drawn_triangles += forward_pass_drawn_triangles;
     }
 
     // log_info("Rendered: %d | Culled: %d", object_count - culled_count, culled_count);
@@ -1261,7 +1286,12 @@ void forward_pass(
         NULL
     );
 
+    // skybox
     vkCmdDraw(graphics->command_buffer, 36, 1, 0, 0);
+    if (out_render_stats) {
+        out_render_stats->forward_pass_draw_calls++;
+        out_render_stats->forward_pass_drawn_triangles += 12; // 36 vertices / 3 = 12 tris
+    }
 
     if (gfx_frame_input->show_debug_widgets) {
         if (gfx_frame_input->draw_mode != DRAW_MODE_DEBUG_SDR) {
@@ -1287,6 +1317,9 @@ void forward_pass(
                 graphics->command_buffer, 0, 1, &graphics->grid_buffer.buffer, offsets
             );
             vkCmdDraw(graphics->command_buffer, graphics->grid_vertex_count, 1, 0, 0);
+            if (out_render_stats) {
+                out_render_stats->forward_pass_draw_calls++;
+            }
 
             push_constants_t sun_pc = {
                 .transform       = mat4_identity(),
@@ -1305,6 +1338,9 @@ void forward_pass(
                 graphics->command_buffer, 0, 1, &graphics->sun_line_buffer.buffer, offsets
             );
             vkCmdDraw(graphics->command_buffer, 2, 1, 0, 0);
+            if (out_render_stats) {
+                out_render_stats->forward_pass_draw_calls++;
+            }
         }
 
         if (gfx_frame_input->is_culling_frozen) {
@@ -1326,6 +1362,9 @@ void forward_pass(
                 graphics->command_buffer, 0, 1, &graphics->frustum_buffer.buffer, offsets
             );
             vkCmdDraw(graphics->command_buffer, 24, 1, 0, 0);
+            if (out_render_stats) {
+                out_render_stats->forward_pass_draw_calls++;
+            }
         }
     }
 }
@@ -1333,7 +1372,8 @@ void forward_pass(
 void graphics_draw(
     graphics_t*             graphics,
     platform_t*             platform,
-    graphics_frame_input_t* gfx_frame_input
+    graphics_frame_input_t* gfx_frame_input,
+    render_stats_t*         out_render_stats
 ) {
     assert(
         is_matrix_valid(&gfx_frame_input->view) &&
@@ -1343,6 +1383,10 @@ void graphics_draw(
         is_matrix_valid(&gfx_frame_input->culling_view_proj) &&
         "CRASH: NaN detected in Culling Matrix!"
     );
+
+    if (out_render_stats) {
+        memset(out_render_stats, 0, sizeof(render_stats_t));
+    }
 
     vk_render_target_t* render_target = NULL;
     if (gfx_frame_input->target.id != GRAPHICS_INVALID_HANDLE) {
@@ -1378,9 +1422,9 @@ void graphics_draw(
         return;
     }
 
-    shadow_pass(graphics, gfx_frame_input, shadow_render_target);
+    shadow_pass(graphics, gfx_frame_input, shadow_render_target, out_render_stats);
 
-    forward_pass(graphics, gfx_frame_input, render_target, image_index);
+    forward_pass(graphics, gfx_frame_input, render_target, image_index, out_render_stats);
 
     if (gfx_frame_input->draw_mode != DRAW_MODE_DEBUG_SDR) {
         execute_post_process_pass(graphics, render_target, (uint32_t)image_index);

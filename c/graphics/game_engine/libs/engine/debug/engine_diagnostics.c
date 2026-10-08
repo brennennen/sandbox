@@ -8,6 +8,22 @@
 
 #include "engine_diagnostics.h"
 
+const char* format_number_commas(uint32_t number, char* out_buffer, uint8_t out_buffer_size) {
+    char temp[32];
+    int  len = snprintf(temp, sizeof(temp), "%u", number);
+
+    int out_idx = 0;
+    for (int i = 0; i < len; i++) {
+        out_buffer[out_idx++] = temp[i];
+        if ((len - i - 1) % 3 == 0 && i < len - 1) {
+            out_buffer[out_idx++] = ',';
+        }
+    }
+    out_buffer[out_idx] = '\0';
+
+    return out_buffer;
+}
+
 void engine_diagnostics_draw_panel(game_engine_t* game_engine) {
     // igShowDemoWindow(NULL); // demo kitchen sink, useful for seeing capabilities
     igBegin("Engine Debug/Diagnostics", NULL, 0);
@@ -68,13 +84,71 @@ void engine_diagnostics_draw_panel(game_engine_t* game_engine) {
             }
         }
 
-        igSeparator();
-        igText("Memory (VRAM)");
-        float vram_tex_mb = (float)game_engine->vram_texture_bytes / (1024.0f * 1024.0f);
-        float vram_geo_mb = (float)game_engine->vram_geometry_bytes / (1024.0f * 1024.0f);
-        igText("Textures: %.1f MB", vram_tex_mb);
-        igText("Geometry: %.1f MB", vram_geo_mb);
-        igText("Total:    %.1f MB", vram_tex_mb + vram_geo_mb);
+        if (igCollapsingHeader_TreeNodeFlags("Render Stats", ImGuiTreeNodeFlags_DefaultOpen)) {
+
+            uint32_t total_draw_calls =
+                game_engine->last_frame_render_stats.forward_pass_draw_calls +
+                game_engine->last_frame_render_stats.shadow_pass_draw_calls;
+            char forward_pass_triangles_string[32];
+            char shadow_pass_triangles_string[32];
+            format_number_commas(
+                game_engine->last_frame_render_stats.forward_pass_drawn_triangles,
+                forward_pass_triangles_string,
+                sizeof(forward_pass_triangles_string)
+            );
+            format_number_commas(
+                game_engine->last_frame_render_stats.shadow_pass_drawn_triangles,
+                shadow_pass_triangles_string,
+                sizeof(shadow_pass_triangles_string)
+            );
+
+            if (igCollapsingHeader_TreeNodeFlags("Totals", ImGuiTreeNodeFlags_DefaultOpen)) {
+                igText("Draw Calls: %u", total_draw_calls);
+            }
+
+            if (igCollapsingHeader_TreeNodeFlags("Forward Pass", ImGuiTreeNodeFlags_None)) {
+                igText(
+                    "Draw Calls: %u", game_engine->last_frame_render_stats.forward_pass_draw_calls
+                );
+                igText(
+                    "Meshes Drawn: %u",
+                    game_engine->last_frame_render_stats.forward_pass_drawn_meshes
+                );
+                igText(
+                    "Meshes Culled: %u",
+                    game_engine->main_scene.object_count -
+                        game_engine->last_frame_render_stats.forward_pass_drawn_meshes
+                );
+                igText("Triangles: %s", forward_pass_triangles_string);
+            }
+
+            if (igCollapsingHeader_TreeNodeFlags("Shadow Pass", ImGuiTreeNodeFlags_None)) {
+                igText(
+                    "Draw Calls: %u", game_engine->last_frame_render_stats.shadow_pass_draw_calls
+                );
+                igText(
+                    "Meshes Drawn: %u",
+                    game_engine->last_frame_render_stats.shadow_pass_drawn_meshes
+                );
+                igText(
+                    "Meshes Culled: %u",
+                    game_engine->main_scene.object_count -
+                        game_engine->last_frame_render_stats.shadow_pass_drawn_meshes
+                );
+                igText("Triangles: %s", shadow_pass_triangles_string);
+            }
+
+            if (igCollapsingHeader_TreeNodeFlags("Misc", ImGuiTreeNodeFlags_DefaultOpen)) {
+                // TODO: skybox, post processing, etc.
+            }
+
+            igText("Memory (VRAM)");
+            float vram_tex_mb = (float)game_engine->vram_texture_bytes / (1024.0f * 1024.0f);
+            float vram_geo_mb = (float)game_engine->vram_geometry_bytes / (1024.0f * 1024.0f);
+            igText("Textures: %.1f MB", vram_tex_mb);
+            igText("Geometry: %.1f MB", vram_geo_mb);
+            igText("Total:    %.1f MB", vram_tex_mb + vram_geo_mb);
+        }
 
         igSeparator();
         igText("Texture Streaming Settings");

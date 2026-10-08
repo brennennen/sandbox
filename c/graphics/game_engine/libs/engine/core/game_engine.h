@@ -101,6 +101,8 @@ typedef struct {
     uint64_t vram_texture_bytes;
     uint64_t vram_geometry_bytes;
 
+    render_stats_t last_frame_render_stats;
+
 } game_engine_t;
 
 bool game_engine_init(game_engine_t* game_engine, game_engine_init_config_t* engine_init_config);

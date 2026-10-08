@@ -5,6 +5,7 @@
 #include "engine/core/camera.h"
 #include "engine/modules/graphics/graphics_types.h"
 #include "engine/platform/platform.h"
+#include "graphics_types.h"
 #include "shared/math_types.h"
 #include "shared/scene_types.h"
 
@@ -68,7 +69,8 @@ void graphics_update_shadow_map_descriptor(
 void graphics_draw(
     graphics_t*             graphics,
     platform_t*             platform,
-    graphics_frame_input_t* gfx_frame_input
+    graphics_frame_input_t* gfx_frame_input,
+    render_stats_t*         out_render_stats
 );
 
 void graphics_destroy(graphics_t* graphics);

@@ -112,6 +112,10 @@ typedef struct {
     vec4_t camera_pos;
     vec4_t sun_direction;
     vec4_t sun_color;
+
+    float roughness_bias;
+    float metallic_bias;
+    float padding[2];
 } ubo_t;
 
 /**

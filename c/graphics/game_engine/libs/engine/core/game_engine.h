@@ -36,6 +36,8 @@ typedef struct environment_s {
     vec3_t sun_color;
     float  sun_intensity;
     vec3_t ambient_tint;
+    float  roughness_bias;
+    float  metallic_bias;
 
     texture_handle_t skybox_texture;
     texture_handle_t irradiance_texture;

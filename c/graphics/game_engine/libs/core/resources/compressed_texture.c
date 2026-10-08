@@ -10,17 +10,20 @@
 #include "libs/core/arena.h"
 #include "libs/engine/core/logger.h"
 
+#include "libs/engine/platform/platform.h"
+
 #include "core/resources/compressed_texture.h"
 
-bool texture_compress_bc7_2(
-    compressed_texture_t* compressed_texture,
-    arena_t*              out_arena,
-    const uint8_t*        raw_rgba_pixels,
-    uint32_t              width,
-    uint32_t              height,
-    bool                  is_srgb
-) {
-    return false;
+#include "core/resources/image.h"
+
+uint32_t calculate_mip_count(uint32_t w, uint32_t h) {
+    uint32_t max_dim = (w > h) ? w : h;
+    uint32_t levels  = 1;
+    while (max_dim > 1) {
+        max_dim /= 2;
+        levels++;
+    }
+    return levels;
 }
 
 static inline void bc7enc_compress_block_params_init_linear_weights_gltf(
@@ -66,13 +69,12 @@ static uint32_t calculate_bc7_mip_chain_size(uint32_t w, uint32_t h, uint32_t mi
 
 bool texture_compress_bc7(
     compressed_texture_t* out_texture,
-    arena_t*              out_arena,
     const uint8_t*        raw_rgba_pixels,
     uint32_t              width,
     uint32_t              height,
     bool                  is_srgb
 ) {
-    if (!out_texture || !out_arena || !raw_rgba_pixels || width == 0 || height == 0) {
+    if (!out_texture || !raw_rgba_pixels || width == 0 || height == 0) {
         return false;
     }
 
@@ -139,7 +141,7 @@ bool texture_compress_bc7(
             }
         }
 
-        // Generate the next mip level (if this isn't the last one)
+        // Generate the next mip level
         if (mip < mip_levels - 1) {
             uint32_t next_w          = (mip_w > 1) ? mip_w / 2 : 1;
             uint32_t next_h          = (mip_h > 1) ? mip_h / 2 : 1;

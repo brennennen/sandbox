@@ -75,15 +75,16 @@ static bool init_default_textures(graphics_t* r) {
 }
 
 void update_uniform_buffer(
-    graphics_t* r,
-    mat4_t      view,
-    mat4_t      proj,
-    vec3_t      cam_pos,
-    mat4_t      light_space_matrix,
-    vec3_t      sun_direction,
-    vec3_t      sun_color,
-    float       sun_intensity,
-    uint32_t    current_frame
+    graphics_t*             r,
+    graphics_frame_input_t* gfx_frame_input,
+    mat4_t                  view,
+    mat4_t                  proj,
+    vec3_t                  cam_pos,
+    mat4_t                  light_space_matrix,
+    vec3_t                  sun_direction,
+    vec3_t                  sun_color,
+    float                   sun_intensity,
+    uint32_t                current_frame
 ) {
     ubo_t ubo = {
         .view               = view,
@@ -92,6 +93,8 @@ void update_uniform_buffer(
         .camera_pos         = {cam_pos.x, cam_pos.y, cam_pos.z, 1.0f},
         .sun_direction      = {sun_direction.x, sun_direction.y, sun_direction.z, 0.0f},
         .sun_color          = {sun_color.x, sun_color.y, sun_color.z, sun_intensity},
+        .roughness_bias     = gfx_frame_input->environment->roughness_bias,
+        .metallic_bias      = gfx_frame_input->environment->metallic_bias,
     };
 
     memcpy(r->frames[current_frame].uniform_alloc.mapped_ptr, &ubo, sizeof(ubo));
@@ -445,6 +448,8 @@ static int32_t begin_frame(
     vec3_t                  sun_direction,
     vec3_t                  sun_color,
     float                   sun_intensity,
+    float                   roughness_bias,
+    float                   metallic_bias,
     vk_render_target_t*     render_target,
     draw_mode_t             draw_mode,
     graphics_frame_input_t* gfx_frame_input
@@ -480,6 +485,7 @@ static int32_t begin_frame(
 
     update_uniform_buffer(
         r,
+        gfx_frame_input,
         view,
         gfx_frame_input->proj,
         cam_pos,
@@ -1361,6 +1367,8 @@ void graphics_draw(
         gfx_frame_input->environment->sun_direction,
         gfx_frame_input->environment->sun_color,
         gfx_frame_input->environment->sun_intensity,
+        gfx_frame_input->environment->roughness_bias,
+        gfx_frame_input->environment->metallic_bias,
         render_target,
         gfx_frame_input->draw_mode,
         gfx_frame_input

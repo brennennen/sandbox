@@ -36,7 +36,7 @@ void engine_diagnostics_draw_panel(game_engine_t* game_engine) {
         igText("Active Scene Objects: %u", game_engine->main_scene.object_count);
     }
 
-    if (igCollapsingHeader_TreeNodeFlags("Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (igCollapsingHeader_TreeNodeFlags("Camera", ImGuiTreeNodeFlags_None)) {
         if (game_engine->main_camera) {
             igDragFloat3(
                 "Position", (float*)&game_engine->main_camera->pos, 0.1f, 0.0f, 0.0f, "%.2f", 0
@@ -100,7 +100,7 @@ void engine_diagnostics_draw_panel(game_engine_t* game_engine) {
     }
 
     if (igCollapsingHeader_TreeNodeFlags("Environment", ImGuiTreeNodeFlags_DefaultOpen)) {
-        if (igCollapsingHeader_TreeNodeFlags("Sun", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (igCollapsingHeader_TreeNodeFlags("Sun", ImGuiTreeNodeFlags_None)) {
             static float sun_azimuth        = 0.0f;
             static float sun_elevation      = 80.0f;
             static bool  angles_initialized = false;
@@ -135,6 +135,12 @@ void engine_diagnostics_draw_panel(game_engine_t* game_engine) {
                 "Intensity", &game_engine->environment.sun_intensity, 0.1f, 0.0f, 0.0f, "%.2f", 0
             );
         }
+        igSliderFloat(
+            "Roughness Bias", &game_engine->environment.roughness_bias, -1.0f, 1.0f, "%.3f", 0
+        );
+        igSliderFloat(
+            "Metallic Bias", &game_engine->environment.metallic_bias, -1.0f, 1.0f, "%.3f", 0
+        );
     }
 
     igEnd();

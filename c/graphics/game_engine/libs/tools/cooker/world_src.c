@@ -568,12 +568,7 @@ static bool compress_staged_textures(arena_t* scratch_arena, scene_desc_t* scene
         } else {
             compressed_texture_t compressed = {0};
             bool                 success    = texture_compress_bc7(
-                &compressed,
-                scratch_arena,
-                raw_rgba_pixels,
-                tex_header->width,
-                tex_header->height,
-                is_srgb
+                &compressed, raw_rgba_pixels, tex_header->width, tex_header->height, is_srgb
             );
 
             if (!success) {

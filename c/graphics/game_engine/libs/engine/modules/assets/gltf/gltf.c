@@ -1,6 +1,5 @@
 
 
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,6 +10,8 @@
 #include "engine/platform/platform.h"
 #include "gltf.h"
 #include "tools/core/mesh_utilities.h"
+
+#include "core/resources/compressed_texture.h"
 
 #define CGLTF_IMPLEMENTATION
 #include "cgltf.h"
@@ -35,6 +36,13 @@ typedef struct {
     platform_atomic_int_t next_job_idx;
 } bake_context_t;
 
+typedef struct {
+    vec4_t    base_color;
+    cgltf_int uv_index;
+    bool      has_normal_map;
+    bool      is_alpha_masked;
+} material_properties_t;
+
 static uint64_t hash_data(const void* data, size_t length) {
     const uint8_t* bytes = (const uint8_t*)data;
     uint64_t       hash  = 0xCBF29CE484222325ULL;
@@ -45,42 +53,6 @@ static uint64_t hash_data(const void* data, size_t length) {
     return hash;
 }
 
-static inline void bc7enc_compress_block_params_init_gltf(bc7enc_compress_block_params* p) {
-    p->m_max_partitions_mode                  = BC7ENC_MAX_PARTITIONS1;
-    p->m_try_least_squares                    = BC7ENC_TRUE;
-    p->m_mode_partition_estimation_filterbank = BC7ENC_TRUE;
-    p->m_uber_level                           = 0;
-    p->m_use_mode5_for_alpha                  = BC7ENC_TRUE;
-    p->m_use_mode7_for_alpha                  = BC7ENC_TRUE;
-    p->m_perceptual                           = BC7ENC_TRUE;
-    p->m_weights[0]                           = 128;
-    p->m_weights[1]                           = 64;
-    p->m_weights[2]                           = 16;
-    p->m_weights[3]                           = 32;
-}
-
-static uint32_t calculate_mip_count(uint32_t w, uint32_t h) {
-    uint32_t max_dim = (w > h) ? w : h;
-    uint32_t levels  = 1;
-    while (max_dim > 1) {
-        max_dim /= 2;
-        levels++;
-    }
-    return levels;
-}
-
-static uint32_t calculate_bc7_mip_chain_size(uint32_t w, uint32_t h, uint32_t mip_levels) {
-    uint32_t total_size = 0;
-    for (uint32_t i = 0; i < mip_levels; i++) {
-        uint32_t blocks_x = (w + 3) / 4;
-        uint32_t blocks_y = (h + 3) / 4;
-        total_size += blocks_x * blocks_y * 16;
-        w = (w > 1) ? w / 2 : 1;
-        h = (h > 1) ? h / 2 : 1;
-    }
-    return total_size;
-}
-
 static void compress_and_cache_raw_pixels(
     const char*   cache_path,
     uint8_t*      raw_pixels,
@@ -89,91 +61,31 @@ static void compress_and_cache_raw_pixels(
     scene_desc_t* out_scene,
     uint32_t      tex_idx
 ) {
-    uint32_t max_dim = (w > h) ? w : h;
-    // uint32_t mip_levels = (uint32_t)(floorf(log2f((float)max_dim))) + 1;
-    uint32_t mip_levels = calculate_mip_count(w, h);
-    uint32_t total_size = calculate_bc7_mip_chain_size(w, h, mip_levels);
+    compressed_texture_t compressed = {0};
+
+    if (!texture_compress_bc7(&compressed, raw_pixels, w, h, false)) {
+        log_error("Failed to compress texture %d", tex_idx);
+        return;
+    }
 
     pak_texture_t* tex = &out_scene->textures[tex_idx];
-    tex->byte_size     = total_size;
+    tex->byte_size     = compressed.total_size;
     tex->width         = w;
     tex->height        = h;
     tex->channels      = 4;
     tex->format        = PAK_TEX_FORMAT_BC7_UNORM;
     tex->byte_offset   = 0;
-    tex->mip_levels    = mip_levels;
+    tex->mip_levels    = compressed.mip_levels;
 
-    out_scene->raw_texture_bytes[tex_idx] = malloc(total_size);
-    uint8_t* bc7_dst                      = out_scene->raw_texture_bytes[tex_idx];
+    out_scene->raw_texture_bytes[tex_idx] = compressed.compressed_bytes;
 
-    bc7enc_compress_block_params pack_params;
-    bc7enc_compress_block_params_init_gltf(&pack_params);
-    pack_params.m_perceptual          = BC7ENC_FALSE;
-    pack_params.m_weights[0]          = 1;
-    pack_params.m_weights[1]          = 1;
-    pack_params.m_weights[2]          = 1;
-    pack_params.m_weights[3]          = 1;
-    pack_params.m_max_partitions_mode = 0;
-    pack_params.m_try_least_squares   = BC7ENC_FALSE;
-
-    uint32_t dst_offset         = 0;
-    uint32_t mip_w              = w;
-    uint32_t mip_h              = h;
-    uint8_t* current_mip_pixels = raw_pixels;
-
-    for (uint32_t mip = 0; mip < mip_levels; mip++) {
-        uint32_t blocks_x = (mip_w + 3) / 4;
-        uint32_t blocks_y = (mip_h + 3) / 4;
-
-        for (uint32_t by = 0; by < blocks_y; by++) {
-            for (uint32_t bx = 0; bx < blocks_x; bx++) {
-                uint32_t block_pixels[16] = {0};
-                for (uint32_t py = 0; py < 4; py++) {
-                    for (uint32_t px = 0; px < 4; px++) {
-                        uint32_t global_x = bx * 4 + px;
-                        uint32_t global_y = by * 4 + py;
-
-                        global_x = (global_x < mip_w) ? global_x : mip_w - 1;
-                        global_y = (global_y < mip_h) ? global_y : mip_h - 1;
-
-                        uint32_t src_idx = (global_y * mip_w + global_x) * 4;
-                        block_pixels[py * 4 + px] =
-                            ((uint32_t)current_mip_pixels[src_idx + 0] << 0) |
-                            ((uint32_t)current_mip_pixels[src_idx + 1] << 8) |
-                            ((uint32_t)current_mip_pixels[src_idx + 2] << 16) |
-                            ((uint32_t)current_mip_pixels[src_idx + 3] << 24);
-                    }
-                }
-                bc7enc_compress_block(&bc7_dst[dst_offset], block_pixels, &pack_params);
-                dst_offset += 16;
-            }
-        }
-
-        if (mip < mip_levels - 1) {
-            uint32_t next_w          = (mip_w > 1) ? mip_w / 2 : 1;
-            uint32_t next_h          = (mip_h > 1) ? mip_h / 2 : 1;
-            uint8_t* next_mip_pixels = malloc(next_w * next_h * 4);
-
-            image_resize_uint8_linear(
-                current_mip_pixels, mip_w, mip_h, 0, next_mip_pixels, next_w, next_h, 0, IMAGE_RGBA
-            );
-
-            if (current_mip_pixels != raw_pixels)
-                free(current_mip_pixels);
-            current_mip_pixels = next_mip_pixels;
-            mip_w              = next_w;
-            mip_h              = next_h;
-        }
-    }
-
-    if (current_mip_pixels != raw_pixels)
-        free(current_mip_pixels);
-
-    FILE* write_cache = platform_file_open_write(cache_path);
+    FILE* write_cache = fopen(cache_path, "wb");
     if (write_cache) {
-        platform_file_write(write_cache, bc7_dst, total_size);
-        platform_file_close(write_cache);
-        log_info("  -> [CACHE MISS] Compressed %d Mips & Saved to %s", mip_levels, cache_path);
+        fwrite(compressed.compressed_bytes, 1, compressed.total_size, write_cache);
+        fclose(write_cache);
+        log_info(
+            "  -> [CACHE MISS] Compressed %d Mips & Saved to %s", compressed.mip_levels, cache_path
+        );
     } else {
         log_warn("  -> Failed to write cache. Does .cache/ exist?");
     }
@@ -194,8 +106,9 @@ static bool try_load_from_cache_raw(
     long cached_size = ftell(cache_file);
     fseek(cache_file, 0, SEEK_SET);
 
-    uint32_t max_dim    = (w > h) ? w : h;
-    uint32_t mip_levels = (uint32_t)(floorf(log2f((float)max_dim))) + 1;
+    uint32_t max_dim = (w > h) ? w : h;
+    // uint32_t mip_levels = (uint32_t)(floorf(log2f((float)max_dim))) + 1;
+    uint32_t mip_levels = calculate_mip_count(w, h);
 
     pak_texture_t* tex = &out_scene->textures[tex_idx];
     tex->byte_size     = cached_size;
@@ -390,7 +303,7 @@ static raw_image_t pack_orm_texture(
     packed.width    = width;
     packed.height   = height;
     packed.channels = 4;
-    packed.pixels   = malloc(width * height * 4);
+    packed.pixels   = calloc(width * height, 4);
 
     if (!packed.pixels) {
         return packed;
@@ -434,260 +347,251 @@ static raw_image_t pack_orm_texture(
     return packed;
 }
 
-static void parse_primitive_material(
-    arena_t*         scratch_arena,
-    cgltf_primitive* primitive,
-    cgltf_data*      data,
-    int32_t*         img_map,
-    int32_t*         orm_map,
-    scene_desc_t*    out_scene,
-    pak_mesh_t*      current_mesh,
-    uint32_t         model_id,
-    bool             opt_fast_textures,
-    vec4_t*          out_base_color,
-    cgltf_int*       out_uv_index,
-    bool*            out_has_normal_map,
-    bool*            out_is_alpha_masked
+static void parse_base_properties(
+    cgltf_material*        mat,
+    bake_context_t*        bake_context,
+    pak_mesh_t*            current_mesh,
+    material_properties_t* out_material_properties
 ) {
-    *out_base_color      = (vec4_t){1.0f, 1.0f, 1.0f, 1.0f};
-    *out_uv_index        = 0;
-    *out_has_normal_map  = false;
-    *out_is_alpha_masked = true;
+    if (mat->alpha_mode == cgltf_alpha_mode_mask || mat->alpha_mode == cgltf_alpha_mode_blend) {
+        out_material_properties->is_alpha_masked = true;
+    }
+
+    if (mat->has_pbr_metallic_roughness) {
+        cgltf_pbr_metallic_roughness* pbr   = &mat->pbr_metallic_roughness;
+        out_material_properties->base_color = (vec4_t){pbr->base_color_factor[0],
+                                                       pbr->base_color_factor[1],
+                                                       pbr->base_color_factor[2],
+                                                       pbr->base_color_factor[3]};
+
+        current_mesh->metallic_factor  = pbr->metallic_factor;
+        current_mesh->roughness_factor = pbr->roughness_factor;
+
+        cgltf_texture_view* base_view = &pbr->base_color_texture;
+        if (base_view->texture && base_view->texture->image) {
+            out_material_properties->uv_index = base_view->texcoord;
+            current_mesh->base_color_texture_id =
+                bake_context->img_map[base_view->texture->image - bake_context->data->images];
+
+            // Upgrade the format to SRGB for the base color map
+            if (current_mesh->base_color_texture_id != -1) {
+                pak_texture_format_t* fmt =
+                    &bake_context->out_scene->textures[current_mesh->base_color_texture_id].format;
+                if (*fmt == PAK_TEX_FORMAT_PNG_UNORM)
+                    *fmt = PAK_TEX_FORMAT_PNG_SRGB;
+                if (*fmt == PAK_TEX_FORMAT_RGBA8_UNORM)
+                    *fmt = PAK_TEX_FORMAT_RGBA8_SRGB;
+                if (*fmt == PAK_TEX_FORMAT_BC7_UNORM)
+                    *fmt = PAK_TEX_FORMAT_BC7_SRGB;
+            }
+        }
+    } else {
+        current_mesh->metallic_factor  = 0.0f;
+        current_mesh->roughness_factor = 1.0f;
+    }
+}
+
+static void parse_normal_map(
+    bake_context_t* bake_context,
+    cgltf_material* mat,
+    pak_mesh_t*     current_mesh,
+    bool*           out_has_normal_map
+) {
+    cgltf_texture* nrm_tex = mat->normal_texture.texture;
+    if (nrm_tex && nrm_tex->image) {
+        current_mesh->normal_texture_id =
+            bake_context->img_map[nrm_tex->image - bake_context->data->images];
+        *out_has_normal_map = true;
+    }
+}
+
+static void synthesize_fast_orm_map(
+    int32_t       ao_id,
+    int32_t       mr_id,
+    scene_desc_t* out_scene,
+    uint32_t      new_tex_idx
+) {
+    raw_image_t ao_raw = {0};
+    if (ao_id != -1) {
+        ao_raw.width    = out_scene->textures[ao_id].width;
+        ao_raw.height   = out_scene->textures[ao_id].height;
+        ao_raw.channels = 4;
+        ao_raw.pixels   = out_scene->raw_texture_bytes[ao_id];
+    }
+
+    raw_image_t mr_raw = {0};
+    if (mr_id != -1) {
+        mr_raw.width    = out_scene->textures[mr_id].width;
+        mr_raw.height   = out_scene->textures[mr_id].height;
+        mr_raw.channels = 4;
+        mr_raw.pixels   = out_scene->raw_texture_bytes[mr_id];
+    }
+
+    raw_image_t packed = pack_orm_texture(
+        (ao_id != -1) ? &ao_raw : NULL, (mr_id != -1) ? &mr_raw : NULL
+    );
+
+    pak_texture_t* tex                        = &out_scene->textures[new_tex_idx];
+    tex->width                                = packed.width;
+    tex->height                               = packed.height;
+    tex->channels                             = packed.channels;
+    tex->byte_size                            = packed.width * packed.height * packed.channels;
+    tex->mip_levels                           = 1;
+    tex->format                               = PAK_TEX_FORMAT_RGBA8_UNORM;
+    out_scene->raw_texture_bytes[new_tex_idx] = packed.pixels;
+}
+
+static void synthesize_cached_orm_map(
+    cgltf_texture_view* ao_view,
+    cgltf_texture_view* mr_view,
+    scene_desc_t*       out_scene,
+    uint32_t            new_tex_idx,
+    int                 final_w,
+    int                 final_h
+) {
+    // Generate a hash from the raw embedded pixel bytes to prevent stale caches
+    uint64_t orm_hash = 0x0123456789ABCDEFULL;
+    if (ao_view->texture && ao_view->texture->image && ao_view->texture->image->buffer_view) {
+        cgltf_image* img = ao_view->texture->image;
+        uint8_t*     ptr = (uint8_t*)img->buffer_view->buffer->data + img->buffer_view->offset;
+        orm_hash ^= hash_data(ptr, img->buffer_view->size);
+    }
+    if (mr_view->texture && mr_view->texture->image && mr_view->texture->image->buffer_view) {
+        cgltf_image* img = mr_view->texture->image;
+        uint8_t*     ptr = (uint8_t*)img->buffer_view->buffer->data + img->buffer_view->offset;
+        orm_hash ^= hash_data(ptr, img->buffer_view->size);
+    }
+
+    char cache_path[512];
+    snprintf(cache_path, sizeof(cache_path), "./.cache/orm_%llx.bc7", (unsigned long long)orm_hash);
+
+    if (!try_load_from_cache_raw(cache_path, final_w, final_h, out_scene, new_tex_idx)) {
+        log_info("  - Generating ORM Map for cache...");
+
+        int      ao_w = 0, ao_h = 0, ao_c = 0;
+        uint8_t* ao_px = NULL;
+        if (ao_view->texture && ao_view->texture->image && ao_view->texture->image->buffer_view) {
+            cgltf_image* img = ao_view->texture->image;
+            uint8_t*     ptr = (uint8_t*)img->buffer_view->buffer->data + img->buffer_view->offset;
+            ao_px = image_load_from_memory(ptr, img->buffer_view->size, &ao_w, &ao_h, &ao_c, 4);
+        }
+
+        int      mr_w = 0, mr_h = 0, mr_c = 0;
+        uint8_t* mr_px = NULL;
+        if (mr_view->texture && mr_view->texture->image && mr_view->texture->image->buffer_view) {
+            cgltf_image* img = mr_view->texture->image;
+            uint8_t*     ptr = (uint8_t*)img->buffer_view->buffer->data + img->buffer_view->offset;
+            mr_px = image_load_from_memory(ptr, img->buffer_view->size, &mr_w, &mr_h, &mr_c, 4);
+        }
+
+        raw_image_t ao_raw = {.width = ao_w, .height = ao_h, .channels = 4, .pixels = ao_px};
+        raw_image_t mr_raw = {.width = mr_w, .height = mr_h, .channels = 4, .pixels = mr_px};
+
+        raw_image_t packed = pack_orm_texture((ao_px) ? &ao_raw : NULL, (mr_px) ? &mr_raw : NULL);
+
+        compress_and_cache_raw_pixels(
+            cache_path, packed.pixels, packed.width, packed.height, out_scene, new_tex_idx
+        );
+
+        free(packed.pixels);
+        if (ao_px)
+            image_free(ao_px);
+        if (mr_px)
+            image_free(mr_px);
+    }
+}
+
+static void parse_orm_maps(
+    bake_context_t* bake_contet,
+    cgltf_material* mat,
+    scene_desc_t*   out_scene,
+    pak_mesh_t*     current_mesh,
+    bool            opt_fast_textures
+) {
+    cgltf_texture_view* mr_view = &mat->pbr_metallic_roughness.metallic_roughness_texture;
+    cgltf_texture_view* ao_view = &mat->occlusion_texture;
+
+    int32_t mr_id = (mr_view->texture && mr_view->texture->image)
+                        ? bake_contet->img_map[mr_view->texture->image - bake_contet->data->images]
+                        : -1;
+    int32_t ao_id = (ao_view->texture && ao_view->texture->image)
+                        ? bake_contet->img_map[ao_view->texture->image - bake_contet->data->images]
+                        : -1;
+
+    if (mr_id == -1 && ao_id == -1) {
+        current_mesh->ao_roughness_metallic_texture_id = -1;
+        return; // Nothing to do
+    }
+
+    if (mr_id == ao_id && mr_id != -1) {
+        current_mesh->ao_roughness_metallic_texture_id = mr_id;
+        return; // Artist already packed it
+    }
+
+    size_t mat_idx = mat - bake_contet->data->materials;
+    if (bake_contet->orm_map[mat_idx] != -1) {
+        current_mesh->ao_roughness_metallic_texture_id = bake_contet->orm_map[mat_idx];
+        return; // Already synthesized in a previous mesh
+    }
+
+    // Synthesis Required
+    uint32_t new_tex_idx = out_scene->texture_count++;
+
+    int final_w = 1, final_h = 1;
+    if (mr_id != -1) {
+        if (out_scene->textures[mr_id].width > final_w)
+            final_w = out_scene->textures[mr_id].width;
+        if (out_scene->textures[mr_id].height > final_h)
+            final_h = out_scene->textures[mr_id].height;
+    }
+    if (ao_id != -1) {
+        if (out_scene->textures[ao_id].width > final_w)
+            final_w = out_scene->textures[ao_id].width;
+        if (out_scene->textures[ao_id].height > final_h)
+            final_h = out_scene->textures[ao_id].height;
+    }
+
+    if (opt_fast_textures)
+        synthesize_fast_orm_map(ao_id, mr_id, out_scene, new_tex_idx);
+    else
+        synthesize_cached_orm_map(ao_view, mr_view, out_scene, new_tex_idx, final_w, final_h);
+
+    current_mesh->ao_roughness_metallic_texture_id = new_tex_idx;
+    bake_contet->orm_map[mat_idx]                  = new_tex_idx;
+}
+
+static void parse_primitive_material(
+    bake_context_t*        bake_context,
+    cgltf_primitive*       primitive,
+    scene_desc_t*          out_scene,
+    pak_mesh_t*            current_mesh,
+    bool                   opt_fast_textures,
+    material_properties_t* out_material_properties
+) {
+    out_material_properties->base_color            = (vec4_t){1.0f, 1.0f, 1.0f, 1.0f};
+    out_material_properties->uv_index              = 0;
+    out_material_properties->has_normal_map        = false;
+    out_material_properties->is_alpha_masked       = true;
+    current_mesh->base_color_texture_id            = -1;
+    current_mesh->normal_texture_id                = -1;
+    current_mesh->ao_roughness_metallic_texture_id = -1;
 
     if (!primitive->material) {
         log_info("Primitive has NO Material attached.");
         return;
     }
 
-    const char* alpha_mode_str = "UNKNOWN";
-    switch (primitive->material->alpha_mode) {
-    case cgltf_alpha_mode_opaque:
-        alpha_mode_str = "OPAQUE";
-        break;
-    case cgltf_alpha_mode_mask:
-        alpha_mode_str = "MASK";
-        break;
-    case cgltf_alpha_mode_blend:
-        alpha_mode_str = "BLEND";
-        break;
-    case cgltf_alpha_mode_max_enum:
-    default:
-        break;
-    }
-
-    const char* mat_name = primitive->material->name ? primitive->material->name : "Unnamed";
-    log_info("primitive naterial: '%s', alpha mode: %s", mat_name, alpha_mode_str);
-
-    if (primitive->material->alpha_mode == cgltf_alpha_mode_mask ||
-        primitive->material->alpha_mode == cgltf_alpha_mode_blend) {
-        *out_is_alpha_masked = true;
-    }
+    parse_base_properties(primitive->material, bake_context, current_mesh, out_material_properties);
 
     if (primitive->material->has_pbr_metallic_roughness) {
-        cgltf_pbr_metallic_roughness* cgltf_pbr = &primitive->material->pbr_metallic_roughness;
-        cgltf_float* factor = primitive->material->pbr_metallic_roughness.base_color_factor;
-        *out_base_color     = (vec4_t){factor[0], factor[1], factor[2], factor[3]};
-        current_mesh->metallic_factor  = cgltf_pbr->metallic_factor;
-        current_mesh->roughness_factor = cgltf_pbr->roughness_factor;
-
-        log_debug(
-            "pbr: metallic: %.2f, roughness: %.2f",
-            current_mesh->metallic_factor,
-            current_mesh->roughness_factor
+        parse_orm_maps(
+            bake_context, primitive->material, out_scene, current_mesh, opt_fast_textures
         );
-
-        cgltf_texture_view* base_color_view =
-            &primitive->material->pbr_metallic_roughness.base_color_texture;
-
-        if (base_color_view->texture && base_color_view->texture->image) {
-            *out_uv_index                       = base_color_view->texcoord;
-            size_t img_idx                      = base_color_view->texture->image - data->images;
-            current_mesh->base_color_texture_id = img_map[img_idx];
-
-            if (current_mesh->base_color_texture_id != -1) {
-                pak_texture_format_t* fmt =
-                    &out_scene->textures[current_mesh->base_color_texture_id].format;
-                if (*fmt == PAK_TEX_FORMAT_PNG_UNORM)
-                    *fmt = PAK_TEX_FORMAT_PNG_SRGB;
-                else if (*fmt == PAK_TEX_FORMAT_RGBA8_UNORM)
-                    *fmt = PAK_TEX_FORMAT_RGBA8_SRGB;
-                else if (*fmt == PAK_TEX_FORMAT_BC7_UNORM)
-                    *fmt = PAK_TEX_FORMAT_BC7_SRGB;
-            }
-            log_debug("base color texture: pak id %d", current_mesh->base_color_texture_id);
-        }
-
-        cgltf_texture_view* mr_view =
-            &primitive->material->pbr_metallic_roughness.metallic_roughness_texture;
-        cgltf_texture_view* ao_view = &primitive->material->occlusion_texture;
-
-        int32_t mr_id = (mr_view->texture && mr_view->texture->image)
-                            ? img_map[mr_view->texture->image - data->images]
-                            : -1;
-
-        int32_t ao_id = (ao_view->texture && ao_view->texture->image)
-                            ? img_map[ao_view->texture->image - data->images]
-                            : -1;
-
-        if (mr_id == -1 && ao_id == -1) {
-            current_mesh->ao_roughness_metallic_texture_id = -1;
-            log_debug("material '%s' has no mr or ao maps.", mat_name);
-
-        } else if (mr_id == ao_id && mr_id != -1) {
-            current_mesh->ao_roughness_metallic_texture_id = mr_id;
-            log_debug("orm map: pak id %d (Already Packed)", mr_id);
-
-        } else {
-
-            size_t mat_idx = primitive->material - data->materials;
-
-            if (orm_map[mat_idx] != -1) {
-                current_mesh->ao_roughness_metallic_texture_id = orm_map[mat_idx];
-                log_info("cache hit: re-using orm map: pak id %d", orm_map[mat_idx]);
-            } else {
-                uint32_t new_tex_idx = out_scene->texture_count++;
-
-                int final_w = 1;
-                int final_h = 1;
-                if (mr_id != -1 && out_scene->textures[mr_id].width > final_w)
-                    final_w = out_scene->textures[mr_id].width;
-                if (ao_id != -1 && out_scene->textures[ao_id].width > final_w)
-                    final_w = out_scene->textures[ao_id].width;
-                if (mr_id != -1 && out_scene->textures[mr_id].height > final_h)
-                    final_h = out_scene->textures[mr_id].height;
-                if (ao_id != -1 && out_scene->textures[ao_id].height > final_h)
-                    final_h = out_scene->textures[ao_id].height;
-
-                if (opt_fast_textures) {
-                    raw_image_t ao_raw = {0};
-                    if (ao_id != -1) {
-                        ao_raw.width    = out_scene->textures[ao_id].width;
-                        ao_raw.height   = out_scene->textures[ao_id].height;
-                        ao_raw.channels = 4;
-                        ao_raw.pixels   = out_scene->raw_texture_bytes[ao_id];
-                    }
-                    raw_image_t mr_raw = {0};
-                    if (mr_id != -1) {
-                        mr_raw.width    = out_scene->textures[ao_id].width;
-                        mr_raw.height   = out_scene->textures[ao_id].height;
-                        mr_raw.channels = 4;
-                        mr_raw.pixels   = out_scene->raw_texture_bytes[mr_id];
-                    }
-
-                    raw_image_t packed = pack_orm_texture(
-                        (ao_id != -1) ? &ao_raw : NULL, (mr_id != -1) ? &mr_raw : NULL
-                    );
-
-                    out_scene->textures[new_tex_idx].width     = packed.width;
-                    out_scene->textures[new_tex_idx].height    = packed.height;
-                    out_scene->textures[new_tex_idx].channels  = packed.channels;
-                    out_scene->textures[new_tex_idx].byte_size = packed.width * packed.height *
-                                                                 packed.channels;
-                    out_scene->textures[new_tex_idx].mip_levels = 1;
-                    out_scene->textures[new_tex_idx].format     = PAK_TEX_FORMAT_RGBA8_UNORM;
-                    out_scene->raw_texture_bytes[new_tex_idx]   = packed.pixels;
-                } else {
-                    char cache_path[512];
-                    snprintf(
-                        cache_path,
-                        sizeof(cache_path),
-                        "./.cache/orm_mod%u_mat%zu.bc7",
-                        model_id,
-                        mat_idx
-                    );
-
-                    if (!try_load_from_cache_raw(
-                            cache_path, final_w, final_h, out_scene, new_tex_idx
-                        )) {
-                        log_info("  - Generating ORM Map for cache...");
-
-                        cgltf_image* ao_img = (ao_view->texture) ? ao_view->texture->image : NULL;
-                        cgltf_image* mr_img = (mr_view->texture) ? mr_view->texture->image : NULL;
-
-                        int      ao_w  = 0;
-                        int      ao_h  = 0;
-                        int      ao_c  = 0;
-                        uint8_t* ao_px = NULL;
-                        if (ao_img && ao_img->buffer_view) {
-                            uint8_t* ptr = (uint8_t*)ao_img->buffer_view->buffer->data +
-                                           ao_img->buffer_view->offset;
-                            ao_px = image_load_from_memory(
-                                ptr, ao_img->buffer_view->size, &ao_w, &ao_h, &ao_c, 4
-                            );
-                        }
-
-                        int      mr_w  = 0;
-                        int      mr_h  = 0;
-                        int      mr_c  = 0;
-                        uint8_t* mr_px = NULL;
-                        if (mr_img && mr_img->buffer_view) {
-                            uint8_t* ptr = (uint8_t*)mr_img->buffer_view->buffer->data +
-                                           mr_img->buffer_view->offset;
-                            mr_px = image_load_from_memory(
-                                ptr, mr_img->buffer_view->size, &mr_w, &mr_h, &mr_c, 4
-                            );
-                        }
-
-                        raw_image_t ao_raw = {0};
-                        if (ao_px) {
-                            ao_raw.width    = ao_w;
-                            ao_raw.height   = ao_h;
-                            ao_raw.channels = 4;
-                            ao_raw.pixels   = ao_px;
-                        }
-                        raw_image_t mr_raw = {0};
-                        if (mr_px) {
-                            mr_raw.width    = mr_w;
-                            mr_raw.height   = mr_h;
-                            mr_raw.channels = 4;
-                            mr_raw.pixels   = mr_px;
-                        }
-
-                        raw_image_t packed = pack_orm_texture(
-                            (ao_px) ? &ao_raw : NULL, (mr_px) ? &mr_raw : NULL
-                        );
-
-                        compress_and_cache_raw_pixels(
-                            cache_path,
-                            packed.pixels,
-                            packed.width,
-                            packed.height,
-                            out_scene,
-                            new_tex_idx
-                        );
-
-                        free(packed.pixels);
-                        if (ao_px)
-                            image_free(ao_px);
-                        if (mr_px)
-                            image_free(mr_px);
-                    }
-                }
-
-                current_mesh->ao_roughness_metallic_texture_id = new_tex_idx;
-                orm_map[mat_idx]                               = new_tex_idx;
-
-                log_debug("  - Synthesized ORM Map -> PAK ID %d", new_tex_idx);
-            }
-        }
-    } else {
-        // Fallback for meshes that completely lack a PBR material definition
-        current_mesh->metallic_factor  = 0.0f; // Default to non-metal
-        current_mesh->roughness_factor = 1.0f; // Default to fully rough (matte)
-        log_debug("  ! WARNING: Material '%s' is not PBR. Using fallback factors.", mat_name);
     }
 
-    cgltf_texture* nrm_tex = primitive->material->normal_texture.texture;
-    if (nrm_tex && nrm_tex->image) {
-        size_t img_idx                  = nrm_tex->image - data->images;
-        current_mesh->normal_texture_id = img_map[img_idx];
-        *out_has_normal_map             = true;
-        log_debug(
-            "  - Normal Map Texture -> PAK ID %d (Left as UNORM)", current_mesh->normal_texture_id
-        );
-    } else {
-        log_debug("  ! WARNING: Material '%s' has NO Normal Map. Using flat fallback.", mat_name);
-    }
+    parse_normal_map(
+        bake_context, primitive->material, current_mesh, &out_material_properties->has_normal_map
+    );
 }
 
 static void parse_primitive_vertices(
@@ -764,8 +668,9 @@ static void parse_primitive_indices(
     pak_mesh_t*      current_mesh,
     uint32_t         prim_vertex_offset
 ) {
-    if (!primitive->indices)
+    if (!primitive->indices) {
         return;
+    }
 
     for (size_t i = 0; i < primitive->indices->count; i++) {
         uint32_t raw_index = cgltf_accessor_read_index(primitive->indices, i);
@@ -776,23 +681,23 @@ static void parse_primitive_indices(
 }
 
 static void bake_gltf_mesh(
-    arena_t*      scratch_arena,
-    cgltf_node*   node,
-    mat4_t        global_transform,
-    scene_desc_t* out_scene,
-    uint32_t      model_id,
-    cgltf_data*   data,
-    int32_t*      img_map,
-    int32_t*      orm_map,
-    bool          opt_fast_textures
+    bake_context_t* bake_context,
+    arena_t*        scratch_arena,
+    cgltf_node*     node,
+    mat4_t          global_transform,
+    scene_desc_t*   out_scene,
+    uint32_t        model_id,
+    bool            opt_fast_textures
 ) {
-    if (!node->mesh)
+    if (!node->mesh) {
         return;
+    }
 
     for (size_t p = 0; p < node->mesh->primitives_count; p++) {
         cgltf_primitive* primitive = &node->mesh->primitives[p];
-        if (primitive->attributes_count == 0)
+        if (primitive->attributes_count == 0) {
             continue;
+        }
 
         if (out_scene->mesh_count >= PAK_MAX_MESHES ||
             out_scene->vertex_count + primitive->attributes[0].data->count >= PAK_MAX_VERTICES) {
@@ -813,38 +718,28 @@ static void bake_gltf_mesh(
         uint32_t prim_vertex_offset = out_scene->vertex_count;
         out_scene->vertex_count += current_mesh->vertex_count;
 
-        vec4_t    base_color;
-        cgltf_int uv_index;
-        bool      has_normal_map;
-        bool      is_alpha_masked;
+        material_properties_t material_properties = {0};
         parse_primitive_material(
-            scratch_arena,
+            bake_context,
             primitive,
-            data,
-            img_map,
-            orm_map,
             out_scene,
             current_mesh,
-            model_id,
             opt_fast_textures,
-            &base_color,
-            &uv_index,
-            &has_normal_map,
-            &is_alpha_masked
+            &material_properties
         );
-        current_mesh->is_alpha_masked = is_alpha_masked;
+        current_mesh->is_alpha_masked = material_properties.is_alpha_masked;
         parse_primitive_vertices(
             primitive,
             out_scene,
             current_mesh,
             prim_vertex_offset,
             global_transform,
-            base_color,
-            uv_index
+            material_properties.base_color,
+            material_properties.uv_index
         );
         parse_primitive_indices(primitive, out_scene, current_mesh, prim_vertex_offset);
 
-        if (has_normal_map) {
+        if (material_properties.has_normal_map) {
             uint32_t* temp_indices     = NULL;
             uint32_t  temp_index_count = 0;
 
@@ -871,15 +766,13 @@ static void bake_gltf_mesh(
 }
 
 static void bake_gltf_node(
-    arena_t*      scratch_arena,
-    cgltf_node*   node,
-    mat4_t        parent_transform,
-    scene_desc_t* out_scene,
-    uint32_t      model_id,
-    cgltf_data*   data,
-    int32_t*      img_map,
-    int32_t*      orm_map,
-    bool          opt_fast_textures
+    bake_context_t* bake_context,
+    arena_t*        scratch_arena,
+    cgltf_node*     node,
+    mat4_t          parent_transform,
+    scene_desc_t*   out_scene,
+    uint32_t        model_id,
+    bool            opt_fast_textures
 ) {
     mat4_t local_transform = mat4_identity();
     if (node->has_matrix || node->has_translation || node->has_rotation || node->has_scale) {
@@ -887,29 +780,26 @@ static void bake_gltf_node(
         cgltf_node_transform_local(node, matrix);
         memcpy(&local_transform, matrix, sizeof(mat4_t));
     }
-    // mat4_t global_transform = mat4_mul(local_transform, parent_transform);
+
     mat4_t global_transform = mat4_mul(parent_transform, local_transform);
     bake_gltf_mesh(
+        bake_context,
         scratch_arena,
         node,
         global_transform,
         out_scene,
         model_id,
-        data,
-        img_map,
-        orm_map,
         opt_fast_textures
     );
+
     for (size_t i = 0; i < node->children_count; i++) {
         bake_gltf_node(
+            bake_context,
             scratch_arena,
             node->children[i],
             global_transform,
             out_scene,
             model_id,
-            data,
-            img_map,
-            orm_map,
             opt_fast_textures
         );
     }
@@ -1029,14 +919,12 @@ bool gltf_bake_model(
 
     for (size_t i = 0; i < gltf_scene->nodes_count; i++) {
         bake_gltf_node(
+            &ctx,
             scratch_arena,
             gltf_scene->nodes[i],
             root_transform,
             out_scene,
             model_id,
-            data,
-            img_map,
-            orm_map,
             opt_fast_textures
         );
     }

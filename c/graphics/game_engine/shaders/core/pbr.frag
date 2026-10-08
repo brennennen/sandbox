@@ -15,6 +15,8 @@ layout(set = 0, binding = 0) uniform UBO {
     vec4 camera_pos;
     vec4 sun_direction;
     vec4 sun_color;
+    float roughness_bias;
+    float metallic_bias;
 } ubo;
 
 layout(set = 1, binding = 0) uniform sampler2D texSampler;
@@ -32,8 +34,6 @@ layout(push_constant) uniform PushConstants {
     float metallic_factor;
     float roughness_factor;
 } pc;
-
-const float roughness_strength = 1.0;
 
 const float PI = 3.14159265359;
 
@@ -70,11 +70,16 @@ void main() {
         discard;
     }
 
-    vec4 ao_roughness_metallic_sample = texture(ao_roughness_metallic_sampler, fragUV);
+    vec4 ao_roughness_metallic_sample = vec4(1.0, 1.0, 0.0, 1.0);
     float ao = ao_roughness_metallic_sample.r;
-    //float ao = 1.0;
-    float roughness = max(ao_roughness_metallic_sample.g * pc.roughness_factor, 0.04) * roughness_strength;
+    float roughness = ao_roughness_metallic_sample.g * pc.roughness_factor;
     float metallic = ao_roughness_metallic_sample.b * pc.metallic_factor;
+
+    roughness += ubo.roughness_bias;
+    metallic  += ubo.metallic_bias;
+
+    roughness = clamp(roughness, 0.04, 1.0);
+    metallic  = clamp(metallic, 0.0, 1.0);
 
     if (fragTangent.w == 0.0) {
         finalNormal = normalize(fragNormal);
@@ -128,14 +133,16 @@ void main() {
     // Basic Lambertian diffuse for the sun
     vec3 direct_diffuse = (kD * texColor.rgb / PI) * ubo.sun_color.xyz * NdotL;
 
-    // Add a simple Specular highlight for the sun so metallic objects gleam
+    // Energy-conserving Blinn-Phong Specular
     vec3 H = normalize(V + L);
     float NdotH = max(dot(N, H), 0.0);
-    float spec_power = pow(NdotH, max(1.0 - roughness, 0.001) * 128.0);
+    float shininess = exp2(10.0 * (1.0 - roughness) + 1.0);
+    float normalization = (shininess + 8.0) / (8.0 * PI);
+    float spec_power = pow(NdotH, shininess) * normalization;
     vec3 direct_specular = F0 * spec_power * ubo.sun_color.xyz * NdotL;
 
     float sun_intensity = ubo.sun_color.w;
-    vec3 direct_light = (direct_diffuse + direct_specular) * sun_intensity; // Multiplied by 5.0 to boost sun intensity
+    vec3 direct_light = (direct_diffuse + direct_specular) * sun_intensity;
 
     float shadow = calculate_shadow(fragPos);
 

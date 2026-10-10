@@ -1419,11 +1419,16 @@ void graphics_draw(
     );
 
     if (image_index < 0) {
+        igRender();
+        ImGuiIO* io = igGetIO_Nil();
+        if (io->ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+            igUpdatePlatformWindows();
+            igRenderPlatformWindowsDefault(NULL, NULL);
+        }
         return;
     }
 
     shadow_pass(graphics, gfx_frame_input, shadow_render_target, out_render_stats);
-
     forward_pass(graphics, gfx_frame_input, render_target, image_index, out_render_stats);
 
     if (gfx_frame_input->draw_mode != DRAW_MODE_DEBUG_SDR) {

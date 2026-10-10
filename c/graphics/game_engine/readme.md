@@ -19,8 +19,6 @@ zig build run
 
 
 ## TODO
-* add triangle (tris) count to imgui diagnostic
-* fix re-sizing crash
 * add mechanism to render both sides of an object (attribute in mesh layer entry?). add it for sponza curtains.
 * add hot reloading to dynamically change mips ceiling/cap
 * add texture/material de-duplication to reduce file size

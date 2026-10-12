@@ -8,6 +8,54 @@
 #include "vk_gpu_allocator.h"
 #include "vk_resources.h"
 
+bool init_default_textures(graphics_t* graphics) {
+    uint8_t white_pixels[4] = {255, 255, 255, 255};
+    image_t albedo_img      = {
+             .width    = 1,
+             .height   = 1,
+             .channels = 4,
+             .pixels   = white_pixels,
+             .size     = 4,
+    };
+    graphics->assets.default_albedo = graphics_upload_texture(
+        graphics, &albedo_img, PAK_TEX_FORMAT_RGBA8_SRGB
+    );
+
+    uint8_t flat_normal_pixels[4] = {128, 128, 255, 255};
+    image_t normal_img            = {
+                   .width    = 1,
+                   .height   = 1,
+                   .channels = 4,
+                   .pixels   = flat_normal_pixels,
+                   .size     = 4,
+    };
+    graphics->assets.default_normal = graphics_upload_texture(
+        graphics, &normal_img, PAK_TEX_FORMAT_RGBA8_UNORM
+    );
+
+    uint8_t arm_pixels[4] = {255, 255, 255, 255};
+    image_t mr_img        = {
+               .width    = 1,
+               .height   = 1,
+               .channels = 4,
+               .pixels   = arm_pixels,
+               .size     = 4,
+    };
+    graphics->assets.default_ao_metallic_roughness = graphics_upload_texture(
+        graphics, &mr_img, PAK_TEX_FORMAT_RGBA8_UNORM
+    );
+
+    if (graphics->assets.default_albedo.id == GRAPHICS_INVALID_HANDLE ||
+        graphics->assets.default_normal.id == GRAPHICS_INVALID_HANDLE ||
+        graphics->assets.default_ao_metallic_roughness.id == GRAPHICS_INVALID_HANDLE) {
+        log_error("vulkan: Failed to initialize default fallback textures.");
+        return false;
+    }
+
+    log_info("vulkan: Default fallback textures initialized.");
+    return true;
+}
+
 gpu_allocation_t vk_create_staging_buffer(
     graphics_t*  r,
     void*        data,

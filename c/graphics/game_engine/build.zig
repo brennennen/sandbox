@@ -149,6 +149,7 @@ pub fn build(b: *std.Build) void {
         "libs/engine/modules/graphics/vulkan/vk_pipeline.c",
         "libs/engine/modules/graphics/vulkan/vk_commands.c",
         "libs/engine/modules/graphics/vulkan/vk_render_queue.c",
+        "libs/engine/modules/graphics/vulkan/vk_passes.c",
         "libs/engine/modules/debug_imgui/debug_imgui.c",
         "libs/engine/debug/freefly_camera.c",
         "libs/engine/debug/engine_diagnostics.c",

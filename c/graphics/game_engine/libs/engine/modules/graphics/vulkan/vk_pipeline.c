@@ -570,10 +570,9 @@ static VkPipeline create_shadow_pipeline(graphics_t* graphics) {
         .sType       = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
         .polygonMode = VK_POLYGON_MODE_FILL,
         .lineWidth   = 1.0f,
-        .cullMode = VK_CULL_MODE_NONE,
-        //.cullMode        = VK_CULL_MODE_FRONT_BIT, // Culling front faces helps prevent shadow acne
-        .frontFace       = VK_FRONT_FACE_COUNTER_CLOCKWISE,
-        .depthBiasEnable = VK_TRUE, // Push depth slightly to avoid self-shadowing
+        .cullMode    = VK_CULL_MODE_NONE,
+        .frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+        .depthBiasEnable         = VK_TRUE,
         .depthBiasConstantFactor = 1.25f,
         .depthBiasClamp          = 0.0f,
         .depthBiasSlopeFactor    = 1.75f,
@@ -666,6 +665,18 @@ bool vk_create_graphics_pipeline(graphics_t* graphics) {
         VK_FORMAT_R16G16B16A16_SFLOAT,
         "graphics->pipelines.forward_lit"
     );
+    graphics->pipelines.forward_lit_double_sided = create_pipeline_internal(
+        graphics,
+        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        VK_POLYGON_MODE_FILL,
+        VK_CULL_MODE_NONE,
+        true,
+        graphics->pipelines.layout,
+        "shaders/core/mesh.vert.spv",
+        "shaders/core/pbr.frag.spv",
+        VK_FORMAT_R16G16B16A16_SFLOAT,
+        "graphics->pipelines.forward_lit"
+    );
     graphics->pipelines.skybox = create_skybox_pipeline(graphics, VK_FORMAT_R16G16B16A16_SFLOAT);
     vk_set_debug_name(
         graphics->core.device,
@@ -736,6 +747,7 @@ bool vk_create_graphics_pipeline(graphics_t* graphics) {
 
     return (
         graphics->pipelines.forward_lit != VK_NULL_HANDLE &&
+        graphics->pipelines.forward_lit_double_sided != VK_NULL_HANDLE &&
         graphics->pipelines.shadow != VK_NULL_HANDLE &&
         graphics->pipelines.skybox != VK_NULL_HANDLE &&
         graphics->pipelines.post_process != VK_NULL_HANDLE &&
@@ -751,6 +763,11 @@ void vk_destroy_graphics_pipeline(graphics_t* graphics) {
     }
     if (graphics->pipelines.forward_lit) {
         vkDestroyPipeline(graphics->core.device, graphics->pipelines.forward_lit, NULL);
+    }
+    if (graphics->pipelines.forward_lit_double_sided) {
+        vkDestroyPipeline(
+            graphics->core.device, graphics->pipelines.forward_lit_double_sided, NULL
+        );
     }
     if (graphics->pipelines.transparent) {
         vkDestroyPipeline(graphics->core.device, graphics->pipelines.transparent, NULL);
@@ -796,5 +813,28 @@ void vk_destroy_graphics_pipeline(graphics_t* graphics) {
         vkDestroyDescriptorSetLayout(
             graphics->core.device, graphics->pipelines.post_process_set_layout, NULL
         );
+    }
+}
+
+VkPipeline get_draw_mode_pipeline(vk_pipelines_t* pipelines, draw_mode_t draw_mode) {
+    switch (draw_mode) {
+    case DRAW_MODE_FORWARD_LIT:
+        return pipelines->forward_lit;
+    case DRAW_MODE_DEBUG_WIREFRAME:
+        return pipelines->debug_wireframe;
+    case DRAW_MODE_DEBUG_SDR:
+        return pipelines->debug_sdr;
+    case DRAW_MODE_DEBUG_ALBEDO:
+    case DRAW_MODE_DEBUG_LIGHTING:
+    case DRAW_MODE_DEBUG_GEOMETRY_NORMAL:
+    case DRAW_MODE_DEBUG_TEXTURE_NORMAL:
+    case DRAW_MODE_DEBUG_NORMAL:
+    case DRAW_MODE_DEBUG_TANGENT:
+    case DRAW_MODE_DEBUG_BITANGENT:
+    case DRAW_MODE_DEBUG_VERTEX_COLOR:
+    case DRAW_MODE_DEBUG_MIPMAPS:
+    case DRAW_MODE_DEBUG_SPECULAR:
+    default:
+        return pipelines->debug_forward_lit;
     }
 }

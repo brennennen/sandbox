@@ -166,6 +166,7 @@ typedef struct {
     int32_t normal_texture_id;
     int32_t ao_roughness_metallic_texture_id;
     bool    is_alpha_masked;
+    bool    is_double_sided;
 
     vec3_t bounding_center;
     float  bounding_radius;

@@ -169,6 +169,7 @@ static void load_geometry_from_pak(game_engine_t* engine, world_pak_t* header, v
             norm_tex,
             ao_mr_tex,
             mesh_def->is_alpha_masked,
+            mesh_def->is_double_sided,
             mesh_def->metallic_factor,
             mesh_def->roughness_factor
         );

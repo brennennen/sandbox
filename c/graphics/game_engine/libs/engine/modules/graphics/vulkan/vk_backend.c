@@ -21,14 +21,14 @@
 #include "vk_commands.h"
 #include "vk_debug.h"
 #include "vk_devices.h"
+#include "vk_gpu_allocator.h"
 #include "vk_pipeline.h"
+#include "vk_render_queue.h"
 #include "vk_render_target.h"
 #include "vk_resources.h"
 #include "vk_swapchain.h"
 #include "vk_types.h"
 #include "volk.h"
-
-#include "vk_gpu_allocator.h"
 
 static bool init_default_textures(graphics_t* r) {
     uint8_t white_pixels[4] = {255, 255, 255, 255};
@@ -644,6 +644,7 @@ material_handle_t graphics_create_material(
     texture_handle_t normal,
     texture_handle_t metallic_roughness,
     bool             is_alpha_masked,
+    bool             is_double_sided,
     float            metallic_factor,
     float            roughness_factor
 ) {
@@ -757,32 +758,10 @@ material_handle_t graphics_create_material(
 
     mat->is_active        = true;
     mat->is_alpha_masked  = is_alpha_masked;
+    mat->is_double_sided  = is_double_sided;
     mat->metallic_factor  = metallic_factor;
     mat->roughness_factor = roughness_factor;
     return (material_handle_t){.id = id};
-}
-
-static VkPipeline get_draw_mode_pipeline(vk_pipelines_t* pipelines, draw_mode_t draw_mode) {
-    switch (draw_mode) {
-    case DRAW_MODE_FORWARD_LIT:
-        return pipelines->forward_lit;
-    case DRAW_MODE_DEBUG_WIREFRAME:
-        return pipelines->debug_wireframe;
-    case DRAW_MODE_DEBUG_SDR:
-        return pipelines->debug_sdr;
-    case DRAW_MODE_DEBUG_ALBEDO:
-    case DRAW_MODE_DEBUG_LIGHTING:
-    case DRAW_MODE_DEBUG_GEOMETRY_NORMAL:
-    case DRAW_MODE_DEBUG_TEXTURE_NORMAL:
-    case DRAW_MODE_DEBUG_NORMAL:
-    case DRAW_MODE_DEBUG_TANGENT:
-    case DRAW_MODE_DEBUG_BITANGENT:
-    case DRAW_MODE_DEBUG_VERTEX_COLOR:
-    case DRAW_MODE_DEBUG_MIPMAPS:
-    case DRAW_MODE_DEBUG_SPECULAR:
-    default:
-        return pipelines->debug_forward_lit;
-    }
 }
 
 static void execute_post_process_pass(
@@ -1053,12 +1032,11 @@ static void shadow_pass(
     );
 }
 
-static void forward_pass(
+static void forward_pass_begin(
     graphics_t*             graphics,
     graphics_frame_input_t* gfx_frame_input,
     vk_render_target_t*     render_target,
-    uint32_t                image_index,
-    render_stats_t*         out_render_stats
+    uint32_t                image_index
 ) {
     uint32_t    render_width        = graphics->display.extent.width;
     uint32_t    render_height       = graphics->display.extent.height;
@@ -1161,120 +1139,39 @@ static void forward_pass(
     VkRect2D scissor = {{0, 0}, {render_width, render_height}};
     vkCmdSetViewport(graphics->command_buffer, 0, 1, &viewport);
     vkCmdSetScissor(graphics->command_buffer, 0, 1, &scissor);
+}
 
-    mat4_t    view_proj = mat4_mul(gfx_frame_input->proj, gfx_frame_input->view);
-    frustum_t frustum   = frustum_extract(gfx_frame_input->culling_view_proj);
-
-    VkPipeline current_pipeline = get_draw_mode_pipeline(
-        &graphics->pipelines, gfx_frame_input->draw_mode
+static void forward_pass_draw_scene(
+    graphics_t*             graphics,
+    graphics_frame_input_t* gfx_frame_input,
+    render_stats_t*         out_render_stats
+) {
+#define MAX_RENDER_COMMANDS 10000
+    render_command_t render_queue[MAX_RENDER_COMMANDS];
+    uint32_t         command_count = build_render_queue(
+        graphics, gfx_frame_input, render_queue, MAX_RENDER_COMMANDS
     );
-
-    vkCmdBindPipeline(graphics->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, current_pipeline);
-
-    vkCmdBindDescriptorSets(
-        graphics->command_buffer,
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        graphics->pipelines.layout,
-        0,
-        1,
-        &graphics->frames[graphics->current_frame].global_descriptor_set,
-        0,
-        NULL
+    qsort(render_queue, command_count, sizeof(render_command_t), render_command_compare);
+    VkPipeline pipeline_map[QUEUE_MAX_COUNT];
+    build_pipeline_map(graphics, gfx_frame_input->draw_mode, pipeline_map);
+    execute_render_queue(
+        graphics, gfx_frame_input, render_queue, command_count, pipeline_map, out_render_stats
     );
+}
 
-    int culled_count = 0;
-
+static void forward_pass_draw_extras(
+    graphics_t*             graphics,
+    graphics_frame_input_t* gfx_frame_input,
+    render_stats_t*         out_render_stats
+) {
     VkDeviceSize offsets[] = {0};
-    for (uint32_t i = 0; i < gfx_frame_input->scene->object_count; i++) {
-        render_object_t* obj = &gfx_frame_input->scene->objects[i];
 
-        if (obj->mesh.id == GRAPHICS_INVALID_HANDLE ||
-            obj->material.id == GRAPHICS_INVALID_HANDLE) {
-            continue;
-        }
-
-        vk_mesh_t*     vk_mesh = &graphics->assets.meshes[obj->mesh.id];
-        vk_material_t* vk_mat  = &graphics->assets.materials[obj->material.id];
-
-        if (!vk_mesh->is_active || !vk_mat->is_active)
-            continue;
-
-        vec3_t obj_pos = mat4_transform_point(obj->transform, vk_mesh->bounding_center);
-        float  scale   = sqrtf(
-            obj->transform.m[0][0] * obj->transform.m[0][0] +
-            obj->transform.m[0][1] * obj->transform.m[0][1] +
-            obj->transform.m[0][2] * obj->transform.m[0][2]
-        );
-        float bounding_radius = vk_mesh->bounding_radius * scale;
-
-        if (!frustum_test_sphere(&frustum, obj_pos, bounding_radius)) {
-            culled_count++;
-            continue;
-        }
-
-        push_constants_t push_constants = {
-            .transform        = obj->transform,
-            .is_alpha_masked  = vk_mat->is_alpha_masked ? 1 : 0,
-            .debug_mode       = gfx_frame_input->draw_mode,
-            .metallic_factor  = vk_mat->metallic_factor,
-            .roughness_factor = vk_mat->roughness_factor,
-        };
-
-        assert(is_matrix_valid(&push_constants.transform) && "CRASH: NaN in Object Transform!");
-        assert(!isnan(push_constants.metallic_factor) && "CRASH: NaN in Metallic Factor!");
-        assert(!isnan(push_constants.roughness_factor) && "CRASH: NaN in Roughness Factor!");
-
-        vkCmdPushConstants(
-            graphics->command_buffer,
-            graphics->pipelines.layout,
-            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-            0,
-            sizeof(push_constants_t),
-            &push_constants
-        );
-
-        vkCmdBindDescriptorSets(
-            graphics->command_buffer,
-            VK_PIPELINE_BIND_POINT_GRAPHICS,
-            graphics->pipelines.layout,
-            1,
-            1,
-            &vk_mat->descriptor_set,
-            0,
-            NULL
-        );
-
-        vkCmdBindVertexBuffers(graphics->command_buffer, 0, 1, &vk_mesh->vertex_buffer, offsets);
-
-        uint32_t forward_pass_drawn_triangles = 0;
-        if (vk_mesh->index_count > 0) {
-            vkCmdBindIndexBuffer(
-                graphics->command_buffer, vk_mesh->index_buffer, 0, VK_INDEX_TYPE_UINT32
-            );
-            vkCmdDrawIndexed(graphics->command_buffer, vk_mesh->index_count, 1, 0, 0, 0);
-
-            if (out_render_stats) {
-                forward_pass_drawn_triangles = vk_mesh->index_count / 3;
-            }
-        } else {
-            vkCmdDraw(graphics->command_buffer, vk_mesh->vertex_count, 1, 0, 0);
-
-            if (out_render_stats) {
-                forward_pass_drawn_triangles = vk_mesh->vertex_count / 3;
-            }
-        }
-        out_render_stats->forward_pass_drawn_meshes++;
-        out_render_stats->forward_pass_draw_calls++;
-        out_render_stats->forward_pass_drawn_triangles += forward_pass_drawn_triangles;
-    }
-
-    // log_info("Rendered: %d | Culled: %d", object_count - culled_count, culled_count);
+    // Draw Skybox
     if (gfx_frame_input->draw_mode != DRAW_MODE_DEBUG_SDR) {
         vkCmdBindPipeline(
             graphics->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics->pipelines.skybox
         );
     }
-
     vkCmdBindDescriptorSets(
         graphics->command_buffer,
         VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -1286,63 +1183,51 @@ static void forward_pass(
         NULL
     );
 
-    // skybox
     vkCmdDraw(graphics->command_buffer, 36, 1, 0, 0);
     if (out_render_stats) {
         out_render_stats->forward_pass_draw_calls++;
-        out_render_stats->forward_pass_drawn_triangles += 12; // 36 vertices / 3 = 12 tris
+        out_render_stats->forward_pass_drawn_triangles += 12;
     }
 
+    // Draw Debug Widgets
     if (gfx_frame_input->show_debug_widgets) {
         if (gfx_frame_input->draw_mode != DRAW_MODE_DEBUG_SDR) {
             vkCmdBindPipeline(
                 graphics->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics->pipelines.line
             );
 
-            push_constants_t grid_pc = {
+            push_constants_t debug_pc = {
                 .transform       = mat4_identity(),
                 .is_alpha_masked = 0,
             };
-            mat4_t identity = mat4_identity();
+
             vkCmdPushConstants(
                 graphics->command_buffer,
                 graphics->pipelines.layout,
                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                 0,
                 sizeof(push_constants_t),
-                &grid_pc
+                &debug_pc
             );
 
+            // Grid
             vkCmdBindVertexBuffers(
                 graphics->command_buffer, 0, 1, &graphics->grid_buffer.buffer, offsets
             );
             vkCmdDraw(graphics->command_buffer, graphics->grid_vertex_count, 1, 0, 0);
-            if (out_render_stats) {
+            if (out_render_stats)
                 out_render_stats->forward_pass_draw_calls++;
-            }
 
-            push_constants_t sun_pc = {
-                .transform       = mat4_identity(),
-                .is_alpha_masked = 0,
-            };
-            vkCmdPushConstants(
-                graphics->command_buffer,
-                graphics->pipelines.layout,
-                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                0,
-                sizeof(push_constants_t),
-                &sun_pc
-            );
-
+            // Sun Line
             vkCmdBindVertexBuffers(
                 graphics->command_buffer, 0, 1, &graphics->sun_line_buffer.buffer, offsets
             );
             vkCmdDraw(graphics->command_buffer, 2, 1, 0, 0);
-            if (out_render_stats) {
+            if (out_render_stats)
                 out_render_stats->forward_pass_draw_calls++;
-            }
         }
 
+        // Frozen Frustum
         if (gfx_frame_input->is_culling_frozen) {
             push_constants_t frustum_pc = {
                 .transform       = mat4_identity(),
@@ -1362,11 +1247,22 @@ static void forward_pass(
                 graphics->command_buffer, 0, 1, &graphics->frustum_buffer.buffer, offsets
             );
             vkCmdDraw(graphics->command_buffer, 24, 1, 0, 0);
-            if (out_render_stats) {
+            if (out_render_stats)
                 out_render_stats->forward_pass_draw_calls++;
-            }
         }
     }
+}
+
+static void forward_pass(
+    graphics_t*             graphics,
+    graphics_frame_input_t* gfx_frame_input,
+    vk_render_target_t*     render_target,
+    uint32_t                image_index,
+    render_stats_t*         out_render_stats
+) {
+    forward_pass_begin(graphics, gfx_frame_input, render_target, image_index);
+    forward_pass_draw_scene(graphics, gfx_frame_input, out_render_stats);
+    forward_pass_draw_extras(graphics, gfx_frame_input, out_render_stats);
 }
 
 void graphics_draw(

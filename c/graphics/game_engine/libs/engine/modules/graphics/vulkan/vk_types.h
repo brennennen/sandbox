@@ -75,6 +75,7 @@ typedef struct {
     VkDescriptorSet descriptor_set;
     bool            is_active;
     bool            is_alpha_masked;
+    bool            is_double_sided;
     float           metallic_factor;
     float           roughness_factor;
 } vk_material_t;
@@ -226,6 +227,7 @@ typedef struct {
     VkPipelineLayout post_process_layout;
 
     VkPipeline forward_lit;
+    VkPipeline forward_lit_double_sided;
     VkPipeline transparent;
     VkPipeline skybox;
     VkPipeline post_process;

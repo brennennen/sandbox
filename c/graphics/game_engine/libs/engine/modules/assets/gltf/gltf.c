@@ -353,6 +353,15 @@ static void parse_base_properties(
     pak_mesh_t*            current_mesh,
     material_properties_t* out_material_properties
 ) {
+
+    log_info(
+        "Material '%s' double_sided is: %d", mat->name ? mat->name : "unnamed", mat->double_sided
+    );
+    current_mesh->is_double_sided = mat->double_sided ? 1 : 0;
+    // if (mat->double_sided == true) {
+    //     exit(1);
+    // }
+
     if (mat->alpha_mode == cgltf_alpha_mode_mask || mat->alpha_mode == cgltf_alpha_mode_blend) {
         out_material_properties->is_alpha_masked = true;
     }
@@ -583,6 +592,10 @@ static void parse_primitive_material(
 
     parse_base_properties(primitive->material, bake_context, current_mesh, out_material_properties);
 
+    if (primitive->material->double_sided) {
+        log_info("Detected Double Sided Material! Name: %s", primitive->material->name);
+    }
+
     if (primitive->material->has_pbr_metallic_roughness) {
         parse_orm_maps(
             bake_context, primitive->material, out_scene, current_mesh, opt_fast_textures
@@ -783,13 +796,7 @@ static void bake_gltf_node(
 
     mat4_t global_transform = mat4_mul(parent_transform, local_transform);
     bake_gltf_mesh(
-        bake_context,
-        scratch_arena,
-        node,
-        global_transform,
-        out_scene,
-        model_id,
-        opt_fast_textures
+        bake_context, scratch_arena, node, global_transform, out_scene, model_id, opt_fast_textures
     );
 
     for (size_t i = 0; i < node->children_count; i++) {

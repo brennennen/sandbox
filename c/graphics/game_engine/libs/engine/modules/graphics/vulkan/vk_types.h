@@ -76,8 +76,10 @@ typedef struct {
     bool            is_active;
     bool            is_alpha_masked;
     bool            is_double_sided;
+    bool            is_translucent;
     float           metallic_factor;
     float           roughness_factor;
+    float           alpha_cutoff;
 } vk_material_t;
 
 /**
@@ -228,6 +230,8 @@ typedef struct {
 
     VkPipeline forward_lit;
     VkPipeline forward_lit_double_sided;
+    VkPipeline forward_lit_alpha_masked;
+    VkPipeline forward_lit_alpha_masked_double_sided;
     VkPipeline transparent;
     VkPipeline skybox;
     VkPipeline post_process;
@@ -244,6 +248,7 @@ typedef struct {
     uint32_t debug_mode;
     float    metallic_factor;
     float    roughness_factor;
+    float    alpha_cutoff;
 } push_constants_t;
 
 /**

@@ -18,6 +18,9 @@
 #include "shared/scene_types.h"
 
 render_queue_id_t vk_evaluate_material_queue(const vk_material_t* mat) {
+    if (mat->is_translucent) {
+        return QUEUE_TRANSLUCENT;
+    }
     if (mat->is_alpha_masked && mat->is_double_sided) {
         return QUEUE_ALPHA_MASKED_DOUBLE_SIDED;
     }
@@ -128,9 +131,9 @@ void build_pipeline_map(graphics_t* graphics, draw_mode_t draw_mode, VkPipeline*
     if (draw_mode == DRAW_MODE_FORWARD_LIT) {
         out_pipeline_map[QUEUE_OPAQUE]              = graphics->pipelines.forward_lit;
         out_pipeline_map[QUEUE_OPAQUE_DOUBLE_SIDED] = graphics->pipelines.forward_lit_double_sided;
-        out_pipeline_map[QUEUE_ALPHA_MASKED]        = graphics->pipelines.forward_lit; // TODO
+        out_pipeline_map[QUEUE_ALPHA_MASKED]        = graphics->pipelines.forward_lit_alpha_masked;
         out_pipeline_map[QUEUE_ALPHA_MASKED_DOUBLE_SIDED] =
-            graphics->pipelines.forward_lit_double_sided;                      // TODO
+            graphics->pipelines.forward_lit_alpha_masked_double_sided;
         out_pipeline_map[QUEUE_TRANSLUCENT] = graphics->pipelines.forward_lit; // TODO
     } else {
         // Debug modes override all queues with the exact same debug pipeline
@@ -209,6 +212,7 @@ void execute_render_queue(
             .debug_mode       = gfx_frame_input->draw_mode,
             .metallic_factor  = vk_mat->metallic_factor,
             .roughness_factor = vk_mat->roughness_factor,
+            .alpha_cutoff     = vk_mat->alpha_cutoff,
         };
 
         vkCmdPushConstants(

@@ -127,6 +127,32 @@ static bool try_load_from_cache_raw(
     return true;
 }
 
+static void count_node_geometry(
+    cgltf_node* node,
+    uint32_t*   exact_vertices,
+    uint32_t*   exact_indices,
+    uint32_t*   exact_meshes
+) {
+    if (node->mesh) {
+        for (size_t p = 0; p < node->mesh->primitives_count; p++) {
+            cgltf_primitive* prim = &node->mesh->primitives[p];
+            (*exact_meshes)++;
+            if (prim->indices) {
+                (*exact_indices) += prim->indices->count;
+            }
+            for (size_t a = 0; a < prim->attributes_count; a++) {
+                if (prim->attributes[a].type == cgltf_attribute_type_position) {
+                    (*exact_vertices) += prim->attributes[a].data->count;
+                    break;
+                }
+            }
+        }
+    }
+    for (size_t i = 0; i < node->children_count; i++) {
+        count_node_geometry(node->children[i], exact_vertices, exact_indices, exact_meshes);
+    }
+}
+
 bool gltf_measure_model(
     arena_t*              scratch,
     const char*           filepath,
@@ -180,21 +206,19 @@ bool gltf_measure_model(
         }
     }
 
-    for (size_t m = 0; m < data->meshes_count; m++) {
-        cgltf_mesh* mesh = &data->meshes[m];
-        out_metrics->mesh_count += mesh->primitives_count;
+    cgltf_scene* gltf_scene = data->scene;
+    if (!gltf_scene && data->scenes_count > 0) {
+        gltf_scene = &data->scenes[0];
+    }
 
-        for (size_t p = 0; p < mesh->primitives_count; p++) {
-            cgltf_primitive* prim = &mesh->primitives[p];
-            if (prim->indices) {
-                out_metrics->index_count += prim->indices->count;
-            }
-            for (size_t a = 0; a < prim->attributes_count; a++) {
-                if (prim->attributes[a].type == cgltf_attribute_type_position) {
-                    out_metrics->vertex_count += prim->attributes[a].data->count;
-                    break;
-                }
-            }
+    if (gltf_scene) {
+        for (size_t i = 0; i < gltf_scene->nodes_count; i++) {
+            count_node_geometry(
+                gltf_scene->nodes[i],
+                &out_metrics->vertex_count,
+                &out_metrics->index_count,
+                &out_metrics->mesh_count
+            );
         }
     }
 
@@ -303,7 +327,15 @@ static raw_image_t pack_orm_texture(
     packed.width    = width;
     packed.height   = height;
     packed.channels = 4;
-    packed.pixels   = calloc(width * height, 4);
+    if (width > 8192 && height > 8192) {
+        log_error(
+            "attempted to malloc over %d * %d * 4! Max supported texture size is 8k x 8k",
+            width,
+            height
+        );
+        exit(1);
+    }
+    packed.pixels = calloc(width * height, 4);
 
     if (!packed.pixels) {
         return packed;
@@ -358,12 +390,15 @@ static void parse_base_properties(
         "Material '%s' double_sided is: %d", mat->name ? mat->name : "unnamed", mat->double_sided
     );
     current_mesh->is_double_sided = mat->double_sided ? 1 : 0;
-    // if (mat->double_sided == true) {
-    //     exit(1);
-    // }
 
-    if (mat->alpha_mode == cgltf_alpha_mode_mask || mat->alpha_mode == cgltf_alpha_mode_blend) {
+    out_material_properties->is_alpha_masked = false;
+    current_mesh->is_translucent             = 0;
+    current_mesh->alpha_cutoff               = mat->alpha_cutoff; // cgltf handles the 0.5 default
+
+    if (mat->alpha_mode == cgltf_alpha_mode_mask) {
         out_material_properties->is_alpha_masked = true;
+    } else if (mat->alpha_mode == cgltf_alpha_mode_blend) {
+        current_mesh->is_translucent = true;
     }
 
     if (mat->has_pbr_metallic_roughness) {
@@ -421,7 +456,7 @@ static void synthesize_fast_orm_map(
     uint32_t      new_tex_idx
 ) {
     raw_image_t ao_raw = {0};
-    if (ao_id != -1) {
+    if (ao_id != -1 && out_scene->raw_texture_bytes[ao_id] != NULL) {
         ao_raw.width    = out_scene->textures[ao_id].width;
         ao_raw.height   = out_scene->textures[ao_id].height;
         ao_raw.channels = 4;
@@ -429,7 +464,7 @@ static void synthesize_fast_orm_map(
     }
 
     raw_image_t mr_raw = {0};
-    if (mr_id != -1) {
+    if (mr_id != -1 && out_scene->raw_texture_bytes[mr_id] != NULL) {
         mr_raw.width    = out_scene->textures[mr_id].width;
         mr_raw.height   = out_scene->textures[mr_id].height;
         mr_raw.channels = 4;
@@ -546,25 +581,31 @@ static void parse_orm_maps(
     // Synthesis Required
     uint32_t new_tex_idx = out_scene->texture_count++;
 
-    int final_w = 1, final_h = 1;
-    if (mr_id != -1) {
+    int final_w = 1;
+    int final_h = 1;
+    if (mr_id != -1 && out_scene->raw_texture_bytes[mr_id] != NULL) {
         if (out_scene->textures[mr_id].width > final_w)
             final_w = out_scene->textures[mr_id].width;
         if (out_scene->textures[mr_id].height > final_h)
             final_h = out_scene->textures[mr_id].height;
     }
-    if (ao_id != -1) {
+    if (ao_id != -1 && out_scene->raw_texture_bytes[ao_id] != NULL) {
         if (out_scene->textures[ao_id].width > final_w)
             final_w = out_scene->textures[ao_id].width;
         if (out_scene->textures[ao_id].height > final_h)
             final_h = out_scene->textures[ao_id].height;
     }
 
-    if (opt_fast_textures)
-        synthesize_fast_orm_map(ao_id, mr_id, out_scene, new_tex_idx);
-    else
-        synthesize_cached_orm_map(ao_view, mr_view, out_scene, new_tex_idx, final_w, final_h);
+    if (final_w > 8192 || final_h > 8192) {
+        log_error("ORM synthesis error! Dimensions too large (%dx%d)", final_w, final_h);
+        exit(1);
+    }
 
+    if (opt_fast_textures) {
+        synthesize_fast_orm_map(ao_id, mr_id, out_scene, new_tex_idx);
+    } else {
+        synthesize_cached_orm_map(ao_view, mr_view, out_scene, new_tex_idx, final_w, final_h);
+    }
     current_mesh->ao_roughness_metallic_texture_id = new_tex_idx;
     bake_contet->orm_map[mat_idx]                  = new_tex_idx;
 }
@@ -580,7 +621,6 @@ static void parse_primitive_material(
     out_material_properties->base_color            = (vec4_t){1.0f, 1.0f, 1.0f, 1.0f};
     out_material_properties->uv_index              = 0;
     out_material_properties->has_normal_map        = false;
-    out_material_properties->is_alpha_masked       = true;
     current_mesh->base_color_texture_id            = -1;
     current_mesh->normal_texture_id                = -1;
     current_mesh->ao_roughness_metallic_texture_id = -1;
@@ -834,21 +874,15 @@ bool gltf_bake_model(
     uint32_t exact_indices  = 0;
     uint32_t exact_meshes   = 0;
 
-    for (size_t m = 0; m < data->meshes_count; m++) {
-        cgltf_mesh* mesh = &data->meshes[m];
-        exact_meshes += mesh->primitives_count;
+    cgltf_scene* gltf_scene = data->scene;
+    if (!gltf_scene && data->scenes_count > 0)
+        gltf_scene = &data->scenes[0];
 
-        for (size_t p = 0; p < mesh->primitives_count; p++) {
-            cgltf_primitive* prim = &mesh->primitives[p];
-            if (prim->indices) {
-                exact_indices += prim->indices->count;
-            }
-            for (size_t a = 0; a < prim->attributes_count; a++) {
-                if (prim->attributes[a].type == cgltf_attribute_type_position) {
-                    exact_vertices += prim->attributes[a].data->count;
-                    break;
-                }
-            }
+    if (gltf_scene) {
+        for (size_t i = 0; i < gltf_scene->nodes_count; i++) {
+            count_node_geometry(
+                gltf_scene->nodes[i], &exact_vertices, &exact_indices, &exact_meshes
+            );
         }
     }
 
@@ -857,8 +891,12 @@ bool gltf_bake_model(
     out_scene->meshes   = arena_push_array(scratch_arena, pak_mesh_t, exact_meshes);
 
     uint32_t max_possible_textures = data->images_count + data->materials_count;
+
     out_scene->textures = arena_push_array(scratch_arena, pak_texture_t, max_possible_textures);
+    memset(out_scene->textures, 0, max_possible_textures * sizeof(pak_texture_t));
+
     out_scene->raw_texture_bytes = arena_push_array(scratch_arena, uint8_t*, max_possible_textures);
+    memset(out_scene->raw_texture_bytes, 0, max_possible_textures * sizeof(uint8_t*));
 
     cgltf_load_buffers(&options, data, filepath);
 
@@ -903,7 +941,6 @@ bool gltf_bake_model(
         platform_thread_wait(threads[t]);
     }
 
-    cgltf_scene* gltf_scene = data->scene;
     if (!gltf_scene) {
         if (data->scenes_count > 0) {
             gltf_scene = &data->scenes[0];

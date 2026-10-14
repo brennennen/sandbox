@@ -172,6 +172,8 @@ static VkPipeline create_pipeline_internal(
     VkPolygonMode       polygon_mode,
     VkCullModeFlags     cull_mode,
     bool                depth_test,
+    bool                depth_write,
+    bool                blend_enable,
     VkPipelineLayout    layout,
     const char*         vert_path,
     const char*         frag_path,
@@ -567,10 +569,10 @@ static VkPipeline create_shadow_pipeline(graphics_t* graphics) {
     };
 
     VkPipelineRasterizationStateCreateInfo rasterizer = {
-        .sType       = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
-        .polygonMode = VK_POLYGON_MODE_FILL,
-        .lineWidth   = 1.0f,
-        .cullMode    = VK_CULL_MODE_NONE,
+        .sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+        .polygonMode             = VK_POLYGON_MODE_FILL,
+        .lineWidth               = 1.0f,
+        .cullMode                = VK_CULL_MODE_NONE,
         .frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE,
         .depthBiasEnable         = VK_TRUE,
         .depthBiasConstantFactor = 1.25f,
@@ -659,6 +661,8 @@ bool vk_create_graphics_pipeline(graphics_t* graphics) {
         VK_POLYGON_MODE_FILL,
         VK_CULL_MODE_BACK_BIT,
         true,
+        false,
+        false,
         graphics->pipelines.layout,
         "shaders/core/mesh.vert.spv",
         "shaders/core/pbr.frag.spv",
@@ -671,11 +675,56 @@ bool vk_create_graphics_pipeline(graphics_t* graphics) {
         VK_POLYGON_MODE_FILL,
         VK_CULL_MODE_NONE,
         true,
+        false,
+        false,
         graphics->pipelines.layout,
         "shaders/core/mesh.vert.spv",
         "shaders/core/pbr.frag.spv",
         VK_FORMAT_R16G16B16A16_SFLOAT,
-        "graphics->pipelines.forward_lit"
+        "graphics->pipelines.forward_lit_double_sided"
+    );
+    graphics->pipelines.forward_lit_alpha_masked = create_pipeline_internal(
+        graphics,
+        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        VK_POLYGON_MODE_FILL,
+        VK_CULL_MODE_BACK_BIT,
+        true,
+        false,
+        false,
+        graphics->pipelines.layout,
+        "shaders/core/mesh.vert.spv",
+        "shaders/core/pbr_alpha_masked.frag.spv",
+        VK_FORMAT_R16G16B16A16_SFLOAT,
+        "graphics->pipelines.forward_lit_alpha_masked"
+    );
+
+    graphics->pipelines.forward_lit_alpha_masked_double_sided = create_pipeline_internal(
+        graphics,
+        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        VK_POLYGON_MODE_FILL,
+        VK_CULL_MODE_NONE,
+        true,
+        false,
+        false,
+        graphics->pipelines.layout,
+        "shaders/core/mesh.vert.spv",
+        "shaders/core/pbr_alpha_masked.frag.spv",
+        VK_FORMAT_R16G16B16A16_SFLOAT,
+        "graphics->pipelines.forward_lit_alpha_masked_double_sided"
+    );
+    graphics->pipelines.transparent = create_pipeline_internal(
+        graphics,
+        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        VK_POLYGON_MODE_FILL,
+        VK_CULL_MODE_BACK_BIT,
+        true,
+        false,
+        true,
+        graphics->pipelines.layout,
+        "shaders/core/mesh.vert.spv",
+        "shaders/core/pbr_alpha_masked.frag.spv",
+        VK_FORMAT_R16G16B16A16_SFLOAT,
+        "graphics->pipelines.transparent"
     );
     graphics->pipelines.skybox = create_skybox_pipeline(graphics, VK_FORMAT_R16G16B16A16_SFLOAT);
     vk_set_debug_name(
@@ -690,6 +739,8 @@ bool vk_create_graphics_pipeline(graphics_t* graphics) {
         VK_POLYGON_MODE_FILL,
         VK_CULL_MODE_NONE,
         false,
+        false,
+        false,
         graphics->pipelines.post_process_layout,
         "shaders/post_process/fullscreen.vert.spv",
         "shaders/post_process/post_process.frag.spv",
@@ -702,6 +753,8 @@ bool vk_create_graphics_pipeline(graphics_t* graphics) {
         VK_POLYGON_MODE_FILL,
         VK_CULL_MODE_BACK_BIT,
         true,
+        false,
+        false,
         graphics->pipelines.layout,
         "shaders/core/line.vert.spv",
         "shaders/core/line.frag.spv",
@@ -714,6 +767,8 @@ bool vk_create_graphics_pipeline(graphics_t* graphics) {
         VK_POLYGON_MODE_FILL,
         VK_CULL_MODE_NONE,
         true,
+        false,
+        false,
         graphics->pipelines.layout,
         "shaders/core/mesh.vert.spv",
         "shaders/core/debug_pbr.frag.spv",
@@ -726,6 +781,8 @@ bool vk_create_graphics_pipeline(graphics_t* graphics) {
         VK_POLYGON_MODE_LINE,
         VK_CULL_MODE_NONE,
         true,
+        false,
+        false,
         graphics->pipelines.layout,
         "shaders/core/mesh.vert.spv",
         "shaders/core/debug_wireframe.frag.spv",
@@ -738,6 +795,8 @@ bool vk_create_graphics_pipeline(graphics_t* graphics) {
         VK_POLYGON_MODE_FILL,
         VK_CULL_MODE_BACK_BIT,
         true,
+        false,
+        false,
         graphics->pipelines.layout,
         "shaders/core/mesh.vert.spv",
         "shaders/core/pbr.frag.spv",
@@ -748,6 +807,9 @@ bool vk_create_graphics_pipeline(graphics_t* graphics) {
     return (
         graphics->pipelines.forward_lit != VK_NULL_HANDLE &&
         graphics->pipelines.forward_lit_double_sided != VK_NULL_HANDLE &&
+        graphics->pipelines.forward_lit_alpha_masked != VK_NULL_HANDLE &&
+        graphics->pipelines.forward_lit_alpha_masked_double_sided != VK_NULL_HANDLE &&
+        graphics->pipelines.transparent != VK_NULL_HANDLE &&
         graphics->pipelines.shadow != VK_NULL_HANDLE &&
         graphics->pipelines.skybox != VK_NULL_HANDLE &&
         graphics->pipelines.post_process != VK_NULL_HANDLE &&
@@ -767,6 +829,17 @@ void vk_destroy_graphics_pipeline(graphics_t* graphics) {
     if (graphics->pipelines.forward_lit_double_sided) {
         vkDestroyPipeline(
             graphics->core.device, graphics->pipelines.forward_lit_double_sided, NULL
+        );
+    }
+    if (graphics->pipelines.forward_lit_alpha_masked) {
+        vkDestroyPipeline(
+            graphics->core.device, graphics->pipelines.forward_lit_alpha_masked, NULL
+        );
+    }
+
+    if (graphics->pipelines.forward_lit_alpha_masked_double_sided) {
+        vkDestroyPipeline(
+            graphics->core.device, graphics->pipelines.forward_lit_alpha_masked_double_sided, NULL
         );
     }
     if (graphics->pipelines.transparent) {

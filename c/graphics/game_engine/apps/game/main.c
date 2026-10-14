@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
         //.initial_pak_path = "./../../.assets/sponza.pak",
         //.initial_pak_path = "./../../.assets/test_zone.pak",
         // .initial_pak_path = "./../../.assets/test_skybox_zone.pak",
-        // .initial_pak_path = "./../../.assets/render_tests.pak",
+        //.initial_pak_path = "./../../.assets/render_tests.pak",
     };
     game_engine_t game_engine = {0};
 

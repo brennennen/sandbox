@@ -19,7 +19,9 @@ zig build run
 
 
 ## TODO
-* add mechanism to render both sides of an object (attribute in mesh layer entry?). add it for sponza curtains.
+* add transparency material render queue support
+* fix sponza decals?
+* add frame cap and control to imgui diagnostics page
 * add hot reloading to dynamically change mips ceiling/cap
 * add texture/material de-duplication to reduce file size
 * more complex sponza scene stress testing
@@ -34,3 +36,7 @@ zig build run
   * add a document describing the pak file format
 * implement simple gi?
 * add mips texture streaming (load lowest mip first, then ratchet up until vram is full)
+* add proper gui support? clay?
+* add world ocean system? add river/lake sysetm? add waterfall system?
+* add jolt collision engine?
+*

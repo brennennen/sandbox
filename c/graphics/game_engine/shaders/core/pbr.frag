@@ -1,7 +1,7 @@
 #version 450
 
 layout(location = 0) in vec4 fragColor;
-layout(location = 1) in vec2 fragUV;
+layout(location = 1) in vec2 frag_uv;
 layout(location = 2) in vec3 fragNormal;
 layout(location = 3) in vec4 fragTangent;
 layout(location = 4) in vec3 fragPos;
@@ -19,7 +19,7 @@ layout(set = 0, binding = 0) uniform UBO {
     float metallic_bias;
 } ubo;
 
-layout(set = 1, binding = 0) uniform sampler2D texSampler;
+layout(set = 1, binding = 0) uniform sampler2D albedo_sampler;
 layout(set = 1, binding = 1) uniform sampler2D normalMapSampler;
 layout(set = 1, binding = 2) uniform sampler2D ao_roughness_metallic_sampler; // AO = red, Roughness = green, Metallic = blue
 layout(set = 0, binding = 2) uniform samplerCube irradiance_map;
@@ -33,6 +33,7 @@ layout(push_constant) uniform PushConstants {
     uint debug_mode;
     float metallic_factor;
     float roughness_factor;
+    float alpha_cutoff;
 } pc;
 
 const float PI = 3.14159265359;
@@ -64,11 +65,13 @@ float calculate_shadow(vec3 fragPosWorldSpace) {
 
 void main() {
     vec3 finalNormal;
-    vec4 texColor = texture(texSampler, fragUV) * fragColor;
+    vec4 texColor = texture(albedo_sampler, frag_uv) * fragColor;
 
-    if (pc.is_masked == 1 && texColor.a < 0.5) {
+#ifdef ALPHA_MASK
+    if (texColor.a < pc.alpha_cutoff) {
         discard;
     }
+#endif
 
     vec4 ao_roughness_metallic_sample = vec4(1.0, 1.0, 0.0, 1.0);
     float ao = ao_roughness_metallic_sample.r;
@@ -85,7 +88,7 @@ void main() {
         finalNormal = normalize(fragNormal);
     }
     else {
-        vec3 normalTex = texture(normalMapSampler, fragUV).rgb;
+        vec3 normalTex = texture(normalMapSampler, frag_uv).rgb;
         normalTex = normalTex * 2.0 - 1.0;
         vec3 N = normalize(fragNormal);
         vec3 T = normalize(fragTangent.xyz);

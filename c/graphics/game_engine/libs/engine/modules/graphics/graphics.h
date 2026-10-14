@@ -51,8 +51,10 @@ material_handle_t graphics_create_material(
     texture_handle_t metallic_roughness,
     bool             is_alpha_masked,
     bool             is_double_sided,
+    bool             is_translucent,
     float            metallic_factor,
-    float            roughness_factor
+    float            roughness_factor,
+    float            alpha_cutoff
 );
 
 render_target_handle_t graphics_create_render_target(

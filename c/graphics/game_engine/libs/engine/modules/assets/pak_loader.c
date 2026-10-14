@@ -170,8 +170,10 @@ static void load_geometry_from_pak(game_engine_t* engine, world_pak_t* header, v
             ao_mr_tex,
             mesh_def->is_alpha_masked,
             mesh_def->is_double_sided,
+            mesh_def->is_translucent,
             mesh_def->metallic_factor,
-            mesh_def->roughness_factor
+            mesh_def->roughness_factor,
+            mesh_def->alpha_cutoff
         );
     }
 }
@@ -248,13 +250,19 @@ void load_pak_file(game_engine_t* game_engine, game_engine_init_config_t* engine
                 game_engine->environment.skybox_texture  // pref_tex
             );
             log_info("Successfully uploaded HDRI Skybox to GPU!");
-
-            game_engine->texture_mip_clamp = 1;
-
-            load_geometry_from_pak(game_engine, header, raw_pak_data);
         } else {
-            game_engine->environment.skybox_texture = game_engine->default_tex; // Fallback
+            game_engine->environment.skybox_texture = game_engine->default_tex;
+
+            graphics_update_global_environment(
+                game_engine->graphics,
+                game_engine->default_tex,
+                game_engine->default_tex,
+                game_engine->default_tex
+            );
+
+            log_info("No environment found in PAK. Bound fallback environment.");
         }
+        load_geometry_from_pak(game_engine, header, raw_pak_data);
     }
 }
 

@@ -596,36 +596,39 @@ texture_handle_t graphics_upload_texture(graphics_t* r, image_t* img, pak_textur
 }
 
 material_handle_t graphics_create_material(
-    graphics_t*      r,
+    graphics_t*      graphics,
     texture_handle_t albedo,
     texture_handle_t normal,
     texture_handle_t metallic_roughness,
     bool             is_alpha_masked,
     bool             is_double_sided,
+    bool             is_translucent,
     float            metallic_factor,
-    float            roughness_factor
+    float            roughness_factor,
+    float            alpha_cutoff
 ) {
     if (albedo.id == GRAPHICS_INVALID_HANDLE || normal.id == GRAPHICS_INVALID_HANDLE) {
         log_error("vulkan: Cannot create material with invalid texture handles. Skipping.");
         return (material_handle_t){.id = GRAPHICS_INVALID_HANDLE};
     }
 
-    if (r->assets.material_count >= VK_MAX_MATERIALS) {
+    if (graphics->assets.material_count >= VK_MAX_MATERIALS) {
         log_error("vulkan: material pool exhausted!");
         return (material_handle_t){.id = GRAPHICS_INVALID_HANDLE};
     }
 
-    uint32_t       id  = r->assets.material_count++;
-    vk_material_t* mat = &r->assets.materials[id];
+    uint32_t       id  = graphics->assets.material_count++;
+    vk_material_t* mat = &graphics->assets.materials[id];
 
     VkDescriptorSetAllocateInfo alloc_info = {
         .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-        .descriptorPool     = r->descriptor_pool,
+        .descriptorPool     = graphics->descriptor_pool,
         .descriptorSetCount = 1,
-        .pSetLayouts        = &r->pipelines.object_set_layout,
+        .pSetLayouts        = &graphics->pipelines.object_set_layout,
     };
 
-    if (vkAllocateDescriptorSets(r->core.device, &alloc_info, &mat->descriptor_set) != VK_SUCCESS) {
+    if (vkAllocateDescriptorSets(graphics->core.device, &alloc_info, &mat->descriptor_set) !=
+        VK_SUCCESS) {
         log_error("vulkan: failed to allocate material descriptor set");
         return (material_handle_t){.id = GRAPHICS_INVALID_HANDLE};
     }
@@ -635,31 +638,31 @@ material_handle_t graphics_create_material(
     vk_texture_t* ao_metallic_roughness_texture = NULL;
 
     if (albedo.id != GRAPHICS_INVALID_HANDLE && albedo.id < VK_MAX_TEXTURES) {
-        vk_texture_t* candidate = &r->assets.textures[albedo.id];
+        vk_texture_t* candidate = &graphics->assets.textures[albedo.id];
         if (candidate->is_active && candidate->view != VK_NULL_HANDLE)
             albedo_texture = candidate;
     }
     if (!albedo_texture)
-        albedo_texture = &r->assets.textures[r->assets.default_albedo.id];
+        albedo_texture = &graphics->assets.textures[graphics->assets.default_albedo.id];
 
     if (normal.id != GRAPHICS_INVALID_HANDLE && normal.id < VK_MAX_TEXTURES) {
-        vk_texture_t* candidate = &r->assets.textures[normal.id];
+        vk_texture_t* candidate = &graphics->assets.textures[normal.id];
         if (candidate->is_active && candidate->view != VK_NULL_HANDLE)
             normal_texture = candidate;
     }
     if (!normal_texture)
-        normal_texture = &r->assets.textures[r->assets.default_normal.id];
+        normal_texture = &graphics->assets.textures[graphics->assets.default_normal.id];
 
     if (metallic_roughness.id != GRAPHICS_INVALID_HANDLE &&
         metallic_roughness.id < VK_MAX_TEXTURES) {
-        vk_texture_t* candidate = &r->assets.textures[metallic_roughness.id];
+        vk_texture_t* candidate = &graphics->assets.textures[metallic_roughness.id];
         if (candidate->is_active && candidate->view != VK_NULL_HANDLE) {
             ao_metallic_roughness_texture = candidate;
         }
     }
     if (!ao_metallic_roughness_texture) {
         ao_metallic_roughness_texture =
-            &r->assets.textures[r->assets.default_ao_metallic_roughness.id];
+            &graphics->assets.textures[graphics->assets.default_ao_metallic_roughness.id];
     }
 
     if (albedo_texture->view == VK_NULL_HANDLE || normal_texture->view == VK_NULL_HANDLE ||
@@ -711,13 +714,15 @@ material_handle_t graphics_create_material(
     writes[2].descriptorCount = 1;
     writes[2].pImageInfo      = &ao_metallic_roughness_info;
 
-    vkUpdateDescriptorSets(r->core.device, 3, writes, 0, NULL);
+    vkUpdateDescriptorSets(graphics->core.device, 3, writes, 0, NULL);
 
     mat->is_active        = true;
     mat->is_alpha_masked  = is_alpha_masked;
     mat->is_double_sided  = is_double_sided;
+    mat->is_translucent   = is_translucent;
     mat->metallic_factor  = metallic_factor;
     mat->roughness_factor = roughness_factor;
+    mat->alpha_cutoff     = alpha_cutoff;
     return (material_handle_t){.id = id};
 }
 

@@ -443,4 +443,12 @@ pub fn build(b: *std.Build) void {
         const install_shader = b.addInstallFileWithDir(out_file, .bin, s[1]);
         b.getInstallStep().dependOn(&install_shader.step);
     }
+
+    // alpha mask shader: Compiled from the same source, but with the macro defined
+    const alpha_cmd = b.addSystemCommand(&.{"glslc"});
+    alpha_cmd.addFileArg(b.path("shaders/core/pbr.frag"));
+    alpha_cmd.addArgs(&.{ "-DALPHA_MASK", "-o" });
+    const alpha_out = alpha_cmd.addOutputFileArg("shaders/core/pbr_alpha_masked.frag.spv");
+    const install_alpha = b.addInstallFileWithDir(alpha_out, .bin, "shaders/core/pbr_alpha_masked.frag.spv");
+    b.getInstallStep().dependOn(&install_alpha.step);
 }

@@ -167,12 +167,14 @@ typedef struct {
     int32_t ao_roughness_metallic_texture_id;
     bool    is_alpha_masked;
     bool    is_double_sided;
+    bool    is_translucent;
 
     vec3_t bounding_center;
     float  bounding_radius;
 
     float metallic_factor;
     float roughness_factor;
+    float alpha_cutoff;
 
 } pak_mesh_t;
 

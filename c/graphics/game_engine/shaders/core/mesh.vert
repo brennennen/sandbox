@@ -23,6 +23,7 @@ layout(push_constant) uniform PushConstants {
     uint debug_mode;
     float metallic_factor;
     float roughness_factor;
+    float alpha_cutoff;
 } pc;
 
 void main() {

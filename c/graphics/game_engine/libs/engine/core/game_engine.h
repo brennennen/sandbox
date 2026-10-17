@@ -22,14 +22,9 @@ typedef struct {
     int         window_width;
     int         window_height;
     const char* initial_pak_path;
+    int         fps_cap;
+    bool        vsync;
 } game_engine_init_config_t;
-
-typedef struct {
-    int   resolution_x;
-    int   resolution_y;
-    bool  vsync_enabled;
-    float fov;
-} graphic_settings_t;
 
 typedef struct environment_s {
     vec3_t sun_direction;
@@ -102,6 +97,10 @@ typedef struct {
     uint64_t vram_geometry_bytes;
 
     render_stats_t last_frame_render_stats;
+
+    uint32_t       target_fps;
+    present_mode_t present_mode;
+    bool           request_swapchain_recreate;
 
 } game_engine_t;
 

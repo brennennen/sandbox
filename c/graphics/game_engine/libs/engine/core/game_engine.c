@@ -286,6 +286,15 @@ static void engine_update_simulation(game_engine_t* engine, float delta_time) {
 }
 
 static void engine_render_frame(game_engine_t* engine) {
+    if (engine->request_swapchain_recreate) {
+        graphics_wait_idle(engine->graphics);
+        int w;
+        int h;
+        platform_get_window_size(engine->platform, &w, &h);
+        graphics_recreate_swapchain(engine->graphics, w, h, engine->present_mode);
+        engine->request_swapchain_recreate = false;
+    }
+
     mat4_t view = camera_get_view_matrix(engine->main_camera);
 
     int w;
@@ -350,6 +359,8 @@ static void engine_render_frame(game_engine_t* engine) {
 }
 
 bool game_engine_tick(game_engine_t* game_engine) {
+    uint64_t tick_start_ns = platform_get_ticks_ns(game_engine->platform);
+
     if (!engine_process_events(game_engine)) {
         return false;
     }
@@ -362,6 +373,19 @@ bool game_engine_tick(game_engine_t* game_engine) {
     }
 
     engine_render_frame(game_engine);
+
+    uint64_t tick_end_ns       = platform_get_ticks_ns(game_engine->platform);
+    uint64_t frame_duration_ns = tick_end_ns - tick_start_ns;
+
+    if (game_engine->target_fps > 0) {
+        uint64_t target_ns = 1000000000ULL / game_engine->target_fps;
+
+        if (frame_duration_ns < target_ns) {
+            uint64_t sleep_ns = target_ns - frame_duration_ns;
+            platform_delay_ns(game_engine->platform, sleep_ns);
+        }
+    }
+
     return true;
 }
 

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VK_PIPELINE_H
+#define VK_PIPELINE_H
 
 #include "vk_types.h"
 
@@ -7,3 +8,5 @@ bool           vk_create_line_pipeline(graphics_t* graphics);
 void           vk_destroy_graphics_pipeline(graphics_t* graphics);
 VkShaderModule vk_create_shader_module(VkDevice device, const char* path);
 VkPipeline     get_draw_mode_pipeline(vk_pipelines_t* pipelines, draw_mode_t draw_mode);
+
+#endif // VK_PIPELINE_H

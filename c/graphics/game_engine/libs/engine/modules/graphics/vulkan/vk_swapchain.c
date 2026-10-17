@@ -7,17 +7,42 @@
 #include "vk_gpu_allocator.h"
 #include "vk_swapchain.h"
 
+VkPresentModeKHR vk_map_present_mode(present_mode_t present_mode) {
+    switch (present_mode) {
+    case PRESENT_MODE_IMMEDIATE:
+        return VK_PRESENT_MODE_IMMEDIATE_KHR;
+    case PRESENT_MODE_MAILBOX:
+        return VK_PRESENT_MODE_MAILBOX_KHR;
+    case PRESENT_MODE_VSYNC:
+        return VK_PRESENT_MODE_FIFO_KHR;
+    default: {
+        log_error("%s: unsupported mode! %d", __func__, present_mode);
+        exit(1);
+    }
+    }
+}
+
+present_mode_t map_vk_present_mode(VkPresentModeKHR vk_present_mode) {
+    switch (vk_present_mode) {
+    case VK_PRESENT_MODE_IMMEDIATE_KHR:
+        return PRESENT_MODE_IMMEDIATE;
+    case VK_PRESENT_MODE_MAILBOX_KHR:
+        return PRESENT_MODE_MAILBOX;
+    case VK_PRESENT_MODE_FIFO_KHR:
+        return PRESENT_MODE_VSYNC;
+    default: {
+        log_error("%s: unsupported mode! %d", __func__, vk_present_mode);
+        exit(1);
+    }
+    }
+}
+
 VkPresentModeKHR choose_swapchain_present_mode(
     VkPhysicalDevice physical_device,
     VkSurfaceKHR     surface,
-    present_mode_t   requested_mode
+    VkPresentModeKHR requested_mode
 ) {
-    VkPresentModeKHR desired_vk_mode = VK_PRESENT_MODE_FIFO_KHR;
-    if (requested_mode == PRESENT_MODE_IMMEDIATE) {
-        desired_vk_mode = VK_PRESENT_MODE_IMMEDIATE_KHR;
-    } else if (requested_mode == PRESENT_MODE_MAILBOX) {
-        desired_vk_mode = VK_PRESENT_MODE_MAILBOX_KHR;
-    }
+    VkPresentModeKHR desired_vk_mode = requested_mode;
 
     uint32_t present_mode_count;
     vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, NULL);
@@ -42,11 +67,11 @@ VkPresentModeKHR choose_swapchain_present_mode(
 }
 
 bool vk_create_swapchain(
-    graphics_t*    graphics,
-    int            width,
-    int            height,
-    present_mode_t abstract_present_mode,
-    VkSwapchainKHR old_swapchain
+    graphics_t*      graphics,
+    int              width,
+    int              height,
+    VkPresentModeKHR requested_present_mode,
+    VkSwapchainKHR   old_swapchain
 ) {
     VkSurfaceCapabilitiesKHR capabilities;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
@@ -76,7 +101,7 @@ bool vk_create_swapchain(
     graphics->display.extent.height = (uint32_t)height;
 
     VkPresentModeKHR present_mode = choose_swapchain_present_mode(
-        graphics->core.physical_device, graphics->core.surface, abstract_present_mode
+        graphics->core.physical_device, graphics->core.surface, requested_present_mode
     );
     graphics->display.present_mode = present_mode;
 
@@ -243,7 +268,7 @@ bool vk_setup_depth_buffer(graphics_t* r, uint32_t width, uint32_t height) {
            VK_SUCCESS;
 }
 
-void vk_recreate_swapchain(graphics_t* graphics, int width, int height) {
+void vk_recreate_swapchain(graphics_t* graphics, int width, int height, VkPresentModeKHR new_mode) {
     if (width == 0 || height == 0)
         return;
     vkDeviceWaitIdle(graphics->core.device);
@@ -259,22 +284,13 @@ void vk_recreate_swapchain(graphics_t* graphics, int width, int height) {
     free(graphics->display.images);
     free(graphics->display.image_views);
 
-    // graphics_destroy_render_target(graphics, &graphics->main_scene_target);
     graphics->assets.display_heap->used = 0;
 
-    vk_create_swapchain(
-        graphics, width, height, graphics->display.abstract_present_mode, old_swapchain
-    );
-    vk_setup_depth_buffer(graphics, width, height);
+    vk_create_swapchain(graphics, width, height, new_mode, old_swapchain);
 
-    // graphics_create_render_target(
-    //     graphics,
-    //     &graphics->main_scene_target,
-    //     width,
-    //     height,
-    //     VK_FORMAT_R16G16B16A16_SFLOAT,
-    //     true // Assuming you want a depth attachment here eventually
-    // );
+    graphics->display.abstract_present_mode = map_vk_present_mode(new_mode);
+
+    vk_setup_depth_buffer(graphics, width, height);
 
     vkDestroySwapchainKHR(graphics->core.device, old_swapchain, NULL);
     log_info("vulkan: swapchain and depth buffer recreated for %dx%d", width, height);

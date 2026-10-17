@@ -134,7 +134,7 @@ void build_pipeline_map(graphics_t* graphics, draw_mode_t draw_mode, VkPipeline*
         out_pipeline_map[QUEUE_ALPHA_MASKED]        = graphics->pipelines.forward_lit_alpha_masked;
         out_pipeline_map[QUEUE_ALPHA_MASKED_DOUBLE_SIDED] =
             graphics->pipelines.forward_lit_alpha_masked_double_sided;
-        out_pipeline_map[QUEUE_TRANSLUCENT] = graphics->pipelines.forward_lit; // TODO
+        out_pipeline_map[QUEUE_TRANSLUCENT] = graphics->pipelines.transparent;
     } else {
         // Debug modes override all queues with the exact same debug pipeline
         VkPipeline debug_pipe = get_draw_mode_pipeline(&graphics->pipelines, draw_mode);

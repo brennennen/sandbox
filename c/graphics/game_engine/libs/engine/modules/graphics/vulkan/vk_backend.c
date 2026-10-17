@@ -210,8 +210,9 @@ graphics_t* graphics_create(platform_t* platform, graphics_config_t* config) {
     }
 
     graphics->display.abstract_present_mode = config->present_mode;
+    VkPresentModeKHR vk_present_mode        = vk_map_present_mode(config->present_mode);
     if (!vk_create_swapchain(
-            graphics, config->width, config->height, config->present_mode, VK_NULL_HANDLE
+            graphics, config->width, config->height, vk_present_mode, VK_NULL_HANDLE
         ) ||
         !vk_create_graphics_pipeline(graphics) || !init_descriptors(graphics)) {
         goto init_failed;
@@ -389,12 +390,17 @@ present_mode_t graphics_get_present_mode(const graphics_t* graphics) {
     return graphics->display.abstract_present_mode;
 }
 
-void graphics_set_present_mode(graphics_t* r, present_mode_t mode) {
-    if (r->display.abstract_present_mode == mode) {
+void graphics_set_present_mode(graphics_t* graphics, present_mode_t mode) {
+    if (graphics->display.abstract_present_mode == mode) {
         return;
     }
-    r->display.abstract_present_mode = mode;
-    vk_recreate_swapchain(r, r->display.extent.width, r->display.extent.height);
+    graphics->display.abstract_present_mode = mode;
+    vk_recreate_swapchain(
+        graphics,
+        graphics->display.extent.width,
+        graphics->display.extent.height,
+        graphics->display.present_mode
+    );
 }
 
 static int32_t begin_frame(
@@ -433,7 +439,7 @@ static int32_t begin_frame(
     );
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-        vk_recreate_swapchain(r, w, h);
+        vk_recreate_swapchain(r, w, h, r->display.present_mode);
         if (render_target != NULL) {
             vk_resize_render_target(r, render_target, w, h);
         }
@@ -831,6 +837,20 @@ void graphics_draw(
     debug_imgui_render(graphics);
 
     end_frame(graphics, (uint32_t)image_index);
+}
+
+void graphics_recreate_swapchain(
+    graphics_t*    graphics,
+    int            width,
+    int            height,
+    present_mode_t present_mode
+) {
+    // vk_destroy_swapchain(graphics);
+    VkPresentModeKHR requested_mode = vk_map_present_mode(present_mode);
+    VkPresentModeKHR new_mode       = choose_swapchain_present_mode(
+        graphics->core.physical_device, graphics->core.surface, requested_mode
+    );
+    vk_recreate_swapchain(graphics, width, height, new_mode);
 }
 
 void graphics_update_global_environment(

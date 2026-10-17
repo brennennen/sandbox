@@ -394,6 +394,12 @@ void platform_file_unmap(platform_file_mapping_t* mapping) {
 }
 #endif
 
+// MARK: timing
+
+uint64_t platform_get_ticks_ns(platform_t* platform) { return SDL_GetTicksNS(); }
+
+void platform_delay_ns(platform_t* platform, uint64_t ns) { SDL_DelayNS(ns); }
+
 // MARK: gpu api specific
 
 // #ifdef RENDERER_VULKAN

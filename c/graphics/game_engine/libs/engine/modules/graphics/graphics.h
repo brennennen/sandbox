@@ -76,6 +76,13 @@ void graphics_draw(
     render_stats_t*         out_render_stats
 );
 
+void graphics_recreate_swapchain(
+    graphics_t*    graphics,
+    int            width,
+    int            height,
+    present_mode_t present_mode
+);
+
 void graphics_destroy(graphics_t* graphics);
 
 void graphics_update_debug_frustum(graphics_t* r, mat4_t inv_vp);

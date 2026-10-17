@@ -11,26 +11,23 @@
 int main(int argc, char* argv[]) {
     log_init();
 
-    graphic_settings_t graphic_settings = {
-        .resolution_x  = 1280,
-        .resolution_y  = 720,
-        .vsync_enabled = false,
-        .fov           = 90.0f,
-    };
     // TODO: load graphic_settings from file
     // TODO: validate graphic settings
 
     game_engine_init_config_t engine_init_config = {
         .window_title  = "Game",
-        .window_width  = graphic_settings.resolution_x,
-        .window_height = graphic_settings.resolution_y,
+        .window_width  = 1280,
+        .window_height = 720,
 
         .initial_pak_path = "./../../.assets/sponza_with_curtains.pak",
         //.initial_pak_path = "./../../.assets/sponza.pak",
         //.initial_pak_path = "./../../.assets/test_zone.pak",
-        // .initial_pak_path = "./../../.assets/test_skybox_zone.pak",
+        //.initial_pak_path = "./../../.assets/test_skybox_zone.pak",
         //.initial_pak_path = "./../../.assets/render_tests.pak",
+
+        .fps_cap = 0,
     };
+
     game_engine_t game_engine = {0};
 
     if (game_engine_init(&game_engine, &engine_init_config)) {

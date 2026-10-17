@@ -19,9 +19,7 @@ zig build run
 
 
 ## TODO
-* add transparency material render queue support
-* fix sponza decals?
-* add frame cap and control to imgui diagnostics page
+* change vk_create_swapchain to take in "VkPresentModeKHR" and provide a mapping function
 * add hot reloading to dynamically change mips ceiling/cap
 * add texture/material de-duplication to reduce file size
 * more complex sponza scene stress testing
@@ -39,4 +37,4 @@ zig build run
 * add proper gui support? clay?
 * add world ocean system? add river/lake sysetm? add waterfall system?
 * add jolt collision engine?
-*
+* add OpenPBR, MaterialX, and USD (Uniform Scene Descriptor)

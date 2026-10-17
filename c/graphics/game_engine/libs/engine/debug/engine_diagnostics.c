@@ -3,6 +3,7 @@
 #include "engine/modules/debug_imgui/debug_imgui.h"
 
 #include "engine/core/game_engine.h"
+#include "engine/core/logger.h"
 
 #include "engine/debug/engine_diagnostics.h"
 
@@ -38,6 +39,26 @@ void engine_diagnostics_draw_panel(game_engine_t* game_engine) {
         ImGuiIO* io = igGetIO_Nil();
         igText("Smoothed FPS: %.1f", io->Framerate);
         igText("Frame Time: %.3f ms", 1000.0f / io->Framerate);
+
+        int current_cap = (int)game_engine->target_fps;
+        if (igSliderInt("FPS Cap", &current_cap, 0, 240, "%d", 0)) {
+            game_engine->target_fps = (uint32_t)current_cap;
+        }
+
+        if (game_engine->target_fps == 0) {
+            igSameLine(0.0f, -1.0f);
+            igTextDisabled("(Uncapped)");
+        }
+
+        const char* present_mode_names[] = {
+            "Immediate/Uncapped", "VSYNC: Mailbox", "VSYNC: Standard/FIFO"
+        };
+        int current_mode = (int)game_engine->present_mode;
+        if (igCombo_Str_arr("Present Mode", &current_mode, present_mode_names, 3, 3)) {
+            game_engine->present_mode               = (present_mode_t)current_mode;
+            game_engine->request_swapchain_recreate = true;
+            log_info("Present mode requested: %s", present_mode_names[current_mode]);
+        }
     }
 
     if (igCollapsingHeader_TreeNodeFlags("Engine State", ImGuiTreeNodeFlags_DefaultOpen)) {

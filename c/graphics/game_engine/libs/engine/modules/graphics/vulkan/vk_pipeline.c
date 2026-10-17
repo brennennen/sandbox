@@ -12,6 +12,9 @@
 #include "vk_core.h"
 #include "vk_pipeline.h"
 
+/**
+ * Loads compiled SPIR-V bytecode from disk and creates a Vulkan shader module.
+ */
 VkShaderModule vk_create_shader_module(VkDevice device, const char* path) {
     FILE* file = fopen(path, "rb");
     if (!file) {
@@ -43,6 +46,9 @@ VkShaderModule vk_create_shader_module(VkDevice device, const char* path) {
     return shader_module;
 }
 
+/**
+ * Creates the background skybox rendering pipeline.
+ */
 static VkPipeline create_skybox_pipeline(graphics_t* graphics, VkFormat color_format) {
     VkShaderModule vert_mod = vk_create_shader_module(
         graphics->core.device, "shaders/core/skybox.vert.spv"
@@ -243,7 +249,13 @@ static VkPipeline create_pipeline_internal(
     VkPipelineColorBlendAttachmentState color_blend_attachment = {
         .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                           VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
-        .blendEnable = VK_FALSE,
+        .blendEnable         = blend_enable ? VK_TRUE : VK_FALSE,
+        .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+        .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+        .colorBlendOp        = VK_BLEND_OP_ADD,
+        .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
+        .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+        .alphaBlendOp        = VK_BLEND_OP_ADD,
     };
 
     VkPipelineColorBlendStateCreateInfo color_blending = {
@@ -585,14 +597,11 @@ static VkPipeline create_shadow_pipeline(graphics_t* graphics) {
         .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
     };
 
-    // Note: colorWriteMask and blend attachments are completely omitted
-
     VkPipelineDepthStencilStateCreateInfo depth_stencil = {
         .sType            = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
         .depthTestEnable  = VK_TRUE,
         .depthWriteEnable = VK_TRUE,
         .depthCompareOp   = VK_COMPARE_OP_LESS,
-        //.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL,
     };
 
     VkPipelineRenderingCreateInfo rendering_info = {
@@ -612,7 +621,7 @@ static VkPipeline create_shadow_pipeline(graphics_t* graphics) {
     VkGraphicsPipelineCreateInfo pipeline_info = {
         .sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
         .pNext               = &rendering_info,
-        .stageCount          = 1, // Only 1 stage (Vertex)
+        .stageCount          = 1,
         .pStages             = &stage,
         .pVertexInputState   = &vertex_input,
         .pInputAssemblyState = &input_assembly,
@@ -625,7 +634,7 @@ static VkPipeline create_shadow_pipeline(graphics_t* graphics) {
         .pRasterizationState = &rasterizer,
         .pMultisampleState   = &multisampling,
         .pDepthStencilState  = &depth_stencil,
-        .pColorBlendState    = NULL, // No color blend state!
+        .pColorBlendState    = NULL,
         .pDynamicState       = &dynamic_info,
         .layout              = graphics->pipelines.layout,
     };
@@ -661,7 +670,7 @@ bool vk_create_graphics_pipeline(graphics_t* graphics) {
         VK_POLYGON_MODE_FILL,
         VK_CULL_MODE_BACK_BIT,
         true,
-        false,
+        true,
         false,
         graphics->pipelines.layout,
         "shaders/core/mesh.vert.spv",
@@ -675,7 +684,7 @@ bool vk_create_graphics_pipeline(graphics_t* graphics) {
         VK_POLYGON_MODE_FILL,
         VK_CULL_MODE_NONE,
         true,
-        false,
+        true,
         false,
         graphics->pipelines.layout,
         "shaders/core/mesh.vert.spv",
@@ -689,7 +698,7 @@ bool vk_create_graphics_pipeline(graphics_t* graphics) {
         VK_POLYGON_MODE_FILL,
         VK_CULL_MODE_BACK_BIT,
         true,
-        false,
+        true,
         false,
         graphics->pipelines.layout,
         "shaders/core/mesh.vert.spv",
@@ -704,7 +713,7 @@ bool vk_create_graphics_pipeline(graphics_t* graphics) {
         VK_POLYGON_MODE_FILL,
         VK_CULL_MODE_NONE,
         true,
-        false,
+        true,
         false,
         graphics->pipelines.layout,
         "shaders/core/mesh.vert.spv",
@@ -716,13 +725,13 @@ bool vk_create_graphics_pipeline(graphics_t* graphics) {
         graphics,
         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
         VK_POLYGON_MODE_FILL,
-        VK_CULL_MODE_BACK_BIT,
+        VK_CULL_MODE_NONE,
         true,
         false,
         true,
         graphics->pipelines.layout,
         "shaders/core/mesh.vert.spv",
-        "shaders/core/pbr_alpha_masked.frag.spv",
+        "shaders/core/pbr.frag.spv",
         VK_FORMAT_R16G16B16A16_SFLOAT,
         "graphics->pipelines.transparent"
     );
@@ -753,7 +762,7 @@ bool vk_create_graphics_pipeline(graphics_t* graphics) {
         VK_POLYGON_MODE_FILL,
         VK_CULL_MODE_BACK_BIT,
         true,
-        false,
+        true,
         false,
         graphics->pipelines.layout,
         "shaders/core/line.vert.spv",
@@ -767,7 +776,7 @@ bool vk_create_graphics_pipeline(graphics_t* graphics) {
         VK_POLYGON_MODE_FILL,
         VK_CULL_MODE_NONE,
         true,
-        false,
+        true,
         false,
         graphics->pipelines.layout,
         "shaders/core/mesh.vert.spv",
@@ -781,7 +790,7 @@ bool vk_create_graphics_pipeline(graphics_t* graphics) {
         VK_POLYGON_MODE_LINE,
         VK_CULL_MODE_NONE,
         true,
-        false,
+        true,
         false,
         graphics->pipelines.layout,
         "shaders/core/mesh.vert.spv",
@@ -795,7 +804,7 @@ bool vk_create_graphics_pipeline(graphics_t* graphics) {
         VK_POLYGON_MODE_FILL,
         VK_CULL_MODE_BACK_BIT,
         true,
-        false,
+        true,
         false,
         graphics->pipelines.layout,
         "shaders/core/mesh.vert.spv",
@@ -819,6 +828,9 @@ bool vk_create_graphics_pipeline(graphics_t* graphics) {
     );
 }
 
+/**
+ * Destroys all Vulkan pipeline objects, pipeline layouts, and descriptor set layouts.
+ */
 void vk_destroy_graphics_pipeline(graphics_t* graphics) {
     if (graphics->pipelines.shadow) {
         vkDestroyPipeline(graphics->core.device, graphics->pipelines.shadow, NULL);
@@ -889,6 +901,9 @@ void vk_destroy_graphics_pipeline(graphics_t* graphics) {
     }
 }
 
+/**
+ * Retrieves the pipeline handle for the requested drawing or debug mode.
+ */
 VkPipeline get_draw_mode_pipeline(vk_pipelines_t* pipelines, draw_mode_t draw_mode) {
     switch (draw_mode) {
     case DRAW_MODE_FORWARD_LIT:

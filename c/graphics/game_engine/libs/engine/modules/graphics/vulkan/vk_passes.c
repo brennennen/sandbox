@@ -306,25 +306,31 @@ static void forward_pass_draw_extras(
 
     // Draw Skybox
     if (gfx_frame_input->draw_mode != DRAW_MODE_DEBUG_SDR) {
-        vkCmdBindPipeline(
-            graphics->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics->pipelines.skybox
-        );
-    }
-    vkCmdBindDescriptorSets(
-        graphics->command_buffer,
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        graphics->pipelines.layout,
-        0,
-        1,
-        &graphics->frames[graphics->current_frame].global_descriptor_set,
-        0,
-        NULL
-    );
+        if (gfx_frame_input->environment->skybox_texture.id != GRAPHICS_INVALID_HANDLE) {
+            vkCmdBindPipeline(
+                graphics->command_buffer,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                graphics->pipelines.skybox
+            );
 
-    vkCmdDraw(graphics->command_buffer, 36, 1, 0, 0);
-    if (out_render_stats) {
-        out_render_stats->forward_pass_draw_calls++;
-        out_render_stats->forward_pass_drawn_triangles += 12;
+            vkCmdBindDescriptorSets(
+                graphics->command_buffer,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                graphics->pipelines.layout,
+                0,
+                1,
+                &graphics->frames[graphics->current_frame].global_descriptor_set,
+                0,
+                NULL
+            );
+
+            vkCmdDraw(graphics->command_buffer, 36, 1, 0, 0);
+
+            if (out_render_stats) {
+                out_render_stats->forward_pass_draw_calls++;
+                out_render_stats->forward_pass_drawn_triangles += 12;
+            }
+        }
     }
 
     // Draw Debug Widgets

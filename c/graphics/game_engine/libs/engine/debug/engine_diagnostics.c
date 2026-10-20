@@ -173,7 +173,7 @@ void engine_diagnostics_draw_panel(game_engine_t* game_engine) {
 
         igSeparator();
         igText("Texture Streaming Settings");
-        int              previous_clamp      = game_engine->texture_mip_clamp;
+        uint32_t         previous_clamp      = game_engine->texture_mip_clamp;
         ImGuiSliderFlags mip_map_clamp_flags = 0;
         if (igSliderInt(
                 "Mipmap Clamp",
@@ -184,10 +184,9 @@ void engine_diagnostics_draw_panel(game_engine_t* game_engine) {
                 mip_map_clamp_flags
             )) {
             igTextColored((ImVec4){1.0f, 1.0f, 0.0f, 1.0f}, "Requires scene reload!");
-            // TODO: hot reload
-            // if (previous_clamp != g_texture_mip_clamp) {
-            //     pak_loader_reload_scene(game_engine);
-            // }
+            if (previous_clamp != game_engine->texture_mip_clamp) {
+                game_engine->request_scene_reload = true;
+            }
         }
         if (igIsItemHovered(ImGuiHoveredFlags_None)) {
             igSetTooltip("0 = 4K\n1 = 2K (-75%% VRAM)\n2 = 1K (-93%% VRAM)");

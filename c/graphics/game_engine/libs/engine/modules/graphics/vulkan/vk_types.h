@@ -212,6 +212,12 @@ typedef struct {
     texture_handle_t default_normal;
     texture_handle_t default_ao_metallic_roughness;
 
+    uint64_t vertex_heap_base;
+    uint64_t device_heap_base;
+    uint32_t base_mesh_count;
+    uint32_t base_texture_count;
+    uint32_t base_material_count;
+
 } vk_assets_t;
 
 /**

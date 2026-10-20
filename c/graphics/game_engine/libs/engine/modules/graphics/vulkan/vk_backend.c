@@ -119,6 +119,7 @@ static bool init_descriptors(graphics_t* r) {
 
     VkDescriptorPoolCreateInfo pool_info = {
         .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .flags         = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
         .poolSizeCount = 2,
         .pPoolSizes    = pool_sizes,
         .maxSets       = 1024,
@@ -235,9 +236,16 @@ graphics_t* graphics_create(platform_t* platform, graphics_config_t* config) {
     init_debug_frustum_buffer(graphics);
     init_debug_sun_line_buffer(graphics);
 
-    if (!init_default_textures(graphics)) {
+    if (!vk_init_default_textures(graphics)) {
         goto init_failed;
     }
+
+    graphics_set_scene_baseline(graphics);
+
+    log_info(
+        "renderer: initialization complete. Base VRAM used: %llu bytes",
+        graphics->assets.device_heap->used
+    );
 
     log_info("renderer: initialization complete");
     return graphics;
@@ -246,6 +254,15 @@ init_failed:
     log_error("renderer: initialization aborted due to failure");
     graphics_destroy(graphics);
     return NULL;
+}
+
+void graphics_set_scene_baseline(graphics_t* graphics) {
+    graphics->assets.vertex_heap_base = graphics->assets.vertex_heap->offset;
+    graphics->assets.device_heap_base = graphics->assets.device_heap->offset;
+
+    graphics->assets.base_mesh_count     = graphics->assets.mesh_count;
+    graphics->assets.base_texture_count  = graphics->assets.texture_count;
+    graphics->assets.base_material_count = graphics->assets.material_count;
 }
 
 void graphics_wait_idle(graphics_t* graphics) {
@@ -613,11 +630,6 @@ material_handle_t graphics_create_material(
     float            roughness_factor,
     float            alpha_cutoff
 ) {
-    if (albedo.id == GRAPHICS_INVALID_HANDLE || normal.id == GRAPHICS_INVALID_HANDLE) {
-        log_error("vulkan: Cannot create material with invalid texture handles. Skipping.");
-        return (material_handle_t){.id = GRAPHICS_INVALID_HANDLE};
-    }
-
     if (graphics->assets.material_count >= VK_MAX_MATERIALS) {
         log_error("vulkan: material pool exhausted!");
         return (material_handle_t){.id = GRAPHICS_INVALID_HANDLE};
@@ -917,4 +929,77 @@ void graphics_update_global_environment(
     }
 
     log_info("Global Environment Descriptor Updated with IBL maps.");
+}
+
+static void vk_destroy_all_meshes(graphics_t* graphics) {
+    for (uint32_t i = graphics->assets.base_mesh_count; i < graphics->assets.mesh_count; i++) {
+        vk_mesh_t* mesh = &graphics->assets.meshes[i];
+        if (!mesh->is_active) {
+            continue;
+        }
+        if (mesh->vertex_buffer) {
+            vkDestroyBuffer(graphics->core.device, mesh->vertex_buffer, NULL);
+        }
+        if (mesh->index_buffer) {
+            vkDestroyBuffer(graphics->core.device, mesh->index_buffer, NULL);
+        }
+        memset(mesh, 0, sizeof(vk_mesh_t));
+    }
+}
+
+static void vk_destroy_all_textures(graphics_t* graphics) {
+    for (uint32_t i = graphics->assets.base_texture_count; i < graphics->assets.texture_count;
+         i++) {
+        vk_texture_t* tex = &graphics->assets.textures[i];
+        if (!tex->is_active) {
+            continue;
+        }
+        if (tex->sampler) {
+            vkDestroySampler(graphics->core.device, tex->sampler, NULL);
+        }
+        if (tex->view) {
+            vkDestroyImageView(graphics->core.device, tex->view, NULL);
+        }
+        if (tex->image) {
+            vkDestroyImage(graphics->core.device, tex->image, NULL);
+        }
+        memset(tex, 0, sizeof(vk_texture_t));
+    }
+}
+
+static void vk_destroy_all_materials(graphics_t* graphics) {
+    for (uint32_t i = graphics->assets.base_material_count; i < graphics->assets.material_count;
+         i++) {
+        vk_material_t* mat = &graphics->assets.materials[i];
+        if (!mat->is_active) {
+            continue;
+        }
+        vkFreeDescriptorSets(
+            graphics->core.device, graphics->descriptor_pool, 1, &mat->descriptor_set
+        );
+        memset(mat, 0, sizeof(vk_material_t));
+    }
+}
+
+void graphics_unload_scene_assets(graphics_t* graphics) {
+    graphics_wait_idle(graphics);
+
+    vk_destroy_all_meshes(graphics);
+    vk_destroy_all_textures(graphics);
+    vk_destroy_all_materials(graphics);
+
+    if (graphics->assets.vertex_heap) {
+        graphics->assets.vertex_heap->offset = graphics->assets.vertex_heap_base;
+        graphics->assets.vertex_heap->used   = graphics->assets.vertex_heap_base;
+    }
+    if (graphics->assets.device_heap) {
+        graphics->assets.device_heap->offset = graphics->assets.device_heap_base;
+        graphics->assets.device_heap->used   = graphics->assets.device_heap_base;
+    }
+
+    graphics->assets.mesh_count     = graphics->assets.base_mesh_count;
+    graphics->assets.texture_count  = graphics->assets.base_texture_count;
+    graphics->assets.material_count = graphics->assets.base_material_count;
+
+    log_info("vulkan: Scene assets unloaded. Heaps reset.");
 }

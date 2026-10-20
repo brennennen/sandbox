@@ -36,6 +36,8 @@ typedef struct {
 
 graphics_t* graphics_create(platform_t* platform, graphics_config_t* config);
 
+void graphics_set_scene_baseline(graphics_t* graphics);
+
 present_mode_t graphics_get_present_mode(const graphics_t* graphics);
 
 void graphics_set_present_mode(graphics_t* graphics, present_mode_t mode);
@@ -97,3 +99,5 @@ void graphics_update_global_environment(
 );
 
 void graphics_update_debug_sun_line(graphics_t* graphics, vec3_t origin, vec3_t sun_direction);
+
+void graphics_unload_scene_assets(graphics_t* graphics);

@@ -77,45 +77,6 @@ static bool init_core_subsystems(
     return true;
 }
 
-static void init_default_textures(game_engine_t* engine) {
-    static uint8_t white_pixel[4]  = {255, 255, 255, 255};
-    image_t        dummy_white_img = {
-               .width    = 1,
-               .height   = 1,
-               .channels = 4,
-               .size     = 4,
-               .pixels   = white_pixel,
-    };
-
-    engine->default_tex = graphics_upload_texture(
-        engine->graphics, &dummy_white_img, PAK_TEX_FORMAT_RGBA8_SRGB
-    );
-
-    static uint8_t flat_normal_pixel[4] = {128, 128, 255, 255};
-    image_t        dummy_normal_img     = {
-                   .width    = 1,
-                   .height   = 1,
-                   .channels = 4,
-                   .size     = 4,
-                   .pixels   = flat_normal_pixel,
-    };
-    engine->default_normal_tex = graphics_upload_texture(
-        engine->graphics, &dummy_normal_img, PAK_TEX_FORMAT_R8_UNORM
-    );
-
-    static uint8_t flat_mr_pixel[4]                = {255, 128, 0, 255};
-    image_t        dummy_ao_metallic_roughness_img = {
-               .width    = 1,
-               .height   = 1,
-               .channels = 4,
-               .size     = 4,
-               .pixels   = flat_mr_pixel,
-    };
-    engine->default_ao_metallic_roughness_tex = graphics_upload_texture(
-        engine->graphics, &dummy_ao_metallic_roughness_img, PAK_TEX_FORMAT_RGBA8_UNORM
-    );
-}
-
 bool game_engine_init(game_engine_t* game_engine, game_engine_init_config_t* engine_init_config) {
     log_info("Initializing engine...");
     if (!init_core_subsystems(game_engine, engine_init_config)) {
@@ -126,15 +87,14 @@ bool game_engine_init(game_engine_t* game_engine, game_engine_init_config_t* eng
     debug_imgui_init(game_engine);
     platform_set_event_callback(game_engine->platform, debug_imgui_process_event);
 
-    init_default_textures(game_engine);
-
     if (!vfs_mount_archive(engine_init_config->initial_pak_path)) {
         log_error("Failed to mount base game archive!");
     }
 
+    game_engine->current_pak_path  = engine_init_config->initial_pak_path;
     game_engine->active_scene_type = SCENE_STATIC_LEVEL;
 
-    load_pak_file(game_engine, engine_init_config);
+    load_pak_file(game_engine, engine_init_config->initial_pak_path);
 
     // TODO: malloc for now, camera will be part of scene, this is a debug camera
     game_engine->main_camera             = malloc(sizeof(camera_t));
@@ -358,8 +318,40 @@ static void engine_render_frame(game_engine_t* engine) {
     );
 }
 
+static void engine_reload_scene(game_engine_t* engine) {
+
+    log_info("Hot-Reloading Scene...");
+    graphics_unload_scene_assets(engine->graphics);
+    engine->main_scene.object_count = 0;
+
+    engine->environment.skybox_texture.id      = GRAPHICS_INVALID_HANDLE;
+    engine->environment.irradiance_texture.id  = GRAPHICS_INVALID_HANDLE;
+    engine->environment.prefiltered_texture.id = GRAPHICS_INVALID_HANDLE;
+
+    load_pak_file(engine, engine->current_pak_path);
+
+    engine->request_scene_reload = false;
+    log_info("Scene Hot-Reload Complete!");
+    // log_info("Hot-Reloading Scene...");
+    // graphics_wait_idle(engine->graphics);
+    // for (uint32_t i = 0; i < engine->main_scene.object_count; i++) {
+    //     render_object_t* obj = &engine->main_scene.objects[i];
+    //     // TODO: graphics_destroy_material(engine->graphics, obj->material);
+    //     // TODO: graphics_destroy_mesh(engine->graphics, obj->mesh);
+    // }
+    // // TODO: free/reset texture asset manager loaded assets?
+    // engine->main_scene.object_count = 0;
+    // load_pak_file(engine, engine->current_pak_path);
+    // engine->request_scene_reload = false;
+    // log_info("Scene Hot-Reload Complete!");
+}
+
 bool game_engine_tick(game_engine_t* game_engine) {
     uint64_t tick_start_ns = platform_get_ticks_ns(game_engine->platform);
+
+    if (game_engine->request_scene_reload) {
+        engine_reload_scene(game_engine);
+    }
 
     if (!engine_process_events(game_engine)) {
         return false;

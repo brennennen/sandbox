@@ -89,13 +89,17 @@ static void load_geometry_from_pak(game_engine_t* engine, world_pak_t* header, v
 
         for (uint32_t m = 0; m < active_mip; m++) {
             if (is_bc7) {
-                // BC7 is 16 bytes per 4x4 block
                 uint32_t blocks_x = (temp_w + 3) / 4;
                 uint32_t blocks_y = (temp_h + 3) / 4;
                 mip_byte_offset += (uint64_t)blocks_x * blocks_y * 16;
             } else {
-                // Uncompressed RGBA8 (4 bytes per pixel)
-                mip_byte_offset += (uint64_t)temp_w * temp_h * 4;
+                uint32_t bpp = 4;
+                if (tex_def->format == PAK_TEX_FORMAT_R8_UNORM) {
+                    bpp = 1;
+                } else if (tex_def->format == PAK_TEX_FORMAT_RGBA32F) {
+                    bpp = 16;
+                }
+                mip_byte_offset += (uint64_t)temp_w * temp_h * bpp;
             }
 
             temp_w = (temp_w > 1) ? temp_w / 2 : 1;
@@ -115,7 +119,7 @@ static void load_geometry_from_pak(game_engine_t* engine, world_pak_t* header, v
         };
 
         if (img.size == 0) {
-            gpu_textures[t] = engine->default_tex;
+            gpu_textures[t] = (texture_handle_t){.id = GRAPHICS_INVALID_HANDLE};
             continue;
         }
         gpu_textures[t] = graphics_upload_texture(engine->graphics, &img, tex_def->format);
@@ -142,15 +146,15 @@ static void load_geometry_from_pak(game_engine_t* engine, world_pak_t* header, v
 
         texture_handle_t mesh_tex = (mesh_def->base_color_texture_id >= 0)
                                         ? gpu_textures[mesh_def->base_color_texture_id]
-                                        : engine->default_tex;
+                                        : (texture_handle_t){.id = GRAPHICS_INVALID_HANDLE};
 
         texture_handle_t norm_tex = (mesh_def->normal_texture_id >= 0)
                                         ? gpu_textures[mesh_def->normal_texture_id]
-                                        : engine->default_normal_tex;
+                                        : (texture_handle_t){.id = GRAPHICS_INVALID_HANDLE};
 
         texture_handle_t ao_mr_tex = (mesh_def->ao_roughness_metallic_texture_id >= 0)
                                          ? gpu_textures[mesh_def->ao_roughness_metallic_texture_id]
-                                         : engine->default_ao_metallic_roughness_tex;
+                                         : (texture_handle_t){.id = GRAPHICS_INVALID_HANDLE};
 
         mat4_t final_transform = mat4_identity();
         for (uint32_t e = 0; e < header->entity_count; e++) {
@@ -178,8 +182,8 @@ static void load_geometry_from_pak(game_engine_t* engine, world_pak_t* header, v
     }
 }
 
-void load_pak_file(game_engine_t* game_engine, game_engine_init_config_t* engine_init_config) {
-    void* raw_pak_data = vfs_get_mounted_archive_pointer(engine_init_config->initial_pak_path);
+void load_pak_file(game_engine_t* game_engine, const char* pak_file_path) {
+    void* raw_pak_data = vfs_get_mounted_archive_pointer(pak_file_path);
     if (raw_pak_data) {
         world_pak_t* header = (world_pak_t*)raw_pak_data;
 
@@ -220,7 +224,7 @@ void load_pak_file(game_engine_t* game_engine, game_engine_init_config_t* engine
                        .pixels     = (uint8_t*)raw_pak_data + irr_def->data_offset,
                        .is_cubemap = true,
             };
-            texture_handle_t irr_tex = graphics_upload_texture(
+            game_engine->environment.irradiance_texture = graphics_upload_texture(
                 game_engine->graphics, &irr_img, PAK_TEX_FORMAT_RGBA32F
             );
 
@@ -234,30 +238,28 @@ void load_pak_file(game_engine_t* game_engine, game_engine_init_config_t* engine
                        .mip_levels = 5,
                        .is_cubemap = true,
             };
-            texture_handle_t pref_tex = graphics_upload_texture(
+            game_engine->environment.prefiltered_texture = graphics_upload_texture(
                 game_engine->graphics, &pref_img, PAK_TEX_FORMAT_RGBA32F
             );
-
-            // graphics_update_global_environment(
-            //     game_engine->graphics,
-            //     game_engine->environment.skybox_texture, irr_tex, pref_tex
-            // );
 
             graphics_update_global_environment(
                 game_engine->graphics,
                 game_engine->environment.skybox_texture,
-                game_engine->environment.skybox_texture, // irr_tex
-                game_engine->environment.skybox_texture  // pref_tex
+                game_engine->environment
+                    .skybox_texture, // game_engine->environment.irradiance_texture
+                game_engine->environment.prefiltered_texture
             );
             log_info("Successfully uploaded HDRI Skybox to GPU!");
         } else {
-            game_engine->environment.skybox_texture = game_engine->default_tex;
+            game_engine->environment.skybox_texture = (texture_handle_t){
+                .id = GRAPHICS_INVALID_HANDLE
+            };
 
             graphics_update_global_environment(
                 game_engine->graphics,
-                game_engine->default_tex,
-                game_engine->default_tex,
-                game_engine->default_tex
+                (texture_handle_t){.id = GRAPHICS_INVALID_HANDLE},
+                (texture_handle_t){.id = GRAPHICS_INVALID_HANDLE},
+                (texture_handle_t){.id = GRAPHICS_INVALID_HANDLE}
             );
 
             log_info("No environment found in PAK. Bound fallback environment.");

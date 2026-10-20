@@ -19,8 +19,6 @@ zig build run
 
 
 ## TODO
-* change vk_create_swapchain to take in "VkPresentModeKHR" and provide a mapping function
-* add hot reloading to dynamically change mips ceiling/cap
 * add texture/material de-duplication to reduce file size
 * more complex sponza scene stress testing
   * add sponza ivy

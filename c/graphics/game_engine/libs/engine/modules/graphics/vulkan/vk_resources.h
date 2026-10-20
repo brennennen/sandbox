@@ -7,7 +7,7 @@
 #include "scene_types.h"
 #include "vk_types.h"
 
-bool init_default_textures(graphics_t* graphics);
+bool vk_init_default_textures(graphics_t* graphics);
 
 gpu_allocation_t vk_create_staging_buffer(
     graphics_t*  r,

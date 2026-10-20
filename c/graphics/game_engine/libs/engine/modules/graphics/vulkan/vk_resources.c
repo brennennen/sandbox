@@ -8,7 +8,7 @@
 #include "vk_gpu_allocator.h"
 #include "vk_resources.h"
 
-bool init_default_textures(graphics_t* graphics) {
+bool vk_init_default_textures(graphics_t* graphics) {
     uint8_t white_pixels[4] = {255, 255, 255, 255};
     image_t albedo_img      = {
              .width    = 1,

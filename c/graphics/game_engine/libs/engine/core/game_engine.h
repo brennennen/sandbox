@@ -86,9 +86,10 @@ typedef struct {
     // texture_handle_t skybox_irradiance_texture;
     // texture_handle_t skybox_prefiltered_texture;
 
-    texture_handle_t default_tex;
-    texture_handle_t default_normal_tex;
-    texture_handle_t default_ao_metallic_roughness_tex;
+    // default textures now handled by backend
+    // texture_handle_t default_tex;
+    // texture_handle_t default_normal_tex;
+    // texture_handle_t default_ao_metallic_roughness_tex;
 
     bool show_debug_widgets;
 
@@ -101,6 +102,9 @@ typedef struct {
     uint32_t       target_fps;
     present_mode_t present_mode;
     bool           request_swapchain_recreate;
+
+    const char* current_pak_path;
+    bool        request_scene_reload;
 
 } game_engine_t;
 
